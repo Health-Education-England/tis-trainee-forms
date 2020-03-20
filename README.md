@@ -1,8 +1,7 @@
-# TIS Trainee Forms Microservice
+# TIS Trainee Forms
 
 ## About
-This is a TIS self service's trainee forms microservice to be used with the following
-technology:
+This is a service to manage trainee forms with the following technology:
 
  - Java 11
  - Spring Boot
@@ -21,13 +20,7 @@ Code quality checking and enforcement is done with the following tools:
 
 Error and exception logging is done using Sentry.
 
-## Usage
-To use this template, create a new repository from it and follow the TODOs in
-the code, with the following additional changes.
- - Update copyright year in [LICENSE](LICENSE).
- - Update copyright year in [TemplateApplication].
- - Update copyright year in [TemplateApplicationTest].
- - Update this README.
+## Deployment
  - Provide `SENTRY_DSN` and `SENTRY_ENVIRONMENT` as environmental variables
    during deployment.
 
