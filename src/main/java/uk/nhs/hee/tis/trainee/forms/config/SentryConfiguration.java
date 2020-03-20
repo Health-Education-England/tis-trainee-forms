@@ -19,16 +19,25 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.trainee.forms;
+package uk.nhs.hee.tis.trainee.forms.config;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import io.sentry.spring.SentryExceptionResolver;
+import io.sentry.spring.SentryServletContextInitializer;
+import org.springframework.boot.web.servlet.ServletContextInitializer;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.HandlerExceptionResolver;
 
-@SpringBootApplication
-//TODO: Update package and class name.
-public class TraineeFormsApplication {
+@Configuration
+public class SentryConfiguration {
 
-  public static void main(String[] args) {
-    SpringApplication.run(TraineeFormsApplication.class, args);
+  @Bean
+  public HandlerExceptionResolver sentryExceptionResolver() {
+    return new SentryExceptionResolver();
+  }
+
+  @Bean
+  public ServletContextInitializer sentryServletContextInitilizer() {
+    return new SentryServletContextInitializer();
   }
 }

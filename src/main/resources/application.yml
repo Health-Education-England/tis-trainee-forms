@@ -1,9 +1,10 @@
 server:
-  # TODO: Update server port to a unique value.
   port: 8207
 spring:
   data:
     mongodb:
-      host: localhost
-      port: 27017
-      database: trainee
+      host: ${DB_HOST:localhost}
+      port: ${DB_PORT:27017}
+      database: ${DB_NAME:trainee}
+      user: ${DB_USER:''}
+      password: ${DB_PASSWORD:''}
