@@ -25,10 +25,9 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-//TODO: Update package and class name.
 public class TraineeFormsApplication {
 
   public static void main(String[] args) {
-    SpringApplication.run(TraineeFormsApplication.class, args);
+    SpringApplication.run(TraineeFormsApplication.class);
   }
 }
