@@ -37,5 +37,5 @@ This project uses [Semantic Versioning](semver.org).
 ## License
 This project is license under [The MIT License (MIT)](LICENSE).
 
-[TemplateApplication]: src/main/java/uk/nhs/hee/tis/template/TemplateApplication.java
-[TemplateApplicationTest]: src/test/java/uk/nhs/hee/tis/template/TemplateApplicationTest.java
+[TemplateApplication]: src/main/java/uk/nhs/hee/trainee/forms/TraineeFormsApplication.java
+[TemplateApplicationTest]: src/test/java/uk/nhs/hee/trainee/forms/TraineeFormsApplicationTest.java
