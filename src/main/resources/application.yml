@@ -5,6 +5,6 @@ spring:
     mongodb:
       host: ${DB_HOST:localhost}
       port: ${DB_PORT:27017}
-      database: ${DB_NAME:trainee}
+      database: ${DB_NAME:forms}
       user: ${DB_USER:''}
       password: ${DB_PASSWORD:''}

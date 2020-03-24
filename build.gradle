@@ -28,9 +28,11 @@ dependencies {
   implementation "org.springframework.boot:spring-boot-starter-data-mongodb"
   // Spring Boot starters
   implementation 'org.springframework.boot:spring-boot-starter-web'
-  testImplementation('org.springframework.boot:spring-boot-starter-test') {
+  /*testImplementation('org.springframework.boot:spring-boot-starter-test') {
     exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
-  }
+  }*/
+
+  testImplementation "org.springframework.boot:spring-boot-starter-test"
 
   // Lombok
   compileOnly 'org.projectlombok:lombok'
@@ -43,6 +45,9 @@ dependencies {
 
   // Sentry reporting
   compile 'io.sentry:sentry-spring:1.7.30'
+
+  //H2 for unit testing
+  testCompile group: 'com.h2database', name: 'h2', version: '1.4.200'
 }
 
 checkstyle {
