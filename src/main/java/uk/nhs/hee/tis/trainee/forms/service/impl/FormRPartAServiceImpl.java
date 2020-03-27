@@ -53,4 +53,9 @@ public class FormRPartAServiceImpl implements FormRPartAService {
     formRPartA = formRPartARepository.save(formRPartA);
     return formRPartAMapper.toDto(formRPartA);
   }
+
+  public FormRPartA getFormRPartAByTraineeId(String traineeProfileId){
+    log.info("Request to get FormRPartA by trainee profileId : {}", traineeProfileId);
+    return formRPartARepository.findById(traineeProfileId).orElse(null);
+  }
 }

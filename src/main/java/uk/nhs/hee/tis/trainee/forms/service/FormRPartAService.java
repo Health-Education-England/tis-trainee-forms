@@ -22,9 +22,12 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
+import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 
 public interface FormRPartAService {
 
   FormRPartADto save(FormRPartADto formRPartADto);
+
+  FormRPartA getFormRPartAByTraineeId(String traineeProfileId);
 
 }

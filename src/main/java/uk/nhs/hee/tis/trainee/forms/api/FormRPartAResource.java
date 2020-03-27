@@ -69,4 +69,12 @@ public class FormRPartAResource {
     return ResponseEntity.created(new URI("/api/formr-parta/" + result.getId()))
       .body(result);
   }
+
+  @GetMapping("/formr-parta/{id}")
+  public FormRPartADto getFormRPartAByTraineeId(
+      @PathVariable(name = "id") String traineeProfileId) {
+    log.trace("FormR-PartA of a trainee by traineeProfileId {}", traineeProfileId);
+    FormRPartA formRPartA = formRPartAService.getFormRPartAByTraineeId(traineeProfileId);
+    return formRPartAMapper.toDto(formRPartA);
+  }
 }
