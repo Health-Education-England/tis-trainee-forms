@@ -28,6 +28,6 @@ public interface FormRPartAService {
 
   FormRPartADto save(FormRPartADto formRPartADto);
 
-  FormRPartA getFormRPartAByTraineeId(String traineeProfileId);
+  FormRPartA getFormRPartAByTraineeTisId(String traineeProfileId);
 
 }

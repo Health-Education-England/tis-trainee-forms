@@ -21,13 +21,10 @@
 
 package uk.nhs.hee.tis.trainee.forms.api;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.net.URISyntaxException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -38,8 +35,8 @@ import org.springframework.web.bind.annotation.RestController;
 import lombok.extern.slf4j.Slf4j;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapper;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
+import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
-import org.springframework.validation.annotation.Validated;
 
 @Slf4j
 @RestController
@@ -70,11 +67,11 @@ public class FormRPartAResource {
       .body(result);
   }
 
-  @GetMapping("/formr-parta/{id}")
+  @GetMapping("/formr-parta/{traineeTisId}")
   public FormRPartADto getFormRPartAByTraineeId(
-      @PathVariable(name = "id") String traineeProfileId) {
-    log.trace("FormR-PartA of a trainee by traineeProfileId {}", traineeProfileId);
-    FormRPartA formRPartA = formRPartAService.getFormRPartAByTraineeId(traineeProfileId);
+      @PathVariable(name = "traineeTisId") String traineeProfileId) {
+    log.trace("FormR-PartA of a trainee by traineeTisId {}", traineeProfileId);
+    FormRPartA formRPartA = formRPartAService.getFormRPartAByTraineeTisId(traineeProfileId);
     return formRPartAMapper.toDto(formRPartA);
   }
 }
