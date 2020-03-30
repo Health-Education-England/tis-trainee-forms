@@ -41,7 +41,7 @@ public class FormRPartA {
 
   @Id
   private String id;
-  @Indexed(unique = true)
+  @Indexed
   @Field(value = "traineeTisId")
   private String traineeTisId;
   private String forename;
