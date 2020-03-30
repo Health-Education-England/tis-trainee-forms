@@ -19,19 +19,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-/*
-package uk.nhs.hee.tis.trainee.forms;
+package uk.nhs.hee.tis.trainee.forms.repository;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.stereotype.Repository;
+import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 
-@SpringBootTest
-//@ComponentScan(basePackages = {"uk.nhs.trainee.forms"})
-public class TraineeFormsApplicationTest {
+import java.util.List;
 
-  @Test
-  void contextLoads() {
+@Repository
+public interface FormRPartARepository extends MongoRepository<FormRPartA, String> {
 
-  }
+  List<FormRPartA> findByTraineeTisId(String traineeTisId);
+
 }
-*/

@@ -19,19 +19,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-/*
-package uk.nhs.hee.tis.trainee.forms;
+package uk.nhs.hee.tis.trainee.forms.service;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
+import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 
-@SpringBootTest
-//@ComponentScan(basePackages = {"uk.nhs.trainee.forms"})
-public class TraineeFormsApplicationTest {
+import java.util.List;
 
-  @Test
-  void contextLoads() {
+public interface FormRPartAService {
 
-  }
+  FormRPartADto save(FormRPartADto formRPartADto);
+
+  List<FormRPartA> getFormRPartAByTraineeTisId(String traineeProfileId);
+
 }
-*/

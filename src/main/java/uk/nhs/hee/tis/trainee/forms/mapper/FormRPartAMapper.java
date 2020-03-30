@@ -19,19 +19,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-/*
-package uk.nhs.hee.tis.trainee.forms;
+package uk.nhs.hee.tis.trainee.forms.mapper;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.mapstruct.Mapper;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
+import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 
-@SpringBootTest
-//@ComponentScan(basePackages = {"uk.nhs.trainee.forms"})
-public class TraineeFormsApplicationTest {
+import java.util.List;
 
-  @Test
-  void contextLoads() {
+@Mapper(componentModel = "spring")
+public interface FormRPartAMapper {
 
-  }
+  FormRPartADto toDto(FormRPartA formRPartA);
+  FormRPartA toEntity(FormRPartADto formRPartADto);
+
+  List<FormRPartADto> toDtos(List<FormRPartA> formRPartAs);
+  List<FormRPartA> toEntities(List<FormRPartADto> formRPartADtos);
 }
-*/
