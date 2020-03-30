@@ -23,6 +23,8 @@ package uk.nhs.hee.tis.trainee.forms.api;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.List;
+
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -68,10 +70,10 @@ public class FormRPartAResource {
   }
 
   @GetMapping("/formr-parta/{traineeTisId}")
-  public FormRPartADto getFormRPartAByTraineeId(
+  public List<FormRPartADto> getFormRPartAByTraineeId(
       @PathVariable(name = "traineeTisId") String traineeProfileId) {
     log.trace("FormR-PartA of a trainee by traineeTisId {}", traineeProfileId);
-    FormRPartA formRPartA = formRPartAService.getFormRPartAByTraineeTisId(traineeProfileId);
-    return formRPartAMapper.toDto(formRPartA);
+    List<FormRPartA> formRPartAs = formRPartAService.getFormRPartAByTraineeTisId(traineeProfileId);
+    return formRPartAMapper.toDtos(formRPartAs);
   }
 }

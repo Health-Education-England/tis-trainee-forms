@@ -24,10 +24,12 @@ package uk.nhs.hee.tis.trainee.forms.service;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 
+import java.util.List;
+
 public interface FormRPartAService {
 
   FormRPartADto save(FormRPartADto formRPartADto);
 
-  FormRPartA getFormRPartAByTraineeTisId(String traineeProfileId);
+  List<FormRPartA> getFormRPartAByTraineeTisId(String traineeProfileId);
 
 }

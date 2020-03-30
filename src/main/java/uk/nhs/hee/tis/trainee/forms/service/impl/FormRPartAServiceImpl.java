@@ -31,6 +31,8 @@ import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Slf4j
 @Service
 @Transactional
@@ -54,8 +56,8 @@ public class FormRPartAServiceImpl implements FormRPartAService {
     return formRPartAMapper.toDto(formRPartA);
   }
 
-  public FormRPartA getFormRPartAByTraineeTisId(String traineeProfileId){
-    log.info("Request to get FormRPartA by trainee profileId : {}", traineeProfileId);
-    return formRPartARepository.findByTraineeTisId(traineeProfileId).orElse(null);
+  public List<FormRPartA> getFormRPartAByTraineeTisId(String traineeTisId){
+    log.info("Request to get FormRPartA list by trainee profileId : {}", traineeTisId);
+    return formRPartARepository.findByTraineeTisId(traineeTisId);
   }
 }

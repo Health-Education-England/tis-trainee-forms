@@ -25,11 +25,11 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 
-import java.util.Optional;
+import java.util.List;
 
 @Repository
 public interface FormRPartARepository extends MongoRepository<FormRPartA, String> {
 
-  Optional<FormRPartA> findByTraineeTisId(String traineeTisId);
+  List<FormRPartA> findByTraineeTisId(String traineeTisId);
 
 }
