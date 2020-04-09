@@ -73,7 +73,7 @@ public class FormRPartAResource {
   }
 
   /**
-   * GET /formr-parta/:traineeTisId
+   * GET /formr-parta/:traineeTisId.
    *
    * @param traineeProfileId
    * @return list of formR partA based on the traineeTisId

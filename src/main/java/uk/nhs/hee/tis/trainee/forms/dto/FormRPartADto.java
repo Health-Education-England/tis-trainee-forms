@@ -25,8 +25,7 @@ import java.time.LocalDate;
 import lombok.Data;
 
 /**
- * A DTO for FormRPartA entity Holds the fields for all the information of the trainee's form R part
- * A
+ * A DTO for FormRPartA entity Holds the fields for the trainee's form R partA.
  */
 @Data
 public class FormRPartADto {
