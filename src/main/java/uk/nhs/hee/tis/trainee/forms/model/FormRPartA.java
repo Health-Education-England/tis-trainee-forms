@@ -45,7 +45,7 @@ public class FormRPartA {
   private String gender;
   private String immigrationStatus;
   private String qualification;
-  private String dateAttained;
+  private LocalDate dateAttained;
   private String medicalSchool;
   private String address1;
   private String address2;
@@ -63,10 +63,10 @@ public class FormRPartA {
   private String college;
   private LocalDate completionDate;
   private String trainingGrade;
-  private String startDate;
+  private LocalDate startDate;
   private String programmeMembershipType;
   private String wholeTimeEquivalent;
-  private String submissionDate;
-  private String lastModifiedDate;
+  private LocalDate submissionDate;
+  private LocalDate lastModifiedDate;
   private String otherImmigrationStatus;
 }
