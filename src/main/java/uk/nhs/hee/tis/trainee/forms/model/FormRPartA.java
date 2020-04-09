@@ -23,11 +23,6 @@ package uk.nhs.hee.tis.trainee.forms.model;
 
 import java.time.LocalDate;
 import lombok.Data;
-
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -35,8 +30,6 @@ import org.springframework.data.mongodb.core.mapping.Field;
 
 @Document(collection = "FormRPartA")
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class FormRPartA {
 
   @Id
@@ -77,7 +70,3 @@ public class FormRPartA {
   private String lastModifiedDate;
   private String otherImmigrationStatus;
 }
-
-
-
-

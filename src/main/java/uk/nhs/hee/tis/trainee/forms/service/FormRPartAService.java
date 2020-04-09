@@ -21,15 +21,12 @@
 
 package uk.nhs.hee.tis.trainee.forms.service;
 
-import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
-import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
-
 import java.util.List;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 
 public interface FormRPartAService {
 
   FormRPartADto save(FormRPartADto formRPartADto);
 
-  List<FormRPartA> getFormRPartAByTraineeTisId(String traineeProfileId);
-
+  List<FormRPartADto> getFormRPartAsByTraineeTisId(String traineeProfileId);
 }

@@ -24,20 +24,16 @@ package uk.nhs.hee.tis.trainee.forms.api;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
-
-import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import lombok.extern.slf4j.Slf4j;
-import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapper;
+import uk.nhs.hee.tis.trainee.forms.api.util.HeaderUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
-import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 
 @Slf4j
@@ -45,11 +41,13 @@ import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 @RequestMapping("/api")
 public class FormRPartAResource {
 
-  private static final String ENTITY_NAME = "FormRPartA";
-  @Autowired
+  private static final String ENTITY_NAME = "formR_partA";
+
   private FormRPartAService formRPartAService;
-  @Autowired
-  private FormRPartAMapper formRPartAMapper;
+
+  public FormRPartAResource(FormRPartAService formRPartAService) {
+    this.formRPartAService = formRPartAService;
+  }
 
   /**
    * POST  /formr-parta : Create a new FormRPartA.
@@ -61,19 +59,31 @@ public class FormRPartAResource {
    */
   @PostMapping("/formr-parta")
   public ResponseEntity<FormRPartADto> createFormRPartA(
-    @RequestBody  FormRPartADto formRPartADto)
-    throws URISyntaxException, MethodArgumentNotValidException {
+      @RequestBody FormRPartADto formRPartADto) throws URISyntaxException {
     log.debug("REST request to save FormRPartA : {}", formRPartADto);
+    if (formRPartADto.getId() != null) {
+      return ResponseEntity.badRequest().headers(HeaderUtil
+          .createFailureAlert(ENTITY_NAME, "idexists",
+              "A new formRpartA cannot already have an ID"))
+          .body(null);
+    }
     FormRPartADto result = formRPartAService.save(formRPartADto);
     return ResponseEntity.created(new URI("/api/formr-parta/" + result.getId()))
-      .body(result);
+        .body(result);
   }
 
+  /**
+   * GET /formr-parta/:traineeTisId
+   *
+   * @param traineeProfileId
+   * @return list of formR partA based on the traineeTisId
+   */
   @GetMapping("/formr-parta/{traineeTisId}")
-  public List<FormRPartADto> getFormRPartAByTraineeId(
+  public ResponseEntity<List<FormRPartADto>> getFormRPartAsByTraineeId(
       @PathVariable(name = "traineeTisId") String traineeProfileId) {
-    log.trace("FormR-PartA of a trainee by traineeTisId {}", traineeProfileId);
-    List<FormRPartA> formRPartAs = formRPartAService.getFormRPartAByTraineeTisId(traineeProfileId);
-    return formRPartAMapper.toDtos(formRPartAs);
+    log.debug("FormR-PartA of a trainee by traineeTisId {}", traineeProfileId);
+    List<FormRPartADto> formRPartADtos = formRPartAService
+        .getFormRPartAsByTraineeTisId(traineeProfileId);
+    return ResponseEntity.ok(formRPartADtos);
   }
 }

@@ -21,13 +21,11 @@
 
 package uk.nhs.hee.tis.trainee.forms.dto;
 
-import java.time.LocalDate;
 import lombok.Data;
 
 /**
- * A DTO for FormRPartA entity
- * Holds the fields for all the information of the trainee's
- * form R part A
+ * A DTO for FormRPartA entity Holds the fields for all the information of the trainee's form R part
+ * A
  */
 @Data
 public class FormRPartADto {
@@ -67,7 +65,3 @@ public class FormRPartADto {
   private String lastModifiedDate;
   private String otherImmigrationStatus;
 }
-
-
-
-

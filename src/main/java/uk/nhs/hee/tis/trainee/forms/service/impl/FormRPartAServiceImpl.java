@@ -21,43 +21,41 @@
 
 package uk.nhs.hee.tis.trainee.forms.service.impl;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
-import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
-import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
+import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
+import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 
 @Slf4j
 @Service
 @Transactional
 public class FormRPartAServiceImpl implements FormRPartAService {
 
-  @Autowired
-  FormRPartARepository formRPartARepository;
-
   private final FormRPartAMapper formRPartAMapper;
 
+  private final FormRPartARepository formRPartARepository;
+
   public FormRPartAServiceImpl(FormRPartARepository formRPartARepository,
-    FormRPartAMapper formRPartAMapper) {
+      FormRPartAMapper formRPartAMapper) {
     this.formRPartARepository = formRPartARepository;
     this.formRPartAMapper = formRPartAMapper;
   }
 
-  public FormRPartADto save(FormRPartADto formRPartADto){
+  public FormRPartADto save(FormRPartADto formRPartADto) {
     log.info("Request to save FormRPartA : {}", formRPartADto);
     FormRPartA formRPartA = formRPartAMapper.toEntity(formRPartADto);
     formRPartA = formRPartARepository.save(formRPartA);
     return formRPartAMapper.toDto(formRPartA);
   }
 
-  public List<FormRPartA> getFormRPartAByTraineeTisId(String traineeTisId){
+  public List<FormRPartADto> getFormRPartAsByTraineeTisId(String traineeTisId) {
     log.info("Request to get FormRPartA list by trainee profileId : {}", traineeTisId);
-    return formRPartARepository.findByTraineeTisId(traineeTisId);
+    List<FormRPartA> formRPartAList = formRPartARepository.findByTraineeTisId(traineeTisId);
+    return formRPartAMapper.toDtos(formRPartAList);
   }
 }
