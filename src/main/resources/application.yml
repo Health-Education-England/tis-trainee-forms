@@ -1,10 +1,13 @@
 server:
   port: 8207
+
 spring:
   data:
     mongodb:
-      host: ${DB_HOST:localhost}
-      port: ${DB_PORT:27017}
-      database: ${DB_NAME:trainee}
-      user: ${DB_USER:''}
-      password: ${DB_PASSWORD:''}
+      uri: mongodb://${DB_USER:admin}:${DB_PASSWORD:pwd}@${DB_HOST:localhost}:${DB_PORT:27017}/${DB_NAME:forms}
+
+logging:
+  level:
+    root: INFO
+    org.springframework.data: DEBUG
+    uk.nhs.hee.tis.trainee.forms: TRACE
