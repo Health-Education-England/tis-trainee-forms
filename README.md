@@ -1,3 +1,5 @@
+![CI/CD Workflow](https://github.com/Health-Education-England/tis-trainee-forms/workflows/CI/CD%20Workflow/badge.svg?branch=master)
+![CI/CD Workflow](https://github.com/Health-Education-England/tis-trainee-forms/workflows/CI/CD%20Workflow/badge.svg?branch=master&event=deployment_status)
 # TIS Trainee Forms
 
 ## About
