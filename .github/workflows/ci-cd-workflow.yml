@@ -163,5 +163,5 @@ jobs:
         with:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
           service: trainee-forms
-          cluster: trainee-ui
+          cluster: trainee
           wait-for-service-stability: true
