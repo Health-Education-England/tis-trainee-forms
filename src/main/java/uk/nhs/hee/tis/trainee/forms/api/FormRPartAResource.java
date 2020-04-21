@@ -54,7 +54,7 @@ public class FormRPartAResource {
    *
    * @param formRPartADto the formRPartADto to create
    * @return the ResponseEntity with status 201 (Created) and with body the new formRPartADto, or
-   * with status 400 (Bad Request) if the formRPartA has already an ID
+   *     with status 400 (Bad Request) if the formRPartA has already an ID
    * @throws URISyntaxException if the Location URI syntax is incorrect
    */
   @PostMapping("/formr-parta")
@@ -75,7 +75,7 @@ public class FormRPartAResource {
   /**
    * GET /formr-parta/:traineeTisId.
    *
-   * @param traineeProfileId
+   * @param traineeProfileId The trainee ID to get the forms for.
    * @return list of formR partA based on the traineeTisId
    */
   @GetMapping("/formr-parta/{traineeTisId}")
