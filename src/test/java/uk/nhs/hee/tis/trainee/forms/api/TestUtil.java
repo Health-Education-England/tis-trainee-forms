@@ -1,9 +1,9 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import org.springframework.http.MediaType;
 
@@ -22,12 +22,11 @@ public class TestUtil {
   /**
    * Convert an object to JSON byte array.
    *
-   * @param object the object to convert
-   * @return the JSON byte array
-   * @throws IOException
+   * @param object the object to convert.
+   * @return the JSON byte array.
+   * @throws JsonProcessingException If the object was not valid.
    */
-  public static byte[] convertObjectToJsonBytes(Object object)
-      throws IOException {
+  public static byte[] convertObjectToJsonBytes(Object object) throws JsonProcessingException {
     ObjectMapper mapper = new ObjectMapper();
     mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 

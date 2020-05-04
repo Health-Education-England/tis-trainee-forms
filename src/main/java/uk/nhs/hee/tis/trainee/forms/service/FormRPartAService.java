@@ -26,7 +26,19 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 
 public interface FormRPartAService {
 
+  /**
+   * Save the given form.
+   *
+   * @param formRPartADto The form to save.
+   * @return The saved form.
+   */
   FormRPartADto save(FormRPartADto formRPartADto);
 
+  /**
+   * Get the forms for a trainee.
+   *
+   * @param traineeProfileId The ID of the trainee to get the forms for.
+   * @return A collection of forms found for the trainee.
+   */
   List<FormRPartADto> getFormRPartAsByTraineeTisId(String traineeProfileId);
 }
