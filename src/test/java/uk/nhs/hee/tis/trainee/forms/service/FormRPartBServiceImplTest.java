@@ -22,8 +22,11 @@ package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
+import org.assertj.core.util.Lists;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,8 +36,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
+import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
+import uk.nhs.hee.tis.trainee.forms.model.Work;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
 import uk.nhs.hee.tis.trainee.forms.service.impl.FormRPartBServiceImpl;
 
@@ -45,6 +50,14 @@ public class FormRPartBServiceImplTest {
   private static final String DEFAULT_TRAINEE_TIS_ID = "1";
   private static final String DEFAULT_FORENAME = "DEFAULT_FORENAME";
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";
+
+  private static final String DEFAULT_TYPE_OF_WORK = "DEFAULT_TYPE_OF_WORK";
+  private static final LocalDate DEFAULT_WORK_START_DATE = LocalDate.now(ZoneId.systemDefault());
+  private static final LocalDate DEFAULT_WORk_END_DATE = LocalDate.now(ZoneId.systemDefault());
+  private static final String DEFAULT_WORK_TRAINING_POST = "DEFAULT_WORK_TRAINING_POST";
+  private static final String DEFAULT_WORK_SITE = "DEFAULT_WORK_SITE";
+  private static final String DEFAULT__WORK_SITE_LOCATION = "DEFAULT__WORK_SITE_LOCATION";
+  private static final Integer DEFAULT_TOTAL_LEAVE = 10;
 
   @InjectMocks
   private FormRPartBServiceImpl formRPartBServiceImpl;
@@ -57,23 +70,52 @@ public class FormRPartBServiceImplTest {
 
   private FormRPartBDto formRPartBDto;
   private FormRPartB formRPartB;
+  private WorkDto workDto;
+  private Work work;
 
   /**
    * init test data.
    */
   @BeforeEach
   public void initData() {
+    setupWorkData();
+
     formRPartBDto = new FormRPartBDto();
     formRPartBDto.setId(DEFAULT_ID);
     formRPartBDto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     formRPartBDto.setForename(DEFAULT_FORENAME);
     formRPartBDto.setSurname(DEFAULT_SURNAME);
+    formRPartBDto.setWork(Lists.newArrayList(workDto));
+    formRPartBDto.setTotalLeave(DEFAULT_TOTAL_LEAVE);
 
     formRPartB = new FormRPartB();
     formRPartB.setId(DEFAULT_ID);
     formRPartB.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     formRPartB.setForename(DEFAULT_FORENAME);
     formRPartB.setSurname(DEFAULT_SURNAME);
+    formRPartB.setWork(Lists.newArrayList(work));
+    formRPartB.setTotalLeave(DEFAULT_TOTAL_LEAVE);
+  }
+
+  /**
+   * Set up data for work.
+   */
+  public void setupWorkData() {
+    workDto = new WorkDto();
+    workDto.setTypeOfWork(DEFAULT_TYPE_OF_WORK);
+    workDto.setStartDate(DEFAULT_WORK_START_DATE);
+    workDto.setEndDate(DEFAULT_WORk_END_DATE);
+    workDto.setTrainingPost(DEFAULT_WORK_TRAINING_POST);
+    workDto.setSite(DEFAULT_WORK_SITE);
+    workDto.setSiteLocation(DEFAULT__WORK_SITE_LOCATION);
+
+    work = new Work();
+    work.setTypeOfWork(DEFAULT_TYPE_OF_WORK);
+    work.setStartDate(DEFAULT_WORK_START_DATE);
+    work.setEndDate(DEFAULT_WORk_END_DATE);
+    work.setTrainingPost(DEFAULT_WORK_TRAINING_POST);
+    work.setSite(DEFAULT_WORK_SITE);
+    work.setSiteLocation(DEFAULT__WORK_SITE_LOCATION);
   }
 
   @Test
@@ -86,12 +128,16 @@ public class FormRPartBServiceImplTest {
     formRPartBSaved.setTraineeTisId(formRPartB.getTraineeTisId());
     formRPartBSaved.setForename(formRPartB.getForename());
     formRPartBSaved.setSurname(formRPartB.getSurname());
+    formRPartBSaved.setWork(formRPartB.getWork());
+    formRPartBSaved.setTotalLeave(formRPartB.getTotalLeave());
 
     FormRPartBDto formRPartBDtoSaved = new FormRPartBDto();
     formRPartBDtoSaved.setId(DEFAULT_ID);
-    formRPartBDtoSaved.setTraineeTisId(formRPartB.getTraineeTisId());
-    formRPartBDtoSaved.setForename(formRPartB.getForename());
-    formRPartBDtoSaved.setSurname(formRPartB.getSurname());
+    formRPartBDtoSaved.setTraineeTisId(formRPartBDto.getTraineeTisId());
+    formRPartBDtoSaved.setForename(formRPartBDto.getForename());
+    formRPartBDtoSaved.setSurname(formRPartBDto.getSurname());
+    formRPartBDtoSaved.setWork(formRPartBDto.getWork());
+    formRPartBDtoSaved.setTotalLeave(formRPartB.getTotalLeave());
 
     when(formRPartBMapperMock.toEntity(formRPartBDto)).thenReturn(formRPartB);
     when(formRPartBMapperMock.toDto(formRPartBSaved)).thenReturn(formRPartBDtoSaved);

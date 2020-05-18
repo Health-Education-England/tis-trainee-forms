@@ -29,7 +29,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,6 +46,8 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
+import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
+import uk.nhs.hee.tis.trainee.forms.model.Work;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 
 @ExtendWith(SpringExtension.class)
@@ -53,6 +59,14 @@ public class FormRPartBResourceTest {
   private static final String DEFAULT_FORENAME = "DEFAULT_FORENAME";
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";
 
+  private static final String DEFAULT_TYPE_OF_WORK = "DEFAULT_TYPE_OF_WORK";
+  private static final LocalDate DEFAULT_WORK_START_DATE = LocalDate.now(ZoneId.systemDefault());
+  private static final LocalDate DEFAULT_WORk_END_DATE = LocalDate.now(ZoneId.systemDefault());
+  private static final String DEFAULT_WORK_TRAINING_POST = "DEFAULT_WORK_TRAINING_POST";
+  private static final String DEFAULT_WORK_SITE = "DEFAULT_WORK_SITE";
+  private static final String DEFAULT__WORK_SITE_LOCATION = "DEFAULT__WORK_SITE_LOCATION";
+  private static final Integer DEFAULT_TOTAL_LEAVE = 10;
+
   @Autowired
   private MappingJackson2HttpMessageConverter jacksonMessageConverter;
 
@@ -62,6 +76,7 @@ public class FormRPartBResourceTest {
   private FormRPartBService formRPartBServiceMock;
 
   private FormRPartBDto formRPartBDto;
+  private WorkDto workDto;
 
   /**
    * setup the Mvc test environment.
@@ -79,11 +94,28 @@ public class FormRPartBResourceTest {
    */
   @BeforeEach
   public void initData() {
+    setupWorkData();
+
     formRPartBDto = new FormRPartBDto();
     formRPartBDto.setId(DEFAULT_ID);
     formRPartBDto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     formRPartBDto.setForename(DEFAULT_FORENAME);
     formRPartBDto.setSurname(DEFAULT_SURNAME);
+    formRPartBDto.setWork(Lists.newArrayList(workDto));
+    formRPartBDto.setTotalLeave(DEFAULT_TOTAL_LEAVE);
+  }
+
+  /**
+   * Set up data for work.
+   */
+  public void setupWorkData() {
+    workDto = new WorkDto();
+    workDto.setTypeOfWork(DEFAULT_TYPE_OF_WORK);
+    workDto.setStartDate(DEFAULT_WORK_START_DATE);
+    workDto.setEndDate(DEFAULT_WORk_END_DATE);
+    workDto.setTrainingPost(DEFAULT_WORK_TRAINING_POST);
+    workDto.setSite(DEFAULT_WORK_SITE);
+    workDto.setSiteLocation(DEFAULT__WORK_SITE_LOCATION);
   }
 
   @Test
@@ -102,6 +134,8 @@ public class FormRPartBResourceTest {
     formRPartBDtoReturn.setTraineeTisId(formRPartBDto.getTraineeTisId());
     formRPartBDtoReturn.setForename(formRPartBDto.getForename());
     formRPartBDtoReturn.setSurname(formRPartBDto.getSurname());
+    formRPartBDtoReturn.setWork(formRPartBDto.getWork());
+    formRPartBDtoReturn.setTotalLeave(formRPartBDto.getTotalLeave());
 
     when(formRPartBServiceMock.save(formRPartBDto)).thenReturn(formRPartBDtoReturn);
     this.mockMvc.perform(post("/api/formr-partb")
@@ -119,6 +153,8 @@ public class FormRPartBResourceTest {
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$").value(hasSize(1)))
-        .andExpect(jsonPath("$.[*].id").value(hasItem(DEFAULT_ID)));
+        .andExpect(jsonPath("$.[*].id").value(hasItem(DEFAULT_ID)))
+        .andExpect(jsonPath("$.[*].work[*].typeOfWork").value(hasItem(DEFAULT_TYPE_OF_WORK)))
+        .andExpect(jsonPath("$.[*].totalLeave").value(hasItem(DEFAULT_TOTAL_LEAVE)));
   }
 }
