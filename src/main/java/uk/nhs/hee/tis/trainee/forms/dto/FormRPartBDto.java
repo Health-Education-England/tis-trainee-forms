@@ -21,6 +21,7 @@
 package uk.nhs.hee.tis.trainee.forms.dto;
 
 import java.time.LocalDate;
+import java.util.List;
 import lombok.Data;
 
 /**
@@ -41,6 +42,14 @@ public class FormRPartBDto {
   private LocalDate prevRevalDate;
   private String programmeSpecialty;
   private String dualSpecialty;
+  private List<WorkDto> work;
+  private Integer sicknessAbsence;
+  private Integer parentalLeave;
+  private Integer careerBreaks;
+  private Integer paidLeave;
+  private Integer unauthorisedLeave;
+  private Integer otherLeave;
+  private Integer totalLeave;
   private LocalDate submissionDate;
   private LocalDate lastModifiedDate;
 }

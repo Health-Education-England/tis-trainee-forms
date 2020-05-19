@@ -18,44 +18,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.model;
+package uk.nhs.hee.tis.trainee.forms.dto;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
 import lombok.Data;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
 
-@Document(collection = "FormRPartB")
+/**
+ * A DTO for work information.
+ */
 @Data
-public class FormRPartB {
+public class WorkDto {
 
-  @Id
-  private String id;
-  @Indexed
-  @Field(value = "traineeTisId")
-  private String traineeTisId;
-  private String forename;
-  private String surname;
-  private String gmcNumber;
-  private String email;
-  private String localOfficeName;
-  private String prevRevalBody;
-  private LocalDate currRevalDate;
-  private LocalDate prevRevalDate;
-  private String programmeSpecialty;
-  private String dualSpecialty;
-  private List<Work> work = new ArrayList<>();
-  private Integer sicknessAbsence;
-  private Integer parentalLeave;
-  private Integer careerBreaks;
-  private Integer paidLeave;
-  private Integer unauthorisedLeave;
-  private Integer otherLeave;
-  private Integer totalLeave;
-  private LocalDate submissionDate;
-  private LocalDate lastModifiedDate;
+  private String typeOfWork;
+  private LocalDate startDate;
+  private LocalDate endDate;
+  private String trainingPost;
+  private String site;
+  private String siteLocation;
 }
