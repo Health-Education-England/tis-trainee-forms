@@ -56,6 +56,11 @@ public class FormRPartB {
   private Integer unauthorisedLeave;
   private Integer otherLeave;
   private Integer totalLeave;
+  private Boolean isHonest;
+  private Boolean isHealthy;
+  private Boolean isWarned;
+  private Boolean isComplying;
+  private String healthStatement;
   private LocalDate submissionDate;
   private LocalDate lastModifiedDate;
 }
