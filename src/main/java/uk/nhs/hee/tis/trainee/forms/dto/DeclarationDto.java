@@ -21,46 +21,16 @@
 package uk.nhs.hee.tis.trainee.forms.dto;
 
 import java.time.LocalDate;
-import java.util.List;
 import lombok.Data;
 
 /**
- * A DTO for FormRPartB entity Holds the fields for the trainee's form R partB.
+ * A DTO for declaration information.
  */
 @Data
-public class FormRPartBDto {
+public class DeclarationDto {
 
-  private String id;
-  private String traineeTisId;
-  private String forename;
-  private String surname;
-  private String gmcNumber;
-  private String email;
-  private String localOfficeName;
-  private String prevRevalBody;
-  private LocalDate currRevalDate;
-  private LocalDate prevRevalDate;
-  private String programmeSpecialty;
-  private String dualSpecialty;
-  private List<WorkDto> work;
-  private Integer sicknessAbsence;
-  private Integer parentalLeave;
-  private Integer careerBreaks;
-  private Integer paidLeave;
-  private Integer unauthorisedLeave;
-  private Integer otherLeave;
-  private Integer totalLeave;
-  private Boolean isHonest;
-  private Boolean isHealthy;
-  private Boolean isWarned;
-  private Boolean isComplying;
-  private String healthStatement;
-  private Boolean havePreviousDeclarations;
-  private List<DeclarationDto> previousDeclarations;
-  private String previousDeclarationSummary;
-  private Boolean haveCurrentDeclarations;
-  private List<DeclarationDto> currentDeclarations;
-  private String currentDeclarationSummary;
-  private LocalDate submissionDate;
-  private LocalDate lastModifiedDate;
+  private String declarationType;
+  private LocalDate dateOfEntry;
+  private String title;
+  private String locationOfEntry;
 }

@@ -61,6 +61,12 @@ public class FormRPartB {
   private Boolean isWarned;
   private Boolean isComplying;
   private String healthStatement;
+  private Boolean havePreviousDeclarations;
+  private List<Declaration> previousDeclarations = new ArrayList<>();
+  private String previousDeclarationSummary;
+  private Boolean haveCurrentDeclarations;
+  private List<Declaration> currentDeclarations = new ArrayList<>();
+  private String currentDeclarationSummary;
   private LocalDate submissionDate;
   private LocalDate lastModifiedDate;
 }
