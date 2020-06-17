@@ -74,13 +74,15 @@ public class FormRPartBResourceTest {
   private static final String DEFAULT_PREVIOUS_DECLARATION_TYPE = "Signification event";
   private static final LocalDate DEFAULT_PREVIOUS_DATE_OF_ENTRY = LocalDate
       .now(ZoneId.systemDefault());
-  private static final String DEFAULT_PREVIOUS_DECLARATION_SUMMARY = "DEFAULT_PREVIOUS_DECLARATION_SUMMARY";
+  private static final String DEFAULT_PREVIOUS_DECLARATION_SUMMARY =
+      "DEFAULT_PREVIOUS_DECLARATION_SUMMARY";
 
   private static final Boolean DEFAULT_HAVE_CURRENT_DECLARATIONS = true;
   private static final String DEFAULT_CURRENT_DECLARATION_TYPE = "Signification event";
   private static final LocalDate DEFAULT_CURRENT_DATE_OF_ENTRY = LocalDate
       .now(ZoneId.systemDefault());
-  private static final String DEFAULT_CURRENT_DECLARATION_SUMMARY = "DEFAULT_CURRENT_DECLARATION_SUMMARY";
+  private static final String DEFAULT_CURRENT_DECLARATION_SUMMARY =
+      "DEFAULT_CURRENT_DECLARATION_SUMMARY";
 
   @Autowired
   private MappingJackson2HttpMessageConverter jacksonMessageConverter;
