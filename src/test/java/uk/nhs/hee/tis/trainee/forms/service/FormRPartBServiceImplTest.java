@@ -35,9 +35,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.nhs.hee.tis.trainee.forms.dto.DeclarationDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
+import uk.nhs.hee.tis.trainee.forms.model.Declaration;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.model.Work;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
@@ -56,8 +58,26 @@ public class FormRPartBServiceImplTest {
   private static final LocalDate DEFAULT_WORk_END_DATE = LocalDate.now(ZoneId.systemDefault());
   private static final String DEFAULT_WORK_TRAINING_POST = "DEFAULT_WORK_TRAINING_POST";
   private static final String DEFAULT_WORK_SITE = "DEFAULT_WORK_SITE";
-  private static final String DEFAULT__WORK_SITE_LOCATION = "DEFAULT__WORK_SITE_LOCATION";
+  private static final String DEFAULT_WORK_SITE_LOCATION = "DEFAULT_WORK_SITE_LOCATION";
   private static final Integer DEFAULT_TOTAL_LEAVE = 10;
+
+  private static final Boolean DEFAULT_IS_HONEST = true;
+  private static final Boolean DEFAULT_IS_HEALTHY = true;
+  private static final String DEFAULT_HEALTHY_STATEMENT = "DEFAULT_HEALTHY_STATEMENT";
+
+  private static final Boolean DEFAULT_HAVE_PREVIOUS_DECLARATIONS = true;
+  private static final String DEFAULT_PREVIOUS_DECLARATION_TYPE = "Signification event";
+  private static final LocalDate DEFAULT_PREVIOUS_DATE_OF_ENTRY = LocalDate
+      .now(ZoneId.systemDefault());
+  private static final String DEFAULT_PREVIOUS_DECLARATION_SUMMARY =
+      "DEFAULT_PREVIOUS_DECLARATION_SUMMARY";
+
+  private static final Boolean DEFAULT_HAVE_CURRENT_DECLARATIONS = true;
+  private static final String DEFAULT_CURRENT_DECLARATION_TYPE = "Signification event";
+  private static final LocalDate DEFAULT_CURRENT_DATE_OF_ENTRY = LocalDate
+      .now(ZoneId.systemDefault());
+  private static final String DEFAULT_CURRENT_DECLARATION_SUMMARY =
+      "DEFAULT_CURRENT_DECLARATION_SUMMARY";
 
   @InjectMocks
   private FormRPartBServiceImpl formRPartBServiceImpl;
@@ -72,6 +92,10 @@ public class FormRPartBServiceImplTest {
   private FormRPartB formRPartB;
   private WorkDto workDto;
   private Work work;
+  private DeclarationDto previousDeclarationDto;
+  private Declaration previousDeclaration;
+  private DeclarationDto currentDeclarationDto;
+  private Declaration currentDeclaration;
 
   /**
    * init test data.
@@ -79,6 +103,8 @@ public class FormRPartBServiceImplTest {
   @BeforeEach
   public void initData() {
     setupWorkData();
+    setupPreviousDeclarationData();
+    setupCurrentDeclarationData();
 
     formRPartBDto = new FormRPartBDto();
     formRPartBDto.setId(DEFAULT_ID);
@@ -87,6 +113,15 @@ public class FormRPartBServiceImplTest {
     formRPartBDto.setSurname(DEFAULT_SURNAME);
     formRPartBDto.setWork(Lists.newArrayList(workDto));
     formRPartBDto.setTotalLeave(DEFAULT_TOTAL_LEAVE);
+    formRPartBDto.setIsHonest(DEFAULT_IS_HONEST);
+    formRPartBDto.setIsHealthy(DEFAULT_IS_HEALTHY);
+    formRPartBDto.setHealthStatement(DEFAULT_HEALTHY_STATEMENT);
+    formRPartBDto.setHavePreviousDeclarations(DEFAULT_HAVE_PREVIOUS_DECLARATIONS);
+    formRPartBDto.setPreviousDeclarations(Lists.newArrayList(previousDeclarationDto));
+    formRPartBDto.setPreviousDeclarationSummary(DEFAULT_PREVIOUS_DECLARATION_SUMMARY);
+    formRPartBDto.setHaveCurrentDeclarations(DEFAULT_HAVE_CURRENT_DECLARATIONS);
+    formRPartBDto.setCurrentDeclarations(Lists.newArrayList(currentDeclarationDto));
+    formRPartBDto.setCurrentDeclarationSummary(DEFAULT_CURRENT_DECLARATION_SUMMARY);
 
     formRPartB = new FormRPartB();
     formRPartB.setId(DEFAULT_ID);
@@ -95,6 +130,15 @@ public class FormRPartBServiceImplTest {
     formRPartB.setSurname(DEFAULT_SURNAME);
     formRPartB.setWork(Lists.newArrayList(work));
     formRPartB.setTotalLeave(DEFAULT_TOTAL_LEAVE);
+    formRPartB.setIsHonest(DEFAULT_IS_HONEST);
+    formRPartB.setIsHealthy(DEFAULT_IS_HEALTHY);
+    formRPartB.setHealthStatement(DEFAULT_HEALTHY_STATEMENT);
+    formRPartB.setHavePreviousDeclarations(DEFAULT_HAVE_PREVIOUS_DECLARATIONS);
+    formRPartB.setPreviousDeclarations(Lists.newArrayList(previousDeclaration));
+    formRPartB.setPreviousDeclarationSummary(DEFAULT_PREVIOUS_DECLARATION_SUMMARY);
+    formRPartB.setHaveCurrentDeclarations(DEFAULT_HAVE_CURRENT_DECLARATIONS);
+    formRPartB.setCurrentDeclarations(Lists.newArrayList(currentDeclaration));
+    formRPartB.setCurrentDeclarationSummary(DEFAULT_CURRENT_DECLARATION_SUMMARY);
   }
 
   /**
@@ -107,7 +151,7 @@ public class FormRPartBServiceImplTest {
     workDto.setEndDate(DEFAULT_WORk_END_DATE);
     workDto.setTrainingPost(DEFAULT_WORK_TRAINING_POST);
     workDto.setSite(DEFAULT_WORK_SITE);
-    workDto.setSiteLocation(DEFAULT__WORK_SITE_LOCATION);
+    workDto.setSiteLocation(DEFAULT_WORK_SITE_LOCATION);
 
     work = new Work();
     work.setTypeOfWork(DEFAULT_TYPE_OF_WORK);
@@ -115,7 +159,33 @@ public class FormRPartBServiceImplTest {
     work.setEndDate(DEFAULT_WORk_END_DATE);
     work.setTrainingPost(DEFAULT_WORK_TRAINING_POST);
     work.setSite(DEFAULT_WORK_SITE);
-    work.setSiteLocation(DEFAULT__WORK_SITE_LOCATION);
+    work.setSiteLocation(DEFAULT_WORK_SITE_LOCATION);
+  }
+
+  /**
+   * Set up data for previous declaration.
+   */
+  public void setupPreviousDeclarationData() {
+    previousDeclarationDto = new DeclarationDto();
+    previousDeclarationDto.setDeclarationType(DEFAULT_PREVIOUS_DECLARATION_TYPE);
+    previousDeclarationDto.setDateOfEntry(DEFAULT_PREVIOUS_DATE_OF_ENTRY);
+
+    previousDeclaration = new Declaration();
+    previousDeclaration.setDeclarationType(DEFAULT_PREVIOUS_DECLARATION_TYPE);
+    previousDeclaration.setDateOfEntry(DEFAULT_PREVIOUS_DATE_OF_ENTRY);
+  }
+
+  /**
+   * Set up data for current declaration.
+   */
+  public void setupCurrentDeclarationData() {
+    currentDeclarationDto = new DeclarationDto();
+    currentDeclarationDto.setDeclarationType(DEFAULT_CURRENT_DECLARATION_TYPE);
+    currentDeclarationDto.setDateOfEntry(DEFAULT_CURRENT_DATE_OF_ENTRY);
+
+    currentDeclaration = new Declaration();
+    currentDeclaration.setDeclarationType(DEFAULT_CURRENT_DECLARATION_TYPE);
+    currentDeclaration.setDateOfEntry(DEFAULT_CURRENT_DATE_OF_ENTRY);
   }
 
   @Test
@@ -130,6 +200,15 @@ public class FormRPartBServiceImplTest {
     formRPartBSaved.setSurname(formRPartB.getSurname());
     formRPartBSaved.setWork(formRPartB.getWork());
     formRPartBSaved.setTotalLeave(formRPartB.getTotalLeave());
+    formRPartBSaved.setIsHonest(formRPartB.getIsHonest());
+    formRPartBSaved.setIsHealthy(formRPartB.getIsHealthy());
+    formRPartBSaved.setHealthStatement(formRPartB.getHealthStatement());
+    formRPartBSaved.setHavePreviousDeclarations(formRPartB.getHavePreviousDeclarations());
+    formRPartBSaved.setPreviousDeclarations(formRPartB.getPreviousDeclarations());
+    formRPartBSaved.setPreviousDeclarationSummary(formRPartB.getPreviousDeclarationSummary());
+    formRPartBSaved.setHaveCurrentDeclarations(formRPartB.getHaveCurrentDeclarations());
+    formRPartBSaved.setCurrentDeclarations(formRPartB.getCurrentDeclarations());
+    formRPartBSaved.setCurrentDeclarationSummary(formRPartB.getCurrentDeclarationSummary());
 
     FormRPartBDto formRPartBDtoSaved = new FormRPartBDto();
     formRPartBDtoSaved.setId(DEFAULT_ID);
@@ -138,6 +217,15 @@ public class FormRPartBServiceImplTest {
     formRPartBDtoSaved.setSurname(formRPartBDto.getSurname());
     formRPartBDtoSaved.setWork(formRPartBDto.getWork());
     formRPartBDtoSaved.setTotalLeave(formRPartB.getTotalLeave());
+    formRPartBDtoSaved.setIsHonest(formRPartBDto.getIsHonest());
+    formRPartBDtoSaved.setIsHealthy(formRPartBDto.getIsHealthy());
+    formRPartBDtoSaved.setHealthStatement(formRPartBDto.getHealthStatement());
+    formRPartBDtoSaved.setHavePreviousDeclarations(formRPartBDto.getHavePreviousDeclarations());
+    formRPartBDtoSaved.setPreviousDeclarations(formRPartBDto.getPreviousDeclarations());
+    formRPartBDtoSaved.setPreviousDeclarationSummary(formRPartBDto.getPreviousDeclarationSummary());
+    formRPartBDtoSaved.setHaveCurrentDeclarations(formRPartBDto.getHaveCurrentDeclarations());
+    formRPartBDtoSaved.setCurrentDeclarations(formRPartBDto.getCurrentDeclarations());
+    formRPartBDtoSaved.setCurrentDeclarationSummary(formRPartBDto.getCurrentDeclarationSummary());
 
     when(formRPartBMapperMock.toEntity(formRPartBDto)).thenReturn(formRPartB);
     when(formRPartBMapperMock.toDto(formRPartBSaved)).thenReturn(formRPartBDtoSaved);

@@ -74,7 +74,7 @@ public class FormRPartBResource {
   /**
    * GET /formr-partb/:traineeTisId.
    *
-   * @param traineeProfileId
+   * @param traineeProfileId the id of trainee profile to get
    * @return list of formR partB based on the traineeTisId
    */
   @GetMapping("/formr-partb/{traineeTisId}")

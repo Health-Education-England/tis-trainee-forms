@@ -31,7 +31,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,9 +44,9 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import uk.nhs.hee.tis.trainee.forms.dto.DeclarationDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
-import uk.nhs.hee.tis.trainee.forms.model.Work;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 
 @ExtendWith(SpringExtension.class)
@@ -64,8 +63,26 @@ public class FormRPartBResourceTest {
   private static final LocalDate DEFAULT_WORk_END_DATE = LocalDate.now(ZoneId.systemDefault());
   private static final String DEFAULT_WORK_TRAINING_POST = "DEFAULT_WORK_TRAINING_POST";
   private static final String DEFAULT_WORK_SITE = "DEFAULT_WORK_SITE";
-  private static final String DEFAULT__WORK_SITE_LOCATION = "DEFAULT__WORK_SITE_LOCATION";
+  private static final String DEFAULT_WORK_SITE_LOCATION = "DEFAULT_WORK_SITE_LOCATION";
   private static final Integer DEFAULT_TOTAL_LEAVE = 10;
+
+  private static final Boolean DEFAULT_IS_HONEST = true;
+  private static final Boolean DEFAULT_IS_HEALTHY = true;
+  private static final String DEFAULT_HEALTHY_STATEMENT = "DEFAULT_HEALTHY_STATEMENT";
+
+  private static final Boolean DEFAULT_HAVE_PREVIOUS_DECLARATIONS = true;
+  private static final String DEFAULT_PREVIOUS_DECLARATION_TYPE = "Signification event";
+  private static final LocalDate DEFAULT_PREVIOUS_DATE_OF_ENTRY = LocalDate
+      .now(ZoneId.systemDefault());
+  private static final String DEFAULT_PREVIOUS_DECLARATION_SUMMARY =
+      "DEFAULT_PREVIOUS_DECLARATION_SUMMARY";
+
+  private static final Boolean DEFAULT_HAVE_CURRENT_DECLARATIONS = true;
+  private static final String DEFAULT_CURRENT_DECLARATION_TYPE = "Signification event";
+  private static final LocalDate DEFAULT_CURRENT_DATE_OF_ENTRY = LocalDate
+      .now(ZoneId.systemDefault());
+  private static final String DEFAULT_CURRENT_DECLARATION_SUMMARY =
+      "DEFAULT_CURRENT_DECLARATION_SUMMARY";
 
   @Autowired
   private MappingJackson2HttpMessageConverter jacksonMessageConverter;
@@ -77,6 +94,8 @@ public class FormRPartBResourceTest {
 
   private FormRPartBDto formRPartBDto;
   private WorkDto workDto;
+  private DeclarationDto previousDeclarationDto;
+  private DeclarationDto currentDeclarationDto;
 
   /**
    * setup the Mvc test environment.
@@ -95,6 +114,8 @@ public class FormRPartBResourceTest {
   @BeforeEach
   public void initData() {
     setupWorkData();
+    setupPreviousDeclarationData();
+    setupCurrentDeclarationData();
 
     formRPartBDto = new FormRPartBDto();
     formRPartBDto.setId(DEFAULT_ID);
@@ -103,6 +124,15 @@ public class FormRPartBResourceTest {
     formRPartBDto.setSurname(DEFAULT_SURNAME);
     formRPartBDto.setWork(Lists.newArrayList(workDto));
     formRPartBDto.setTotalLeave(DEFAULT_TOTAL_LEAVE);
+    formRPartBDto.setIsHonest(DEFAULT_IS_HONEST);
+    formRPartBDto.setIsHealthy(DEFAULT_IS_HEALTHY);
+    formRPartBDto.setHealthStatement(DEFAULT_HEALTHY_STATEMENT);
+    formRPartBDto.setHavePreviousDeclarations(DEFAULT_HAVE_PREVIOUS_DECLARATIONS);
+    formRPartBDto.setPreviousDeclarations(Lists.newArrayList(previousDeclarationDto));
+    formRPartBDto.setPreviousDeclarationSummary(DEFAULT_PREVIOUS_DECLARATION_SUMMARY);
+    formRPartBDto.setHaveCurrentDeclarations(DEFAULT_HAVE_CURRENT_DECLARATIONS);
+    formRPartBDto.setCurrentDeclarations(Lists.newArrayList(currentDeclarationDto));
+    formRPartBDto.setCurrentDeclarationSummary(DEFAULT_CURRENT_DECLARATION_SUMMARY);
   }
 
   /**
@@ -115,7 +145,25 @@ public class FormRPartBResourceTest {
     workDto.setEndDate(DEFAULT_WORk_END_DATE);
     workDto.setTrainingPost(DEFAULT_WORK_TRAINING_POST);
     workDto.setSite(DEFAULT_WORK_SITE);
-    workDto.setSiteLocation(DEFAULT__WORK_SITE_LOCATION);
+    workDto.setSiteLocation(DEFAULT_WORK_SITE_LOCATION);
+  }
+
+  /**
+   * Set up data for previous declaration.
+   */
+  public void setupPreviousDeclarationData() {
+    previousDeclarationDto = new DeclarationDto();
+    previousDeclarationDto.setDeclarationType(DEFAULT_PREVIOUS_DECLARATION_TYPE);
+    previousDeclarationDto.setDateOfEntry(DEFAULT_PREVIOUS_DATE_OF_ENTRY);
+  }
+
+  /**
+   * Set up data for current declaration.
+   */
+  public void setupCurrentDeclarationData() {
+    currentDeclarationDto = new DeclarationDto();
+    currentDeclarationDto.setDeclarationType(DEFAULT_CURRENT_DECLARATION_TYPE);
+    currentDeclarationDto.setDateOfEntry(DEFAULT_CURRENT_DATE_OF_ENTRY);
   }
 
   @Test
@@ -136,6 +184,16 @@ public class FormRPartBResourceTest {
     formRPartBDtoReturn.setSurname(formRPartBDto.getSurname());
     formRPartBDtoReturn.setWork(formRPartBDto.getWork());
     formRPartBDtoReturn.setTotalLeave(formRPartBDto.getTotalLeave());
+    formRPartBDtoReturn.setIsHonest(formRPartBDto.getIsHonest());
+    formRPartBDtoReturn.setIsHealthy(formRPartBDto.getIsHealthy());
+    formRPartBDtoReturn.setHealthStatement(formRPartBDto.getHealthStatement());
+    formRPartBDtoReturn.setHavePreviousDeclarations(formRPartBDto.getHavePreviousDeclarations());
+    formRPartBDtoReturn.setPreviousDeclarations(formRPartBDto.getPreviousDeclarations());
+    formRPartBDtoReturn
+        .setPreviousDeclarationSummary(formRPartBDto.getPreviousDeclarationSummary());
+    formRPartBDtoReturn.setHaveCurrentDeclarations(formRPartBDto.getHaveCurrentDeclarations());
+    formRPartBDtoReturn.setCurrentDeclarations(formRPartBDto.getCurrentDeclarations());
+    formRPartBDtoReturn.setCurrentDeclarationSummary(formRPartBDto.getCurrentDeclarationSummary());
 
     when(formRPartBServiceMock.save(formRPartBDto)).thenReturn(formRPartBDtoReturn);
     this.mockMvc.perform(post("/api/formr-partb")
@@ -155,6 +213,25 @@ public class FormRPartBResourceTest {
         .andExpect(jsonPath("$").value(hasSize(1)))
         .andExpect(jsonPath("$.[*].id").value(hasItem(DEFAULT_ID)))
         .andExpect(jsonPath("$.[*].work[*].typeOfWork").value(hasItem(DEFAULT_TYPE_OF_WORK)))
-        .andExpect(jsonPath("$.[*].totalLeave").value(hasItem(DEFAULT_TOTAL_LEAVE)));
+        .andExpect(jsonPath("$.[*].totalLeave").value(hasItem(DEFAULT_TOTAL_LEAVE)))
+        .andExpect(jsonPath("$.[*].isHonest").value(hasItem(DEFAULT_IS_HONEST)))
+        .andExpect(jsonPath("$.[*].isHealthy").value(hasItem(DEFAULT_IS_HEALTHY)))
+        .andExpect(jsonPath("$.[*].healthStatement").value(hasItem(DEFAULT_HEALTHY_STATEMENT)))
+        .andExpect(jsonPath("$.[*].havePreviousDeclarations")
+            .value(hasItem(DEFAULT_HAVE_PREVIOUS_DECLARATIONS)))
+        .andExpect(jsonPath("$.[*].previousDeclarations[*].declarationType")
+            .value(hasItem(DEFAULT_PREVIOUS_DECLARATION_TYPE)))
+        .andExpect(jsonPath("$.[*].previousDeclarations[*].dateOfEntry")
+            .value(hasItem(DEFAULT_PREVIOUS_DATE_OF_ENTRY.toString())))
+        .andExpect(jsonPath("$.[*].previousDeclarationSummary")
+            .value(hasItem(DEFAULT_PREVIOUS_DECLARATION_SUMMARY)))
+        .andExpect(jsonPath("$.[*].haveCurrentDeclarations")
+            .value(hasItem(DEFAULT_HAVE_CURRENT_DECLARATIONS)))
+        .andExpect(jsonPath("$.[*].currentDeclarations[*].declarationType")
+            .value(hasItem(DEFAULT_CURRENT_DECLARATION_TYPE)))
+        .andExpect(jsonPath("$.[*].currentDeclarations[*].dateOfEntry")
+            .value(hasItem(DEFAULT_CURRENT_DATE_OF_ENTRY.toString())))
+        .andExpect(jsonPath("$.[*].currentDeclarationSummary")
+            .value(hasItem(DEFAULT_CURRENT_DECLARATION_SUMMARY)));
   }
 }

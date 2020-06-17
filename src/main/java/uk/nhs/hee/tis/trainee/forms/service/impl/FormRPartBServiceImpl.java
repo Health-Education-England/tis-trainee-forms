@@ -45,6 +45,9 @@ public class FormRPartBServiceImpl implements FormRPartBService {
     this.formRPartBMapper = formRPartBMapper;
   }
 
+  /**
+   * save FormRPartB.
+   */
   public FormRPartBDto save(FormRPartBDto formRPartBDto) {
     log.info("Request to save FormRPartB : {}", formRPartBDto);
     FormRPartB formRPartB = formRPartBMapper.toEntity(formRPartBDto);
@@ -52,6 +55,9 @@ public class FormRPartBServiceImpl implements FormRPartBService {
     return formRPartBMapper.toDto(formRPartB);
   }
 
+  /**
+   * get FormRPartBs by traineeTisId.
+   */
   public List<FormRPartBDto> getFormRPartBsByTraineeTisId(String traineeTisId) {
     log.info("Request to get FormRPartB list by trainee profileId : {}", traineeTisId);
     List<FormRPartB> formRPartBList = formRPartBRepository.findByTraineeTisId(traineeTisId);
