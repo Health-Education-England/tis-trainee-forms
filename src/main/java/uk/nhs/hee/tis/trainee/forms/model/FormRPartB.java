@@ -67,6 +67,7 @@ public class FormRPartB {
   private Boolean haveCurrentDeclarations;
   private List<Declaration> currentDeclarations = new ArrayList<>();
   private String currentDeclarationSummary;
+  private String compliments;
   private LocalDate submissionDate;
   private LocalDate lastModifiedDate;
 }

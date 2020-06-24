@@ -61,6 +61,7 @@ public class FormRPartBDto {
   private Boolean haveCurrentDeclarations;
   private List<DeclarationDto> currentDeclarations;
   private String currentDeclarationSummary;
+  private String compliments;
   private LocalDate submissionDate;
   private LocalDate lastModifiedDate;
 }

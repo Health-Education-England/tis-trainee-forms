@@ -83,6 +83,7 @@ public class FormRPartBResourceTest {
       .now(ZoneId.systemDefault());
   private static final String DEFAULT_CURRENT_DECLARATION_SUMMARY =
       "DEFAULT_CURRENT_DECLARATION_SUMMARY";
+  private static final String DEFAULT_COMPLIMENTS = "DEFAULT_COMPLIMENTS";
 
   @Autowired
   private MappingJackson2HttpMessageConverter jacksonMessageConverter;
@@ -133,6 +134,7 @@ public class FormRPartBResourceTest {
     formRPartBDto.setHaveCurrentDeclarations(DEFAULT_HAVE_CURRENT_DECLARATIONS);
     formRPartBDto.setCurrentDeclarations(Lists.newArrayList(currentDeclarationDto));
     formRPartBDto.setCurrentDeclarationSummary(DEFAULT_CURRENT_DECLARATION_SUMMARY);
+    formRPartBDto.setCompliments(DEFAULT_COMPLIMENTS);
   }
 
   /**
@@ -194,6 +196,7 @@ public class FormRPartBResourceTest {
     formRPartBDtoReturn.setHaveCurrentDeclarations(formRPartBDto.getHaveCurrentDeclarations());
     formRPartBDtoReturn.setCurrentDeclarations(formRPartBDto.getCurrentDeclarations());
     formRPartBDtoReturn.setCurrentDeclarationSummary(formRPartBDto.getCurrentDeclarationSummary());
+    formRPartBDtoReturn.setCompliments(formRPartBDto.getCompliments());
 
     when(formRPartBServiceMock.save(formRPartBDto)).thenReturn(formRPartBDtoReturn);
     this.mockMvc.perform(post("/api/formr-partb")
@@ -232,6 +235,8 @@ public class FormRPartBResourceTest {
         .andExpect(jsonPath("$.[*].currentDeclarations[*].dateOfEntry")
             .value(hasItem(DEFAULT_CURRENT_DATE_OF_ENTRY.toString())))
         .andExpect(jsonPath("$.[*].currentDeclarationSummary")
-            .value(hasItem(DEFAULT_CURRENT_DECLARATION_SUMMARY)));
+            .value(hasItem(DEFAULT_CURRENT_DECLARATION_SUMMARY)))
+        .andExpect(jsonPath("$.[*].compliments")
+            .value(hasItem(DEFAULT_COMPLIMENTS)));
   }
 }
