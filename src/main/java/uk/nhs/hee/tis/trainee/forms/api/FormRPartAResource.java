@@ -25,6 +25,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,6 +35,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.api.util.HeaderUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartASimpleDto;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 
 @Slf4j
@@ -43,7 +45,7 @@ public class FormRPartAResource {
 
   private static final String ENTITY_NAME = "formR_partA";
 
-  private FormRPartAService formRPartAService;
+  private final FormRPartAService formRPartAService;
 
   public FormRPartAResource(FormRPartAService formRPartAService) {
     this.formRPartAService = formRPartAService;
@@ -73,17 +75,38 @@ public class FormRPartAResource {
   }
 
   /**
-   * GET /formr-parta/:traineeTisId.
+   * GET /formr-partas/:traineeTisId.
    *
    * @param traineeProfileId The trainee ID to get the forms for.
    * @return list of formR partA based on the traineeTisId
    */
-  @GetMapping("/formr-parta/{traineeTisId}")
-  public ResponseEntity<List<FormRPartADto>> getFormRPartAsByTraineeId(
+  @GetMapping("/formr-partas/{traineeTisId}")
+  public ResponseEntity<List<FormRPartASimpleDto>> getFormRPartAsByTraineeId(
       @PathVariable(name = "traineeTisId") String traineeProfileId) {
+    // TODO: verify if the traineeId belongs to the trainee
     log.debug("FormR-PartA of a trainee by traineeTisId {}", traineeProfileId);
-    List<FormRPartADto> formRPartADtos = formRPartAService
+    List<FormRPartASimpleDto> formRPartASimpleDtos = formRPartAService
         .getFormRPartAsByTraineeTisId(traineeProfileId);
-    return ResponseEntity.ok(formRPartADtos);
+    return ResponseEntity.ok(formRPartASimpleDtos);
+  }
+
+  /**
+   * GET /formr-parta/:id
+   *
+   * @param id The ID of the form
+   * @return the formR partA based on the id
+   */
+  @GetMapping("/formr-parta/{id}")
+  public ResponseEntity<FormRPartADto> getFormRPartAsById(
+      @PathVariable(name = "id") String id
+  ) {
+    // TODO: verify the formR PartA for the id belongs to the trainee
+    log.debug("FormR-PartA by id {}", id);
+    FormRPartADto formRPartADto = formRPartAService.getFormRPartAById(id);
+    if (formRPartADto != null) {
+      return ResponseEntity.ok(formRPartADto);
+    } else {
+      return new ResponseEntity(HttpStatus.NOT_FOUND);
+    }
   }
 }

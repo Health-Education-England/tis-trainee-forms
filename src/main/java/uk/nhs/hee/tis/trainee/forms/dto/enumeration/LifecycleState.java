@@ -19,35 +19,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.service;
+package uk.nhs.hee.tis.trainee.forms.dto.enumeration;
 
-import java.util.List;
-import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
-import uk.nhs.hee.tis.trainee.forms.dto.FormRPartASimpleDto;
-
-public interface FormRPartAService {
-
-  /**
-   * Save the given form.
-   *
-   * @param formRPartADto The form to save.
-   * @return The saved form.
-   */
-  FormRPartADto save(FormRPartADto formRPartADto);
-
-  /**
-   * Get the forms for a trainee.
-   *
-   * @param traineeProfileId The ID of the trainee to get the forms for.
-   * @return A collection of forms found for the trainee.
-   */
-  List<FormRPartASimpleDto> getFormRPartAsByTraineeTisId(String traineeProfileId);
-
-  /**
-   * Get a form by id.
-   *
-   * @param id The ID of the form
-   * @return The retrieved form.
-   */
-  FormRPartADto getFormRPartAById(String id);
+public enum LifecycleState {
+  NEW,
+  DRAFT,
+  SUBMITTED
 }

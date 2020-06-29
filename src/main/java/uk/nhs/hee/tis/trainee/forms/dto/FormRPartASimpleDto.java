@@ -19,56 +19,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.model;
+package uk.nhs.hee.tis.trainee.forms.dto;
 
 import java.time.LocalDate;
 import lombok.Data;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
-@Document(collection = "FormRPartA")
 @Data
-public class FormRPartA {
+public class FormRPartASimpleDto {
 
-  @Id
   private String id;
-  @Indexed
-  @Field(value = "traineeTisId")
   private String traineeTisId;
-  private String forename;
-  private String surname;
-  private String gmcNumber;
-  private String localOfficeName;
-  private LocalDate dateOfBirth;
-  private String gender;
-  private String immigrationStatus;
-  private String qualification;
-  private LocalDate dateAttained;
-  private String medicalSchool;
-  private String address1;
-  private String address2;
-  private String address3;
-  private String address4;
-  private String postCode;
-  private String telephoneNumber;
-  private String mobileNumber;
-  private String email;
-  private String declarationType;
-  private Boolean isLeadingToCct;
-  private String programmeSpecialty;
-  private String cctSpecialty1;
-  private String cctSpecialty2;
-  private String college;
-  private LocalDate completionDate;
-  private String trainingGrade;
-  private LocalDate startDate;
-  private String programmeMembershipType;
-  private String wholeTimeEquivalent;
   private LocalDate submissionDate;
-  private LocalDate lastModifiedDate;
-  private String otherImmigrationStatus;
   private LifecycleState lifecycleState;
 }

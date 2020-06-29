@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.mapper;
 import java.util.List;
 import org.mapstruct.Mapper;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartASimpleDto;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 
 @Mapper(componentModel = "spring")
@@ -36,4 +37,8 @@ public interface FormRPartAMapper {
   List<FormRPartADto> toDtos(List<FormRPartA> formRPartAs);
 
   List<FormRPartA> toEntities(List<FormRPartADto> formRPartADtos);
+
+  FormRPartASimpleDto toSimpleDto(FormRPartA formRPartA);
+
+  List<FormRPartASimpleDto> toSimpleDtos(List<FormRPartA> formRPartAs);
 }
