@@ -30,6 +30,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -72,6 +73,26 @@ public class FormRPartAResource {
     FormRPartADto result = formRPartAService.save(formRPartADto);
     return ResponseEntity.created(new URI("/api/formr-parta/" + result.getId()))
         .body(result);
+  }
+
+  /**
+   * PUT  /formr-parta : Update a FormRPartA.
+   *
+   * @param formRPartADto the formRPartADto to update
+   * @return the ResponseEntity with status 200 and with body the new formRPartADto, or
+   *     with status 500 (Internal Server Error) if the placementDTO couldnt be updated.
+   *     If the id is not provided, will create a new FormRPartA
+   * @throws URISyntaxException if the Location URI syntax is incorrect
+   */
+  @PutMapping("/formr-parta")
+  public ResponseEntity<FormRPartADto> updateFormRPartA(
+      @RequestBody FormRPartADto formRPartADto) throws URISyntaxException {
+    log.debug("REST request to update FormRPartA : {}", formRPartADto);
+    if (formRPartADto.getId() == null) {
+      return createFormRPartA(formRPartADto);
+    }
+    FormRPartADto result = formRPartAService.save(formRPartADto);
+    return ResponseEntity.ok().body(result);
   }
 
   /**
