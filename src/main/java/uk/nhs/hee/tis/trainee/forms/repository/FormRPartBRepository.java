@@ -22,11 +22,13 @@ package uk.nhs.hee.tis.trainee.forms.repository;
 
 import java.util.List;
 import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 
 @Repository
 public interface FormRPartBRepository extends MongoRepository<FormRPartB, String> {
 
+  @Query(fields = "{traineeTisId:1, id:1, submissionDate:1, lifecycleState:1}")
   List<FormRPartB> findByTraineeTisId(String traineeTisId);
 }

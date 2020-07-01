@@ -26,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
-import uk.nhs.hee.tis.trainee.forms.dto.FormRPartASimpleDto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
@@ -50,6 +50,7 @@ public class FormRPartAServiceImpl implements FormRPartAService {
   /**
    * save FormRPartA.
    */
+  @Override
   public FormRPartADto save(FormRPartADto formRPartADto) {
     log.info("Request to save FormRPartA : {}", formRPartADto);
     FormRPartA formRPartA = formRPartAMapper.toEntity(formRPartADto);
@@ -60,17 +61,19 @@ public class FormRPartAServiceImpl implements FormRPartAService {
   /**
    * get FormRPartAs by traineeTisId.
    */
-  public List<FormRPartASimpleDto> getFormRPartAsByTraineeTisId(String traineeTisId) {
+  @Override
+  public List<FormRPartSimpleDto> getFormRPartAsByTraineeTisId(String traineeTisId) {
     log.info("Request to get FormRPartA list by trainee profileId : {}", traineeTisId);
     List<FormRPartA> formRPartAList = formRPartARepository.findByTraineeTisId(traineeTisId);
     return formRPartAMapper.toSimpleDtos(formRPartAList);
   }
 
   /**
-   * get FormRPartA by id
+   * get FormRPartA by id.
    */
+  @Override
   public FormRPartADto getFormRPartAById(String id) {
-    log.info("Request to get FormRPartA list by id : {}", id);
+    log.info("Request to get FormRPartA by id : {}", id);
     FormRPartA formRPartA = formRPartARepository.findById(id).orElse(null);
     return formRPartAMapper.toDto(formRPartA);
   }

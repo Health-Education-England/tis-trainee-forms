@@ -36,7 +36,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.api.util.HeaderUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
-import uk.nhs.hee.tis.trainee.forms.dto.FormRPartASimpleDto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 
 @Slf4j
@@ -80,7 +80,7 @@ public class FormRPartAResource {
    *
    * @param formRPartADto the formRPartADto to update
    * @return the ResponseEntity with status 200 and with body the new formRPartADto, or
-   *     with status 500 (Internal Server Error) if the placementDTO couldnt be updated.
+   *     with status 500 (Internal Server Error) if the placementDTO couldn't be updated.
    *     If the id is not provided, will create a new FormRPartA
    * @throws URISyntaxException if the Location URI syntax is incorrect
    */
@@ -102,13 +102,13 @@ public class FormRPartAResource {
    * @return list of formR partA based on the traineeTisId
    */
   @GetMapping("/formr-partas/{traineeTisId}")
-  public ResponseEntity<List<FormRPartASimpleDto>> getFormRPartAsByTraineeId(
+  public ResponseEntity<List<FormRPartSimpleDto>> getFormRPartAsByTraineeId(
       @PathVariable(name = "traineeTisId") String traineeProfileId) {
     // TODO: verify if the traineeId belongs to the trainee
     log.debug("FormR-PartA of a trainee by traineeTisId {}", traineeProfileId);
-    List<FormRPartASimpleDto> formRPartASimpleDtos = formRPartAService
+    List<FormRPartSimpleDto> formRPartSimpleDtos = formRPartAService
         .getFormRPartAsByTraineeTisId(traineeProfileId);
-    return ResponseEntity.ok(formRPartASimpleDtos);
+    return ResponseEntity.ok(formRPartSimpleDtos);
   }
 
   /**

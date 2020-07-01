@@ -22,10 +22,31 @@ package uk.nhs.hee.tis.trainee.forms.service;
 
 import java.util.List;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 
 public interface FormRPartBService {
 
+  /**
+   * Save the given form.
+   *
+   * @param formRPartBDto The form to save.
+   * @return The saved form.
+   */
   FormRPartBDto save(FormRPartBDto formRPartBDto);
 
-  List<FormRPartBDto> getFormRPartBsByTraineeTisId(String traineeProfileId);
+  /**
+   * Get the forms for a trainee.
+   *
+   * @param traineeProfileId The ID of the trainee to get the forms for.
+   * @return A collection of forms found for the trainee.
+   */
+  List<FormRPartSimpleDto> getFormRPartBsByTraineeTisId(String traineeProfileId);
+
+  /**
+   * Get a form by id.
+   *
+   * @param id The ID of the form.
+   * @return The retrieved form.
+   */
+  FormRPartBDto getFormRPartBById(String id);
 }

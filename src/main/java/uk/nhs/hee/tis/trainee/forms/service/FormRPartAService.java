@@ -23,7 +23,7 @@ package uk.nhs.hee.tis.trainee.forms.service;
 
 import java.util.List;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
-import uk.nhs.hee.tis.trainee.forms.dto.FormRPartASimpleDto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 
 public interface FormRPartAService {
 
@@ -41,12 +41,12 @@ public interface FormRPartAService {
    * @param traineeProfileId The ID of the trainee to get the forms for.
    * @return A collection of forms found for the trainee.
    */
-  List<FormRPartASimpleDto> getFormRPartAsByTraineeTisId(String traineeProfileId);
+  List<FormRPartSimpleDto> getFormRPartAsByTraineeTisId(String traineeProfileId);
 
   /**
    * Get a form by id.
    *
-   * @param id The ID of the form
+   * @param id The ID of the form.
    * @return The retrieved form.
    */
   FormRPartADto getFormRPartAById(String id);

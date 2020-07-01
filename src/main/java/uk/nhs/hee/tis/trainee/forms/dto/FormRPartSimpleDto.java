@@ -26,7 +26,7 @@ import lombok.Data;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 @Data
-public class FormRPartASimpleDto {
+public class FormRPartSimpleDto {
 
   private String id;
   private String traineeTisId;

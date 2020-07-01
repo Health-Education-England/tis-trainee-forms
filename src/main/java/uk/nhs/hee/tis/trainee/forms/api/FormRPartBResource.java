@@ -24,15 +24,18 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.api.util.HeaderUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 
 @Slf4j
@@ -72,17 +75,58 @@ public class FormRPartBResource {
   }
 
   /**
-   * GET /formr-partb/:traineeTisId.
+   * PUT /formr-partb : Update a FormRPartB.
+   *
+   * @param formRPartBDto the formRPartBDto to update
+   * @return the ResponseEntity with status 200 and with body the new formRPartBDto, or with status
+   * 500 (Internal Server Error) if the placementDTO couldn't be updated. If the id is not provided,
+   * will create a new FormRPartB
+   * @throws URISyntaxException
+   */
+  @PutMapping("/formr-partb")
+  public ResponseEntity<FormRPartBDto> updateFormRPartB(
+      @RequestBody FormRPartBDto formRPartBDto) throws URISyntaxException {
+    log.debug("REST request to update FormRPartB : {}", formRPartBDto);
+    if (formRPartBDto.getId() == null) {
+      return createFormRPartB(formRPartBDto);
+    }
+    FormRPartBDto result = formRPartBService.save(formRPartBDto);
+    return ResponseEntity.ok().body(result);
+  }
+
+  /**
+   * GET /formr-partbs/:traineeTisId.
    *
    * @param traineeProfileId the id of trainee profile to get
    * @return list of formR partB based on the traineeTisId
    */
-  @GetMapping("/formr-partb/{traineeTisId}")
-  public ResponseEntity<List<FormRPartBDto>> getFormRPartBsByTraineeId(
+  @GetMapping("/formr-partbs/{traineeTisId}")
+  public ResponseEntity<List<FormRPartSimpleDto>> getFormRPartBsByTraineeId(
       @PathVariable(name = "traineeTisId") String traineeProfileId) {
+    // TODO: verify if the traineeId belongs to the trainee
     log.debug("FormR-PartB of a trainee by traineeTisId {}", traineeProfileId);
-    List<FormRPartBDto> formRPartBDtos = formRPartBService
+    List<FormRPartSimpleDto> formRPartBDtos = formRPartBService
         .getFormRPartBsByTraineeTisId(traineeProfileId);
     return ResponseEntity.ok(formRPartBDtos);
+  }
+
+  /**
+   * GET /formr-partb/:id
+   *
+   * @param id The ID of the form
+   * @return the formR partB based on the id
+   */
+  @GetMapping("/formr-partb/{id}")
+  public ResponseEntity<FormRPartBDto> getFormRPartAsById(
+      @PathVariable(name = "id") String id
+  ) {
+    // TODO: verify the formR PartA for the id belongs to the trainee
+    log.debug("FormR-PartA by id {}", id);
+    FormRPartBDto formRPartBDto = formRPartBService.getFormRPartBById(id);
+    if (formRPartBDto != null) {
+      return ResponseEntity.ok(formRPartBDto);
+    } else {
+      return new ResponseEntity(HttpStatus.NOT_FOUND);
+    }
   }
 }
