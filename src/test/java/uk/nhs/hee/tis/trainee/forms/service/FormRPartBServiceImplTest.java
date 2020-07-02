@@ -26,6 +26,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import org.assertj.core.util.Lists;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
@@ -37,6 +38,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.nhs.hee.tis.trainee.forms.dto.DeclarationDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
 import uk.nhs.hee.tis.trainee.forms.model.Declaration;
@@ -90,6 +92,7 @@ public class FormRPartBServiceImplTest {
 
   private FormRPartBDto formRPartBDto;
   private FormRPartB formRPartB;
+  private FormRPartSimpleDto formRPartSimpleDto;
   private WorkDto workDto;
   private Work work;
   private DeclarationDto previousDeclarationDto;
@@ -139,6 +142,10 @@ public class FormRPartBServiceImplTest {
     formRPartB.setHaveCurrentDeclarations(DEFAULT_HAVE_CURRENT_DECLARATIONS);
     formRPartB.setCurrentDeclarations(Lists.newArrayList(currentDeclaration));
     formRPartB.setCurrentDeclarationSummary(DEFAULT_CURRENT_DECLARATION_SUMMARY);
+
+    formRPartSimpleDto = new FormRPartSimpleDto();
+    formRPartSimpleDto.setId(DEFAULT_ID);
+    formRPartSimpleDto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
   }
 
   /**
@@ -238,19 +245,30 @@ public class FormRPartBServiceImplTest {
   }
 
   @Test
-  public void shouldGetFormRPartBByTraineeTisId() {
+  public void shouldGetFormRPartBsByTraineeTisId() {
     List<FormRPartB> formRPartBList = Arrays.asList(formRPartB);
     when(formRPartBRepositoryMock.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(formRPartBList);
-    when(formRPartBMapperMock.toDtos(formRPartBList))
-        .thenReturn(Arrays.asList(formRPartBDto));
+    when(formRPartBMapperMock.toSimpleDtos(formRPartBList))
+        .thenReturn(Arrays.asList(formRPartSimpleDto));
 
-    List<FormRPartBDto> formRPartBDtoList = formRPartBServiceImpl
+    List<FormRPartSimpleDto> formRPartSimpleDtoList = formRPartBServiceImpl
         .getFormRPartBsByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
 
     MatcherAssert.assertThat("The size of returned formRPartB list do not match the expected value",
-        formRPartBDtoList.size(), CoreMatchers.equalTo(formRPartBList.size()));
+        formRPartSimpleDtoList.size(), CoreMatchers.equalTo(formRPartBList.size()));
     MatcherAssert.assertThat("The returned formRPartB list doesn't not contain the expected item",
-        formRPartBDtoList, CoreMatchers.hasItem(formRPartBDto));
+        formRPartSimpleDtoList, CoreMatchers.hasItem(formRPartSimpleDto));
+  }
+
+  @Test
+  public void shouldGetFormRPartAById() {
+    when(formRPartBRepositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(formRPartB));
+    when(formRPartBMapperMock.toDto(formRPartB)).thenReturn(formRPartBDto);
+
+    FormRPartBDto formRPartBDtoReturn = formRPartBServiceImpl.getFormRPartBById(DEFAULT_ID);
+
+    MatcherAssert.assertThat("The returned formRPartA doesn't not match the expected one",
+        formRPartBDtoReturn, CoreMatchers.is(formRPartBDto));
   }
 }

@@ -25,6 +25,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -46,7 +47,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import uk.nhs.hee.tis.trainee.forms.dto.DeclarationDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 
 @ExtendWith(SpringExtension.class)
@@ -84,6 +87,7 @@ public class FormRPartBResourceTest {
   private static final String DEFAULT_CURRENT_DECLARATION_SUMMARY =
       "DEFAULT_CURRENT_DECLARATION_SUMMARY";
   private static final String DEFAULT_COMPLIMENTS = "DEFAULT_COMPLIMENTS";
+  private static final LifecycleState DEFAULT_LIFECYLCESTATE = LifecycleState.DRAFT;
 
   @Autowired
   private MappingJackson2HttpMessageConverter jacksonMessageConverter;
@@ -95,6 +99,7 @@ public class FormRPartBResourceTest {
 
   private FormRPartBDto formRPartBDto;
   private WorkDto workDto;
+  private FormRPartSimpleDto formRPartSimpleDto;
   private DeclarationDto previousDeclarationDto;
   private DeclarationDto currentDeclarationDto;
 
@@ -135,6 +140,12 @@ public class FormRPartBResourceTest {
     formRPartBDto.setCurrentDeclarations(Lists.newArrayList(currentDeclarationDto));
     formRPartBDto.setCurrentDeclarationSummary(DEFAULT_CURRENT_DECLARATION_SUMMARY);
     formRPartBDto.setCompliments(DEFAULT_COMPLIMENTS);
+    formRPartBDto.setLifecycleState(DEFAULT_LIFECYLCESTATE);
+
+    formRPartSimpleDto = new FormRPartSimpleDto();
+    formRPartSimpleDto.setId(DEFAULT_ID);
+    formRPartSimpleDto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    formRPartSimpleDto.setLifecycleState(DEFAULT_LIFECYLCESTATE);
   }
 
   /**
@@ -206,37 +217,69 @@ public class FormRPartBResourceTest {
   }
 
   @Test
+  public void testUpdateFormRPartBShouldSucceed() throws Exception {
+    formRPartBDto.setId(DEFAULT_ID);
+    FormRPartBDto formRPartBDtoReturn = new FormRPartBDto();
+    formRPartBDtoReturn.setId(DEFAULT_ID);
+    formRPartBDtoReturn.setLifecycleState(LifecycleState.SUBMITTED);
+
+    when(formRPartBServiceMock.save(formRPartBDto)).thenReturn(formRPartBDtoReturn);
+
+    this.mockMvc.perform(put("/api/formr-partb")
+        .contentType(TestUtil.APPLICATION_JSON_UTF8)
+        .content(TestUtil.convertObjectToJsonBytes(formRPartBDto)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.id").value(DEFAULT_ID))
+        .andExpect(jsonPath("$.lifecycleState")
+            .value(LifecycleState.SUBMITTED.name()));
+  }
+
+  @Test
   public void testGetFormRPartBsByTraineeTisId() throws Exception {
     when(formRPartBServiceMock.getFormRPartBsByTraineeTisId(DEFAULT_TRAINEE_TIS_ID)).thenReturn(
-        Arrays.asList(formRPartBDto));
-    this.mockMvc.perform(get("/api/formr-partb/" + DEFAULT_TRAINEE_TIS_ID)
+        Arrays.asList(formRPartSimpleDto));
+    this.mockMvc.perform(get("/api/formr-partbs/" + DEFAULT_TRAINEE_TIS_ID)
         .contentType(TestUtil.APPLICATION_JSON_UTF8))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$").value(hasSize(1)))
         .andExpect(jsonPath("$.[*].id").value(hasItem(DEFAULT_ID)))
-        .andExpect(jsonPath("$.[*].work[*].typeOfWork").value(hasItem(DEFAULT_TYPE_OF_WORK)))
-        .andExpect(jsonPath("$.[*].totalLeave").value(hasItem(DEFAULT_TOTAL_LEAVE)))
-        .andExpect(jsonPath("$.[*].isHonest").value(hasItem(DEFAULT_IS_HONEST)))
-        .andExpect(jsonPath("$.[*].isHealthy").value(hasItem(DEFAULT_IS_HEALTHY)))
-        .andExpect(jsonPath("$.[*].healthStatement").value(hasItem(DEFAULT_HEALTHY_STATEMENT)))
-        .andExpect(jsonPath("$.[*].havePreviousDeclarations")
-            .value(hasItem(DEFAULT_HAVE_PREVIOUS_DECLARATIONS)))
-        .andExpect(jsonPath("$.[*].previousDeclarations[*].declarationType")
-            .value(hasItem(DEFAULT_PREVIOUS_DECLARATION_TYPE)))
-        .andExpect(jsonPath("$.[*].previousDeclarations[*].dateOfEntry")
-            .value(hasItem(DEFAULT_PREVIOUS_DATE_OF_ENTRY.toString())))
-        .andExpect(jsonPath("$.[*].previousDeclarationSummary")
-            .value(hasItem(DEFAULT_PREVIOUS_DECLARATION_SUMMARY)))
-        .andExpect(jsonPath("$.[*].haveCurrentDeclarations")
-            .value(hasItem(DEFAULT_HAVE_CURRENT_DECLARATIONS)))
-        .andExpect(jsonPath("$.[*].currentDeclarations[*].declarationType")
-            .value(hasItem(DEFAULT_CURRENT_DECLARATION_TYPE)))
-        .andExpect(jsonPath("$.[*].currentDeclarations[*].dateOfEntry")
-            .value(hasItem(DEFAULT_CURRENT_DATE_OF_ENTRY.toString())))
-        .andExpect(jsonPath("$.[*].currentDeclarationSummary")
-            .value(hasItem(DEFAULT_CURRENT_DECLARATION_SUMMARY)))
-        .andExpect(jsonPath("$.[*].compliments")
-            .value(hasItem(DEFAULT_COMPLIMENTS)));
+        .andExpect(jsonPath("$.[*].lifecycleState").value(hasItem(DEFAULT_LIFECYLCESTATE.name())));
+  }
+
+  @Test
+  public void testGetFormRPartBById() throws Exception {
+    when(formRPartBServiceMock.getFormRPartBById(DEFAULT_ID)).thenReturn(formRPartBDto);
+    this.mockMvc.perform(get("/api/formr-partb/" + DEFAULT_ID)
+        .contentType(TestUtil.APPLICATION_JSON_UTF8))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.id").value(DEFAULT_ID))
+        .andExpect(jsonPath("$.work[*].typeOfWork").value(DEFAULT_TYPE_OF_WORK))
+        .andExpect(jsonPath("$.totalLeave").value(DEFAULT_TOTAL_LEAVE))
+        .andExpect(jsonPath("$.isHonest").value(DEFAULT_IS_HONEST))
+        .andExpect(jsonPath("$.isHealthy").value(DEFAULT_IS_HEALTHY))
+        .andExpect(jsonPath("$.healthStatement").value(DEFAULT_HEALTHY_STATEMENT))
+        .andExpect(jsonPath("$.havePreviousDeclarations")
+            .value(DEFAULT_HAVE_PREVIOUS_DECLARATIONS))
+        .andExpect(jsonPath("$.previousDeclarations[*].declarationType")
+            .value(DEFAULT_PREVIOUS_DECLARATION_TYPE))
+        .andExpect(jsonPath("$.previousDeclarations[*].dateOfEntry")
+            .value(DEFAULT_PREVIOUS_DATE_OF_ENTRY.toString()))
+        .andExpect(jsonPath("$.previousDeclarationSummary")
+            .value(DEFAULT_PREVIOUS_DECLARATION_SUMMARY))
+        .andExpect(jsonPath("$.haveCurrentDeclarations")
+            .value(DEFAULT_HAVE_CURRENT_DECLARATIONS))
+        .andExpect(jsonPath("$.currentDeclarations[*].declarationType")
+            .value(DEFAULT_CURRENT_DECLARATION_TYPE))
+        .andExpect(jsonPath("$.currentDeclarations[*].dateOfEntry")
+            .value(DEFAULT_CURRENT_DATE_OF_ENTRY.toString()))
+        .andExpect(jsonPath("$.currentDeclarationSummary")
+            .value(DEFAULT_CURRENT_DECLARATION_SUMMARY))
+        .andExpect(jsonPath("$.compliments")
+            .value(DEFAULT_COMPLIMENTS))
+        .andExpect(jsonPath("$.lifecycleState")
+            .value(DEFAULT_LIFECYLCESTATE.name()));
   }
 }
