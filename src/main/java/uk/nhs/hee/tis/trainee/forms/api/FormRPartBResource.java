@@ -45,7 +45,7 @@ public class FormRPartBResource {
 
   private static final String ENTITY_NAME = "formR_partB";
 
-  private FormRPartBService formRPartBService;
+  private final FormRPartBService formRPartBService;
 
   public FormRPartBResource(FormRPartBService formRPartBService) {
     this.formRPartBService = formRPartBService;
@@ -79,8 +79,8 @@ public class FormRPartBResource {
    *
    * @param formRPartBDto the formRPartBDto to update
    * @return the ResponseEntity with status 200 and with body the new formRPartBDto, or with status
-   * 500 (Internal Server Error) if the placementDTO couldn't be updated. If the id is not provided,
-   * will create a new FormRPartB
+   * 500 (Internal Server Error) if the formRPartBDto couldn't be updated. If the id is not
+   * provided, will create a new FormRPartB
    * @throws URISyntaxException
    */
   @PutMapping("/formr-partb")

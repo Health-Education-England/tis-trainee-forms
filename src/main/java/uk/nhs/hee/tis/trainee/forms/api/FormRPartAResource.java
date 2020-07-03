@@ -57,7 +57,7 @@ public class FormRPartAResource {
    *
    * @param formRPartADto the formRPartADto to create
    * @return the ResponseEntity with status 201 (Created) and with body the new formRPartADto, or
-   *     with status 400 (Bad Request) if the formRPartA has already an ID
+   * with status 400 (Bad Request) if the formRPartA has already an ID
    * @throws URISyntaxException if the Location URI syntax is incorrect
    */
   @PostMapping("/formr-parta")
@@ -79,9 +79,9 @@ public class FormRPartAResource {
    * PUT  /formr-parta : Update a FormRPartA.
    *
    * @param formRPartADto the formRPartADto to update
-   * @return the ResponseEntity with status 200 and with body the new formRPartADto, or
-   *     with status 500 (Internal Server Error) if the placementDTO couldn't be updated.
-   *     If the id is not provided, will create a new FormRPartA
+   * @return the ResponseEntity with status 200 and with body the new formRPartADto, or with status
+   * 500 (Internal Server Error) if the formRPartBDto couldn't be updated. If the id is not
+   * provided, will create a new FormRPartA
    * @throws URISyntaxException if the Location URI syntax is incorrect
    */
   @PutMapping("/formr-parta")
