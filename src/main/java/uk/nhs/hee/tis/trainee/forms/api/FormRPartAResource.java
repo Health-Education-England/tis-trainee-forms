@@ -25,15 +25,18 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.api.util.HeaderUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 
 @Slf4j
@@ -43,7 +46,7 @@ public class FormRPartAResource {
 
   private static final String ENTITY_NAME = "formR_partA";
 
-  private FormRPartAService formRPartAService;
+  private final FormRPartAService formRPartAService;
 
   public FormRPartAResource(FormRPartAService formRPartAService) {
     this.formRPartAService = formRPartAService;
@@ -54,7 +57,7 @@ public class FormRPartAResource {
    *
    * @param formRPartADto the formRPartADto to create
    * @return the ResponseEntity with status 201 (Created) and with body the new formRPartADto, or
-   *     with status 400 (Bad Request) if the formRPartA has already an ID
+   * with status 400 (Bad Request) if the formRPartA has already an ID
    * @throws URISyntaxException if the Location URI syntax is incorrect
    */
   @PostMapping("/formr-parta")
@@ -73,17 +76,58 @@ public class FormRPartAResource {
   }
 
   /**
-   * GET /formr-parta/:traineeTisId.
+   * PUT  /formr-parta : Update a FormRPartA.
+   *
+   * @param formRPartADto the formRPartADto to update
+   * @return the ResponseEntity with status 200 and with body the new formRPartADto, or with status
+   * 500 (Internal Server Error) if the formRPartBDto couldn't be updated. If the id is not
+   * provided, will create a new FormRPartA
+   * @throws URISyntaxException if the Location URI syntax is incorrect
+   */
+  @PutMapping("/formr-parta")
+  public ResponseEntity<FormRPartADto> updateFormRPartA(
+      @RequestBody FormRPartADto formRPartADto) throws URISyntaxException {
+    log.debug("REST request to update FormRPartA : {}", formRPartADto);
+    if (formRPartADto.getId() == null) {
+      return createFormRPartA(formRPartADto);
+    }
+    FormRPartADto result = formRPartAService.save(formRPartADto);
+    return ResponseEntity.ok().body(result);
+  }
+
+  /**
+   * GET /formr-partas/:traineeTisId.
    *
    * @param traineeProfileId The trainee ID to get the forms for.
    * @return list of formR partA based on the traineeTisId
    */
-  @GetMapping("/formr-parta/{traineeTisId}")
-  public ResponseEntity<List<FormRPartADto>> getFormRPartAsByTraineeId(
+  @GetMapping("/formr-partas/{traineeTisId}")
+  public ResponseEntity<List<FormRPartSimpleDto>> getFormRPartAsByTraineeId(
       @PathVariable(name = "traineeTisId") String traineeProfileId) {
+    // TODO: verify if the traineeId belongs to the trainee
     log.debug("FormR-PartA of a trainee by traineeTisId {}", traineeProfileId);
-    List<FormRPartADto> formRPartADtos = formRPartAService
+    List<FormRPartSimpleDto> formRPartSimpleDtos = formRPartAService
         .getFormRPartAsByTraineeTisId(traineeProfileId);
-    return ResponseEntity.ok(formRPartADtos);
+    return ResponseEntity.ok(formRPartSimpleDtos);
+  }
+
+  /**
+   * GET /formr-parta/:id
+   *
+   * @param id The ID of the form
+   * @return the formR partA based on the id
+   */
+  @GetMapping("/formr-parta/{id}")
+  public ResponseEntity<FormRPartADto> getFormRPartAsById(
+      @PathVariable(name = "id") String id
+  ) {
+    // TODO: verify the formR PartA for the id belongs to the trainee
+    log.debug("FormR-PartA by id {}", id);
+    FormRPartADto formRPartADto = formRPartAService.getFormRPartAById(id);
+    if (formRPartADto != null) {
+      return ResponseEntity.ok(formRPartADto);
+    } else {
+      return new ResponseEntity(HttpStatus.NOT_FOUND);
+    }
   }
 }

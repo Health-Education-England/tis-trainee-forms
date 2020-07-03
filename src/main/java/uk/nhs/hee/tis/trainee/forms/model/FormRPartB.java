@@ -28,6 +28,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 @Document(collection = "FormRPartB")
 @Data
@@ -70,4 +71,5 @@ public class FormRPartB {
   private String compliments;
   private LocalDate submissionDate;
   private LocalDate lastModifiedDate;
+  private LifecycleState lifecycleState;
 }

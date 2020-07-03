@@ -26,6 +26,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -43,6 +44,8 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 
 @ExtendWith(SpringExtension.class)
@@ -53,6 +56,7 @@ public class FormRPartAResourceTest {
   private static final String DEFAULT_TRAINEE_TIS_ID = "1";
   private static final String DEFAULT_FORENAME = "DEFAULT_FORENAME";
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";
+  private static final LifecycleState DEFAULT_LIFECYCLESTATE = LifecycleState.DRAFT;
 
   @Autowired
   private MappingJackson2HttpMessageConverter jacksonMessageConverter;
@@ -63,6 +67,7 @@ public class FormRPartAResourceTest {
   private FormRPartAService formRPartAServiceMock;
 
   private FormRPartADto formRPartADto;
+  private FormRPartSimpleDto formRPartSimpleDto;
 
   /**
    * setup the Mvc test environment.
@@ -85,6 +90,12 @@ public class FormRPartAResourceTest {
     formRPartADto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     formRPartADto.setForename(DEFAULT_FORENAME);
     formRPartADto.setSurname(DEFAULT_SURNAME);
+    formRPartADto.setLifecycleState(DEFAULT_LIFECYCLESTATE);
+
+    formRPartSimpleDto = new FormRPartSimpleDto();
+    formRPartSimpleDto.setId(DEFAULT_ID);
+    formRPartSimpleDto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    formRPartSimpleDto.setLifecycleState(DEFAULT_LIFECYCLESTATE);
   }
 
   @Test
@@ -112,14 +123,50 @@ public class FormRPartAResourceTest {
   }
 
   @Test
+  public void testUpdateFormRPartBShouldSucceed() throws Exception {
+    formRPartADto.setId(DEFAULT_ID);
+    FormRPartADto formRPartADtoReturn = new FormRPartADto();
+    formRPartADtoReturn.setId(DEFAULT_ID);
+    formRPartADtoReturn.setLifecycleState(LifecycleState.SUBMITTED);
+
+    when(formRPartAServiceMock.save(formRPartADto)).thenReturn(formRPartADtoReturn);
+
+    this.mockMvc.perform(put("/api/formr-parta")
+        .contentType(TestUtil.APPLICATION_JSON_UTF8)
+        .content(TestUtil.convertObjectToJsonBytes(formRPartADto)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.id").value(DEFAULT_ID))
+        .andExpect(jsonPath("$.lifecycleState")
+            .value(LifecycleState.SUBMITTED.name()));
+  }
+
+  @Test
   public void testGetFormRPartAsByTraineeTisId() throws Exception {
     when(formRPartAServiceMock.getFormRPartAsByTraineeTisId(DEFAULT_TRAINEE_TIS_ID)).thenReturn(
-        Arrays.asList(formRPartADto));
-    this.mockMvc.perform(get("/api/formr-parta/" + DEFAULT_TRAINEE_TIS_ID)
+        Arrays.asList(formRPartSimpleDto));
+    this.mockMvc.perform(get("/api/formr-partas/" + DEFAULT_TRAINEE_TIS_ID)
         .contentType(TestUtil.APPLICATION_JSON_UTF8))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$").value(hasSize(1)))
-        .andExpect(jsonPath("$.[*].id").value(hasItem(DEFAULT_ID)));
+        .andExpect(jsonPath("$.[*].id").value(hasItem(DEFAULT_ID)))
+        .andExpect(jsonPath("$.[*].lifecycleState")
+            .value(hasItem(DEFAULT_LIFECYCLESTATE.name())));
+  }
+
+  @Test
+  public void testGetFormRPartBById() throws Exception {
+    when(formRPartAServiceMock.getFormRPartAById(DEFAULT_ID)).thenReturn(formRPartADto);
+    this.mockMvc.perform(get("/api/formr-parta/" + DEFAULT_ID)
+        .contentType(TestUtil.APPLICATION_JSON_UTF8))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.id").value(DEFAULT_ID))
+        .andExpect(jsonPath("$.traineeTisId").value(DEFAULT_TRAINEE_TIS_ID))
+        .andExpect(jsonPath("$.forename").value(DEFAULT_FORENAME))
+        .andExpect(jsonPath("$.surname").value(DEFAULT_SURNAME))
+        .andExpect(jsonPath("$.lifecycleState")
+            .value(DEFAULT_LIFECYCLESTATE.name()));
   }
 }

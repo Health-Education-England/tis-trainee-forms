@@ -23,6 +23,7 @@ package uk.nhs.hee.tis.trainee.forms.dto;
 
 import java.time.LocalDate;
 import lombok.Data;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 /**
  * A DTO for FormRPartA entity Holds the fields for the trainee's form R partA.
@@ -64,4 +65,5 @@ public class FormRPartADto {
   private LocalDate submissionDate;
   private LocalDate lastModifiedDate;
   private String otherImmigrationStatus;
+  private LifecycleState lifecycleState;
 }
