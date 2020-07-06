@@ -19,20 +19,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.repository;
+package uk.nhs.hee.tis.trainee.forms.service.exception;
 
-import java.util.List;
-import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.data.mongodb.repository.Query;
-import org.springframework.stereotype.Repository;
-import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
-import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
+import java.io.Serializable;
 
-@Repository
-public interface FormRPartARepository extends MongoRepository<FormRPartA, String> {
+public class FieldErrorVM implements Serializable {
 
-  @Query(fields = "{traineeTisId:1, id:1, submissionDate:1, lifecycleState:1}")
-  List<FormRPartA> findByTraineeTisId(String traineeTisId);
+  private static final long serialVersionUID = 1L;
 
-  List<FormRPartA> findByLifecycleState(LifecycleState lifecycleState);
+  private final String objectName;
+
+  private final String field;
+
+  private final String message;
+
+  public FieldErrorVM(String dto, String field, String message) {
+    this.objectName = dto;
+    this.field = field;
+    this.message = message;
+  }
+
+  public String getObjectName() {
+    return objectName;
+  }
+
+  public String getField() {
+    return field;
+  }
+
+  public String getMessage() {
+    return message;
+  }
+
 }

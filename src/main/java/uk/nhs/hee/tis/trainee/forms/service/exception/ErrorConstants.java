@@ -19,20 +19,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.repository;
+package uk.nhs.hee.tis.trainee.forms.service.exception;
 
-import java.util.List;
-import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.data.mongodb.repository.Query;
-import org.springframework.stereotype.Repository;
-import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
-import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
+public final class ErrorConstants {
 
-@Repository
-public interface FormRPartARepository extends MongoRepository<FormRPartA, String> {
+  public static final String ERR_VALIDATION = "error.validation";
+  public static final String ERR_INTERNAL_SERVER_ERROR = "error.internalServerError";
 
-  @Query(fields = "{traineeTisId:1, id:1, submissionDate:1, lifecycleState:1}")
-  List<FormRPartA> findByTraineeTisId(String traineeTisId);
+  private ErrorConstants() {
+  }
 
-  List<FormRPartA> findByLifecycleState(LifecycleState lifecycleState);
 }
