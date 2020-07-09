@@ -44,9 +44,10 @@ import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
 
 @ExtendWith(MockitoExtension.class)
-public class FormRPartAValidatorTest {
+class FormRPartAValidatorTest {
 
   private static final String DEFAULT_ID = "DEFAULT_ID";
+  private static final String DEFAULT_TRAINEE_TIS_ID = "DEFAULT_TRAINEE_TIS_ID";
   private static final LifecycleState DEFAULT_LIFECYCLESTATE = LifecycleState.DRAFT;
 
   @InjectMocks
@@ -69,7 +70,9 @@ public class FormRPartAValidatorTest {
 
   @Test
   void validateDraftIfNoExistingDraftFound() {
-    when(formRPartARepositoryMock.findByLifecycleState(formRPartADto.getLifecycleState()))
+    when(formRPartARepositoryMock
+        .findByTraineeTisIdAndLifecycleState(formRPartADto.getTraineeTisId(),
+            formRPartADto.getLifecycleState()))
         .thenReturn(Lists.emptyList());
 
     List<FieldError> fieldErrors = validator.checkIfDraftUnique(formRPartADto);
@@ -79,16 +82,20 @@ public class FormRPartAValidatorTest {
 
   @Test
   void validateDraftIfMultipleDraftsFound() {
-    FormRPartA formRPartA_1 = new FormRPartA();
-    formRPartA_1.setId("ANOTHER_ID_1");
-    formRPartA_1.setLifecycleState(LifecycleState.DRAFT);
+    FormRPartA formRPartA1 = new FormRPartA();
+    formRPartA1.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    formRPartA1.setId("ANOTHER_ID_1");
+    formRPartA1.setLifecycleState(LifecycleState.DRAFT);
 
-    FormRPartA formRPartA_2 = new FormRPartA();
-    formRPartA_2.setId("ANOTHER_ID_2");
-    formRPartA_1.setLifecycleState(LifecycleState.DRAFT);
+    FormRPartA formRPartA2 = new FormRPartA();
+    formRPartA2.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    formRPartA2.setId("ANOTHER_ID_2");
+    formRPartA2.setLifecycleState(LifecycleState.DRAFT);
 
-    when(formRPartARepositoryMock.findByLifecycleState(formRPartADto.getLifecycleState()))
-        .thenReturn(Lists.list(formRPartA_1, formRPartA_2));
+    when(formRPartARepositoryMock
+        .findByTraineeTisIdAndLifecycleState(formRPartADto.getTraineeTisId(),
+            formRPartADto.getLifecycleState()))
+        .thenReturn(Lists.list(formRPartA1, formRPartA2));
 
     List<FieldError> fieldErrors = validator.checkIfDraftUnique(formRPartADto);
     assertThat("Should not return any errors", fieldErrors.size(), is(1));
@@ -99,10 +106,13 @@ public class FormRPartAValidatorTest {
   @Test
   void validateUpdateDraftIfOneDraftWithSameIdFound() {
     FormRPartA formRPartA = new FormRPartA();
+    formRPartA.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     formRPartA.setId(DEFAULT_ID);
     formRPartA.setLifecycleState(LifecycleState.DRAFT);
 
-    when(formRPartARepositoryMock.findByLifecycleState(formRPartADto.getLifecycleState()))
+    when(formRPartARepositoryMock
+        .findByTraineeTisIdAndLifecycleState(formRPartADto.getTraineeTisId(),
+            formRPartADto.getLifecycleState()))
         .thenReturn(Lists.list(formRPartA));
 
     List<FieldError> fieldErrors = validator.checkIfDraftUnique(formRPartADto);
@@ -112,10 +122,13 @@ public class FormRPartAValidatorTest {
   @Test
   void validateUpdateDraftIfOneDraftWithDifferentIdFound() {
     FormRPartA formRPartA = new FormRPartA();
+    formRPartA.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     formRPartA.setId("ANOTHER_ID");
     formRPartA.setLifecycleState(LifecycleState.DRAFT);
 
-    when(formRPartARepositoryMock.findByLifecycleState(formRPartADto.getLifecycleState()))
+    when(formRPartARepositoryMock
+        .findByTraineeTisIdAndLifecycleState(formRPartADto.getTraineeTisId(),
+            formRPartADto.getLifecycleState()))
         .thenReturn(Lists.list(formRPartA));
 
     List<FieldError> fieldErrors = validator.checkIfDraftUnique(formRPartADto);
@@ -129,10 +142,13 @@ public class FormRPartAValidatorTest {
     formRPartADto.setId(null);
 
     FormRPartA formRPartA = new FormRPartA();
+    formRPartA.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     formRPartA.setId("ANOTHER_ID");
     formRPartA.setLifecycleState(LifecycleState.DRAFT);
 
-    when(formRPartARepositoryMock.findByLifecycleState(formRPartADto.getLifecycleState()))
+    when(formRPartARepositoryMock
+        .findByTraineeTisIdAndLifecycleState(formRPartADto.getTraineeTisId(),
+            formRPartADto.getLifecycleState()))
         .thenReturn(Lists.list(formRPartA));
 
     List<FieldError> fieldErrors = validator.checkIfDraftUnique(formRPartADto);
@@ -144,10 +160,13 @@ public class FormRPartAValidatorTest {
   @Test
   void validateShouldThrowExceptionWhenValidationFails() {
     FormRPartA formRPartA = new FormRPartA();
+    formRPartA.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     formRPartA.setId("ANOTHER_ID");
     formRPartA.setLifecycleState(LifecycleState.DRAFT);
 
-    when(formRPartARepositoryMock.findByLifecycleState(formRPartADto.getLifecycleState()))
+    when(formRPartARepositoryMock
+        .findByTraineeTisIdAndLifecycleState(formRPartADto.getTraineeTisId(),
+            formRPartADto.getLifecycleState()))
         .thenReturn(Lists.list(formRPartA));
 
     String message = assertThrows(MethodArgumentNotValidException.class,
@@ -158,7 +177,9 @@ public class FormRPartAValidatorTest {
 
   @Test
   void validateShouldNotThrowExceptionWhenValidationSucceed() {
-    when(formRPartARepositoryMock.findByLifecycleState(formRPartADto.getLifecycleState()))
+    when(formRPartARepositoryMock
+        .findByTraineeTisIdAndLifecycleState(formRPartADto.getTraineeTisId(),
+            formRPartADto.getLifecycleState()))
         .thenReturn(Lists.emptyList());
 
     assertDoesNotThrow(() -> validator.validate(formRPartADto));

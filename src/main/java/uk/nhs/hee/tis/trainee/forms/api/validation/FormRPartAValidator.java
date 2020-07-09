@@ -74,7 +74,8 @@ public class FormRPartAValidator {
     if (lifecycleState.equals(LifecycleState.DRAFT)) {
       // query all drafted formRPartAs
       List<FormRPartA> existingFormRPartA = formRPartARepository
-          .findByLifecycleState(LifecycleState.DRAFT);
+          .findByTraineeTisIdAndLifecycleState(formRPartADto.getTraineeTisId(),
+              LifecycleState.DRAFT);
       // there should be only one draft in the db, no more other draft allowed to be saved
       if (!existingFormRPartA.isEmpty()) {
         if (existingFormRPartA.size() == 1) {

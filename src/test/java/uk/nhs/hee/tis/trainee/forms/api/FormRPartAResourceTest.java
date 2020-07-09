@@ -136,11 +136,11 @@ public class FormRPartAResourceTest {
   @Test
   void testCreateDraftFormRPartAWithDraftExists() throws Exception {
     formRPartADto.setId(null);
-    final String FORMR_PARTA_DTO_NAME = "FormRPartADto";
+    final String formRPartADtoName = "FormRPartADto";
 
     BeanPropertyBindingResult bindingResult =
-        new BeanPropertyBindingResult(formRPartADto, FORMR_PARTA_DTO_NAME);
-    bindingResult.addError(new FieldError(FORMR_PARTA_DTO_NAME, "lifecycleState",
+        new BeanPropertyBindingResult(formRPartADto, formRPartADtoName);
+    bindingResult.addError(new FieldError(formRPartADtoName, "lifecycleState",
         "Draft form R Part A already exists"));
 
     Method method = formRPartAValidator.getClass().getMethods()[0];
