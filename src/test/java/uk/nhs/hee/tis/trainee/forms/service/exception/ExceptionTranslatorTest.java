@@ -21,45 +21,41 @@
 
 package uk.nhs.hee.tis.trainee.forms.service.exception;
 
-import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ControllerAdvice;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.bind.annotation.ResponseStatus;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 
-/**
- * Controller advice to translate the server side exceptions to client-friendly json structures.
- */
-@ControllerAdvice
-public class ExceptionTranslator {
+@ExtendWith(MockitoExtension.class)
+class ExceptionTranslatorTest {
 
-  private final Logger log = LoggerFactory
-      .getLogger(ExceptionTranslator.class);
+  @InjectMocks
+  ExceptionTranslator translator;
 
-  @ExceptionHandler(MethodArgumentNotValidException.class)
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
-  @ResponseBody
-  public ErrorVM processValidationError(MethodArgumentNotValidException ex) {
-    BindingResult result = ex.getBindingResult();
-    List<FieldError> fieldErrors = result.getFieldErrors();
+  @Test
+  void testProcessValidationErrorShouldReturnExpectedErrorFormat() {
+    FormRPartADto formRPartADto = Mockito.mock(FormRPartADto.class);
+    BindingResult bindingResult = new BeanPropertyBindingResult(formRPartADto, "FormRPartADto");
 
-    return processFieldErrors(fieldErrors);
-  }
+    FieldError fieldError = new FieldError("FormRPartADto", "lifecycleState",
+        "Draft form R Part A already exists");
+    bindingResult.addError(fieldError);
 
-  private ErrorVM processFieldErrors(
-      List<FieldError> fieldErrors) {
-    ErrorVM dto = new ErrorVM(ErrorConstants.ERR_VALIDATION);
+    MethodArgumentNotValidException ex = new MethodArgumentNotValidException(null, bindingResult);
+    ErrorVM error = translator.processValidationError(ex);
 
-    for (FieldError fieldError : fieldErrors) {
-      dto.add(fieldError.getObjectName(), fieldError.getField(), fieldError.getDefaultMessage());
-    }
-
-    return dto;
+    error.getMessage();
+    assertThat("should contain error message", error.getMessage(),
+        is(ErrorConstants.ERR_VALIDATION));
+    assertThat("should contain 1 fieldError", error.getFieldErrors().size(), is(1));
   }
 }
