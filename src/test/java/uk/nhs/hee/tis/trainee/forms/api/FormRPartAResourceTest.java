@@ -127,7 +127,7 @@ public class FormRPartAResourceTest {
     formRPartADtoReturn.setSurname(formRPartADto.getSurname());
 
     when(formRPartAServiceMock.save(formRPartADto)).thenReturn(formRPartADtoReturn);
-    this.mockMvc.perform(post("/api/formr-parta")
+    mockMvc.perform(post("/api/formr-parta")
         .contentType(TestUtil.APPLICATION_JSON_UTF8)
         .content(TestUtil.convertObjectToJsonBytes(formRPartADto)))
         .andExpect(status().isCreated());
@@ -147,7 +147,7 @@ public class FormRPartAResourceTest {
     doThrow(new MethodArgumentNotValidException(new MethodParameter(method, 0), bindingResult))
         .when(formRPartAValidator).validate(formRPartADto);
 
-    this.mockMvc.perform(post("/api/formr-parta")
+    mockMvc.perform(post("/api/formr-parta")
         .contentType(TestUtil.APPLICATION_JSON_UTF8)
         .content(TestUtil.convertObjectToJsonBytes(formRPartADto)))
         .andExpect(status().isBadRequest());
@@ -162,7 +162,7 @@ public class FormRPartAResourceTest {
 
     when(formRPartAServiceMock.save(formRPartADto)).thenReturn(formRPartADtoReturn);
 
-    this.mockMvc.perform(put("/api/formr-parta")
+    mockMvc.perform(put("/api/formr-parta")
         .contentType(TestUtil.APPLICATION_JSON_UTF8)
         .content(TestUtil.convertObjectToJsonBytes(formRPartADto)))
         .andExpect(status().isOk())
@@ -176,7 +176,7 @@ public class FormRPartAResourceTest {
   void testGetFormRPartAsByTraineeTisId() throws Exception {
     when(formRPartAServiceMock.getFormRPartAsByTraineeTisId(DEFAULT_TRAINEE_TIS_ID)).thenReturn(
         Arrays.asList(formRPartSimpleDto));
-    this.mockMvc.perform(get("/api/formr-partas/" + DEFAULT_TRAINEE_TIS_ID)
+    mockMvc.perform(get("/api/formr-partas/" + DEFAULT_TRAINEE_TIS_ID)
         .contentType(TestUtil.APPLICATION_JSON_UTF8))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -189,7 +189,7 @@ public class FormRPartAResourceTest {
   @Test
   void testGetFormRPartBById() throws Exception {
     when(formRPartAServiceMock.getFormRPartAById(DEFAULT_ID)).thenReturn(formRPartADto);
-    this.mockMvc.perform(get("/api/formr-parta/" + DEFAULT_ID)
+    mockMvc.perform(get("/api/formr-parta/" + DEFAULT_ID)
         .contentType(TestUtil.APPLICATION_JSON_UTF8))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))

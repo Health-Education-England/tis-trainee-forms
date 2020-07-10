@@ -98,7 +98,7 @@ class FormRPartAValidatorTest {
         .thenReturn(Lists.list(formRPartA1, formRPartA2));
 
     List<FieldError> fieldErrors = validator.checkIfDraftUnique(formRPartADto);
-    assertThat("Should not return any errors", fieldErrors.size(), is(1));
+    assertThat("Should return 1 error", fieldErrors.size(), is(1));
     assertThat("Error not valid", fieldErrors.get(0).getDefaultMessage(),
         is("More than one draft form R Part A already exist"));
   }
@@ -132,7 +132,7 @@ class FormRPartAValidatorTest {
         .thenReturn(Lists.list(formRPartA));
 
     List<FieldError> fieldErrors = validator.checkIfDraftUnique(formRPartADto);
-    assertThat("Should not return any errors", fieldErrors.size(), is(1));
+    assertThat("Should return 1 error", fieldErrors.size(), is(1));
     assertThat("Error not valid", fieldErrors.get(0).getDefaultMessage(),
         is("Draft form R Part A already exists"));
   }
