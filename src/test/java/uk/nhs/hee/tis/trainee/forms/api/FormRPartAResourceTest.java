@@ -23,6 +23,7 @@ package uk.nhs.hee.tis.trainee.forms.api;
 
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -31,6 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,11 +40,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import uk.nhs.hee.tis.trainee.forms.api.validation.FormRPartAValidator;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -66,6 +73,9 @@ public class FormRPartAResourceTest {
   @MockBean
   private FormRPartAService formRPartAServiceMock;
 
+  @MockBean
+  private FormRPartAValidator formRPartAValidator;
+
   private FormRPartADto formRPartADto;
   private FormRPartSimpleDto formRPartSimpleDto;
 
@@ -73,8 +83,9 @@ public class FormRPartAResourceTest {
    * setup the Mvc test environment.
    */
   @BeforeEach
-  public void setup() {
-    FormRPartAResource formRPartAResource = new FormRPartAResource(formRPartAServiceMock);
+  void setup() {
+    FormRPartAResource formRPartAResource = new FormRPartAResource(formRPartAServiceMock,
+        formRPartAValidator);
     mockMvc = MockMvcBuilders.standaloneSetup(formRPartAResource)
         .setMessageConverters(jacksonMessageConverter)
         .build();
@@ -84,7 +95,7 @@ public class FormRPartAResourceTest {
    * init test data.
    */
   @BeforeEach
-  public void initData() {
+  void initData() {
     formRPartADto = new FormRPartADto();
     formRPartADto.setId(DEFAULT_ID);
     formRPartADto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
@@ -99,7 +110,7 @@ public class FormRPartAResourceTest {
   }
 
   @Test
-  public void testCreateNewFormRPartAWithExistingId() throws Exception {
+  void testCreateNewFormRPartAWithExistingId() throws Exception {
     this.mockMvc.perform(post("/api/formr-parta")
         .contentType(TestUtil.APPLICATION_JSON_UTF8)
         .content(TestUtil.convertObjectToJsonBytes(formRPartADto)))
@@ -107,7 +118,7 @@ public class FormRPartAResourceTest {
   }
 
   @Test
-  public void testCreateNewFormRPartAShouldSucceed() throws Exception {
+  void testCreateNewFormRPartAShouldSucceed() throws Exception {
     formRPartADto.setId(null);
     FormRPartADto formRPartADtoReturn = new FormRPartADto();
     formRPartADtoReturn.setId(DEFAULT_ID);
@@ -116,14 +127,34 @@ public class FormRPartAResourceTest {
     formRPartADtoReturn.setSurname(formRPartADto.getSurname());
 
     when(formRPartAServiceMock.save(formRPartADto)).thenReturn(formRPartADtoReturn);
-    this.mockMvc.perform(post("/api/formr-parta")
+    mockMvc.perform(post("/api/formr-parta")
         .contentType(TestUtil.APPLICATION_JSON_UTF8)
         .content(TestUtil.convertObjectToJsonBytes(formRPartADto)))
         .andExpect(status().isCreated());
   }
 
   @Test
-  public void testUpdateFormRPartBShouldSucceed() throws Exception {
+  void testCreateDraftFormRPartAWithDraftExists() throws Exception {
+    formRPartADto.setId(null);
+    final String formRPartADtoName = "FormRPartADto";
+
+    BeanPropertyBindingResult bindingResult =
+        new BeanPropertyBindingResult(formRPartADto, formRPartADtoName);
+    bindingResult.addError(new FieldError(formRPartADtoName, "lifecycleState",
+        "Draft form R Part A already exists"));
+
+    Method method = formRPartAValidator.getClass().getMethods()[0];
+    doThrow(new MethodArgumentNotValidException(new MethodParameter(method, 0), bindingResult))
+        .when(formRPartAValidator).validate(formRPartADto);
+
+    mockMvc.perform(post("/api/formr-parta")
+        .contentType(TestUtil.APPLICATION_JSON_UTF8)
+        .content(TestUtil.convertObjectToJsonBytes(formRPartADto)))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void testUpdateFormRPartBShouldSucceed() throws Exception {
     formRPartADto.setId(DEFAULT_ID);
     FormRPartADto formRPartADtoReturn = new FormRPartADto();
     formRPartADtoReturn.setId(DEFAULT_ID);
@@ -131,7 +162,7 @@ public class FormRPartAResourceTest {
 
     when(formRPartAServiceMock.save(formRPartADto)).thenReturn(formRPartADtoReturn);
 
-    this.mockMvc.perform(put("/api/formr-parta")
+    mockMvc.perform(put("/api/formr-parta")
         .contentType(TestUtil.APPLICATION_JSON_UTF8)
         .content(TestUtil.convertObjectToJsonBytes(formRPartADto)))
         .andExpect(status().isOk())
@@ -142,10 +173,10 @@ public class FormRPartAResourceTest {
   }
 
   @Test
-  public void testGetFormRPartAsByTraineeTisId() throws Exception {
+  void testGetFormRPartAsByTraineeTisId() throws Exception {
     when(formRPartAServiceMock.getFormRPartAsByTraineeTisId(DEFAULT_TRAINEE_TIS_ID)).thenReturn(
         Arrays.asList(formRPartSimpleDto));
-    this.mockMvc.perform(get("/api/formr-partas/" + DEFAULT_TRAINEE_TIS_ID)
+    mockMvc.perform(get("/api/formr-partas/" + DEFAULT_TRAINEE_TIS_ID)
         .contentType(TestUtil.APPLICATION_JSON_UTF8))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -156,9 +187,9 @@ public class FormRPartAResourceTest {
   }
 
   @Test
-  public void testGetFormRPartBById() throws Exception {
+  void testGetFormRPartBById() throws Exception {
     when(formRPartAServiceMock.getFormRPartAById(DEFAULT_ID)).thenReturn(formRPartADto);
-    this.mockMvc.perform(get("/api/formr-parta/" + DEFAULT_ID)
+    mockMvc.perform(get("/api/formr-parta/" + DEFAULT_ID)
         .contentType(TestUtil.APPLICATION_JSON_UTF8))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
