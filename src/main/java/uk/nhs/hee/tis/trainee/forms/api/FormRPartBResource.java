@@ -26,6 +26,7 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,6 +35,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.api.util.HeaderUtil;
+import uk.nhs.hee.tis.trainee.forms.api.validation.FormRPartBValidator;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
@@ -46,9 +48,12 @@ public class FormRPartBResource {
   private static final String ENTITY_NAME = "formR_partB";
 
   private final FormRPartBService formRPartBService;
+  private final FormRPartBValidator formRPartBValidator;
 
-  public FormRPartBResource(FormRPartBService formRPartBService) {
+  public FormRPartBResource(FormRPartBService formRPartBService,
+      FormRPartBValidator formRPartBValidator) {
     this.formRPartBService = formRPartBService;
+    this.formRPartBValidator = formRPartBValidator;
   }
 
   /**
@@ -61,7 +66,8 @@ public class FormRPartBResource {
    */
   @PostMapping("/formr-partb")
   public ResponseEntity<FormRPartBDto> createFormRPartB(
-      @RequestBody FormRPartBDto formRPartBDto) throws URISyntaxException {
+      @RequestBody FormRPartBDto formRPartBDto)
+      throws URISyntaxException, MethodArgumentNotValidException {
     log.debug("REST request to save FormRPartB : {}", formRPartBDto);
     if (formRPartBDto.getId() != null) {
       return ResponseEntity.badRequest().headers(HeaderUtil
@@ -69,6 +75,7 @@ public class FormRPartBResource {
               "A new formRpartB cannot already have an ID"))
           .body(null);
     }
+    formRPartBValidator.validate(formRPartBDto);
     FormRPartBDto result = formRPartBService.save(formRPartBDto);
     return ResponseEntity.created(new URI("/api/formr-partb/" + result.getId()))
         .body(result);
@@ -85,11 +92,13 @@ public class FormRPartBResource {
    */
   @PutMapping("/formr-partb")
   public ResponseEntity<FormRPartBDto> updateFormRPartB(
-      @RequestBody FormRPartBDto formRPartBDto) throws URISyntaxException {
+      @RequestBody FormRPartBDto formRPartBDto)
+      throws URISyntaxException, MethodArgumentNotValidException {
     log.debug("REST request to update FormRPartB : {}", formRPartBDto);
     if (formRPartBDto.getId() == null) {
       return createFormRPartB(formRPartBDto);
     }
+    formRPartBValidator.validate(formRPartBDto);
     FormRPartBDto result = formRPartBService.save(formRPartBDto);
     return ResponseEntity.ok().body(result);
   }

@@ -22,6 +22,7 @@ package uk.nhs.hee.tis.trainee.forms.api;
 
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -30,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.lang.reflect.Method;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Arrays;
@@ -40,11 +42,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import uk.nhs.hee.tis.trainee.forms.api.validation.FormRPartBValidator;
 import uk.nhs.hee.tis.trainee.forms.dto.DeclarationDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
@@ -97,6 +104,9 @@ public class FormRPartBResourceTest {
   @MockBean
   private FormRPartBService formRPartBServiceMock;
 
+  @MockBean
+  private FormRPartBValidator formRPartBValidator;
+
   private FormRPartBDto formRPartBDto;
   private WorkDto workDto;
   private FormRPartSimpleDto formRPartSimpleDto;
@@ -107,8 +117,9 @@ public class FormRPartBResourceTest {
    * setup the Mvc test environment.
    */
   @BeforeEach
-  public void setup() {
-    FormRPartBResource formRPartBResource = new FormRPartBResource(formRPartBServiceMock);
+  void setup() {
+    FormRPartBResource formRPartBResource = new FormRPartBResource(formRPartBServiceMock,
+        formRPartBValidator);
     mockMvc = MockMvcBuilders.standaloneSetup(formRPartBResource)
         .setMessageConverters(jacksonMessageConverter)
         .build();
@@ -118,7 +129,7 @@ public class FormRPartBResourceTest {
    * init test data.
    */
   @BeforeEach
-  public void initData() {
+  void initData() {
     setupWorkData();
     setupPreviousDeclarationData();
     setupCurrentDeclarationData();
@@ -151,7 +162,7 @@ public class FormRPartBResourceTest {
   /**
    * Set up data for work.
    */
-  public void setupWorkData() {
+  void setupWorkData() {
     workDto = new WorkDto();
     workDto.setTypeOfWork(DEFAULT_TYPE_OF_WORK);
     workDto.setStartDate(DEFAULT_WORK_START_DATE);
@@ -164,7 +175,7 @@ public class FormRPartBResourceTest {
   /**
    * Set up data for previous declaration.
    */
-  public void setupPreviousDeclarationData() {
+  void setupPreviousDeclarationData() {
     previousDeclarationDto = new DeclarationDto();
     previousDeclarationDto.setDeclarationType(DEFAULT_PREVIOUS_DECLARATION_TYPE);
     previousDeclarationDto.setDateOfEntry(DEFAULT_PREVIOUS_DATE_OF_ENTRY);
@@ -173,22 +184,22 @@ public class FormRPartBResourceTest {
   /**
    * Set up data for current declaration.
    */
-  public void setupCurrentDeclarationData() {
+  void setupCurrentDeclarationData() {
     currentDeclarationDto = new DeclarationDto();
     currentDeclarationDto.setDeclarationType(DEFAULT_CURRENT_DECLARATION_TYPE);
     currentDeclarationDto.setDateOfEntry(DEFAULT_CURRENT_DATE_OF_ENTRY);
   }
 
   @Test
-  public void testCreateNewFormRPartBWithExistingId() throws Exception {
-    this.mockMvc.perform(post("/api/formr-partb")
+  void testCreateNewFormRPartBWithExistingId() throws Exception {
+    mockMvc.perform(post("/api/formr-partb")
         .contentType(TestUtil.APPLICATION_JSON_UTF8)
         .content(TestUtil.convertObjectToJsonBytes(formRPartBDto)))
         .andExpect(status().isBadRequest());
   }
 
   @Test
-  public void testCreateNewFormRPartBShouldSucceed() throws Exception {
+  void testCreateNewFormRPartBShouldSucceed() throws Exception {
     formRPartBDto.setId(null);
     FormRPartBDto formRPartBDtoReturn = new FormRPartBDto();
     formRPartBDtoReturn.setId(DEFAULT_ID);
@@ -210,14 +221,34 @@ public class FormRPartBResourceTest {
     formRPartBDtoReturn.setCompliments(formRPartBDto.getCompliments());
 
     when(formRPartBServiceMock.save(formRPartBDto)).thenReturn(formRPartBDtoReturn);
-    this.mockMvc.perform(post("/api/formr-partb")
+    mockMvc.perform(post("/api/formr-partb")
         .contentType(TestUtil.APPLICATION_JSON_UTF8)
         .content(TestUtil.convertObjectToJsonBytes(formRPartBDto)))
         .andExpect(status().isCreated());
   }
 
   @Test
-  public void testUpdateFormRPartBShouldSucceed() throws Exception {
+  void testCreateDraftFormRPartBWithDraftExists() throws Exception {
+    formRPartBDto.setId(null);
+    final String formRPartBDtoName = "FormRPartBDto";
+
+    BeanPropertyBindingResult bindingResult =
+        new BeanPropertyBindingResult(formRPartBDto, formRPartBDtoName);
+    bindingResult.addError(new FieldError(formRPartBDtoName, "lifecycleState",
+        "Draft form R Part B already exists"));
+
+    Method method = formRPartBValidator.getClass().getMethods()[0];
+    doThrow(new MethodArgumentNotValidException(new MethodParameter(method, 0), bindingResult))
+        .when(formRPartBValidator).validate(formRPartBDto);
+
+    mockMvc.perform(post("/api/formr-partb")
+        .contentType(TestUtil.APPLICATION_JSON_UTF8)
+        .content(TestUtil.convertObjectToJsonBytes(formRPartBDto)))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void testUpdateFormRPartBShouldSucceed() throws Exception {
     formRPartBDto.setId(DEFAULT_ID);
     FormRPartBDto formRPartBDtoReturn = new FormRPartBDto();
     formRPartBDtoReturn.setId(DEFAULT_ID);
@@ -225,7 +256,7 @@ public class FormRPartBResourceTest {
 
     when(formRPartBServiceMock.save(formRPartBDto)).thenReturn(formRPartBDtoReturn);
 
-    this.mockMvc.perform(put("/api/formr-partb")
+    mockMvc.perform(put("/api/formr-partb")
         .contentType(TestUtil.APPLICATION_JSON_UTF8)
         .content(TestUtil.convertObjectToJsonBytes(formRPartBDto)))
         .andExpect(status().isOk())
@@ -236,10 +267,10 @@ public class FormRPartBResourceTest {
   }
 
   @Test
-  public void testGetFormRPartBsByTraineeTisId() throws Exception {
+  void testGetFormRPartBsByTraineeTisId() throws Exception {
     when(formRPartBServiceMock.getFormRPartBsByTraineeTisId(DEFAULT_TRAINEE_TIS_ID)).thenReturn(
         Arrays.asList(formRPartSimpleDto));
-    this.mockMvc.perform(get("/api/formr-partbs/" + DEFAULT_TRAINEE_TIS_ID)
+    mockMvc.perform(get("/api/formr-partbs/" + DEFAULT_TRAINEE_TIS_ID)
         .contentType(TestUtil.APPLICATION_JSON_UTF8))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -249,9 +280,9 @@ public class FormRPartBResourceTest {
   }
 
   @Test
-  public void testGetFormRPartBById() throws Exception {
+  void testGetFormRPartBById() throws Exception {
     when(formRPartBServiceMock.getFormRPartBById(DEFAULT_ID)).thenReturn(formRPartBDto);
-    this.mockMvc.perform(get("/api/formr-partb/" + DEFAULT_ID)
+    mockMvc.perform(get("/api/formr-partb/" + DEFAULT_ID)
         .contentType(TestUtil.APPLICATION_JSON_UTF8))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
