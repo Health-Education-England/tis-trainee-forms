@@ -41,8 +41,6 @@ public class FormSwitchServiceImpl implements FormSwitchService {
 
   private final FormSwitchMapper formSwitchMapper;
 
-  private List<FormSwitchDto> formSwitchesCache;
-
   public FormSwitchServiceImpl(FormSwitchRepository formSwitchRepository,
       FormSwitchMapper formSwitchMapper) {
     this.formSwitchRepository = formSwitchRepository;
@@ -51,10 +49,7 @@ public class FormSwitchServiceImpl implements FormSwitchService {
 
   @Override
   public List<FormSwitchDto> getFormSwitches() {
-    if (CollectionUtils.isEmpty(formSwitchesCache)) {
-      List<FormSwitch> formSwitches = formSwitchRepository.findAll();
-      formSwitchesCache = formSwitchMapper.toDtos(formSwitches);
-    }
-    return formSwitchesCache;
+    List<FormSwitch> formSwitches = formSwitchRepository.findAll();
+    return formSwitchMapper.toDtos(formSwitches);
   }
 }
