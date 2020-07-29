@@ -21,16 +21,21 @@
 package uk.nhs.hee.tis.trainee.forms.mapper;
 
 import java.util.List;
+import org.mapstruct.InheritInverseConfiguration;
+import org.mapstruct.MapMapping;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = {CovidDeclarationMapper.class})
 public interface FormRPartBMapper {
 
+  @Mapping(target = "covidDeclarationDto", source = "covidDeclaration")
   FormRPartBDto toDto(FormRPartB formRPartB);
 
+  @InheritInverseConfiguration
   FormRPartB toEntity(FormRPartBDto formRPartBDto);
 
   List<FormRPartBDto> toDtos(List<FormRPartB> formRPartBs);

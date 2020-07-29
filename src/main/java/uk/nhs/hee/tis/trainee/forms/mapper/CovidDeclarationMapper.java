@@ -19,36 +19,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.service.impl;
+package uk.nhs.hee.tis.trainee.forms.mapper;
 
-import java.util.List;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import uk.nhs.hee.tis.trainee.forms.dto.FormSwitchDto;
-import uk.nhs.hee.tis.trainee.forms.mapper.FormSwitchMapper;
-import uk.nhs.hee.tis.trainee.forms.model.FormSwitch;
-import uk.nhs.hee.tis.trainee.forms.repository.FormSwitchRepository;
-import uk.nhs.hee.tis.trainee.forms.service.FormSwitchService;
+import org.mapstruct.Mapper;
+import uk.nhs.hee.tis.trainee.forms.dto.CovidDeclarationDto;
+import uk.nhs.hee.tis.trainee.forms.model.CovidDeclaration;
 
-@Slf4j
-@Service
-@Transactional
-public class FormSwitchServiceImpl implements FormSwitchService {
+@Mapper(componentModel = "spring")
+public interface CovidDeclarationMapper {
 
-  private final FormSwitchRepository formSwitchRepository;
+  CovidDeclarationDto toDto(CovidDeclaration covidDeclaration);
 
-  private final FormSwitchMapper formSwitchMapper;
-
-  public FormSwitchServiceImpl(FormSwitchRepository formSwitchRepository,
-      FormSwitchMapper formSwitchMapper) {
-    this.formSwitchRepository = formSwitchRepository;
-    this.formSwitchMapper = formSwitchMapper;
-  }
-
-  @Override
-  public List<FormSwitchDto> getFormSwitches() {
-    List<FormSwitch> formSwitches = formSwitchRepository.findAll();
-    return formSwitchMapper.toDtos(formSwitches);
-  }
+  CovidDeclaration toEntity(CovidDeclarationDto covidDeclarationDto);
 }

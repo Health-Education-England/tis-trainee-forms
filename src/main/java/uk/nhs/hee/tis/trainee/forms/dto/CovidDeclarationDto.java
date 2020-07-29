@@ -19,10 +19,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.dto.enumeration;
+package uk.nhs.hee.tis.trainee.forms.dto;
 
-public enum SelfRateForCovid {
-  BELOW_EXPECT,
-  COMPETENCIES_NOT_MET,
-  ALL_MET
+import lombok.Data;
+
+@Data
+public class CovidDeclarationDto {
+
+  private String selfRateForCovid;
+  private String reasonOfSelfRate;
+  private String otherInformationForPanel;
+  private Boolean discussWithSupervisorChecked;
+  private Boolean discussWithSomeoneChecked;
 }

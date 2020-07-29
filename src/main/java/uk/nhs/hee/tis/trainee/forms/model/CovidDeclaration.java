@@ -19,21 +19,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.dto;
+package uk.nhs.hee.tis.trainee.forms.model;
 
 import lombok.Data;
-import uk.nhs.hee.tis.trainee.forms.dto.enumeration.SelfRateForCovid;
 
 @Data
-public class CovidFormDto {
+public class CovidDeclaration {
 
-  private String id; // same as the id of referenced FormRPartB
-
-  private SelfRateForCovid selfRateForCovid;
-
+  private String selfRateForCovid;
   private String reasonOfSelfRate;
-
-  private boolean discussWithSupervisorChecked;
-
-  private boolean discussWithSomeoneChecked;
+  private String otherInformationForPanel;
+  private Boolean discussWithSupervisorChecked;
+  private Boolean discussWithSomeoneChecked;
 }
