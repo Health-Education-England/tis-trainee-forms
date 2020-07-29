@@ -26,5 +26,10 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormSwitchDto;
 
 public interface FormSwitchService {
 
+  /**
+   * Get list of the switches of temp forms.
+   *
+   * @return list of all the form swtiches.
+   */
   List<FormSwitchDto> getFormSwitches();
 }

@@ -129,7 +129,7 @@ public class FormRPartBResource {
   public ResponseEntity<FormRPartBDto> getFormRPartAsById(
       @PathVariable(name = "id") String id
   ) {
-    // TODO: verify the formR PartA for the id belongs to the trainee
+    // TODO: verify the formR PartB for the id belongs to the trainee
     log.debug("FormR-PartA by id {}", id);
     FormRPartBDto formRPartBDto = formRPartBService.getFormRPartBById(id);
     if (formRPartBDto != null) {

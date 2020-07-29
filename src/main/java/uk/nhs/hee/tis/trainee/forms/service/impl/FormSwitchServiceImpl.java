@@ -46,8 +46,12 @@ public class FormSwitchServiceImpl implements FormSwitchService {
     this.formSwitchMapper = formSwitchMapper;
   }
 
+  /**
+   * get list of the switches of temp forms.
+   */
   @Override
   public List<FormSwitchDto> getFormSwitches() {
+    log.info("Request to get form switches");
     List<FormSwitch> formSwitches = formSwitchRepository.findAll();
     return formSwitchMapper.toDtos(formSwitches);
   }

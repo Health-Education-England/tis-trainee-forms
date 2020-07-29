@@ -41,8 +41,14 @@ public class FormSwitchResource {
     this.formSwitchService = formSwitchService;
   }
 
+  /**
+   * GET /form-switches : Get the switches of temp forms.
+   *
+   * @return list of the switches of forms.
+   */
   @GetMapping("/form-switches")
   public ResponseEntity<List<FormSwitchDto>> getAllFormSwitches() {
+    log.debug("Get all the switches of forms");
     List<FormSwitchDto> formSwitchDtos = formSwitchService.getFormSwitches();
     return ResponseEntity.ok(formSwitchDtos);
   }

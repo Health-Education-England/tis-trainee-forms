@@ -22,8 +22,10 @@
 package uk.nhs.hee.tis.trainee.forms.repository;
 
 import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.stereotype.Repository;
 import uk.nhs.hee.tis.trainee.forms.model.FormSwitch;
 
+@Repository
 public interface FormSwitchRepository extends MongoRepository<FormSwitch, String> {
 
 }
