@@ -1,5 +1,6 @@
 /*
  * The MIT License (MIT)
+ *
  * Copyright 2020 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
@@ -18,31 +19,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.mapper;
+package uk.nhs.hee.tis.trainee.forms.model;
 
-import java.util.List;
-import org.mapstruct.InheritInverseConfiguration;
-import org.mapstruct.MapMapping;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
-import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
-import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
+import lombok.Data;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Mapper(componentModel = "spring", uses = {CovidDeclarationMapper.class})
-public interface FormRPartBMapper {
+@Document(collection = "FormSwitch")
+@Data
+public class FormSwitch {
+  @Id
+  private String id;
 
-  @Mapping(target = "covidDeclarationDto", source = "covidDeclaration")
-  FormRPartBDto toDto(FormRPartB formRPartB);
+  private String name;
 
-  @InheritInverseConfiguration
-  FormRPartB toEntity(FormRPartBDto formRPartBDto);
-
-  List<FormRPartBDto> toDtos(List<FormRPartB> formRPartBs);
-
-  List<FormRPartB> toEntities(List<FormRPartBDto> formRPartBDtos);
-
-  FormRPartSimpleDto toSimpleDto(FormRPartB formRPartB);
-
-  List<FormRPartSimpleDto> toSimpleDtos(List<FormRPartB> formRPartBs);
+  private boolean enabled;
 }

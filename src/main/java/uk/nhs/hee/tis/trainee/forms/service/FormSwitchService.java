@@ -1,5 +1,6 @@
 /*
  * The MIT License (MIT)
+ *
  * Copyright 2020 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
@@ -18,31 +19,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.mapper;
+package uk.nhs.hee.tis.trainee.forms.service;
 
 import java.util.List;
-import org.mapstruct.InheritInverseConfiguration;
-import org.mapstruct.MapMapping;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
-import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
-import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
+import uk.nhs.hee.tis.trainee.forms.dto.FormSwitchDto;
 
-@Mapper(componentModel = "spring", uses = {CovidDeclarationMapper.class})
-public interface FormRPartBMapper {
+public interface FormSwitchService {
 
-  @Mapping(target = "covidDeclarationDto", source = "covidDeclaration")
-  FormRPartBDto toDto(FormRPartB formRPartB);
-
-  @InheritInverseConfiguration
-  FormRPartB toEntity(FormRPartBDto formRPartBDto);
-
-  List<FormRPartBDto> toDtos(List<FormRPartB> formRPartBs);
-
-  List<FormRPartB> toEntities(List<FormRPartBDto> formRPartBDtos);
-
-  FormRPartSimpleDto toSimpleDto(FormRPartB formRPartB);
-
-  List<FormRPartSimpleDto> toSimpleDtos(List<FormRPartB> formRPartBs);
+  /**
+   * Get list of the switches of temp forms.
+   *
+   * @return list of all the form swtiches.
+   */
+  List<FormSwitchDto> getFormSwitches();
 }

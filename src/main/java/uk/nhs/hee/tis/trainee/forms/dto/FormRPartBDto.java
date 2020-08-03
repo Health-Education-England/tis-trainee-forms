@@ -66,4 +66,6 @@ public class FormRPartBDto {
   private LocalDate submissionDate;
   private LocalDate lastModifiedDate;
   private LifecycleState lifecycleState;
+  private Boolean haveCovidDeclarations;
+  private CovidDeclarationDto covidDeclarationDto;
 }
