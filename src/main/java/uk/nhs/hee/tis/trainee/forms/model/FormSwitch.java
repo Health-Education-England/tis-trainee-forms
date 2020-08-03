@@ -31,7 +31,7 @@ public class FormSwitch {
   @Id
   private String id;
 
-  String name;
+  private String name;
 
-  boolean enabled;
+  private boolean enabled;
 }

@@ -27,6 +27,6 @@ import lombok.Data;
 public class FormSwitchDto {
 
   private String id;
-  String name;
-  boolean enabled;
+  private String name;
+  private boolean enabled;
 }
