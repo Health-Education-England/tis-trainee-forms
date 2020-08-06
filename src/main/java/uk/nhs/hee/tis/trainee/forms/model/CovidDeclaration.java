@@ -31,4 +31,10 @@ public class CovidDeclaration {
   private String otherInformationForPanel;
   private Boolean discussWithSupervisorChecked;
   private Boolean discussWithSomeoneChecked;
+  private Boolean haveChangesToPlacement;
+  private String changeCircumstances;
+  private String changeCircumstanceOther;
+  private String howPlacementAdjusted;
+  private String educationSupervisorName;
+  private String educationSupervisorEmail;
 }
