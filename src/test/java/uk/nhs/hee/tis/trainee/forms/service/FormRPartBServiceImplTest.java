@@ -20,27 +20,29 @@
 
 package uk.nhs.hee.tis.trainee.forms.service;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import org.assertj.core.util.Lists;
-import org.hamcrest.CoreMatchers;
-import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.util.ReflectionUtils;
 import uk.nhs.hee.tis.trainee.forms.dto.DeclarationDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
+import uk.nhs.hee.tis.trainee.forms.mapper.CovidDeclarationMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
+import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.model.Declaration;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.model.Work;
@@ -48,7 +50,7 @@ import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
 import uk.nhs.hee.tis.trainee.forms.service.impl.FormRPartBServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
-public class FormRPartBServiceImplTest {
+class FormRPartBServiceImplTest {
 
   private static final String DEFAULT_ID = "DEFAULT_ID";
   private static final String DEFAULT_TRAINEE_TIS_ID = "1";
@@ -81,18 +83,14 @@ public class FormRPartBServiceImplTest {
   private static final String DEFAULT_CURRENT_DECLARATION_SUMMARY =
       "DEFAULT_CURRENT_DECLARATION_SUMMARY";
 
-  @InjectMocks
-  private FormRPartBServiceImpl formRPartBServiceImpl;
+  private FormRPartBServiceImpl service;
 
   @Mock
-  private FormRPartBMapper formRPartBMapperMock;
+  private FormRPartBRepository repository;
 
-  @Mock
-  private FormRPartBRepository formRPartBRepositoryMock;
+  private FormRPartBMapper mapper;
 
-  private FormRPartBDto formRPartBDto;
-  private FormRPartB formRPartB;
-  private FormRPartSimpleDto formRPartSimpleDto;
+  private FormRPartB entity;
   private WorkDto workDto;
   private Work work;
   private DeclarationDto previousDeclarationDto;
@@ -100,58 +98,47 @@ public class FormRPartBServiceImplTest {
   private DeclarationDto currentDeclarationDto;
   private Declaration currentDeclaration;
 
+  @BeforeEach
+  void setUp() {
+    mapper = new FormRPartBMapperImpl();
+    Field field = ReflectionUtils.findField(FormRPartBMapperImpl.class, "covidDeclarationMapper");
+    field.setAccessible(true);
+    ReflectionUtils.setField(field, mapper, new CovidDeclarationMapperImpl());
+
+    service = new FormRPartBServiceImpl(repository, mapper);
+    initData();
+  }
+
   /**
    * init test data.
    */
-  @BeforeEach
-  public void initData() {
+  void initData() {
     setupWorkData();
     setupPreviousDeclarationData();
     setupCurrentDeclarationData();
 
-    formRPartBDto = new FormRPartBDto();
-    formRPartBDto.setId(DEFAULT_ID);
-    formRPartBDto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    formRPartBDto.setForename(DEFAULT_FORENAME);
-    formRPartBDto.setSurname(DEFAULT_SURNAME);
-    formRPartBDto.setWork(Lists.newArrayList(workDto));
-    formRPartBDto.setTotalLeave(DEFAULT_TOTAL_LEAVE);
-    formRPartBDto.setIsHonest(DEFAULT_IS_HONEST);
-    formRPartBDto.setIsHealthy(DEFAULT_IS_HEALTHY);
-    formRPartBDto.setHealthStatement(DEFAULT_HEALTHY_STATEMENT);
-    formRPartBDto.setHavePreviousDeclarations(DEFAULT_HAVE_PREVIOUS_DECLARATIONS);
-    formRPartBDto.setPreviousDeclarations(Lists.newArrayList(previousDeclarationDto));
-    formRPartBDto.setPreviousDeclarationSummary(DEFAULT_PREVIOUS_DECLARATION_SUMMARY);
-    formRPartBDto.setHaveCurrentDeclarations(DEFAULT_HAVE_CURRENT_DECLARATIONS);
-    formRPartBDto.setCurrentDeclarations(Lists.newArrayList(currentDeclarationDto));
-    formRPartBDto.setCurrentDeclarationSummary(DEFAULT_CURRENT_DECLARATION_SUMMARY);
-
-    formRPartB = new FormRPartB();
-    formRPartB.setId(DEFAULT_ID);
-    formRPartB.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    formRPartB.setForename(DEFAULT_FORENAME);
-    formRPartB.setSurname(DEFAULT_SURNAME);
-    formRPartB.setWork(Lists.newArrayList(work));
-    formRPartB.setTotalLeave(DEFAULT_TOTAL_LEAVE);
-    formRPartB.setIsHonest(DEFAULT_IS_HONEST);
-    formRPartB.setIsHealthy(DEFAULT_IS_HEALTHY);
-    formRPartB.setHealthStatement(DEFAULT_HEALTHY_STATEMENT);
-    formRPartB.setHavePreviousDeclarations(DEFAULT_HAVE_PREVIOUS_DECLARATIONS);
-    formRPartB.setPreviousDeclarations(Lists.newArrayList(previousDeclaration));
-    formRPartB.setPreviousDeclarationSummary(DEFAULT_PREVIOUS_DECLARATION_SUMMARY);
-    formRPartB.setHaveCurrentDeclarations(DEFAULT_HAVE_CURRENT_DECLARATIONS);
-    formRPartB.setCurrentDeclarations(Lists.newArrayList(currentDeclaration));
-    formRPartB.setCurrentDeclarationSummary(DEFAULT_CURRENT_DECLARATION_SUMMARY);
-
-    formRPartSimpleDto = new FormRPartSimpleDto();
-    formRPartSimpleDto.setId(DEFAULT_ID);
-    formRPartSimpleDto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    entity = new FormRPartB();
+    entity.setId(DEFAULT_ID);
+    entity.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    entity.setForename(DEFAULT_FORENAME);
+    entity.setSurname(DEFAULT_SURNAME);
+    entity.setWork(Collections.singletonList(work));
+    entity.setTotalLeave(DEFAULT_TOTAL_LEAVE);
+    entity.setIsHonest(DEFAULT_IS_HONEST);
+    entity.setIsHealthy(DEFAULT_IS_HEALTHY);
+    entity.setHealthStatement(DEFAULT_HEALTHY_STATEMENT);
+    entity.setHavePreviousDeclarations(DEFAULT_HAVE_PREVIOUS_DECLARATIONS);
+    entity.setPreviousDeclarations(Collections.singletonList(previousDeclaration));
+    entity.setPreviousDeclarationSummary(DEFAULT_PREVIOUS_DECLARATION_SUMMARY);
+    entity.setHaveCurrentDeclarations(DEFAULT_HAVE_CURRENT_DECLARATIONS);
+    entity.setCurrentDeclarations(Collections.singletonList(currentDeclaration));
+    entity.setCurrentDeclarationSummary(DEFAULT_CURRENT_DECLARATION_SUMMARY);
   }
 
   /**
    * Set up data for work.
    */
-  public void setupWorkData() {
+  void setupWorkData() {
     workDto = new WorkDto();
     workDto.setTypeOfWork(DEFAULT_TYPE_OF_WORK);
     workDto.setStartDate(DEFAULT_WORK_START_DATE);
@@ -172,7 +159,7 @@ public class FormRPartBServiceImplTest {
   /**
    * Set up data for previous declaration.
    */
-  public void setupPreviousDeclarationData() {
+  void setupPreviousDeclarationData() {
     previousDeclarationDto = new DeclarationDto();
     previousDeclarationDto.setDeclarationType(DEFAULT_PREVIOUS_DECLARATION_TYPE);
     previousDeclarationDto.setDateOfEntry(DEFAULT_PREVIOUS_DATE_OF_ENTRY);
@@ -185,7 +172,7 @@ public class FormRPartBServiceImplTest {
   /**
    * Set up data for current declaration.
    */
-  public void setupCurrentDeclarationData() {
+  void setupCurrentDeclarationData() {
     currentDeclarationDto = new DeclarationDto();
     currentDeclarationDto.setDeclarationType(DEFAULT_CURRENT_DECLARATION_TYPE);
     currentDeclarationDto.setDateOfEntry(DEFAULT_CURRENT_DATE_OF_ENTRY);
@@ -196,79 +183,84 @@ public class FormRPartBServiceImplTest {
   }
 
   @Test
-  public void shouldSaveFormRPartB() {
-    formRPartB.setId(null);
-    formRPartBDto.setId(null);
+  void shouldSaveFormRPartB() {
+    entity.setId(null);
+    FormRPartBDto dto = mapper.toDto(entity);
 
-    FormRPartB formRPartBSaved = new FormRPartB();
-    formRPartBSaved.setId(DEFAULT_ID);
-    formRPartBSaved.setTraineeTisId(formRPartB.getTraineeTisId());
-    formRPartBSaved.setForename(formRPartB.getForename());
-    formRPartBSaved.setSurname(formRPartB.getSurname());
-    formRPartBSaved.setWork(formRPartB.getWork());
-    formRPartBSaved.setTotalLeave(formRPartB.getTotalLeave());
-    formRPartBSaved.setIsHonest(formRPartB.getIsHonest());
-    formRPartBSaved.setIsHealthy(formRPartB.getIsHealthy());
-    formRPartBSaved.setHealthStatement(formRPartB.getHealthStatement());
-    formRPartBSaved.setHavePreviousDeclarations(formRPartB.getHavePreviousDeclarations());
-    formRPartBSaved.setPreviousDeclarations(formRPartB.getPreviousDeclarations());
-    formRPartBSaved.setPreviousDeclarationSummary(formRPartB.getPreviousDeclarationSummary());
-    formRPartBSaved.setHaveCurrentDeclarations(formRPartB.getHaveCurrentDeclarations());
-    formRPartBSaved.setCurrentDeclarations(formRPartB.getCurrentDeclarations());
-    formRPartBSaved.setCurrentDeclarationSummary(formRPartB.getCurrentDeclarationSummary());
+    when(repository.save(entity)).thenAnswer(invocation -> {
+      FormRPartB entity = invocation.getArgument(0);
+      entity.setId(DEFAULT_ID);
+      return entity;
+    });
 
-    FormRPartBDto formRPartBDtoSaved = new FormRPartBDto();
-    formRPartBDtoSaved.setId(DEFAULT_ID);
-    formRPartBDtoSaved.setTraineeTisId(formRPartBDto.getTraineeTisId());
-    formRPartBDtoSaved.setForename(formRPartBDto.getForename());
-    formRPartBDtoSaved.setSurname(formRPartBDto.getSurname());
-    formRPartBDtoSaved.setWork(formRPartBDto.getWork());
-    formRPartBDtoSaved.setTotalLeave(formRPartB.getTotalLeave());
-    formRPartBDtoSaved.setIsHonest(formRPartBDto.getIsHonest());
-    formRPartBDtoSaved.setIsHealthy(formRPartBDto.getIsHealthy());
-    formRPartBDtoSaved.setHealthStatement(formRPartBDto.getHealthStatement());
-    formRPartBDtoSaved.setHavePreviousDeclarations(formRPartBDto.getHavePreviousDeclarations());
-    formRPartBDtoSaved.setPreviousDeclarations(formRPartBDto.getPreviousDeclarations());
-    formRPartBDtoSaved.setPreviousDeclarationSummary(formRPartBDto.getPreviousDeclarationSummary());
-    formRPartBDtoSaved.setHaveCurrentDeclarations(formRPartBDto.getHaveCurrentDeclarations());
-    formRPartBDtoSaved.setCurrentDeclarations(formRPartBDto.getCurrentDeclarations());
-    formRPartBDtoSaved.setCurrentDeclarationSummary(formRPartBDto.getCurrentDeclarationSummary());
+    FormRPartBDto savedDto = service.save(dto);
 
-    when(formRPartBMapperMock.toEntity(formRPartBDto)).thenReturn(formRPartB);
-    when(formRPartBMapperMock.toDto(formRPartBSaved)).thenReturn(formRPartBDtoSaved);
-    when(formRPartBRepositoryMock.save(formRPartB)).thenReturn(formRPartBSaved);
-
-    FormRPartBDto formRPartBDtoReturn = formRPartBServiceImpl.save(formRPartBDto);
-
-    MatcherAssert.assertThat("The id of returned formRPartB Dto should not be null",
-        formRPartBDtoReturn.getId(), CoreMatchers.notNullValue());
+    assertThat("Unexpected form ID.", savedDto.getId(), is(DEFAULT_ID));
+    assertThat("Unexpected trainee ID.", savedDto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected forename.", savedDto.getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", savedDto.getSurname(), is(DEFAULT_SURNAME));
+    assertThat("Unexpected work.", savedDto.getWork(), is(Collections.singletonList(workDto)));
+    assertThat("Unexpected total leave.", savedDto.getTotalLeave(), is(DEFAULT_TOTAL_LEAVE));
+    assertThat("Unexpected isHonest flag.", savedDto.getIsHonest(), is(DEFAULT_IS_HONEST));
+    assertThat("Unexpected isHealthy flag.", savedDto.getIsHealthy(), is(DEFAULT_IS_HEALTHY));
+    assertThat("Unexpected health statement.", savedDto.getHealthStatement(),
+        is(DEFAULT_HEALTHY_STATEMENT));
+    assertThat("Unexpected havePreviousDeclarations flag.", savedDto.getHavePreviousDeclarations(),
+        is(DEFAULT_HAVE_PREVIOUS_DECLARATIONS));
+    assertThat("Unexpected previous declarations.", savedDto.getPreviousDeclarations(),
+        is(Collections.singletonList(previousDeclarationDto)));
+    assertThat("Unexpected previous declaration summary.", savedDto.getPreviousDeclarationSummary(),
+        is(DEFAULT_PREVIOUS_DECLARATION_SUMMARY));
+    assertThat("Unexpected haveCurrentDeclarations flag.", savedDto.getHaveCurrentDeclarations(),
+        is(DEFAULT_HAVE_CURRENT_DECLARATIONS));
+    assertThat("Unexpected current declarations.", savedDto.getCurrentDeclarations(),
+        is(Collections.singletonList(currentDeclarationDto)));
+    assertThat("Unexpected current declaration summary.", savedDto.getCurrentDeclarationSummary(),
+        is(DEFAULT_CURRENT_DECLARATION_SUMMARY));
   }
 
   @Test
-  public void shouldGetFormRPartBsByTraineeTisId() {
-    List<FormRPartB> formRPartBList = Arrays.asList(formRPartB);
-    when(formRPartBRepositoryMock.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID))
-        .thenReturn(formRPartBList);
-    when(formRPartBMapperMock.toSimpleDtos(formRPartBList))
-        .thenReturn(Arrays.asList(formRPartSimpleDto));
+  void shouldGetFormRPartBsByTraineeTisId() {
+    List<FormRPartB> entities = Collections.singletonList(entity);
+    when(repository.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID)).thenReturn(entities);
 
-    List<FormRPartSimpleDto> formRPartSimpleDtoList = formRPartBServiceImpl
-        .getFormRPartBsByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    List<FormRPartSimpleDto> dtos = service.getFormRPartBsByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
 
-    MatcherAssert.assertThat("The size of returned formRPartB list do not match the expected value",
-        formRPartSimpleDtoList.size(), CoreMatchers.equalTo(formRPartBList.size()));
-    MatcherAssert.assertThat("The returned formRPartB list doesn't not contain the expected item",
-        formRPartSimpleDtoList, CoreMatchers.hasItem(formRPartSimpleDto));
+    assertThat("Unexpected numbers of forms.", dtos.size(), is(entities.size()));
+
+    FormRPartSimpleDto dto = dtos.get(0);
+    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID));
+    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
   }
 
   @Test
-  public void shouldGetFormRPartAById() {
-    when(formRPartBRepositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(formRPartB));
-    when(formRPartBMapperMock.toDto(formRPartB)).thenReturn(formRPartBDto);
+  void shouldGetFormRPartBById() {
+    when(repository.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
+        .thenReturn(Optional.of(entity));
 
-    FormRPartBDto formRPartBDtoReturn = formRPartBServiceImpl.getFormRPartBById(DEFAULT_ID);
+    FormRPartBDto dto = service.getFormRPartBById(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID);
 
-    MatcherAssert.assertThat("The returned formRPartA doesn't not match the expected one",
-        formRPartBDtoReturn, CoreMatchers.is(formRPartBDto));
+    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID));
+    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected forename.", dto.getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", dto.getSurname(), is(DEFAULT_SURNAME));
+    assertThat("Unexpected work.", dto.getWork(), is(Collections.singletonList(workDto)));
+    assertThat("Unexpected total leave.", dto.getTotalLeave(), is(DEFAULT_TOTAL_LEAVE));
+    assertThat("Unexpected isHonest flag.", dto.getIsHonest(), is(DEFAULT_IS_HONEST));
+    assertThat("Unexpected isHealthy flag.", dto.getIsHealthy(), is(DEFAULT_IS_HEALTHY));
+    assertThat("Unexpected health statement.", dto.getHealthStatement(),
+        is(DEFAULT_HEALTHY_STATEMENT));
+    assertThat("Unexpected havePreviousDeclarations flag.", dto.getHavePreviousDeclarations(),
+        is(DEFAULT_HAVE_PREVIOUS_DECLARATIONS));
+    assertThat("Unexpected previous declarations.", dto.getPreviousDeclarations(),
+        is(Collections.singletonList(previousDeclarationDto)));
+    assertThat("Unexpected previous declaration summary.", dto.getPreviousDeclarationSummary(),
+        is(DEFAULT_PREVIOUS_DECLARATION_SUMMARY));
+    assertThat("Unexpected haveCurrentDeclarations flag.", dto.getHaveCurrentDeclarations(),
+        is(DEFAULT_HAVE_CURRENT_DECLARATIONS));
+    assertThat("Unexpected current declarations.", dto.getCurrentDeclarations(),
+        is(Collections.singletonList(currentDeclarationDto)));
+    assertThat("Unexpected current declaration summary.", dto.getCurrentDeclarationSummary(),
+        is(DEFAULT_CURRENT_DECLARATION_SUMMARY));
   }
 }

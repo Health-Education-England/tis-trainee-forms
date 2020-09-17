@@ -37,14 +37,13 @@ import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 @Transactional
 public class FormRPartAServiceImpl implements FormRPartAService {
 
-  private final FormRPartAMapper formRPartAMapper;
+  private final FormRPartAMapper mapper;
 
-  private final FormRPartARepository formRPartARepository;
+  private final FormRPartARepository repository;
 
-  public FormRPartAServiceImpl(FormRPartARepository formRPartARepository,
-      FormRPartAMapper formRPartAMapper) {
-    this.formRPartARepository = formRPartARepository;
-    this.formRPartAMapper = formRPartAMapper;
+  public FormRPartAServiceImpl(FormRPartARepository repository, FormRPartAMapper mapper) {
+    this.repository = repository;
+    this.mapper = mapper;
   }
 
   /**
@@ -53,9 +52,9 @@ public class FormRPartAServiceImpl implements FormRPartAService {
   @Override
   public FormRPartADto save(FormRPartADto formRPartADto) {
     log.info("Request to save FormRPartA : {}", formRPartADto);
-    FormRPartA formRPartA = formRPartAMapper.toEntity(formRPartADto);
-    formRPartA = formRPartARepository.save(formRPartA);
-    return formRPartAMapper.toDto(formRPartA);
+    FormRPartA formRPartA = mapper.toEntity(formRPartADto);
+    formRPartA = repository.save(formRPartA);
+    return mapper.toDto(formRPartA);
   }
 
   /**
@@ -64,17 +63,17 @@ public class FormRPartAServiceImpl implements FormRPartAService {
   @Override
   public List<FormRPartSimpleDto> getFormRPartAsByTraineeTisId(String traineeTisId) {
     log.info("Request to get FormRPartA list by trainee profileId : {}", traineeTisId);
-    List<FormRPartA> formRPartAList = formRPartARepository.findByTraineeTisId(traineeTisId);
-    return formRPartAMapper.toSimpleDtos(formRPartAList);
+    List<FormRPartA> formRPartAList = repository.findByTraineeTisId(traineeTisId);
+    return mapper.toSimpleDtos(formRPartAList);
   }
 
   /**
    * get FormRPartA by id.
    */
   @Override
-  public FormRPartADto getFormRPartAById(String id) {
+  public FormRPartADto getFormRPartAById(String id, String traineeTisId) {
     log.info("Request to get FormRPartA by id : {}", id);
-    FormRPartA formRPartA = formRPartARepository.findById(id).orElse(null);
-    return formRPartAMapper.toDto(formRPartA);
+    FormRPartA formRPartA = repository.findByIdAndTraineeTisId(id, traineeTisId).orElse(null);
+    return mapper.toDto(formRPartA);
   }
 }
