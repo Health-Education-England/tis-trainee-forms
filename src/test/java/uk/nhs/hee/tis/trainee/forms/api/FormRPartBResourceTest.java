@@ -164,7 +164,7 @@ class FormRPartBResourceTest {
     BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(dto, "formDto");
     bindingResult.addError(new FieldError("formDto", "formField", "Form field not valid."));
 
-    Method method = validator.getClass().getMethods()[0];
+    Method method = validator.getClass().getMethod("validate", FormRPartBDto.class);
     Exception exception = new MethodArgumentNotValidException(new MethodParameter(method, 0),
         bindingResult);
     doThrow(exception).when(validator).validate(dto);
@@ -224,7 +224,7 @@ class FormRPartBResourceTest {
     BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(dto, "formDto");
     bindingResult.addError(new FieldError("formDto", "formField", "Form field not valid."));
 
-    Method method = validator.getClass().getMethods()[0];
+    Method method = validator.getClass().getMethod("validate", FormRPartBDto.class);
     Exception exception = new MethodArgumentNotValidException(new MethodParameter(method, 0),
         bindingResult);
     doThrow(exception).when(validator).validate(dto);
