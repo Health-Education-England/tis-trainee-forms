@@ -36,17 +36,36 @@ public class AuthTokenUtil {
 
   private static final String TIS_ID_ATTRIBUTE = "custom:tisId";
 
-  private static ObjectMapper mapper = new ObjectMapper();
+  private static final ObjectMapper mapper = new ObjectMapper();
 
+  private AuthTokenUtil() {
+
+  }
+
+  /**
+   * Get the trainee's TIS ID from the provided token.
+   *
+   * @param token The token to use.
+   * @return The trainee's TIS ID.
+   * @throws IOException If the token's payload was not a Map.
+   */
   public static String getTraineeTisId(String token) throws IOException {
     String[] tokenSections = token.split("\\.");
     byte[] payloadBytes = Base64.getDecoder()
         .decode(tokenSections[1].getBytes(StandardCharsets.UTF_8));
 
-    Map payload = mapper.readValue(payloadBytes, Map.class);
+    Map<?, ?> payload = mapper.readValue(payloadBytes, Map.class);
     return (String) payload.get(TIS_ID_ATTRIBUTE);
   }
 
+  /**
+   * Verify that the token contains a valid trainee TIS ID and that it matches the expected ID.
+   *
+   * @param requestedTraineeTisId The ID to validate against.
+   * @param token                 The token to use.
+   * @param <T>                   The type of the response body.
+   * @return A ResponseEntity with a suitable error status, or empty if valid.
+   */
   public static <T> Optional<ResponseEntity<T>> verifyTraineeTisId(String requestedTraineeTisId,
       String token) {
     ResponseEntity<T> responseEntity = null;
