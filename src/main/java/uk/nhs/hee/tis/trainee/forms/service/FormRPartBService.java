@@ -37,16 +37,17 @@ public interface FormRPartBService {
   /**
    * Get the forms for a trainee.
    *
-   * @param traineeProfileId The ID of the trainee to get the forms for.
+   * @param traineeTisId The ID of the trainee to get the forms for.
    * @return A collection of forms found for the trainee.
    */
-  List<FormRPartSimpleDto> getFormRPartBsByTraineeTisId(String traineeProfileId);
+  List<FormRPartSimpleDto> getFormRPartBsByTraineeTisId(String traineeTisId);
 
   /**
    * Get a form by id.
    *
-   * @param id The ID of the form.
+   * @param id           The ID of the form.
+   * @param traineeTisId The ID of the trainee to get the form for.
    * @return The retrieved form.
    */
-  FormRPartBDto getFormRPartBById(String id);
+  FormRPartBDto getFormRPartBById(String id, String traineeTisId);
 }

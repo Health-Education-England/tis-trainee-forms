@@ -21,13 +21,13 @@
 
 package uk.nhs.hee.tis.trainee.forms.service;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.when;
 
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import org.hamcrest.CoreMatchers;
-import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,106 +36,90 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
-import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapper;
+import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
 import uk.nhs.hee.tis.trainee.forms.service.impl.FormRPartAServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
-public class FormRPartAServiceImplTest {
+class FormRPartAServiceImplTest {
 
   private static final String DEFAULT_ID = "DEFAULT_ID";
   private static final String DEFAULT_TRAINEE_TIS_ID = "1";
   private static final String DEFAULT_FORENAME = "DEFAULT_FORENAME";
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";
 
-  @InjectMocks
-  private FormRPartAServiceImpl formRPartAServiceImpl;
+  private FormRPartAServiceImpl service;
 
   @Mock
-  private FormRPartAMapper formRPartAMapperMock;
+  private FormRPartARepository repository;
 
-  @Mock
-  private FormRPartARepository formRPartARepositoryMock;
+  private FormRPartA entity;
 
-  private FormRPartADto formRPartADto;
-  private FormRPartA formRPartA;
-  private FormRPartSimpleDto formRPartSimpleDto;
+  @BeforeEach
+  void setUp() {
+    service = new FormRPartAServiceImpl(repository, new FormRPartAMapperImpl());
+    initData();
+  }
 
   /**
    * init test data.
    */
-  @BeforeEach
-  public void initData() {
-    formRPartADto = new FormRPartADto();
-    formRPartADto.setId(DEFAULT_ID);
-    formRPartADto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    formRPartADto.setForename(DEFAULT_FORENAME);
-    formRPartADto.setSurname(DEFAULT_SURNAME);
-
-    formRPartA = new FormRPartA();
-    formRPartA.setId(DEFAULT_ID);
-    formRPartA.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    formRPartA.setForename(DEFAULT_FORENAME);
-    formRPartA.setSurname(DEFAULT_SURNAME);
-
-    formRPartSimpleDto = new FormRPartSimpleDto();
-    formRPartSimpleDto.setId(DEFAULT_ID);
-    formRPartSimpleDto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+  void initData() {
+    entity = new FormRPartA();
+    entity.setId(DEFAULT_ID);
+    entity.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    entity.setForename(DEFAULT_FORENAME);
+    entity.setSurname(DEFAULT_SURNAME);
   }
 
   @Test
-  public void shouldSaveFormRPartA() {
-    formRPartA.setId(null);
-    formRPartADto.setId(null);
+  void shouldSaveFormRPartA() {
+    entity.setId(null);
 
-    FormRPartA formRPartASaved = new FormRPartA();
-    formRPartASaved.setId(DEFAULT_ID);
-    formRPartASaved.setTraineeTisId(formRPartA.getTraineeTisId());
-    formRPartASaved.setForename(formRPartA.getForename());
-    formRPartASaved.setSurname(formRPartA.getSurname());
+    FormRPartADto dto = new FormRPartADto();
+    dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    dto.setForename(DEFAULT_FORENAME);
+    dto.setSurname(DEFAULT_SURNAME);
 
-    FormRPartADto formRPartADtoSaved = new FormRPartADto();
-    formRPartADtoSaved.setId(DEFAULT_ID);
-    formRPartADtoSaved.setTraineeTisId(formRPartA.getTraineeTisId());
-    formRPartADtoSaved.setForename(formRPartA.getForename());
-    formRPartADtoSaved.setSurname(formRPartA.getSurname());
+    when(repository.save(entity)).thenAnswer(invocation -> {
+      FormRPartA entity = invocation.getArgument(0);
+      entity.setId(DEFAULT_ID);
+      return entity;
+    });
 
-    when(formRPartAMapperMock.toEntity(formRPartADto)).thenReturn(formRPartA);
-    when(formRPartAMapperMock.toDto(formRPartASaved)).thenReturn(formRPartADtoSaved);
-    when(formRPartARepositoryMock.save(formRPartA)).thenReturn(formRPartASaved);
+    FormRPartADto savedDto = service.save(dto);
 
-    FormRPartADto formRPartADtoReturn = formRPartAServiceImpl.save(formRPartADto);
-
-    MatcherAssert.assertThat("The id of returned formRPartA Dto should not be null",
-        formRPartADtoReturn.getId(), CoreMatchers.notNullValue());
+    assertThat("Unexpected form ID.", savedDto.getId(), is(DEFAULT_ID));
+    assertThat("Unexpected trainee ID.", savedDto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected forename.", savedDto.getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", savedDto.getSurname(), is(DEFAULT_SURNAME));
   }
 
   @Test
-  public void shouldGetFormRPartAsByTraineeTisId() {
-    List<FormRPartA> formRPartAList = Arrays.asList(formRPartA);
-    when(formRPartARepositoryMock.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID))
-        .thenReturn(formRPartAList);
-    when(formRPartAMapperMock.toSimpleDtos(formRPartAList))
-        .thenReturn(Arrays.asList(formRPartSimpleDto));
+  void shouldGetFormRPartAsByTraineeTisId() {
+    List<FormRPartA> entities = Collections.singletonList(entity);
+    when(repository.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID)).thenReturn(entities);
 
-    List<FormRPartSimpleDto> formRPartASimpleDtoList = formRPartAServiceImpl
-        .getFormRPartAsByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    List<FormRPartSimpleDto> dtos = service.getFormRPartAsByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
 
-    MatcherAssert.assertThat("The size of returned formRPartA list do not match the expected value",
-        formRPartASimpleDtoList.size(), CoreMatchers.equalTo(formRPartAList.size()));
-    MatcherAssert.assertThat("The returned formRPartA list doesn't not contain the expected item",
-        formRPartASimpleDtoList, CoreMatchers.hasItem(formRPartSimpleDto));
+    assertThat("Unexpected numbers of forms.", dtos.size(), is(entities.size()));
+
+    FormRPartSimpleDto dto = dtos.get(0);
+    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID));
+    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
   }
 
   @Test
-  public void shouldGetFormRPartAById() {
-    when(formRPartARepositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(formRPartA));
-    when(formRPartAMapperMock.toDto(formRPartA)).thenReturn(formRPartADto);
+  void shouldGetFormRPartAById() {
+    when(repository.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
+        .thenReturn(Optional.of(entity));
 
-    FormRPartADto formRPartADtoReturn = formRPartAServiceImpl.getFormRPartAById(DEFAULT_ID);
+    FormRPartADto dto = service.getFormRPartAById(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID);
 
-    MatcherAssert.assertThat("The returned formRPartA doesn't not match the expected one",
-        formRPartADtoReturn, CoreMatchers.is(formRPartADto));
+    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID));
+    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected forename.", dto.getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", dto.getSurname(), is(DEFAULT_SURNAME));
   }
 }

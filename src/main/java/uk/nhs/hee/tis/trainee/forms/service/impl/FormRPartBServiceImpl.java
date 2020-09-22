@@ -71,9 +71,10 @@ public class FormRPartBServiceImpl implements FormRPartBService {
    * get FormRPartB by id.
    */
   @Override
-  public FormRPartBDto getFormRPartBById(String id) {
+  public FormRPartBDto getFormRPartBById(String id, String traineeTisId) {
     log.info("Request to get FormRPartB by id : {}", id);
-    FormRPartB formRPartB = formRPartBRepository.findById(id).orElse(null);
+    FormRPartB formRPartB = formRPartBRepository.findByIdAndTraineeTisId(id, traineeTisId)
+        .orElse(null);
     return formRPartBMapper.toDto(formRPartB);
   }
 }
