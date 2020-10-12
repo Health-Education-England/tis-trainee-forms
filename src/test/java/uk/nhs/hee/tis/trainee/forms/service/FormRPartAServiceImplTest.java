@@ -57,7 +57,6 @@ class FormRPartAServiceImplTest {
   private static final String DEFAULT_TRAINEE_TIS_ID = "1";
   private static final String DEFAULT_FORENAME = "DEFAULT_FORENAME";
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";
-  private static final String DOCUMENT_SERVICE_URL = "http://example.com/service/url";
   private static final LocalDate DEFAULT_SUBMISSION_DATE = LocalDate.of(2020, 8, 29);
 
   private FormRPartAServiceImpl service;
