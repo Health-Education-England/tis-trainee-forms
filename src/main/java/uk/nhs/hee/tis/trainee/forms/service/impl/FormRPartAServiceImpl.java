@@ -21,12 +21,22 @@
 
 package uk.nhs.hee.tis.trainee.forms.service.impl;
 
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.ByteArrayInputStream;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
@@ -41,9 +51,22 @@ public class FormRPartAServiceImpl implements FormRPartAService {
 
   private final FormRPartARepository repository;
 
-  public FormRPartAServiceImpl(FormRPartARepository repository, FormRPartAMapper mapper) {
+  private final ObjectMapper objectMapper;
+
+  private final AmazonS3 amazonS3;
+
+  @Value("${application.file-store.always-store}")
+  private boolean alwaysStoreFiles;
+
+  @Value("${application.file-store.bucket}")
+  private String bucketName;
+
+  public FormRPartAServiceImpl(FormRPartARepository repository, FormRPartAMapper mapper,
+      ObjectMapper objectMapper, AmazonS3 amazonS3) {
     this.repository = repository;
     this.mapper = mapper;
+    this.objectMapper = objectMapper;
+    this.amazonS3 = amazonS3;
   }
 
   /**
@@ -53,7 +76,13 @@ public class FormRPartAServiceImpl implements FormRPartAService {
   public FormRPartADto save(FormRPartADto formRPartADto) {
     log.info("Request to save FormRPartA : {}", formRPartADto);
     FormRPartA formRPartA = mapper.toEntity(formRPartADto);
-    formRPartA = repository.save(formRPartA);
+    if (alwaysStoreFiles || formRPartA.getLifecycleState() == LifecycleState.SUBMITTED) {
+      formRPartA = persistInS3(formRPartA);
+      //Save in mongo for backward compatibility
+      repository.save(formRPartA);
+    } else {
+      formRPartA = repository.save(formRPartA);
+    }
     return mapper.toDto(formRPartA);
   }
 
@@ -75,5 +104,33 @@ public class FormRPartAServiceImpl implements FormRPartAService {
     log.info("Request to get FormRPartA by id : {}", id);
     FormRPartA formRPartA = repository.findByIdAndTraineeTisId(id, traineeTisId).orElse(null);
     return mapper.toDto(formRPartA);
+  }
+
+  private FormRPartA persistInS3(FormRPartA formRPartA) {
+    if (StringUtils.isEmpty(formRPartA.getId())) {
+      formRPartA.setId(UUID.randomUUID().toString());
+    }
+    String fileName = formRPartA.getId() + ".json";
+    try {
+      String key = String.join("/", formRPartA.getTraineeTisId(), "forms", "formr-a", fileName);
+      ObjectMetadata metadata = new ObjectMetadata();
+      metadata.addUserMetadata("name", fileName);
+      metadata.addUserMetadata("type", "json");
+      metadata.addUserMetadata("formtype", "formr-a");
+      metadata.addUserMetadata("lifecyclestate", formRPartA.getLifecycleState().name());
+      metadata.addUserMetadata("submissiondate",
+          formRPartA.getSubmissionDate().format(DateTimeFormatter.ISO_LOCAL_DATE));
+      metadata.addUserMetadata("traineeid", formRPartA.getTraineeTisId());
+
+      PutObjectRequest request = new PutObjectRequest(bucketName, key,
+          new ByteArrayInputStream(objectMapper.writeValueAsBytes(formRPartA)), metadata);
+      log.info("uploading file: {} to bucket: {} with key: {}", fileName, bucketName, key);
+      amazonS3.putObject(request);
+    } catch (Exception e) {
+      log.error("Failed to save form for trainee: {} in bucket: {}", formRPartA.getTraineeTisId(),
+          bucketName, e);
+      throw new RuntimeException("Unable to save file to s3", e);
+    }
+    return formRPartA;
   }
 }
