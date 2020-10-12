@@ -2,11 +2,18 @@ package uk.nhs.hee.tis.trainee.forms.exception;
 
 public class ApplicationException extends RuntimeException {
 
-  public ApplicationException(String s, Exception e) {
-    super(s, e);
+  /**
+   * @param message The exception message for the Exception
+   * @param cause The cause to wrap
+   */
+  public ApplicationException(String message, Exception cause) {
+    super(message, cause);
   }
 
-  public ApplicationException(String s) {
-    super(s);
+  /**
+   * @param message The exception message for the Exception
+   */
+  public ApplicationException(String message) {
+    super(message);
   }
 }
