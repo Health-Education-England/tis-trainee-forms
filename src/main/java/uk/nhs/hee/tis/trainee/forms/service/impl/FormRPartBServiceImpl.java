@@ -62,6 +62,8 @@ public class FormRPartBServiceImpl implements FormRPartBService {
   private String bucketName;
 
   /**
+   * Constructor for a FormR PartA service.
+   *
    * @param formRPartBRepository spring data repository
    * @param formRPartBMapper     maps between the form entity and dto
    * @param objectMapper         parses and serializes between json and the object

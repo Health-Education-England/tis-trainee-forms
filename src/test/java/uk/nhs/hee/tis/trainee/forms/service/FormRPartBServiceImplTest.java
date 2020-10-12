@@ -274,7 +274,8 @@ class FormRPartBServiceImplTest {
     entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
     when(s3Mock.putObject(any())).thenThrow(new ApplicationException("Expected Exception"));
 
-    assertThrows(RuntimeException.class, () -> service.save(mapper.toDto(entity)));
+    FormRPartBDto dto = mapper.toDto(entity);
+    assertThrows(RuntimeException.class, () -> service.save(dto));
     verifyNoInteractions(repositoryMock);
   }
 
