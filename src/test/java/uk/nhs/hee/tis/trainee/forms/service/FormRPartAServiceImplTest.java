@@ -45,6 +45,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.exception.ApplicationException;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
@@ -149,7 +150,7 @@ class FormRPartAServiceImplTest {
     dto.setLifecycleState(LifecycleState.SUBMITTED);
     dto.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
 
-    when(s3Mock.putObject(any())).thenThrow(new RuntimeException("Expected Exception"));
+    when(s3Mock.putObject(any())).thenThrow(new ApplicationException("Expected Exception"));
 
     assertThrows(RuntimeException.class, () -> service.save(dto));
     verifyNoInteractions(repositoryMock);

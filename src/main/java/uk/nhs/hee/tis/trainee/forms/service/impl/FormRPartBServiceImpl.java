@@ -36,6 +36,7 @@ import org.springframework.util.StringUtils;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.exception.ApplicationException;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
@@ -60,6 +61,12 @@ public class FormRPartBServiceImpl implements FormRPartBService {
   @Value("${application.file-store.bucket}")
   private String bucketName;
 
+  /**
+   * @param formRPartBRepository spring data repository
+   * @param formRPartBMapper     maps between the form entity and dto
+   * @param objectMapper         parses and serializes between json and the object
+   * @param amazonS3             object repository cloud storage
+   */
   public FormRPartBServiceImpl(FormRPartBRepository formRPartBRepository,
       FormRPartBMapper formRPartBMapper, ObjectMapper objectMapper,
       AmazonS3 amazonS3) {
@@ -77,7 +84,7 @@ public class FormRPartBServiceImpl implements FormRPartBService {
     log.info("Request to save FormRPartB : {}", formRPartBDto);
     FormRPartB formRPartB = formRPartBMapper.toEntity(formRPartBDto);
     if (alwaysStoreFiles || formRPartB.getLifecycleState() == LifecycleState.SUBMITTED) {
-      formRPartB = persistInS3(formRPartB);
+      persistInS3(formRPartB);
       //Save in mongo for backward compatibility
       formRPartBRepository.save(formRPartB);
     } else {
@@ -130,7 +137,7 @@ public class FormRPartBServiceImpl implements FormRPartBService {
     } catch (Exception e) {
       log.error("Failed to save form for trainee: {} in bucket: {}", formRPartB.getTraineeTisId(),
           bucketName, e);
-      throw new RuntimeException("Unable to save file to s3", e);
+      throw new ApplicationException("Unable to save file to s3", e);
     }
     return formRPartB;
   }

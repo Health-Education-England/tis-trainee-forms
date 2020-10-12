@@ -49,6 +49,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.exception.ApplicationException;
 import uk.nhs.hee.tis.trainee.forms.mapper.CovidDeclarationMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapperImpl;
@@ -271,7 +272,7 @@ class FormRPartBServiceImplTest {
   void shouldThrowExceptionWhenFormRPartBNotSaved() {
     entity.setLifecycleState(LifecycleState.SUBMITTED);
     entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
-    when(s3Mock.putObject(any())).thenThrow(new RuntimeException("Expected Exception"));
+    when(s3Mock.putObject(any())).thenThrow(new ApplicationException("Expected Exception"));
 
     assertThrows(RuntimeException.class, () -> service.save(mapper.toDto(entity)));
     verifyNoInteractions(repositoryMock);
