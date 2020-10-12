@@ -20,12 +20,22 @@
 
 package uk.nhs.hee.tis.trainee.forms.service.impl;
 
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.ByteArrayInputStream;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
@@ -40,10 +50,23 @@ public class FormRPartBServiceImpl implements FormRPartBService {
 
   private final FormRPartBRepository formRPartBRepository;
 
+  private final ObjectMapper objectMapper;
+
+  private final AmazonS3 amazonS3;
+
+  @Value("${application.file-store.always-store}")
+  private boolean alwaysStoreFiles;
+
+  @Value("${application.file-store.bucket}")
+  private String bucketName;
+
   public FormRPartBServiceImpl(FormRPartBRepository formRPartBRepository,
-      FormRPartBMapper formRPartBMapper) {
+      FormRPartBMapper formRPartBMapper, ObjectMapper objectMapper,
+      AmazonS3 amazonS3) {
     this.formRPartBRepository = formRPartBRepository;
     this.formRPartBMapper = formRPartBMapper;
+    this.objectMapper = objectMapper;
+    this.amazonS3 = amazonS3;
   }
 
   /**
@@ -53,7 +76,13 @@ public class FormRPartBServiceImpl implements FormRPartBService {
   public FormRPartBDto save(FormRPartBDto formRPartBDto) {
     log.info("Request to save FormRPartB : {}", formRPartBDto);
     FormRPartB formRPartB = formRPartBMapper.toEntity(formRPartBDto);
-    formRPartB = formRPartBRepository.save(formRPartB);
+    if (alwaysStoreFiles || formRPartB.getLifecycleState() == LifecycleState.SUBMITTED) {
+      formRPartB = persistInS3(formRPartB);
+      //Save in mongo for backward compatibility
+      formRPartBRepository.save(formRPartB);
+    } else {
+      formRPartB = formRPartBRepository.save(formRPartB);
+    }
     return formRPartBMapper.toDto(formRPartB);
   }
 
@@ -76,5 +105,33 @@ public class FormRPartBServiceImpl implements FormRPartBService {
     FormRPartB formRPartB = formRPartBRepository.findByIdAndTraineeTisId(id, traineeTisId)
         .orElse(null);
     return formRPartBMapper.toDto(formRPartB);
+  }
+
+  private FormRPartB persistInS3(FormRPartB formRPartB) {
+    if (StringUtils.isEmpty(formRPartB.getId())) {
+      formRPartB.setId(UUID.randomUUID().toString());
+    }
+    String fileName = formRPartB.getId() + ".json";
+    try {
+      String key = String.join("/", formRPartB.getTraineeTisId(), "forms", "formr-a", fileName);
+      ObjectMetadata metadata = new ObjectMetadata();
+      metadata.addUserMetadata("name", fileName);
+      metadata.addUserMetadata("type", "json");
+      metadata.addUserMetadata("formtype", "formr-a");
+      metadata.addUserMetadata("lifecyclestate", formRPartB.getLifecycleState().name());
+      metadata.addUserMetadata("submissiondate",
+          formRPartB.getSubmissionDate().format(DateTimeFormatter.ISO_LOCAL_DATE));
+      metadata.addUserMetadata("traineeid", formRPartB.getTraineeTisId());
+
+      PutObjectRequest request = new PutObjectRequest(bucketName, key,
+          new ByteArrayInputStream(objectMapper.writeValueAsBytes(formRPartB)), metadata);
+      log.info("uploading file: {} to bucket: {} with key: {}", fileName, bucketName, key);
+      amazonS3.putObject(request);
+    } catch (Exception e) {
+      log.error("Failed to save form for trainee: {} in bucket: {}", formRPartB.getTraineeTisId(),
+          bucketName, e);
+      throw new RuntimeException("Unable to save file to s3", e);
+    }
+    return formRPartB;
   }
 }

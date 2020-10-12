@@ -66,7 +66,7 @@ class FormRPartAServiceImplTest {
   private FormRPartARepository repositoryMock;
 
   @Mock
-  private AmazonS3 amazonS3;
+  private AmazonS3 s3Mock;
 
   private FormRPartA entity;
 
@@ -74,7 +74,7 @@ class FormRPartAServiceImplTest {
   @BeforeEach
   void setUp() {
     service = new FormRPartAServiceImpl(repositoryMock, new FormRPartAMapperImpl(),
-        new ObjectMapper(), amazonS3);
+        new ObjectMapper(), s3Mock);
     initData();
   }
 
@@ -111,9 +111,8 @@ class FormRPartAServiceImplTest {
     assertThat("Unexpected forename.", savedDto.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", savedDto.getSurname(), is(DEFAULT_SURNAME));
 
-    verifyNoInteractions(amazonS3);
+    verifyNoInteractions(s3Mock);
   }
-
 
   @Test
   void shouldSaveSubmittedFormRPartA() {
@@ -134,15 +133,13 @@ class FormRPartAServiceImplTest {
     assertThat("Unexpected trainee ID.", savedDto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", savedDto.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", savedDto.getSurname(), is(DEFAULT_SURNAME));
-
-    verify(amazonS3).putObject(any(PutObjectRequest.class));
+    verify(s3Mock).putObject(any(PutObjectRequest.class));
     entity.setId(savedDto.getId());
     verify(repositoryMock).save(entity);
   }
 
   @Test
   void shouldThrowExceptionWhenFormRPartANotSaved() {
-    entity.setId(DEFAULT_ID);
     entity.setLifecycleState(LifecycleState.SUBMITTED);
     entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
 
@@ -153,7 +150,7 @@ class FormRPartAServiceImplTest {
     dto.setLifecycleState(LifecycleState.SUBMITTED);
     dto.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
 
-    when(amazonS3.putObject(any())).thenThrow(new RuntimeException("Expected Exception"));
+    when(s3Mock.putObject(any())).thenThrow(new RuntimeException("Expected Exception"));
 
     assertThrows(RuntimeException.class, () -> service.save(dto));
     verifyNoInteractions(repositoryMock);
