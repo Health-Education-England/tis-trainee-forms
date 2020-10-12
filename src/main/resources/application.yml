@@ -13,8 +13,3 @@ logging:
     root: INFO
     org.springframework.data: DEBUG
     uk.nhs.hee.tis.trainee.forms: TRACE
-
-application:
-  file-store:
-    always-store: ${APPLICATION_FILESTORE_ALWAYSSTORE:false}
-    bucket: ${APPLICATION_FILESTORE_BUCKET}
