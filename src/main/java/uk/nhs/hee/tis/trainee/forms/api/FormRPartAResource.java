@@ -110,10 +110,10 @@ public class FormRPartAResource {
       return createFormRPartA(dto, token);
     }
 
-    Optional<ResponseEntity<FormRPartADto>> responseEntity = AuthTokenUtil
+    Optional<ResponseEntity<FormRPartADto>> errorResponse = AuthTokenUtil
         .verifyTraineeTisId(dto.getTraineeTisId(), token);
-    if (responseEntity.isPresent()) {
-      return responseEntity.get();
+    if (errorResponse.isPresent()) {
+      return errorResponse.get();
     }
 
     validator.validate(dto);

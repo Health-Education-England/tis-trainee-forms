@@ -21,9 +21,17 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -40,6 +48,8 @@ import uk.nhs.hee.tis.trainee.forms.dto.DeclarationDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.exception.ApplicationException;
 import uk.nhs.hee.tis.trainee.forms.mapper.CovidDeclarationMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapperImpl;
@@ -82,11 +92,15 @@ class FormRPartBServiceImplTest {
       .now(ZoneId.systemDefault());
   private static final String DEFAULT_CURRENT_DECLARATION_SUMMARY =
       "DEFAULT_CURRENT_DECLARATION_SUMMARY";
+  private static final LocalDate DEFAULT_SUBMISSION_DATE = LocalDate.of(2020, 8, 29);
 
   private FormRPartBServiceImpl service;
 
   @Mock
-  private FormRPartBRepository repository;
+  private FormRPartBRepository repositoryMock;
+
+  @Mock
+  private AmazonS3 s3Mock;
 
   private FormRPartBMapper mapper;
 
@@ -105,7 +119,7 @@ class FormRPartBServiceImplTest {
     field.setAccessible(true);
     ReflectionUtils.setField(field, mapper, new CovidDeclarationMapperImpl());
 
-    service = new FormRPartBServiceImpl(repository, mapper);
+    service = new FormRPartBServiceImpl(repositoryMock, mapper, new ObjectMapper(), s3Mock);
     initData();
   }
 
@@ -183,11 +197,11 @@ class FormRPartBServiceImplTest {
   }
 
   @Test
-  void shouldSaveFormRPartB() {
+  void shouldSaveUnsubmittedFormRPartB() {
     entity.setId(null);
     FormRPartBDto dto = mapper.toDto(entity);
 
-    when(repository.save(entity)).thenAnswer(invocation -> {
+    when(repositoryMock.save(entity)).thenAnswer(invocation -> {
       FormRPartB entity = invocation.getArgument(0);
       entity.setId(DEFAULT_ID);
       return entity;
@@ -220,9 +234,55 @@ class FormRPartBServiceImplTest {
   }
 
   @Test
+  void shouldSaveSubmittedFormRPartB() {
+    entity.setId(null);
+    entity.setLifecycleState(LifecycleState.SUBMITTED);
+    entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+    FormRPartBDto dto = mapper.toDto(entity);
+
+    FormRPartBDto savedDto = service.save(dto);
+    assertThat("Unexpected form ID.", savedDto.getId(), notNullValue());
+    assertThat("Unexpected trainee ID.", savedDto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected forename.", savedDto.getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", savedDto.getSurname(), is(DEFAULT_SURNAME));
+    assertThat("Unexpected work.", savedDto.getWork(), is(Collections.singletonList(workDto)));
+    assertThat("Unexpected total leave.", savedDto.getTotalLeave(), is(DEFAULT_TOTAL_LEAVE));
+    assertThat("Unexpected isHonest flag.", savedDto.getIsHonest(), is(DEFAULT_IS_HONEST));
+    assertThat("Unexpected isHealthy flag.", savedDto.getIsHealthy(), is(DEFAULT_IS_HEALTHY));
+    assertThat("Unexpected health statement.", savedDto.getHealthStatement(),
+        is(DEFAULT_HEALTHY_STATEMENT));
+    assertThat("Unexpected havePreviousDeclarations flag.", savedDto.getHavePreviousDeclarations(),
+        is(DEFAULT_HAVE_PREVIOUS_DECLARATIONS));
+    assertThat("Unexpected previous declarations.", savedDto.getPreviousDeclarations(),
+        is(Collections.singletonList(previousDeclarationDto)));
+    assertThat("Unexpected previous declaration summary.", savedDto.getPreviousDeclarationSummary(),
+        is(DEFAULT_PREVIOUS_DECLARATION_SUMMARY));
+    assertThat("Unexpected haveCurrentDeclarations flag.", savedDto.getHaveCurrentDeclarations(),
+        is(DEFAULT_HAVE_CURRENT_DECLARATIONS));
+    assertThat("Unexpected current declarations.", savedDto.getCurrentDeclarations(),
+        is(Collections.singletonList(currentDeclarationDto)));
+    assertThat("Unexpected current declaration summary.", savedDto.getCurrentDeclarationSummary(),
+        is(DEFAULT_CURRENT_DECLARATION_SUMMARY));
+    verify(s3Mock).putObject(any(PutObjectRequest.class));
+    entity.setId(savedDto.getId());
+    verify(repositoryMock).save(entity);
+  }
+
+  @Test
+  void shouldThrowExceptionWhenFormRPartBNotSaved() {
+    entity.setLifecycleState(LifecycleState.SUBMITTED);
+    entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+    when(s3Mock.putObject(any())).thenThrow(new ApplicationException("Expected Exception"));
+
+    FormRPartBDto dto = mapper.toDto(entity);
+    assertThrows(RuntimeException.class, () -> service.save(dto));
+    verifyNoInteractions(repositoryMock);
+  }
+
+  @Test
   void shouldGetFormRPartBsByTraineeTisId() {
     List<FormRPartB> entities = Collections.singletonList(entity);
-    when(repository.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID)).thenReturn(entities);
+    when(repositoryMock.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID)).thenReturn(entities);
 
     List<FormRPartSimpleDto> dtos = service.getFormRPartBsByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
 
@@ -235,7 +295,7 @@ class FormRPartBServiceImplTest {
 
   @Test
   void shouldGetFormRPartBById() {
-    when(repository.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
+    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.of(entity));
 
     FormRPartBDto dto = service.getFormRPartBById(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID);
