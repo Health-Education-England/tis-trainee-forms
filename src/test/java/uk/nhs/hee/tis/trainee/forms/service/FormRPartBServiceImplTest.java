@@ -20,24 +20,41 @@
 
 package uk.nhs.hee.tis.trainee.forms.service;
 
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
+import static org.hamcrest.CoreMatchers.both;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.empty;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.ObjectListing;
+import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.amazonaws.services.s3.model.S3Object;
+import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -93,17 +110,21 @@ class FormRPartBServiceImplTest {
   private static final String DEFAULT_CURRENT_DECLARATION_SUMMARY =
       "DEFAULT_CURRENT_DECLARATION_SUMMARY";
   private static final LocalDate DEFAULT_SUBMISSION_DATE = LocalDate.of(2020, 8, 29);
-
+  private static final String DEFAULT_FORM_ID = "my-first-cloud-object-id";
+  private static final Map<String, String> DEFAULT_UNSUBMITTED_METADATA = Map
+      .of("id", DEFAULT_FORM_ID, "formtype", "inform", "lifecyclestate",
+          LifecycleState.UNSUBMITTIED.name(), "submissiondate",
+          DEFAULT_SUBMISSION_DATE.format(ISO_LOCAL_DATE), "traineeid",
+          DEFAULT_TRAINEE_TIS_ID);
+  private static ObjectMapper objectMapper;
   private FormRPartBServiceImpl service;
-
   @Mock
   private FormRPartBRepository repositoryMock;
-
   @Mock
   private AmazonS3 s3Mock;
-
+  @Mock
+  private ObjectListing s3ListingMock;
   private FormRPartBMapper mapper;
-
   private FormRPartB entity;
   private WorkDto workDto;
   private Work work;
@@ -112,6 +133,12 @@ class FormRPartBServiceImplTest {
   private DeclarationDto currentDeclarationDto;
   private Declaration currentDeclaration;
 
+  @BeforeAll
+  static void setup() {
+    objectMapper = new ObjectMapper();
+    objectMapper.registerModule(new JavaTimeModule());
+  }
+
   @BeforeEach
   void setUp() {
     mapper = new FormRPartBMapperImpl();
@@ -119,7 +146,7 @@ class FormRPartBServiceImplTest {
     field.setAccessible(true);
     ReflectionUtils.setField(field, mapper, new CovidDeclarationMapperImpl());
 
-    service = new FormRPartBServiceImpl(repositoryMock, mapper, new ObjectMapper(), s3Mock);
+    service = new FormRPartBServiceImpl(repositoryMock, mapper, objectMapper, s3Mock);
     initData();
   }
 
@@ -127,11 +154,23 @@ class FormRPartBServiceImplTest {
    * init test data.
    */
   void initData() {
-    setupWorkData();
-    setupPreviousDeclarationData();
-    setupCurrentDeclarationData();
+    work = createWork();
+    workDto = createWorkDto();
+    previousDeclaration = createDeclaration(true);
+    previousDeclarationDto = createDeclarationDto(true);
+    currentDeclaration = createDeclaration(false);
+    currentDeclarationDto = createDeclarationDto(false);
 
-    entity = new FormRPartB();
+    entity = createEntity();
+  }
+
+  /**
+   * Set up an FormRPartB
+   *
+   * @return form with all default values
+   */
+  FormRPartB createEntity() {
+    FormRPartB entity = new FormRPartB();
     entity.setId(DEFAULT_ID);
     entity.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     entity.setForename(DEFAULT_FORENAME);
@@ -147,53 +186,78 @@ class FormRPartBServiceImplTest {
     entity.setHaveCurrentDeclarations(DEFAULT_HAVE_CURRENT_DECLARATIONS);
     entity.setCurrentDeclarations(Collections.singletonList(currentDeclaration));
     entity.setCurrentDeclarationSummary(DEFAULT_CURRENT_DECLARATION_SUMMARY);
+    entity.setLifecycleState(LifecycleState.DRAFT);
+    return entity;
   }
 
   /**
    * Set up data for work.
+   *
+   * @return work with default values
    */
-  void setupWorkData() {
-    workDto = new WorkDto();
-    workDto.setTypeOfWork(DEFAULT_TYPE_OF_WORK);
-    workDto.setStartDate(DEFAULT_WORK_START_DATE);
-    workDto.setEndDate(DEFAULT_WORk_END_DATE);
-    workDto.setTrainingPost(DEFAULT_WORK_TRAINING_POST);
-    workDto.setSite(DEFAULT_WORK_SITE);
-    workDto.setSiteLocation(DEFAULT_WORK_SITE_LOCATION);
-
-    work = new Work();
+  Work createWork() {
+    Work work = new Work();
     work.setTypeOfWork(DEFAULT_TYPE_OF_WORK);
     work.setStartDate(DEFAULT_WORK_START_DATE);
     work.setEndDate(DEFAULT_WORk_END_DATE);
     work.setTrainingPost(DEFAULT_WORK_TRAINING_POST);
     work.setSite(DEFAULT_WORK_SITE);
     work.setSiteLocation(DEFAULT_WORK_SITE_LOCATION);
+    return work;
+  }
+
+  /**
+   * Set up data for work.
+   *
+   * @return work with default values
+   */
+  WorkDto createWorkDto() {
+    WorkDto workDto = new WorkDto();
+    workDto.setTypeOfWork(DEFAULT_TYPE_OF_WORK);
+    workDto.setStartDate(DEFAULT_WORK_START_DATE);
+    workDto.setEndDate(DEFAULT_WORk_END_DATE);
+    workDto.setTrainingPost(DEFAULT_WORK_TRAINING_POST);
+    workDto.setSite(DEFAULT_WORK_SITE);
+    workDto.setSiteLocation(DEFAULT_WORK_SITE_LOCATION);
+    return workDto;
   }
 
   /**
    * Set up data for previous declaration.
+   *
+   * @param isPrevious indicates whether to use previous values
+   *
+   * @return declaration with default values
    */
-  void setupPreviousDeclarationData() {
-    previousDeclarationDto = new DeclarationDto();
-    previousDeclarationDto.setDeclarationType(DEFAULT_PREVIOUS_DECLARATION_TYPE);
-    previousDeclarationDto.setDateOfEntry(DEFAULT_PREVIOUS_DATE_OF_ENTRY);
-
-    previousDeclaration = new Declaration();
-    previousDeclaration.setDeclarationType(DEFAULT_PREVIOUS_DECLARATION_TYPE);
-    previousDeclaration.setDateOfEntry(DEFAULT_PREVIOUS_DATE_OF_ENTRY);
+  Declaration createDeclaration(boolean isPrevious) {
+    Declaration declaration = new Declaration();
+    if (isPrevious) {
+      declaration.setDeclarationType(DEFAULT_PREVIOUS_DECLARATION_TYPE);
+      declaration.setDateOfEntry(DEFAULT_PREVIOUS_DATE_OF_ENTRY);
+    } else {
+      declaration.setDeclarationType(DEFAULT_CURRENT_DECLARATION_TYPE);
+      declaration.setDateOfEntry(DEFAULT_CURRENT_DATE_OF_ENTRY);
+    }
+    return declaration;
   }
 
   /**
-   * Set up data for current declaration.
+   * Set up data for previous declaration.
+   *
+   * @param isPrevious indicates whether to use previous values
+   *
+   * @return declaration with default values
    */
-  void setupCurrentDeclarationData() {
-    currentDeclarationDto = new DeclarationDto();
-    currentDeclarationDto.setDeclarationType(DEFAULT_CURRENT_DECLARATION_TYPE);
-    currentDeclarationDto.setDateOfEntry(DEFAULT_CURRENT_DATE_OF_ENTRY);
-
-    currentDeclaration = new Declaration();
-    currentDeclaration.setDeclarationType(DEFAULT_CURRENT_DECLARATION_TYPE);
-    currentDeclaration.setDateOfEntry(DEFAULT_CURRENT_DATE_OF_ENTRY);
+  DeclarationDto createDeclarationDto(boolean isPrevious) {
+    DeclarationDto declarationDto = new DeclarationDto();
+    if (isPrevious) {
+      declarationDto.setDeclarationType(DEFAULT_PREVIOUS_DECLARATION_TYPE);
+      declarationDto.setDateOfEntry(DEFAULT_PREVIOUS_DATE_OF_ENTRY);
+    } else {
+      declarationDto.setDeclarationType(DEFAULT_CURRENT_DECLARATION_TYPE);
+      declarationDto.setDateOfEntry(DEFAULT_CURRENT_DATE_OF_ENTRY);
+    }
+    return declarationDto;
   }
 
   @Test
@@ -236,7 +300,7 @@ class FormRPartBServiceImplTest {
   @Test
   void shouldSaveSubmittedFormRPartB() {
     entity.setId(null);
-    entity.setLifecycleState(LifecycleState.SUBMITTED);
+    entity.setLifecycleState(SUBMITTED);
     entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
     FormRPartBDto dto = mapper.toDto(entity);
 
@@ -270,7 +334,7 @@ class FormRPartBServiceImplTest {
 
   @Test
   void shouldThrowExceptionWhenFormRPartBNotSaved() {
-    entity.setLifecycleState(LifecycleState.SUBMITTED);
+    entity.setLifecycleState(SUBMITTED);
     entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
     when(s3Mock.putObject(any())).thenThrow(new ApplicationException("Expected Exception"));
 
@@ -282,19 +346,99 @@ class FormRPartBServiceImplTest {
   @Test
   void shouldGetFormRPartBsByTraineeTisId() {
     List<FormRPartB> entities = Collections.singletonList(entity);
-    when(repositoryMock.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID)).thenReturn(entities);
+    when(repositoryMock.findByTraineeTisIdAndLifecycleState(DEFAULT_TRAINEE_TIS_ID, DRAFT))
+        .thenReturn(entities);
+    when(s3Mock.listObjects(isNull(), eq(DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b")))
+        .thenReturn(s3ListingMock);
+    when(s3ListingMock.getObjectSummaries()).thenReturn(Collections.EMPTY_LIST);
 
     List<FormRPartSimpleDto> dtos = service.getFormRPartBsByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
 
     assertThat("Unexpected numbers of forms.", dtos.size(), is(entities.size()));
-
     FormRPartSimpleDto dto = dtos.get(0);
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
   }
 
   @Test
-  void shouldGetFormRPartBById() {
+  void shouldCombineAllFormRPartBsByTraineeTisId() {
+    List<FormRPartB> entities = Collections.singletonList(entity);
+    when(repositoryMock
+        .findByTraineeTisIdAndLifecycleState(DEFAULT_TRAINEE_TIS_ID, LifecycleState.DRAFT))
+        .thenReturn(entities);
+    FormRPartB otherEntity = createEntity();
+    List<FormRPartB> submittedEntities = Collections.singletonList(otherEntity);
+    when(s3Mock.listObjects(isNull(), eq(DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b"))).thenReturn(
+        s3ListingMock);
+    S3ObjectSummary s3Summary = new S3ObjectSummary();
+    s3Summary.setKey("object.name");
+    List<S3ObjectSummary> cloudStoredEntities = List.of(s3Summary);
+    when(s3ListingMock.getObjectSummaries()).thenReturn(cloudStoredEntities);
+    ObjectMetadata metadata = new ObjectMetadata();
+    metadata.setUserMetadata(DEFAULT_UNSUBMITTED_METADATA);
+    when(s3Mock.getObjectMetadata(isNull(), eq("object.name"))).thenReturn(metadata);
+
+    List<FormRPartSimpleDto> dtos = service.getFormRPartBsByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+
+    assertThat("Unexpected numbers of forms.", dtos.size(),
+        is(entities.size() + cloudStoredEntities.size()));
+
+    FormRPartSimpleDto dto = dtos.stream().filter(
+        f -> f.getLifecycleState() == LifecycleState.DRAFT).findAny().orElseThrow();
+    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID));
+    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    dto = dtos.stream().filter(
+        f -> f.getLifecycleState() == LifecycleState.UNSUBMITTIED).findAny().orElseThrow();
+    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_FORM_ID));
+    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected submitted date.", dto.getSubmissionDate(), is(DEFAULT_SUBMISSION_DATE));
+    assertThat("Unexpected lifecycle state.", dto.getLifecycleState(),
+        is(LifecycleState.UNSUBMITTIED));
+  }
+
+  @Test
+  void shouldGetFormRPartBFromCloudStorageById() {
+    InputStream jsonFormRPartB = getClass().getResourceAsStream("/forms/testFormRPartB.json");
+    S3Object s3Object = new S3Object();
+    s3Object.setObjectContent(jsonFormRPartB);
+    when(s3Mock.getObject(isNull(),
+        eq(DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b/" + DEFAULT_ID + ".json")))
+        .thenReturn(s3Object);
+
+    FormRPartBDto dto = service.getFormRPartBById(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID);
+
+    verifyNoInteractions(repositoryMock);
+    assertThat("Unexpected form ID.", dto.getId(), both(not(DEFAULT_ID)).and(notNullValue()));
+    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(),
+        both(not(DEFAULT_TRAINEE_TIS_ID)).and(notNullValue()));
+    assertThat("Unexpected forename.", dto.getForename(),
+        both(not(DEFAULT_FORENAME)).and(notNullValue()));
+    assertThat("Unexpected surname.", dto.getSurname(),
+        both(not(DEFAULT_SURNAME)).and(notNullValue()));
+    assertThat("Unexpected work.", dto.getWork(),
+        both(not(Collections.singletonList(workDto))).and(notNullValue()));
+    assertThat("Unexpected total leave.", dto.getTotalLeave(),
+        both(not(DEFAULT_TOTAL_LEAVE)).and(notNullValue()));
+    assertThat("Unexpected isHonest flag.", dto.getIsHonest(),
+        both(not(DEFAULT_IS_HONEST)).and(notNullValue()));
+    assertThat("Unexpected isHealthy flag.", dto.getIsHealthy(),
+        both(not(DEFAULT_IS_HEALTHY)).and(notNullValue()));
+    assertThat("Unexpected health statement.", dto.getHealthStatement(), is(""));
+    assertThat("Unexpected havePreviousDeclarations flag.", dto.getHavePreviousDeclarations(),
+        is(false));
+    assertThat("Unexpected previous declarations.", dto.getPreviousDeclarations(), empty());
+    assertThat("Unexpected previous declaration summary.", dto.getPreviousDeclarationSummary(),
+        nullValue());
+    assertThat("Unexpected haveCurrentDeclarations flag.", dto.getHaveCurrentDeclarations(),
+        is(false));
+    assertThat("Unexpected current declarations.", dto.getCurrentDeclarations(), empty());
+    assertThat("Unexpected current declaration summary.", dto.getCurrentDeclarationSummary(),
+        nullValue());
+    assertThat("Unexpected status.", dto.getLifecycleState(), is(SUBMITTED));
+  }
+
+  @Test
+  void shouldGetDraftFormRPartBById() {
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.of(entity));
 
