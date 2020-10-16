@@ -93,7 +93,8 @@ public class FormRPartBServiceImpl implements FormRPartBService {
   public FormRPartBDto save(FormRPartBDto formRPartBDto) {
     log.info("Request to save FormRPartB : {}", formRPartBDto);
     FormRPartB formRPartB = formRPartBMapper.toEntity(formRPartBDto);
-    if (alwaysStoreFiles || formRPartB.getLifecycleState() == LifecycleState.SUBMITTED) {
+    if (alwaysStoreFiles || formRPartB.getLifecycleState() == LifecycleState.SUBMITTED
+        || formRPartB.getLifecycleState() == LifecycleState.UNSUBMITTIED) {
       cloudObjectRepository_save(formRPartB);
       //Save in mongo for backward compatibility
       formRPartBRepository.save(formRPartB);
