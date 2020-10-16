@@ -122,11 +122,12 @@ public class FormRPartBServiceImpl implements FormRPartBService {
     }
     String fileName = formRPartB.getId() + ".json";
     try {
-      String key = String.join("/", formRPartB.getTraineeTisId(), "forms", "formr-a", fileName);
+      String key = String.join("/", formRPartB.getTraineeTisId(), "forms", FORM_TYPE, fileName);
       ObjectMetadata metadata = new ObjectMetadata();
+      metadata.addUserMetadata("id", formRPartB.getId());
       metadata.addUserMetadata("name", fileName);
       metadata.addUserMetadata("type", "json");
-      metadata.addUserMetadata("formtype", "formr-a");
+      metadata.addUserMetadata("formtype", FORM_TYPE);
       metadata.addUserMetadata("lifecyclestate", formRPartB.getLifecycleState().name());
       metadata.addUserMetadata("submissiondate",
           formRPartB.getSubmissionDate().format(DateTimeFormatter.ISO_LOCAL_DATE));

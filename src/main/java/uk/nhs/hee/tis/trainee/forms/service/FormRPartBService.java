@@ -26,6 +26,8 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 
 public interface FormRPartBService {
 
+  String FORM_TYPE = "formr-b";
+
   /**
    * Save the given form.
    *
