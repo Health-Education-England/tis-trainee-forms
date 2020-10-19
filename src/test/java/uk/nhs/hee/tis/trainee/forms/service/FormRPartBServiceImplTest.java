@@ -56,7 +56,6 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
-import uk.nhs.hee.tis.trainee.forms.exception.ApplicationException;
 import uk.nhs.hee.tis.trainee.forms.mapper.CovidDeclarationMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapperImpl;
@@ -64,6 +63,7 @@ import uk.nhs.hee.tis.trainee.forms.model.Declaration;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.model.Work;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
+import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 import uk.nhs.hee.tis.trainee.forms.service.impl.FormRPartBServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
@@ -283,8 +283,8 @@ class FormRPartBServiceImplTest {
             savedDto.getId() + ".json")));
     Map<String, String> expectedMetadata = Map
         .of("id", savedDto.getId(), "name", savedDto.getId() + ".json", "type", "json", "formtype",
-            FormRPartBService.FORM_TYPE, "lifecyclestate", LifecycleState.SUBMITTED.name(), "submissiondate",
-            DEFAULT_SUBMISSION_DATE_STRING, "traineeid", DEFAULT_TRAINEE_TIS_ID);
+            FormRPartBService.FORM_TYPE, "lifecyclestate", LifecycleState.SUBMITTED.name(),
+            "submissiondate", DEFAULT_SUBMISSION_DATE_STRING, "traineeid", DEFAULT_TRAINEE_TIS_ID);
 
     assertThat("Unexpected metadata.", actual.getMetadata().getUserMetadata().entrySet(),
         containsInAnyOrder(expectedMetadata.entrySet().toArray(new Entry[0])));

@@ -23,6 +23,9 @@ package uk.nhs.hee.tis.trainee.forms.service.exception;
 
 import java.io.Serializable;
 
+/**
+ * View Model for presenting an error with a field.
+ */
 public class FieldErrorVM implements Serializable {
 
   private static final long serialVersionUID = 1L;
@@ -33,6 +36,13 @@ public class FieldErrorVM implements Serializable {
 
   private final String message;
 
+  /**
+   * Instantiates a View Model for the provided error.
+   *
+   * @param dto     The name of the object
+   * @param field   The name of the field
+   * @param message The error message
+   */
   public FieldErrorVM(String dto, String field, String message) {
     this.objectName = dto;
     this.field = field;

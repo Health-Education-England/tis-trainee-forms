@@ -37,11 +37,11 @@ import org.springframework.util.StringUtils;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
-import uk.nhs.hee.tis.trainee.forms.exception.ApplicationException;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
+import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
 @Slf4j
 @Service

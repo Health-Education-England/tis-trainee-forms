@@ -17,7 +17,8 @@
  * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package uk.nhs.hee.tis.trainee.forms.exception;
+
+package uk.nhs.hee.tis.trainee.forms.service.exception;
 
 public class ApplicationException extends RuntimeException {
 

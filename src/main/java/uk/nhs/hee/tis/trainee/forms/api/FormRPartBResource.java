@@ -146,7 +146,7 @@ public class FormRPartBResource {
   }
 
   /**
-   * GET /formr-partb/:id
+   * GET /formr-partb/:id.
    *
    * @param id    The ID of the form
    * @param token The authorization token from the request header.

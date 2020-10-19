@@ -42,6 +42,12 @@ public class ExceptionTranslator {
   private final Logger log = LoggerFactory
       .getLogger(ExceptionTranslator.class);
 
+  /**
+   * Translates a validation exception into an HTTP 400 Response.
+   *
+   * @param ex The validation exception
+   * @return The View Model of the Error
+   */
   @ExceptionHandler(MethodArgumentNotValidException.class)
   @ResponseStatus(HttpStatus.BAD_REQUEST)
   @ResponseBody

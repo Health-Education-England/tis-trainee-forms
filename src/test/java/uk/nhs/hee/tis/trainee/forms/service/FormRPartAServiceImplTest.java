@@ -52,10 +52,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
-import uk.nhs.hee.tis.trainee.forms.exception.ApplicationException;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
+import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 import uk.nhs.hee.tis.trainee.forms.service.impl.FormRPartAServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
@@ -153,8 +153,8 @@ class FormRPartAServiceImplTest {
             savedDto.getId() + ".json")));
     Map<String, String> expectedMetadata = Map
         .of("id", savedDto.getId(), "name", savedDto.getId() + ".json", "type", "json", "formtype",
-            FormRPartAService.FORM_TYPE, "lifecyclestate", LifecycleState.SUBMITTED.name(), "submissiondate",
-            DEFAULT_SUBMISSION_DATE_STRING, "traineeid", DEFAULT_TRAINEE_TIS_ID);
+            FormRPartAService.FORM_TYPE, "lifecyclestate", LifecycleState.SUBMITTED.name(),
+            "submissiondate", DEFAULT_SUBMISSION_DATE_STRING, "traineeid", DEFAULT_TRAINEE_TIS_ID);
 
     assertThat("Unexpected metadata.", actual.getMetadata().getUserMetadata().entrySet(),
         containsInAnyOrder(expectedMetadata.entrySet().toArray(new Entry[0])));
