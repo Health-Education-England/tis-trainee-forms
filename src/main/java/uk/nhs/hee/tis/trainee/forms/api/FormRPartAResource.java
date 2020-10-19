@@ -146,7 +146,7 @@ public class FormRPartAResource {
   }
 
   /**
-   * GET /formr-parta/:id
+   * GET /formr-parta/:id.
    *
    * @param id    The ID of the form
    * @param token The authorization token from the request header.

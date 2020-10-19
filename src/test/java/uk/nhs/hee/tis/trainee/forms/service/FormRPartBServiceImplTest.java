@@ -22,7 +22,9 @@ package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -35,12 +37,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.util.ReflectionUtils;
@@ -49,7 +56,6 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
-import uk.nhs.hee.tis.trainee.forms.exception.ApplicationException;
 import uk.nhs.hee.tis.trainee.forms.mapper.CovidDeclarationMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapperImpl;
@@ -57,6 +63,7 @@ import uk.nhs.hee.tis.trainee.forms.model.Declaration;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.model.Work;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
+import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 import uk.nhs.hee.tis.trainee.forms.service.impl.FormRPartBServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
@@ -93,6 +100,8 @@ class FormRPartBServiceImplTest {
   private static final String DEFAULT_CURRENT_DECLARATION_SUMMARY =
       "DEFAULT_CURRENT_DECLARATION_SUMMARY";
   private static final LocalDate DEFAULT_SUBMISSION_DATE = LocalDate.of(2020, 8, 29);
+  private static final String DEFAULT_SUBMISSION_DATE_STRING = DEFAULT_SUBMISSION_DATE.format(
+      DateTimeFormatter.ISO_LOCAL_DATE);
 
   private FormRPartBServiceImpl service;
 
@@ -101,6 +110,9 @@ class FormRPartBServiceImplTest {
 
   @Mock
   private AmazonS3 s3Mock;
+
+  @Captor
+  private ArgumentCaptor<PutObjectRequest> putRequestCaptor;
 
   private FormRPartBMapper mapper;
 
@@ -263,7 +275,19 @@ class FormRPartBServiceImplTest {
         is(Collections.singletonList(currentDeclarationDto)));
     assertThat("Unexpected current declaration summary.", savedDto.getCurrentDeclarationSummary(),
         is(DEFAULT_CURRENT_DECLARATION_SUMMARY));
-    verify(s3Mock).putObject(any(PutObjectRequest.class));
+    verify(s3Mock).putObject(putRequestCaptor.capture());
+    PutObjectRequest actual = putRequestCaptor.getValue();
+    assertThat("Unexpected Bucket Name.", actual.getBucketName(), nullValue());
+    assertThat("Unexpected Object Key.", actual.getKey(),
+        is(String.join("/", DEFAULT_TRAINEE_TIS_ID, "forms", FormRPartBService.FORM_TYPE,
+            savedDto.getId() + ".json")));
+    Map<String, String> expectedMetadata = Map
+        .of("id", savedDto.getId(), "name", savedDto.getId() + ".json", "type", "json", "formtype",
+            FormRPartBService.FORM_TYPE, "lifecyclestate", LifecycleState.SUBMITTED.name(),
+            "submissiondate", DEFAULT_SUBMISSION_DATE_STRING, "traineeid", DEFAULT_TRAINEE_TIS_ID);
+
+    assertThat("Unexpected metadata.", actual.getMetadata().getUserMetadata().entrySet(),
+        containsInAnyOrder(expectedMetadata.entrySet().toArray(new Entry[0])));
     entity.setId(savedDto.getId());
     verify(repositoryMock).save(entity);
   }

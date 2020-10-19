@@ -37,11 +37,11 @@ import org.springframework.util.StringUtils;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
-import uk.nhs.hee.tis.trainee.forms.exception.ApplicationException;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
+import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
 @Slf4j
 @Service
@@ -121,11 +121,12 @@ public class FormRPartAServiceImpl implements FormRPartAService {
     }
     String fileName = formRPartA.getId() + ".json";
     try {
-      String key = String.join("/", formRPartA.getTraineeTisId(), "forms", "formr-a", fileName);
+      String key = String.join("/", formRPartA.getTraineeTisId(), "forms", FORM_TYPE, fileName);
       ObjectMetadata metadata = new ObjectMetadata();
+      metadata.addUserMetadata("id", formRPartA.getId());
       metadata.addUserMetadata("name", fileName);
       metadata.addUserMetadata("type", "json");
-      metadata.addUserMetadata("formtype", "formr-a");
+      metadata.addUserMetadata("formtype", FORM_TYPE);
       metadata.addUserMetadata("lifecyclestate", formRPartA.getLifecycleState().name());
       metadata.addUserMetadata("submissiondate",
           formRPartA.getSubmissionDate().format(DateTimeFormatter.ISO_LOCAL_DATE));

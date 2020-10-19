@@ -46,12 +46,26 @@ public class ErrorVM implements Serializable {
     this.description = description;
   }
 
+  /**
+   * Create an error with errors against fields.
+   *
+   * @param message     The message
+   * @param description The larger description
+   * @param fieldErrors A list of errors for fields
+   */
   public ErrorVM(String message, String description, List<FieldErrorVM> fieldErrors) {
     this.message = message;
     this.description = description;
     this.fieldErrors = fieldErrors;
   }
 
+  /**
+   * Add a {@link FieldErrorVM} against a fields.
+   *
+   * @param objectName The name of the object containing the field
+   * @param field      The name of field with the error
+   * @param message    The error message
+   */
   public void add(String objectName, String field, String message) {
     if (fieldErrors == null) {
       fieldErrors = new ArrayList<>();

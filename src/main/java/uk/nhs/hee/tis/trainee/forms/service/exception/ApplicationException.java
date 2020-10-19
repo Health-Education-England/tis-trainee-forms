@@ -1,6 +1,5 @@
 /*
  * The MIT License (MIT)
- *
  * Copyright 2020 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
@@ -19,38 +18,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.service;
+package uk.nhs.hee.tis.trainee.forms.service.exception;
 
-import java.util.List;
-import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
-import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
-
-public interface FormRPartAService {
-
-  String FORM_TYPE = "formr-a";
+public class ApplicationException extends RuntimeException {
 
   /**
-   * Save the given form.
+   * Create an exception.
    *
-   * @param formRPartADto The form to save.
-   * @return The saved form.
+   * @param message The exception message for the Exception
+   * @param cause   The cause to wrap
    */
-  FormRPartADto save(FormRPartADto formRPartADto);
+  public ApplicationException(String message, Exception cause) {
+    super(message, cause);
+  }
 
   /**
-   * Get the forms for a trainee.
+   * Create an exception.
    *
-   * @param traineeTisId The ID of the trainee to get the forms for.
-   * @return A collection of forms found for the trainee.
+   * @param message The exception message for the Exception
    */
-  List<FormRPartSimpleDto> getFormRPartAsByTraineeTisId(String traineeTisId);
-
-  /**
-   * Get a form by id.
-   *
-   * @param id           The ID of the form.
-   * @param traineeTisId The ID of the trainee to get the form for.
-   * @return The retrieved form.
-   */
-  FormRPartADto getFormRPartAById(String id, String traineeTisId);
+  public ApplicationException(String message) {
+    super(message);
+  }
 }

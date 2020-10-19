@@ -23,7 +23,9 @@ package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -34,21 +36,26 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
-import uk.nhs.hee.tis.trainee.forms.exception.ApplicationException;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
+import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 import uk.nhs.hee.tis.trainee.forms.service.impl.FormRPartAServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
@@ -59,6 +66,8 @@ class FormRPartAServiceImplTest {
   private static final String DEFAULT_FORENAME = "DEFAULT_FORENAME";
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";
   private static final LocalDate DEFAULT_SUBMISSION_DATE = LocalDate.of(2020, 8, 29);
+  private static final String DEFAULT_SUBMISSION_DATE_STRING = DEFAULT_SUBMISSION_DATE.format(
+      DateTimeFormatter.ISO_LOCAL_DATE);
 
   private FormRPartAServiceImpl service;
 
@@ -67,6 +76,9 @@ class FormRPartAServiceImplTest {
 
   @Mock
   private AmazonS3 s3Mock;
+
+  @Captor
+  private ArgumentCaptor<PutObjectRequest> putRequestCaptor;
 
   private FormRPartA entity;
 
@@ -133,7 +145,19 @@ class FormRPartAServiceImplTest {
     assertThat("Unexpected trainee ID.", savedDto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", savedDto.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", savedDto.getSurname(), is(DEFAULT_SURNAME));
-    verify(s3Mock).putObject(any(PutObjectRequest.class));
+    verify(s3Mock).putObject(putRequestCaptor.capture());
+    PutObjectRequest actual = putRequestCaptor.getValue();
+    assertThat("Unexpected Bucket Name.", actual.getBucketName(), nullValue());
+    assertThat("Unexpected Object Key.", actual.getKey(),
+        is(String.join("/", DEFAULT_TRAINEE_TIS_ID, "forms", FormRPartAService.FORM_TYPE,
+            savedDto.getId() + ".json")));
+    Map<String, String> expectedMetadata = Map
+        .of("id", savedDto.getId(), "name", savedDto.getId() + ".json", "type", "json", "formtype",
+            FormRPartAService.FORM_TYPE, "lifecyclestate", LifecycleState.SUBMITTED.name(),
+            "submissiondate", DEFAULT_SUBMISSION_DATE_STRING, "traineeid", DEFAULT_TRAINEE_TIS_ID);
+
+    assertThat("Unexpected metadata.", actual.getMetadata().getUserMetadata().entrySet(),
+        containsInAnyOrder(expectedMetadata.entrySet().toArray(new Entry[0])));
     entity.setId(savedDto.getId());
     verify(repositoryMock).save(entity);
   }
