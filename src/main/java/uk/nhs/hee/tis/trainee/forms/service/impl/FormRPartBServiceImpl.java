@@ -31,7 +31,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
-import uk.nhs.hee.tis.trainee.forms.repository.S3ObjectRepositoryImpl;
+import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartBRepositoryImpl;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 
 @Slf4j
@@ -43,7 +43,7 @@ public class FormRPartBServiceImpl implements FormRPartBService {
 
   private final FormRPartBRepository formRPartBRepository;
 
-  private final S3ObjectRepositoryImpl s3ObjectRepository;
+  private final S3FormRPartBRepositoryImpl s3ObjectRepository;
 
   @Value("${application.file-store.always-store}")
   private boolean alwaysStoreFiles;
@@ -57,7 +57,7 @@ public class FormRPartBServiceImpl implements FormRPartBService {
    * @param formRPartBMapper     maps between the form entity and dto
    */
   public FormRPartBServiceImpl(FormRPartBRepository formRPartBRepository,
-      S3ObjectRepositoryImpl s3ObjectRepository, FormRPartBMapper formRPartBMapper) {
+      S3FormRPartBRepositoryImpl s3ObjectRepository, FormRPartBMapper formRPartBMapper) {
     this.formRPartBRepository = formRPartBRepository;
     this.formRPartBMapper = formRPartBMapper;
     this.s3ObjectRepository = s3ObjectRepository;

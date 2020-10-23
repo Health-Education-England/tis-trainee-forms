@@ -45,7 +45,7 @@ import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 @Slf4j
 @Repository
 @Transactional
-public class S3ObjectRepositoryImpl {
+public class S3FormRPartBRepositoryImpl {
 
   private static final String OBJECT_PREFIX_TEMPLATE = "%s/forms/formr-b";
   private static final String OBJECT_KEY_TEMPLATE = "%s/forms/formr-b/%s.json";
@@ -63,7 +63,7 @@ public class S3ObjectRepositoryImpl {
    * @param objectMapper mapper handles Json (de)serialisation
    * @param bucketName   the bucket that this repository provides persistence with
    */
-  public S3ObjectRepositoryImpl(AmazonS3 amazonS3,
+  public S3FormRPartBRepositoryImpl(AmazonS3 amazonS3,
       ObjectMapper objectMapper, @Value("${application.file-store.bucket}") String bucketName) {
     this.amazonS3 = amazonS3;
     this.objectMapper = objectMapper;
@@ -143,12 +143,8 @@ public class S3ObjectRepositoryImpl {
         form.setId(metadata.getUserMetaDataOf("id"));
         form.setTraineeTisId(metadata.getUserMetaDataOf("traineeid"));
         form.setSubmissionDate(LocalDate.parse(metadata.getUserMetaDataOf("submissiondate")));
-        try {
-          form.setLifecycleState(
-              LifecycleState.valueOf(metadata.getUserMetaDataOf("lifecyclestate").toUpperCase()));
-        } catch (NullPointerException e) {
-          log.warn("Form in S3 [{}] contains a bad value for lifecyclestate.", summary.getKey(), e);
-        }
+        form.setLifecycleState(
+            LifecycleState.valueOf(metadata.getUserMetaDataOf("lifecyclestate").toUpperCase()));
         return form;
       } catch (Exception e) {
         log.error("Problem reading form [{}] from S3 bucket [{}]", summary.getKey(), bucketName, e);

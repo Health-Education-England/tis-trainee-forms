@@ -51,7 +51,7 @@ import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
 @ExtendWith(MockitoExtension.class)
-class S3ObjectRepositoryImplTest {
+class S3FormRPartBRepositoryImplTest {
 
   public static final String KEY = "object.name";
   private static final String DEFAULT_ID = "DEFAULT_ID";
@@ -90,7 +90,7 @@ class S3ObjectRepositoryImplTest {
           DEFAULT_SUBMISSION_DATE.format(ISO_LOCAL_DATE), "traineeid",
           DEFAULT_TRAINEE_TIS_ID);
   private static ObjectMapper objectMapper;
-  private S3ObjectRepositoryImpl repo;
+  private S3FormRPartBRepositoryImpl repo;
   @Mock
   private AmazonS3 s3Mock;
   @Mock
@@ -112,7 +112,7 @@ class S3ObjectRepositoryImplTest {
 
   @BeforeEach
   void setup() {
-    repo = new S3ObjectRepositoryImpl(s3Mock, objectMapper, bucketName);
+    repo = new S3FormRPartBRepositoryImpl(s3Mock, objectMapper, bucketName);
     work = createWork();
     previousDeclaration = createDeclaration(true);
     currentDeclaration = createDeclaration(false);
@@ -188,27 +188,6 @@ class S3ObjectRepositoryImplTest {
 
     FormRPartB actual = repo.save(entity);
     assertThat("Unexpected form ID.", actual.getId(), notNullValue());
-    assertThat("Unexpected trainee ID.", actual.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
-    assertThat("Unexpected forename.", actual.getForename(), is(DEFAULT_FORENAME));
-    assertThat("Unexpected surname.", actual.getSurname(), is(DEFAULT_SURNAME));
-    assertThat("Unexpected work.", actual.getWork(), is(Collections.singletonList(work)));
-    assertThat("Unexpected total leave.", actual.getTotalLeave(), is(DEFAULT_TOTAL_LEAVE));
-    assertThat("Unexpected isHonest flag.", actual.getIsHonest(), is(DEFAULT_IS_HONEST));
-    assertThat("Unexpected isHealthy flag.", actual.getIsHealthy(), is(DEFAULT_IS_HEALTHY));
-    assertThat("Unexpected health statement.", actual.getHealthStatement(),
-        is(DEFAULT_HEALTHY_STATEMENT));
-    assertThat("Unexpected havePreviousDeclarations flag.", actual.getHavePreviousDeclarations(),
-        is(DEFAULT_HAVE_PREVIOUS_DECLARATIONS));
-    assertThat("Unexpected previous declarations.", actual.getPreviousDeclarations(),
-        is(Collections.singletonList(previousDeclaration)));
-    assertThat("Unexpected previous declaration summary.", actual.getPreviousDeclarationSummary(),
-        is(DEFAULT_PREVIOUS_DECLARATION_SUMMARY));
-    assertThat("Unexpected haveCurrentDeclarations flag.", actual.getHaveCurrentDeclarations(),
-        is(DEFAULT_HAVE_CURRENT_DECLARATIONS));
-    assertThat("Unexpected current declarations.", actual.getCurrentDeclarations(),
-        is(Collections.singletonList(currentDeclaration)));
-    assertThat("Unexpected current declaration summary.", actual.getCurrentDeclarationSummary(),
-        is(DEFAULT_CURRENT_DECLARATION_SUMMARY));
     verify(s3Mock).putObject(putRequestCaptor.capture());
     PutObjectRequest actualRequest = putRequestCaptor.getValue();
     assertThat("Unexpected Bucket Name.", actualRequest.getBucketName(), nullValue());

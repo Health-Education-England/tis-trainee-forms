@@ -30,18 +30,13 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -62,7 +57,7 @@ import uk.nhs.hee.tis.trainee.forms.model.Declaration;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.model.Work;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
-import uk.nhs.hee.tis.trainee.forms.repository.S3ObjectRepositoryImpl;
+import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartBRepositoryImpl;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 import uk.nhs.hee.tis.trainee.forms.service.impl.FormRPartBServiceImpl;
 
@@ -100,22 +95,15 @@ class FormRPartBServiceImplTest {
   private static final String DEFAULT_CURRENT_DECLARATION_SUMMARY =
       "DEFAULT_CURRENT_DECLARATION_SUMMARY";
   private static final LocalDate DEFAULT_SUBMISSION_DATE = LocalDate.of(2020, 8, 29);
-  private static final String DEFAULT_SUBMISSION_DATE_STRING = DEFAULT_SUBMISSION_DATE.format(
-      DateTimeFormatter.ISO_LOCAL_DATE);
   private static final String DEFAULT_FORM_ID = "my-first-cloud-object-id";
-  private static final Map<String, String> DEFAULT_UNSUBMITTED_METADATA = Map
-      .of("id", DEFAULT_FORM_ID, "formtype", "inform", "lifecyclestate",
-          LifecycleState.UNSUBMITTED.name(), "submissiondate",
-          DEFAULT_SUBMISSION_DATE_STRING, "traineeid",
-          DEFAULT_TRAINEE_TIS_ID);
-  private static ObjectMapper objectMapper;
+
   private FormRPartBServiceImpl service;
 
   @Mock
   private FormRPartBRepository repositoryMock;
 
   @Mock
-  private S3ObjectRepositoryImpl s3FormRPartBRepository;
+  private S3FormRPartBRepositoryImpl s3FormRPartBRepository;
 
   @Captor
   private ArgumentCaptor<PutObjectRequest> putRequestCaptor;
@@ -129,13 +117,6 @@ class FormRPartBServiceImplTest {
   private Declaration previousDeclaration;
   private DeclarationDto currentDeclarationDto;
   private Declaration currentDeclaration;
-
-  @BeforeAll
-  static void setup() {
-    objectMapper = new ObjectMapper();
-    //TODO: Resolve time issue w/date serialisation
-    objectMapper.registerModule(new JavaTimeModule());
-  }
 
   @BeforeEach
   void setUp() {
@@ -340,7 +321,7 @@ class FormRPartBServiceImplTest {
         .thenThrow(new ApplicationException("Expected Exception"));
 
     FormRPartBDto dto = mapper.toDto(entity);
-    assertThrows(RuntimeException.class, () -> service.save(dto));
+    assertThrows(ApplicationException.class, () -> service.save(dto));
     verifyNoInteractions(repositoryMock);
   }
 
