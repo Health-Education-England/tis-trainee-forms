@@ -23,21 +23,16 @@ package uk.nhs.hee.tis.trainee.forms.model;
 
 import java.time.LocalDate;
 import lombok.Data;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 @Document(collection = "FormRPartA")
 @Data
-public class FormRPartA {
+@ToString(callSuper = true)
+@EqualsAndHashCode(callSuper = true)
+public class FormRPartA extends AbstractForm {
 
-  @Id
-  private String id;
-  @Indexed
-  @Field(value = "traineeTisId")
-  private String traineeTisId;
   private String forename;
   private String surname;
   private String gmcNumber;
@@ -67,8 +62,10 @@ public class FormRPartA {
   private LocalDate startDate;
   private String programmeMembershipType;
   private String wholeTimeEquivalent;
-  private LocalDate submissionDate;
-  private LocalDate lastModifiedDate;
   private String otherImmigrationStatus;
-  private LifecycleState lifecycleState;
+
+  @Override
+  public String getFormType() {
+    return "formr-a";
+  }
 }

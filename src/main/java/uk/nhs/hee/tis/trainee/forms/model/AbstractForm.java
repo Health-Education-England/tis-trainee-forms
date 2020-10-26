@@ -18,39 +18,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.repository;
+package uk.nhs.hee.tis.trainee.forms.model;
 
-import com.amazonaws.services.s3.AmazonS3;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Repository;
-import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.time.LocalDate;
+import lombok.Data;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Field;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
-@Slf4j
-@Repository
-public class S3FormRPartBRepositoryImpl extends AbstractCloudRepository<FormRPartB> {
+@Data
+public abstract class AbstractForm {
 
-  /**
-   * Instantiate an object repository.
-   *
-   * @param amazonS3     client for S3 service
-   * @param objectMapper mapper handles Json (de)serialisation
-   * @param bucketName   the bucket that this repository provides persistence with
-   */
-  public S3FormRPartBRepositoryImpl(AmazonS3 amazonS3,
-      ObjectMapper objectMapper, @Value("${application.file-store.bucket}") String bucketName) {
-    super(amazonS3, objectMapper, bucketName);
-  }
+  @Id
+  private String id;
+  @Indexed
+  @Field(value = "traineeTisId")
+  private String traineeTisId;
 
-  @Override
-  protected String getObjectKeyTemplate() {
-    return "%s/forms/formr-b/%s.json";
-  }
+  private LifecycleState lifecycleState;
+  private LocalDate submissionDate;
+  private LocalDate lastModifiedDate;
 
-  @Override
-  protected String getObjectPrefixTemplate() {
-    return "%s/forms/formr-b";
-  }
-
+  @JsonIgnore
+  public abstract String getFormType();
 }

@@ -35,9 +35,6 @@ public interface FormRPartARepository extends MongoRepository<FormRPartA, String
   Optional<FormRPartA> findByIdAndTraineeTisId(String id, String traineeTisId);
 
   @Query(fields = "{traineeTisId:1, id:1, submissionDate:1, lifecycleState:1}")
-  List<FormRPartA> findByTraineeTisId(String traineeTisId);
-
-  @Query(fields = "{id:1}")
   List<FormRPartA> findByTraineeTisIdAndLifecycleState(String traineeTisId,
       LifecycleState lifecycleState);
 }
