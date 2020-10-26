@@ -128,13 +128,11 @@ public class S3FormRPartBRepositoryImpl {
       if (e.getStatusCode() == 404) {
         return Optional.empty();
       }
-      log.warn("Unexpected exception attempting to get form {} for trainee {} from Cloud Storage",
-          id, traineeTisId, e);
-      throw new ApplicationException("An error occurred retrieving from Cloud repository.", e);
+      log.error("An error occurred getting form {} for trainee {}.", id, traineeTisId, e);
+      throw new ApplicationException("An error occurred getting object from S3.", e);
     } catch (Exception e) {
-      log.warn("Unexpected exception attempting to get form {} for trainee {} from Cloud Storage",
-          id, traineeTisId, e);
-      throw new ApplicationException("An error occurred retrieving from Cloud repository.", e);
+      log.error("Unable to get form {} for trainee {} from Cloud Storage", id, traineeTisId, e);
+      throw new ApplicationException("An error occurred getting form.", e);
     }
   }
 

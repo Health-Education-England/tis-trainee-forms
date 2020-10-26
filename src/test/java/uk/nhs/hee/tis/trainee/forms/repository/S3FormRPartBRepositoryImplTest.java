@@ -17,6 +17,7 @@ import static org.mockito.Mockito.when;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 
 import com.amazonaws.AmazonServiceException;
+import com.amazonaws.SdkClientException;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.ObjectMetadata;
@@ -39,6 +40,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -296,10 +299,11 @@ class S3FormRPartBRepositoryImplTest {
         repo.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID).isEmpty());
   }
 
-  @Test
-  void findByIdAndTraineeIdShouldThrowException() {
+  @ParameterizedTest
+  @ValueSource(classes = {AmazonServiceException.class, SdkClientException.class})
+  void findByIdAndTraineeIdShouldThrowException(Class clazz) throws Exception {
     when(s3Mock.getObject(bucketName, "1/forms/formr-b/DEFAULT_ID.json"))
-        .thenThrow(new AmazonServiceException("Expected Exception"));
+        .thenThrow((Exception) clazz.getDeclaredConstructor(String.class).newInstance("Expected"));
     assertThrows(ApplicationException.class,
         () -> repo.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID));
   }
