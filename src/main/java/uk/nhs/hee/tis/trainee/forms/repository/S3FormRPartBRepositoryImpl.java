@@ -123,12 +123,15 @@ public class S3FormRPartBRepositoryImpl {
           .getObjectContent();
       FormRPartB form = objectMapper.readValue(content, FormRPartB.class);
       return Optional.of(form);
-    } catch (Exception e) {
+    } catch (AmazonServiceException e) {
       log.debug("Unable to get file from Cloud Storage", e);
-      if (e instanceof AmazonServiceException
-          && ((AmazonServiceException) e).getStatusCode() == 404) {
+      if (e.getStatusCode() == 404) {
         return Optional.empty();
       }
+      log.warn("Unexpected exception attempting to get form {} for trainee {} from Cloud Storage",
+          id, traineeTisId, e);
+      throw new ApplicationException("An error occurred retrieving from Cloud repository.", e);
+    } catch (Exception e) {
       log.warn("Unexpected exception attempting to get form {} for trainee {} from Cloud Storage",
           id, traineeTisId, e);
       throw new ApplicationException("An error occurred retrieving from Cloud repository.", e);
