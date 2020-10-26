@@ -12,7 +12,6 @@ import static org.hamcrest.Matchers.empty;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
@@ -27,6 +26,7 @@ import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.io.InputStream;
+import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -106,12 +106,13 @@ class S3FormRPartBRepositoryImplTest {
   @BeforeAll
   static void beforeAll() {
     objectMapper = new ObjectMapper();
-    //TODO: Resolve time issue w/date serialisation
     objectMapper.registerModule(new JavaTimeModule());
+    objectMapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd"));
   }
 
   @BeforeEach
   void setup() {
+    bucketName = "whole-in-bucket";
     repo = new S3FormRPartBRepositoryImpl(s3Mock, objectMapper, bucketName);
     work = createWork();
     previousDeclaration = createDeclaration(true);
@@ -190,7 +191,7 @@ class S3FormRPartBRepositoryImplTest {
     assertThat("Unexpected form ID.", actual.getId(), notNullValue());
     verify(s3Mock).putObject(putRequestCaptor.capture());
     PutObjectRequest actualRequest = putRequestCaptor.getValue();
-    assertThat("Unexpected Bucket Name.", actualRequest.getBucketName(), nullValue());
+    assertThat("Unexpected Bucket Name.", actualRequest.getBucketName(), is(bucketName));
     assertThat("Unexpected Object Key.", actualRequest.getKey(),
         is(String.join("/", DEFAULT_TRAINEE_TIS_ID, "forms", FormRPartBService.FORM_TYPE,
             entity.getId() + ".json")));
@@ -215,15 +216,20 @@ class S3FormRPartBRepositoryImplTest {
 
   @Test
   void shouldGetFormRPartBsByTraineeTisId() {
-    when(s3Mock.listObjects(isNull(), eq(DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b"))).thenReturn(
-        s3ListingMock);
+    when(s3Mock.listObjects(eq(bucketName), eq(DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b")))
+        .thenReturn(s3ListingMock);
     S3ObjectSummary s3Summary = new S3ObjectSummary();
     s3Summary.setKey(KEY);
-    List<S3ObjectSummary> cloudStoredEntities = List.of(s3Summary);
+    String otherKey = KEY + "w/error";
+    S3ObjectSummary errorSummary = new S3ObjectSummary();
+    errorSummary.setKey(otherKey);
+    List<S3ObjectSummary> cloudStoredEntities = List.of(s3Summary, errorSummary);
     when(s3ListingMock.getObjectSummaries()).thenReturn(cloudStoredEntities);
     ObjectMetadata metadata = new ObjectMetadata();
     metadata.setUserMetadata(DEFAULT_UNSUBMITTED_METADATA);
     when(s3Mock.getObjectMetadata(bucketName, KEY)).thenReturn(metadata);
+    when(s3Mock.getObjectMetadata(bucketName, otherKey))
+        .thenThrow(new AmazonServiceException("Expected Exception"));
 
     List<FormRPartB> entities = repo.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
 
@@ -243,7 +249,7 @@ class S3FormRPartBRepositoryImplTest {
     InputStream jsonFormRPartB = getClass().getResourceAsStream("/forms/testFormRPartB.json");
     S3Object s3Object = new S3Object();
     s3Object.setObjectContent(jsonFormRPartB);
-    when(s3Mock.getObject(isNull(),
+    when(s3Mock.getObject(eq(bucketName),
         eq(DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b/" + DEFAULT_ID + ".json")))
         .thenReturn(s3Object);
 
@@ -280,4 +286,21 @@ class S3FormRPartBRepositoryImplTest {
     assertThat("Unexpected status.", entity.getLifecycleState(), is(SUBMITTED));
   }
 
+  @Test
+  void findByIdAndTraineeIdShouldReturnEmpty() {
+    AmazonServiceException awsException = new AmazonServiceException("Expected Exception");
+    awsException.setStatusCode(404);
+    when(s3Mock.getObject(bucketName, "1/forms/formr-b/DEFAULT_ID.json"))
+        .thenThrow(awsException);
+    assertThat("Unexpected Optional content.",
+        repo.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID).isEmpty());
+  }
+
+  @Test
+  void findByIdAndTraineeIdShouldThrowException() {
+    when(s3Mock.getObject(bucketName, "1/forms/formr-b/DEFAULT_ID.json"))
+        .thenThrow(new AmazonServiceException("Expected Exception"));
+    assertThrows(ApplicationException.class,
+        () -> repo.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID));
+  }
 }

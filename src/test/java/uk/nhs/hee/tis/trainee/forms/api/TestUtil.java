@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
 import org.springframework.http.MediaType;
 
 /**
@@ -31,6 +32,7 @@ public class TestUtil {
     mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
     JavaTimeModule module = new JavaTimeModule();
+    mapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd"));
     mapper.registerModule(module);
 
     return mapper.writeValueAsBytes(object);

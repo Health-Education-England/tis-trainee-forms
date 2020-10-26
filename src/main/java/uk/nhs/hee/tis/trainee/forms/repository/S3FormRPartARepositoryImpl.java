@@ -20,6 +20,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.repository;
 
+import com.amazonaws.AmazonServiceException;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.ObjectMetadata;
@@ -30,6 +31,7 @@ import java.io.ByteArrayInputStream;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -122,8 +124,14 @@ public class S3FormRPartARepositoryImpl {
       FormRPartA form = objectMapper.readValue(content, FormRPartA.class);
       return Optional.of(form);
     } catch (Exception e) {
-      log.error("Unable to get file from Cloud Storage", e);
-      return Optional.empty();
+      log.debug("Unable to get file from Cloud Storage", e);
+      if (e instanceof AmazonServiceException
+          && ((AmazonServiceException) e).getStatusCode() == 404) {
+        return Optional.empty();
+      }
+      log.warn("Unexpected exception attempting to get form {} for trainee {} from Cloud Storage",
+          id, traineeTisId, e);
+      throw new ApplicationException("An error occurred retrieving from Cloud repository.", e);
     }
   }
 
@@ -150,6 +158,6 @@ public class S3FormRPartARepositoryImpl {
         log.error("Problem reading form [{}] from S3 bucket [{}]", summary.getKey(), bucketName, e);
         return null;
       }
-    }).collect(Collectors.toList());
+    }).filter(Objects::nonNull).collect(Collectors.toList());
   }
 }
