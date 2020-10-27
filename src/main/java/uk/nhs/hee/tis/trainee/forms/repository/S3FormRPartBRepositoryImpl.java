@@ -1,6 +1,5 @@
 /*
  * The MIT License (MIT)
- *
  * Copyright 2020 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
@@ -21,20 +20,37 @@
 
 package uk.nhs.hee.tis.trainee.forms.repository;
 
-import java.util.List;
-import java.util.Optional;
-import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.data.mongodb.repository.Query;
+import com.amazonaws.services.s3.AmazonS3;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
-import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
-import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
+import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 
+@Slf4j
 @Repository
-public interface FormRPartARepository extends MongoRepository<FormRPartA, String> {
+public class S3FormRPartBRepositoryImpl extends AbstractCloudRepository<FormRPartB> {
 
-  Optional<FormRPartA> findByIdAndTraineeTisId(String id, String traineeTisId);
+  /**
+   * Instantiate an object repository.
+   *
+   * @param amazonS3     client for S3 service
+   * @param objectMapper mapper handles Json (de)serialisation
+   * @param bucketName   the bucket that this repository provides persistence with
+   */
+  public S3FormRPartBRepositoryImpl(AmazonS3 amazonS3,
+      ObjectMapper objectMapper, @Value("${application.file-store.bucket}") String bucketName) {
+    super(amazonS3, objectMapper, bucketName);
+  }
 
-  @Query(fields = "{traineeTisId:1, id:1, submissionDate:1, lifecycleState:1}")
-  List<FormRPartA> findByTraineeTisIdAndLifecycleState(String traineeTisId,
-      LifecycleState lifecycleState);
+  @Override
+  protected String getObjectKeyTemplate() {
+    return "%s/forms/formr-b/%s.json";
+  }
+
+  @Override
+  protected String getObjectPrefixTemplate() {
+    return "%s/forms/formr-b";
+  }
+
 }

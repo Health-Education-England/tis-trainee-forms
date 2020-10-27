@@ -1,6 +1,5 @@
 /*
  * The MIT License (MIT)
- *
  * Copyright 2020 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
@@ -19,22 +18,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.repository;
+package uk.nhs.hee.tis.trainee.forms.model;
 
-import java.util.List;
-import java.util.Optional;
-import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.data.mongodb.repository.Query;
-import org.springframework.stereotype.Repository;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.time.LocalDate;
+import lombok.Data;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Field;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
-import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 
-@Repository
-public interface FormRPartARepository extends MongoRepository<FormRPartA, String> {
+@Data
+public abstract class AbstractForm {
 
-  Optional<FormRPartA> findByIdAndTraineeTisId(String id, String traineeTisId);
+  @Id
+  private String id;
+  @Indexed
+  @Field(value = "traineeTisId")
+  private String traineeTisId;
 
-  @Query(fields = "{traineeTisId:1, id:1, submissionDate:1, lifecycleState:1}")
-  List<FormRPartA> findByTraineeTisIdAndLifecycleState(String traineeTisId,
-      LifecycleState lifecycleState);
+  private LifecycleState lifecycleState;
+  private LocalDate submissionDate;
+  private LocalDate lastModifiedDate;
+
+  @JsonIgnore
+  public abstract String getFormType();
 }

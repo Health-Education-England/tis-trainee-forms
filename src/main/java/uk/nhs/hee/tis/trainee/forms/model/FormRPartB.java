@@ -24,21 +24,16 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Data;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 @Document(collection = "FormRPartB")
 @Data
-public class FormRPartB {
+@ToString(callSuper = true)
+@EqualsAndHashCode(callSuper = true)
+public class FormRPartB extends AbstractForm {
 
-  @Id
-  private String id;
-  @Indexed
-  @Field(value = "traineeTisId")
-  private String traineeTisId;
   private String forename;
   private String surname;
   private String gmcNumber;
@@ -69,9 +64,11 @@ public class FormRPartB {
   private List<Declaration> currentDeclarations = new ArrayList<>();
   private String currentDeclarationSummary;
   private String compliments;
-  private LocalDate submissionDate;
-  private LocalDate lastModifiedDate;
-  private LifecycleState lifecycleState;
   private Boolean haveCovidDeclarations;
   private CovidDeclaration covidDeclaration;
+
+  @Override
+  public String getFormType() {
+    return "formr-b";
+  }
 }

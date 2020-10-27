@@ -23,11 +23,27 @@ package uk.nhs.hee.tis.trainee.forms.config;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import java.text.SimpleDateFormat;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class Config {
+
+  /**
+   * Create a customised object mapper.
+   *
+   * @return Jackson ObjectMapper
+   */
+  @Bean
+  public ObjectMapper objectMapper() {
+    ObjectMapper objectMapper = new ObjectMapper();
+    objectMapper.registerModule(new JavaTimeModule());
+    objectMapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd"));
+    return objectMapper;
+  }
 
   @Bean
   public AmazonS3 amazonS3() {

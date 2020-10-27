@@ -22,7 +22,8 @@
 package uk.nhs.hee.tis.trainee.forms.dto.enumeration;
 
 public enum LifecycleState {
-  NEW,
   DRAFT,
-  SUBMITTED
+  SUBMITTED,
+  UNSUBMITTED
+
 }
