@@ -230,7 +230,7 @@ jobs:
   deploy-prod:
     name: Deploy
     environment: prod
-    needs: dockerize
+    needs: deploy-pre-prod
     runs-on: ubuntu-latest
 
     steps:
