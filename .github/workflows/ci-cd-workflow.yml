@@ -5,37 +5,37 @@ on:
   workflow_dispatch:
 
 jobs:
-    validate-wrapper:
-      name: Validate Gradle wrapper
-      runs-on: ubuntu-latest
+  validate-wrapper:
+    name: Validate Gradle wrapper
+    runs-on: ubuntu-latest
 
-      steps:
-        - name: Checkout
-          uses: actions/checkout@v2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
 
-        - name: Gradle wrapper validation
-          uses: gradle/wrapper-validation-action@v1.0.3
+      - name: Gradle wrapper validation
+        uses: gradle/wrapper-validation-action@v1.0.3
 
-    cache-distribution:
-      name: Cache Gradle distribution
-      needs: validate-wrapper
-      runs-on: ubuntu-latest
+  cache-distribution:
+    name: Cache Gradle distribution
+    needs: validate-wrapper
+    runs-on: ubuntu-latest
 
-      steps:
-        - name: Checkout
-          uses: actions/checkout@v2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
 
-        - name: Cache Gradle distribution
-          id: cache
-          uses: actions/cache@v2
-          with:
-            path: ~/.gradle/wrapper
-            key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
-            restore-keys: ${{ runner.os }}-gradle
+      - name: Cache Gradle distribution
+        id: cache
+        uses: actions/cache@v2
+        with:
+          path: ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
+          restore-keys: ${{ runner.os }}-gradle
 
-        - name: Download Gradle distribution
-          if: steps.cache.outputs.cache-hit != 'true'
-          run: ./gradlew
+      - name: Download Gradle distribution
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: ./gradlew
 
   assemble:
     name: Assemble JAR
@@ -191,7 +191,7 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY
 
   deploy-pre-prod:
-    name: Deploy
+    name: Deploy to pre-production
     environment: pre-prod
     needs: dockerize
     runs-on: ubuntu-latest
@@ -228,7 +228,7 @@ jobs:
           wait-for-service-stability: true
 
   deploy-prod:
-    name: Deploy
+    name: Deploy to production
     environment: prod
     needs: deploy-pre-prod
     runs-on: ubuntu-latest
