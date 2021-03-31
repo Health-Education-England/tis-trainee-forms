@@ -18,3 +18,7 @@ application:
   file-store:
     always-store: ${APPLICATION_FILESTORE_ALWAYSSTORE:false}
     bucket: ${APPLICATION_FILESTORE_BUCKET}
+
+sentry:
+  dsn: ${SENTRY_DSN:}
+  environment: ${SENTRY_ENVIRONMENT:local}
