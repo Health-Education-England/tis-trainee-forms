@@ -24,7 +24,6 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -280,7 +279,7 @@ class FormRPartBServiceImplTest {
     entity.setLifecycleState(LifecycleState.SUBMITTED);
     entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
     FormRPartBDto dto = mapper.toDto(entity);
-    when(s3FormRPartBRepository.save(eq(entity))).thenAnswer(invocation -> {
+    when(s3FormRPartBRepository.save(entity)).thenAnswer(invocation -> {
       FormRPartB form = invocation.getArgument(0);
       form.setId(DEFAULT_ID);
       return form;
@@ -354,7 +353,7 @@ class FormRPartBServiceImplTest {
     cloudEntity.setLifecycleState(LifecycleState.UNSUBMITTED);
     List<FormRPartB> cloudStoredEntities = new ArrayList<>();
     cloudStoredEntities.add(cloudEntity);
-    when(s3FormRPartBRepository.findByTraineeTisId(eq(DEFAULT_TRAINEE_TIS_ID)))
+    when(s3FormRPartBRepository.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(cloudStoredEntities);
 
     List<FormRPartSimpleDto> dtos = service.getFormRPartBsByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);

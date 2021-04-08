@@ -11,7 +11,6 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.empty;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
@@ -56,7 +55,7 @@ import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 @ExtendWith(MockitoExtension.class)
 class S3FormRPartBRepositoryImplTest {
 
-  public static final String KEY = "object.name";
+  private static final String KEY = "object.name";
   private static final String DEFAULT_ID = "DEFAULT_ID";
   private static final String DEFAULT_TRAINEE_TIS_ID = "1";
   private static final String DEFAULT_FORENAME = "DEFAULT_FORENAME";
@@ -219,7 +218,7 @@ class S3FormRPartBRepositoryImplTest {
 
   @Test
   void shouldGetFormRPartBsByTraineeTisId() {
-    when(s3Mock.listObjects(eq(bucketName), eq(DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b")))
+    when(s3Mock.listObjects(bucketName, DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b"))
         .thenReturn(s3ListingMock);
     S3ObjectSummary s3Summary = new S3ObjectSummary();
     s3Summary.setKey(KEY);
@@ -252,8 +251,8 @@ class S3FormRPartBRepositoryImplTest {
     InputStream jsonFormRPartB = getClass().getResourceAsStream("/forms/testFormRPartB.json");
     S3Object s3Object = new S3Object();
     s3Object.setObjectContent(jsonFormRPartB);
-    when(s3Mock.getObject(eq(bucketName),
-        eq(DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b/" + DEFAULT_ID + ".json")))
+    when(s3Mock.getObject(bucketName,
+        DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b/" + DEFAULT_ID + ".json"))
         .thenReturn(s3Object);
 
     Optional<FormRPartB> actual = repo.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID);

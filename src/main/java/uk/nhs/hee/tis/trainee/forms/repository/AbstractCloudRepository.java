@@ -67,7 +67,7 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
    * @return the saved entity
    */
   public T save(T form) {
-    if (StringUtils.isEmpty(form.getId())) {
+    if (!StringUtils.hasText(form.getId())) {
       form.setId(UUID.randomUUID().toString());
     }
     String fileName = form.getId() + ".json";
