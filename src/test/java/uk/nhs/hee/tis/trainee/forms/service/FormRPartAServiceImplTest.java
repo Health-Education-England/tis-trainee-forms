@@ -26,7 +26,6 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -195,7 +194,7 @@ class FormRPartAServiceImplTest {
     cloudEntity.setLifecycleState(LifecycleState.UNSUBMITTED);
     List<FormRPartA> cloudStoredEntities = new ArrayList<>();
     cloudStoredEntities.add(cloudEntity);
-    when(cloudObjectRepository.findByTraineeTisId(eq(DEFAULT_TRAINEE_TIS_ID)))
+    when(cloudObjectRepository.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(cloudStoredEntities);
 
     List<FormRPartSimpleDto> dtos = service.getFormRPartAsByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);

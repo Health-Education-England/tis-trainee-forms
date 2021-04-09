@@ -40,7 +40,7 @@ import uk.nhs.hee.tis.trainee.forms.repository.FormSwitchRepository;
 import uk.nhs.hee.tis.trainee.forms.service.impl.FormSwitchServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
-public class FormSwitchServiceImplTest {
+class FormSwitchServiceImplTest {
 
   private static final String DEFAULT_ID = "DEFAULT_ID";
   private static final String DEFAULT_FORM_NAME = "DEFAULT_FORM_NAME";
@@ -61,7 +61,7 @@ public class FormSwitchServiceImplTest {
    * init test data.
    */
   @BeforeEach
-  public void initData() {
+  void initData() {
     formSwitchDto = new FormSwitchDto();
     formSwitchDto.setId(DEFAULT_ID);
     formSwitchDto.setName(DEFAULT_FORM_NAME);
@@ -74,7 +74,7 @@ public class FormSwitchServiceImplTest {
   }
 
   @Test
-  public void shouldGetFormSwitches() {
+  void shouldGetFormSwitches() {
     List<FormSwitch> formSwitchesList = Collections.singletonList(formSwitch);
     when(formSwitchRepositoryMock.findAll()).thenReturn(formSwitchesList);
     when(formSwitchMapperMock.toDtos(formSwitchesList))

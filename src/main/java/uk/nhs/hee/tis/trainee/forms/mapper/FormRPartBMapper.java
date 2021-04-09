@@ -22,7 +22,6 @@ package uk.nhs.hee.tis.trainee.forms.mapper;
 
 import java.util.List;
 import org.mapstruct.InheritInverseConfiguration;
-import org.mapstruct.MapMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;

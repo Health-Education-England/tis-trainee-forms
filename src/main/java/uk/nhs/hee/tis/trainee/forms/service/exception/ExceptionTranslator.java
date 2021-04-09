@@ -22,8 +22,6 @@
 package uk.nhs.hee.tis.trainee.forms.service.exception;
 
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
@@ -38,9 +36,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
  */
 @ControllerAdvice
 public class ExceptionTranslator {
-
-  private final Logger log = LoggerFactory
-      .getLogger(ExceptionTranslator.class);
 
   /**
    * Translates a validation exception into an HTTP 400 Response.

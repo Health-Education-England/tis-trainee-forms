@@ -44,7 +44,7 @@ import uk.nhs.hee.tis.trainee.forms.service.FormSwitchService;
 
 @ExtendWith(SpringExtension.class)
 @WebMvcTest(controllers = FormSwitchResource.class)
-public class FormSwitchResourceTest {
+class FormSwitchResourceTest {
 
   private static final String DEFAULT_ID = "DEFAULT_ID";
   private static final String DEFAULT_FORM_NAME = "DEFAULT_FORM_NAME";
