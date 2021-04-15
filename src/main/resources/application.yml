@@ -19,6 +19,9 @@ application:
     always-store: ${APPLICATION_FILESTORE_ALWAYSSTORE:false}
     bucket: ${APPLICATION_FILESTORE_BUCKET}
 
+mongock:
+  change-logs-scan-package: uk.nhs.hee.tis.trainee.forms.changelog
+
 sentry:
   dsn: ${SENTRY_DSN:}
   environment: ${SENTRY_ENVIRONMENT:local}

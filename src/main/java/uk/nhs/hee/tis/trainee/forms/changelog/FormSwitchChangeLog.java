@@ -1,7 +1,6 @@
 /*
  * The MIT License (MIT)
- *
- * Copyright 2020 Crown Copyright (Health Education England)
+ * Copyright 2021 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -19,17 +18,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms;
+package uk.nhs.hee.tis.trainee.forms.changelog;
 
-import com.github.cloudyrock.spring.v5.EnableMongock;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import com.github.cloudyrock.mongock.ChangeLog;
+import com.github.cloudyrock.mongock.ChangeSet;
+import com.github.cloudyrock.mongock.driver.mongodb.springdata.v3.decorator.impl.MongockTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
+import uk.nhs.hee.tis.trainee.forms.model.FormSwitch;
 
-@EnableMongock
-@SpringBootApplication
-public class TraineeFormsApplication {
+@ChangeLog
+public class FormSwitchChangeLog {
 
-  public static void main(String[] args) {
-    SpringApplication.run(TraineeFormsApplication.class);
+  @ChangeSet(order = "001", id = "setCovidDeclarationSwitch", author = "", runAlways = true)
+  public void setCovidDeclarationSwitch(MongockTemplate mongockTemplate) {
+    Criteria criteria = Criteria.where("name").is("COVID");
+    Query query = Query.query(criteria);
+    Update update = Update.update("enabled", true);
+    mongockTemplate.upsert(query, update, FormSwitch.class);
   }
 }
