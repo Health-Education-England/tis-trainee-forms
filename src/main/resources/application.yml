@@ -19,6 +19,9 @@ application:
     always-store: ${APPLICATION_FILESTORE_ALWAYSSTORE:false}
     bucket: ${APPLICATION_FILESTORE_BUCKET}
 
+features:
+  covid: ${FEATURE_COVID:true}
+
 sentry:
   dsn: ${SENTRY_DSN:}
   environment: ${SENTRY_ENVIRONMENT:local}
