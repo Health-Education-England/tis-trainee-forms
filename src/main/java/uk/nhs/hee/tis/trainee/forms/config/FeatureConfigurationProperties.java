@@ -30,5 +30,11 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties("features")
 public class FeatureConfigurationProperties {
 
-  private boolean covid;
+  private FormRPartB formRPartB;
+
+  @Data
+  public static class FormRPartB {
+
+    private boolean covidDeclaration;
+  }
 }

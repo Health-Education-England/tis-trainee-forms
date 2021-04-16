@@ -17,10 +17,11 @@ logging:
 application:
   file-store:
     always-store: ${APPLICATION_FILESTORE_ALWAYSSTORE:false}
-    bucket: ${APPLICATION_FILESTORE_BUCKET}
+    bucket: ${APPLICATION_FILESTORE_BUCKET:}
 
 features:
-  covid: ${FEATURE_COVID:true}
+  formr-partb:
+    covid-declaration: ${FEATURE_FORMR_PARTB_COVID_DECLARATION:true}
 
 sentry:
   dsn: ${SENTRY_DSN:}

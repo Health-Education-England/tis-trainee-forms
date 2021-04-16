@@ -49,11 +49,11 @@ class FeatureFlagResourceTest {
 
   private MockMvc mockMvc;
 
-  private boolean covid;
+  private boolean covidDeclaration;
 
   @BeforeEach
   void setUp() {
-    covid = properties.isCovid();
+    covidDeclaration = properties.getFormRPartB().isCovidDeclaration();
 
     FeatureFlagResource featureFlagResource = new FeatureFlagResource(properties);
     mockMvc = MockMvcBuilders.standaloneSetup(featureFlagResource).build();
@@ -61,18 +61,18 @@ class FeatureFlagResourceTest {
 
   @AfterEach
   void tearDown() {
-    properties.setCovid(covid);
+    properties.getFormRPartB().setCovidDeclaration(covidDeclaration);
   }
 
   @ParameterizedTest(name = "Should return COVID feature flag when flag is {0}")
   @ValueSource(booleans = {true, false})
-  void testGetFeatureFlags(boolean covid, @Autowired FeatureConfigurationProperties properties)
-      throws Exception {
-    properties.setCovid(covid);
+  void testGetFeatureFlags(boolean covidDeclaration,
+      @Autowired FeatureConfigurationProperties properties) throws Exception {
+    properties.getFormRPartB().setCovidDeclaration(covidDeclaration);
 
     mockMvc.perform(get("/api/feature-flags")
         .contentType(TestUtil.APPLICATION_JSON_UTF8))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.covid").value(is(covid)));
+        .andExpect(jsonPath("$.formRPartB.covidDeclaration").value(is(covidDeclaration)));
   }
 }
