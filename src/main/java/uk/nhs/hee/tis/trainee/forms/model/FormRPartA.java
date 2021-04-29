@@ -27,7 +27,7 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-@Document(collection = "FormRPartA")
+@Document
 @Data
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)

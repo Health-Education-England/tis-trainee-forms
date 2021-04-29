@@ -29,7 +29,6 @@ import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -40,7 +39,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.api.util.AuthTokenUtil;
 import uk.nhs.hee.tis.trainee.forms.api.util.HeaderUtil;
-import uk.nhs.hee.tis.trainee.forms.api.validation.FormRPartAValidator;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
@@ -53,11 +51,9 @@ public class FormRPartAResource {
   private static final String ENTITY_NAME = "formR_partA";
 
   private final FormRPartAService service;
-  private final FormRPartAValidator validator;
 
-  public FormRPartAResource(FormRPartAService service, FormRPartAValidator validator) {
+  public FormRPartAResource(FormRPartAService service) {
     this.service = service;
-    this.validator = validator;
   }
 
   /**
@@ -71,8 +67,7 @@ public class FormRPartAResource {
    */
   @PostMapping("/formr-parta")
   public ResponseEntity<FormRPartADto> createFormRPartA(@RequestBody FormRPartADto dto,
-      @RequestHeader(HttpHeaders.AUTHORIZATION) String token)
-      throws URISyntaxException, MethodArgumentNotValidException {
+      @RequestHeader(HttpHeaders.AUTHORIZATION) String token) throws URISyntaxException {
     log.debug("REST request to save FormRPartA : {}", dto);
     if (dto.getId() != null) {
       return ResponseEntity.badRequest().headers(HeaderUtil
@@ -86,7 +81,6 @@ public class FormRPartAResource {
       return responseEntity.get();
     }
 
-    validator.validate(dto);
     FormRPartADto result = service.save(dto);
     return ResponseEntity.created(new URI("/api/formr-parta/" + result.getId())).body(result);
   }
@@ -103,8 +97,7 @@ public class FormRPartAResource {
    */
   @PutMapping("/formr-parta")
   public ResponseEntity<FormRPartADto> updateFormRPartA(@RequestBody FormRPartADto dto,
-      @RequestHeader(HttpHeaders.AUTHORIZATION) String token)
-      throws URISyntaxException, MethodArgumentNotValidException {
+      @RequestHeader(HttpHeaders.AUTHORIZATION) String token) throws URISyntaxException {
     log.debug("REST request to update FormRPartA : {}", dto);
     if (dto.getId() == null) {
       return createFormRPartA(dto, token);
@@ -116,7 +109,6 @@ public class FormRPartAResource {
       return errorResponse.get();
     }
 
-    validator.validate(dto);
     FormRPartADto result = service.save(dto);
     return ResponseEntity.ok().body(result);
   }

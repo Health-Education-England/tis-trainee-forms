@@ -22,8 +22,9 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import static org.hamcrest.Matchers.hasSize;
-import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -33,31 +34,29 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.lang.reflect.Method;
+import com.mongodb.MongoWriteException;
+import com.mongodb.WriteError;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Collections;
+import org.bson.BsonDocument;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.validation.BeanPropertyBindingResult;
-import org.springframework.validation.FieldError;
-import org.springframework.web.bind.MethodArgumentNotValidException;
-import uk.nhs.hee.tis.trainee.forms.api.validation.FormRPartBValidator;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
+import uk.nhs.hee.tis.trainee.forms.service.exception.ExceptionTranslator;
 
 @ExtendWith(SpringExtension.class)
 @WebMvcTest(controllers = FormRPartBResource.class)
@@ -88,9 +87,6 @@ class FormRPartBResourceTest {
   @MockBean
   private FormRPartBService service;
 
-  @MockBean
-  private FormRPartBValidator validator;
-
   private FormRPartBDto dto;
   private FormRPartSimpleDto simpleDto;
 
@@ -99,9 +95,10 @@ class FormRPartBResourceTest {
    */
   @BeforeEach
   void setup() {
-    FormRPartBResource formRPartBResource = new FormRPartBResource(service, validator);
+    FormRPartBResource formRPartBResource = new FormRPartBResource(service);
     mockMvc = MockMvcBuilders.standaloneSetup(formRPartBResource)
         .setMessageConverters(jacksonMessageConverter)
+        .setControllerAdvice(new ExceptionTranslator())
         .build();
   }
 
@@ -161,13 +158,9 @@ class FormRPartBResourceTest {
   void postShouldNotCreateFormWhenDtoValidationFails() throws Exception {
     dto.setId(null);
 
-    BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(dto, "formDto");
-    bindingResult.addError(new FieldError("formDto", "formField", "Form field not valid."));
-
-    Method method = validator.getClass().getMethod("validate", FormRPartBDto.class);
-    Exception exception = new MethodArgumentNotValidException(new MethodParameter(method, 0),
-        bindingResult);
-    doThrow(exception).when(validator).validate(dto);
+    WriteError writeError = new WriteError(1, "exceptionMessage", new BsonDocument());
+    MongoWriteException exception = new MongoWriteException(writeError, null);
+    when(service.save(dto)).thenThrow(exception);
 
     mockMvc.perform(post("/api/formr-partb")
         .contentType(TestUtil.APPLICATION_JSON_UTF8)
@@ -175,7 +168,8 @@ class FormRPartBResourceTest {
         .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
         .andExpect(status().isBadRequest());
 
-    verifyNoInteractions(service);
+    verify(service).save(dto);
+    verifyNoMoreInteractions(service);
   }
 
   @Test
@@ -221,21 +215,15 @@ class FormRPartBResourceTest {
 
   @Test
   void putShouldNotCreateFormWhenDtoValidationFails() throws Exception {
-    BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(dto, "formDto");
-    bindingResult.addError(new FieldError("formDto", "formField", "Form field not valid."));
-
-    Method method = validator.getClass().getMethod("validate", FormRPartBDto.class);
-    Exception exception = new MethodArgumentNotValidException(new MethodParameter(method, 0),
-        bindingResult);
-    doThrow(exception).when(validator).validate(dto);
+    WriteError writeError = new WriteError(1, "exceptionMessage", new BsonDocument());
+    MongoWriteException exception = new MongoWriteException(writeError, null);
+    when(service.save(dto)).thenThrow(exception);
 
     mockMvc.perform(put("/api/formr-partb")
         .contentType(TestUtil.APPLICATION_JSON_UTF8)
         .content(TestUtil.convertObjectToJsonBytes(dto))
         .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
         .andExpect(status().isBadRequest());
-
-    verifyNoInteractions(service);
   }
 
   @Test

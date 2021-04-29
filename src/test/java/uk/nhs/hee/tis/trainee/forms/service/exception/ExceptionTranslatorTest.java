@@ -21,19 +21,18 @@
 
 package uk.nhs.hee.tis.trainee.forms.service.exception;
 
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 
+import com.mongodb.MongoWriteException;
+import com.mongodb.WriteError;
+import org.bson.BsonDocument;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.validation.BeanPropertyBindingResult;
-import org.springframework.validation.BindingResult;
-import org.springframework.validation.FieldError;
-import org.springframework.web.bind.MethodArgumentNotValidException;
-import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
+import uk.nhs.hee.tis.trainee.forms.config.MongoConfiguration;
 
 @ExtendWith(MockitoExtension.class)
 class ExceptionTranslatorTest {
@@ -42,20 +41,43 @@ class ExceptionTranslatorTest {
   ExceptionTranslator translator;
 
   @Test
-  void testProcessValidationErrorShouldReturnExpectedErrorFormat() {
-    FormRPartADto formRPartADto = Mockito.mock(FormRPartADto.class);
-    BindingResult bindingResult = new BeanPropertyBindingResult(formRPartADto, "FormRPartADto");
+  void shouldReturnFormattedMongoWriteExceptionWhenNotIndexValidation() {
+    WriteError writeError = new WriteError(40, "not validation", new BsonDocument());
+    MongoWriteException exception = new MongoWriteException(writeError, null);
+    ErrorVM error = translator.processMongoWriteError(exception);
 
-    FieldError fieldError = new FieldError("FormRPartADto", "lifecycleState",
-        "Draft form R Part A already exists");
-    bindingResult.addError(fieldError);
+    assertThat("Unexpected message.", error.getMessage(), is(ErrorConstants.ERR_PERSISTENCE));
+    assertThat("Unexpected description.", error.getDescription(), is("not validation"));
+    assertThat("Unexpected field errors.", error.getFieldErrors(), nullValue());
+  }
 
-    MethodArgumentNotValidException ex = new MethodArgumentNotValidException(null, bindingResult);
-    ErrorVM error = translator.processValidationError(ex);
+  @Test
+  void shouldReturnFormattedMongoWriteExceptionWhenNonSingleDraftIndexValidation() {
+    WriteError writeError = new WriteError(11000, "not single draft", new BsonDocument());
+    MongoWriteException exception = new MongoWriteException(writeError, null);
+    ErrorVM error = translator.processMongoWriteError(exception);
 
-    error.getMessage();
-    assertThat("should contain error message", error.getMessage(),
-        is(ErrorConstants.ERR_VALIDATION));
-    assertThat("should contain 1 fieldError", error.getFieldErrors().size(), is(1));
+    assertThat("Unexpected message.", error.getMessage(), is(ErrorConstants.ERR_VALIDATION));
+    assertThat("Unexpected description.", error.getDescription(), is("not single draft"));
+    assertThat("Unexpected field errors.", error.getFieldErrors(), nullValue());
+  }
+
+  @Test
+  void shouldReturnFormattedMongoWriteExceptionWhenSingleDraftIndexValidation() {
+    WriteError writeError = new WriteError(11000, MongoConfiguration.SINGLE_DRAFT_INDEX_NAME,
+        new BsonDocument());
+    MongoWriteException exception = new MongoWriteException(writeError, null);
+    ErrorVM error = translator.processMongoWriteError(exception);
+
+    assertThat("Unexpected message.", error.getMessage(), is(ErrorConstants.ERR_VALIDATION));
+    assertThat("Unexpected description.", error.getDescription(),
+        is(MongoConfiguration.SINGLE_DRAFT_INDEX_NAME));
+    assertThat("Unexpected number of field errors.", error.getFieldErrors().size(), is(1));
+
+    FieldErrorVM fieldError = error.getFieldErrors().get(0);
+    assertThat("Unexpected object name.", fieldError.getObjectName(), is("form"));
+    assertThat("Unexpected field.", fieldError.getField(), is("lifecycleState"));
+    assertThat("Unexpected field error message.", fieldError.getMessage(),
+        is("Draft form already exists."));
   }
 }
