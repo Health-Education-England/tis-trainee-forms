@@ -28,8 +28,8 @@ import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.index.Index;
 import org.springframework.data.mongodb.core.index.PartialIndexFilter;
-import uk.nhs.hee.tis.trainee.forms.config.FeatureConfigurationProperties.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
+import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 
 @Configuration
 public class MongoConfiguration {
@@ -49,9 +49,8 @@ public class MongoConfiguration {
    */
   @PostConstruct
   public void initIndexes() {
-    PartialIndexFilter draftPartial = PartialIndexFilter
-        .of(new Document("lifecycleState", "DRAFT"));
-    Index singleDraftIndex = new Index()
+    var draftPartial = PartialIndexFilter.of(new Document("lifecycleState", "DRAFT"));
+    var singleDraftIndex = new Index()
         .named(SINGLE_DRAFT_INDEX_NAME)
         .on(TRAINEE_ID_FIELD, Direction.ASC)
         .partial(draftPartial)
