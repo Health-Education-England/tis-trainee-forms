@@ -22,7 +22,9 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -154,6 +156,8 @@ class FormRPartBResourceTest {
 
   @Test
   void postShouldNotCreateFormWhenDtoValidationFails() throws Exception {
+    dto.setId(null);
+
     WriteError writeError = new WriteError(1, "exceptionMessage", new BsonDocument());
     MongoWriteException exception = new MongoWriteException(writeError, null);
     when(service.save(dto)).thenThrow(exception);
@@ -164,7 +168,8 @@ class FormRPartBResourceTest {
         .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
         .andExpect(status().isBadRequest());
 
-    verifyNoInteractions(service);
+    verify(service).save(dto);
+    verifyNoMoreInteractions(service);
   }
 
   @Test

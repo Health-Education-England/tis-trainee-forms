@@ -22,7 +22,9 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -154,7 +156,11 @@ class FormRPartAResourceTest {
 
   @Test
   void postShouldNotCreateFormWhenDtoValidationFails() throws Exception {
-    when(service.save(dto)).thenThrow(MongoWriteException.class);
+    dto.setId(null);
+
+    WriteError writeError = new WriteError(11000, "not single draft", new BsonDocument());
+    MongoWriteException exception = new MongoWriteException(writeError, null);
+    when(service.save(dto)).thenThrow(exception);
 
     mockMvc.perform(post("/api/formr-parta")
         .contentType(TestUtil.APPLICATION_JSON_UTF8)
@@ -162,7 +168,8 @@ class FormRPartAResourceTest {
         .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
         .andExpect(status().isBadRequest());
 
-    verifyNoInteractions(service);
+    verify(service).save(dto);
+    verifyNoMoreInteractions(service);
   }
 
   @Test

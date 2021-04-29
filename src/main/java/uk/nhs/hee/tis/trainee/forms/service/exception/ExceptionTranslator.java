@@ -21,6 +21,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.service.exception;
 
+import com.mongodb.ErrorCategory;
 import com.mongodb.MongoWriteException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -48,7 +49,7 @@ public class ExceptionTranslator {
     ErrorVM dto;
     String message = e.getMessage();
 
-    if (e.getError().getCode() == 11000) {
+    if (e.getError().getCategory() == ErrorCategory.DUPLICATE_KEY) {
       dto = new ErrorVM(ErrorConstants.ERR_VALIDATION, message);
 
       if (message.contains(MongoConfiguration.SINGLE_DRAFT_INDEX_NAME)) {
