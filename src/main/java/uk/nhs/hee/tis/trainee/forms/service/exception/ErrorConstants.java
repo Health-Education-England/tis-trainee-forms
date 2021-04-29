@@ -24,7 +24,6 @@ package uk.nhs.hee.tis.trainee.forms.service.exception;
 public final class ErrorConstants {
 
   public static final String ERR_VALIDATION = "error.validation";
-  public static final String ERR_PERSISTENCE = "error.persistence";
 
   private ErrorConstants() {
   }

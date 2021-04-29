@@ -21,14 +21,15 @@
 
 package uk.nhs.hee.tis.trainee.forms.service.exception;
 
-import com.mongodb.ErrorCategory;
-import com.mongodb.MongoWriteException;
+import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
-import uk.nhs.hee.tis.trainee.forms.config.MongoConfiguration;
 
 /**
  * Controller advice to translate the server side exceptions to client-friendly json structures.
@@ -37,26 +38,27 @@ import uk.nhs.hee.tis.trainee.forms.config.MongoConfiguration;
 public class ExceptionTranslator {
 
   /**
-   * Translates a Mongo write exception into an HTTP 400 Response.
+   * Translates a validation exception into an HTTP 400 Response.
    *
-   * @param e The mongo exception.
-   * @return The View Model of the Error.
+   * @param ex The validation exception
+   * @return The View Model of the Error
    */
-  @ExceptionHandler(MongoWriteException.class)
+  @ExceptionHandler(MethodArgumentNotValidException.class)
   @ResponseStatus(HttpStatus.BAD_REQUEST)
   @ResponseBody
-  public ErrorVM processMongoWriteError(MongoWriteException e) {
-    ErrorVM dto;
-    String message = e.getMessage();
+  public ErrorVM processValidationError(MethodArgumentNotValidException ex) {
+    BindingResult result = ex.getBindingResult();
+    List<FieldError> fieldErrors = result.getFieldErrors();
 
-    if (e.getError().getCategory() == ErrorCategory.DUPLICATE_KEY) {
-      dto = new ErrorVM(ErrorConstants.ERR_VALIDATION, message);
+    return processFieldErrors(fieldErrors);
+  }
 
-      if (message.contains(MongoConfiguration.SINGLE_DRAFT_INDEX_NAME)) {
-        dto.add("form", "lifecycleState", "Draft form already exists.");
-      }
-    } else {
-      dto = new ErrorVM(ErrorConstants.ERR_PERSISTENCE, message);
+  private ErrorVM processFieldErrors(
+      List<FieldError> fieldErrors) {
+    ErrorVM dto = new ErrorVM(ErrorConstants.ERR_VALIDATION);
+
+    for (FieldError fieldError : fieldErrors) {
+      dto.add(fieldError.getObjectName(), fieldError.getField(), fieldError.getDefaultMessage());
     }
 
     return dto;
