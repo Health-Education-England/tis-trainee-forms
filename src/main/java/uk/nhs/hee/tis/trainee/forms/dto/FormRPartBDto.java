@@ -39,6 +39,7 @@ public class FormRPartBDto {
   private String email;
   private String localOfficeName;
   private String prevRevalBody;
+  private String prevRevalBodyOther;
   private LocalDate currRevalDate;
   private LocalDate prevRevalDate;
   private String programmeSpecialty;

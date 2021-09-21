@@ -40,6 +40,7 @@ public class FormRPartB extends AbstractForm {
   private String email;
   private String localOfficeName;
   private String prevRevalBody;
+  private String prevRevalBodyOther;
   private LocalDate currRevalDate;
   private LocalDate prevRevalDate;
   private String programmeSpecialty;
