@@ -24,10 +24,12 @@ package uk.nhs.hee.tis.trainee.forms.service.exception;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.Getter;
 
 /**
  * View Model for transferring error message with a list of field errors.
  */
+@Getter
 public class ErrorVM implements Serializable {
 
   private static final long serialVersionUID = 1L;
@@ -35,7 +37,7 @@ public class ErrorVM implements Serializable {
   private final String message;
   private final String description;
 
-  private List<FieldErrorVM> fieldErrors;
+  private final List<FieldErrorVM> fieldErrors = new ArrayList<>();
 
   public ErrorVM(String message) {
     this(message, null);
@@ -47,19 +49,6 @@ public class ErrorVM implements Serializable {
   }
 
   /**
-   * Create an error with errors against fields.
-   *
-   * @param message     The message
-   * @param description The larger description
-   * @param fieldErrors A list of errors for fields
-   */
-  public ErrorVM(String message, String description, List<FieldErrorVM> fieldErrors) {
-    this.message = message;
-    this.description = description;
-    this.fieldErrors = fieldErrors;
-  }
-
-  /**
    * Add a {@link FieldErrorVM} against a fields.
    *
    * @param objectName The name of the object containing the field
@@ -67,21 +56,6 @@ public class ErrorVM implements Serializable {
    * @param message    The error message
    */
   public void add(String objectName, String field, String message) {
-    if (fieldErrors == null) {
-      fieldErrors = new ArrayList<>();
-    }
     fieldErrors.add(new FieldErrorVM(objectName, field, message));
-  }
-
-  public String getMessage() {
-    return message;
-  }
-
-  public String getDescription() {
-    return description;
-  }
-
-  public List<FieldErrorVM> getFieldErrors() {
-    return fieldErrors;
   }
 }
