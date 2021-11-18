@@ -43,6 +43,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.util.ReflectionUtils;
 import uk.nhs.hee.tis.trainee.forms.dto.DeclarationDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
@@ -237,14 +238,106 @@ class FormRPartBServiceImplTest {
   }
 
   @Test
-  void shouldSaveUnsubmittedFormRPartB() {
+  void shouldSaveDraftFormRPartAToDbAndCloudWhenAlwaysStoreFiles() {
     entity.setId(null);
+    entity.setLifecycleState(LifecycleState.DRAFT);
     FormRPartBDto dto = mapper.toDto(entity);
 
     when(repositoryMock.save(entity)).thenAnswer(invocation -> {
       FormRPartB entity = invocation.getArgument(0);
-      entity.setId(DEFAULT_ID);
-      return entity;
+
+      FormRPartB savedEntity = copyForm(entity);
+      savedEntity.setId(DEFAULT_ID);
+      return savedEntity;
+    });
+
+    ReflectionTestUtils.setField(service, "alwaysStoreFiles", true);
+
+    FormRPartBDto savedDto = service.save(dto);
+
+    assertThat("Unexpected form ID.", savedDto.getId(), is(DEFAULT_ID));
+    assertThat("Unexpected trainee ID.", savedDto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected forename.", savedDto.getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", savedDto.getSurname(), is(DEFAULT_SURNAME));
+    assertThat("Unexpected work.", savedDto.getWork(), is(Collections.singletonList(workDto)));
+    assertThat("Unexpected total leave.", savedDto.getTotalLeave(), is(DEFAULT_TOTAL_LEAVE));
+    assertThat("Unexpected isHonest flag.", savedDto.getIsHonest(), is(DEFAULT_IS_HONEST));
+    assertThat("Unexpected isHealthy flag.", savedDto.getIsHealthy(), is(DEFAULT_IS_HEALTHY));
+    assertThat("Unexpected health statement.", savedDto.getHealthStatement(),
+        is(DEFAULT_HEALTHY_STATEMENT));
+    assertThat("Unexpected havePreviousDeclarations flag.", savedDto.getHavePreviousDeclarations(),
+        is(DEFAULT_HAVE_PREVIOUS_DECLARATIONS));
+    assertThat("Unexpected previous declarations.", savedDto.getPreviousDeclarations(),
+        is(Collections.singletonList(previousDeclarationDto)));
+    assertThat("Unexpected previous declaration summary.", savedDto.getPreviousDeclarationSummary(),
+        is(DEFAULT_PREVIOUS_DECLARATION_SUMMARY));
+    assertThat("Unexpected haveCurrentDeclarations flag.", savedDto.getHaveCurrentDeclarations(),
+        is(DEFAULT_HAVE_CURRENT_DECLARATIONS));
+    assertThat("Unexpected current declarations.", savedDto.getCurrentDeclarations(),
+        is(Collections.singletonList(currentDeclarationDto)));
+    assertThat("Unexpected current declaration summary.", savedDto.getCurrentDeclarationSummary(),
+        is(DEFAULT_CURRENT_DECLARATION_SUMMARY));
+
+    verify(repositoryMock).save(entity);
+    verify(s3FormRPartBRepository).save(entity);
+  }
+
+  @Test
+  void shouldSaveDraftFormRPartAToDbWhenNotAlwaysStoreFiles() {
+    entity.setId(null);
+    entity.setLifecycleState(LifecycleState.DRAFT);
+    FormRPartBDto dto = mapper.toDto(entity);
+
+    when(repositoryMock.save(entity)).thenAnswer(invocation -> {
+      FormRPartB entity = invocation.getArgument(0);
+
+      FormRPartB savedEntity = copyForm(entity);
+      savedEntity.setId(DEFAULT_ID);
+      return savedEntity;
+    });
+    ReflectionTestUtils.setField(service, "alwaysStoreFiles", false);
+
+    FormRPartBDto savedDto = service.save(dto);
+
+    assertThat("Unexpected form ID.", savedDto.getId(), is(DEFAULT_ID));
+    assertThat("Unexpected trainee ID.", savedDto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected forename.", savedDto.getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", savedDto.getSurname(), is(DEFAULT_SURNAME));
+    assertThat("Unexpected work.", savedDto.getWork(), is(Collections.singletonList(workDto)));
+    assertThat("Unexpected total leave.", savedDto.getTotalLeave(), is(DEFAULT_TOTAL_LEAVE));
+    assertThat("Unexpected isHonest flag.", savedDto.getIsHonest(), is(DEFAULT_IS_HONEST));
+    assertThat("Unexpected isHealthy flag.", savedDto.getIsHealthy(), is(DEFAULT_IS_HEALTHY));
+    assertThat("Unexpected health statement.", savedDto.getHealthStatement(),
+        is(DEFAULT_HEALTHY_STATEMENT));
+    assertThat("Unexpected havePreviousDeclarations flag.", savedDto.getHavePreviousDeclarations(),
+        is(DEFAULT_HAVE_PREVIOUS_DECLARATIONS));
+    assertThat("Unexpected previous declarations.", savedDto.getPreviousDeclarations(),
+        is(Collections.singletonList(previousDeclarationDto)));
+    assertThat("Unexpected previous declaration summary.", savedDto.getPreviousDeclarationSummary(),
+        is(DEFAULT_PREVIOUS_DECLARATION_SUMMARY));
+    assertThat("Unexpected haveCurrentDeclarations flag.", savedDto.getHaveCurrentDeclarations(),
+        is(DEFAULT_HAVE_CURRENT_DECLARATIONS));
+    assertThat("Unexpected current declarations.", savedDto.getCurrentDeclarations(),
+        is(Collections.singletonList(currentDeclarationDto)));
+    assertThat("Unexpected current declaration summary.", savedDto.getCurrentDeclarationSummary(),
+        is(DEFAULT_CURRENT_DECLARATION_SUMMARY));
+
+    verify(repositoryMock).save(entity);
+    verifyNoInteractions(s3FormRPartBRepository);
+  }
+
+  @Test
+  void shouldSaveUnsubmittedFormRPartB() {
+    entity.setId(null);
+    entity.setLifecycleState(LifecycleState.UNSUBMITTED);
+    FormRPartBDto dto = mapper.toDto(entity);
+
+    when(repositoryMock.save(entity)).thenAnswer(invocation -> {
+      FormRPartB entity = invocation.getArgument(0);
+
+      FormRPartB savedEntity = copyForm(entity);
+      savedEntity.setId(DEFAULT_ID);
+      return savedEntity;
     });
 
     FormRPartBDto savedDto = service.save(dto);
@@ -271,6 +364,9 @@ class FormRPartBServiceImplTest {
         is(Collections.singletonList(currentDeclarationDto)));
     assertThat("Unexpected current declaration summary.", savedDto.getCurrentDeclarationSummary(),
         is(DEFAULT_CURRENT_DECLARATION_SUMMARY));
+
+    verify(repositoryMock).save(entity);
+    verify(s3FormRPartBRepository).save(entity);
   }
 
   @Test
@@ -279,10 +375,13 @@ class FormRPartBServiceImplTest {
     entity.setLifecycleState(LifecycleState.SUBMITTED);
     entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
     FormRPartBDto dto = mapper.toDto(entity);
-    when(s3FormRPartBRepository.save(entity)).thenAnswer(invocation -> {
-      FormRPartB form = invocation.getArgument(0);
-      form.setId(DEFAULT_ID);
-      return form;
+
+    when(repositoryMock.save(entity)).thenAnswer(invocation -> {
+      FormRPartB entity = invocation.getArgument(0);
+
+      FormRPartB savedEntity = copyForm(entity);
+      savedEntity.setId(DEFAULT_ID);
+      return savedEntity;
     });
 
     FormRPartBDto savedDto = service.save(dto);
@@ -308,8 +407,9 @@ class FormRPartBServiceImplTest {
         is(Collections.singletonList(currentDeclarationDto)));
     assertThat("Unexpected current declaration summary.", savedDto.getCurrentDeclarationSummary(),
         is(DEFAULT_CURRENT_DECLARATION_SUMMARY));
-    entity.setId(DEFAULT_ID);
+
     verify(repositoryMock).save(entity);
+    verify(s3FormRPartBRepository).save(entity);
   }
 
   @Test
@@ -436,5 +536,26 @@ class FormRPartBServiceImplTest {
         is(Collections.singletonList(currentDeclarationDto)));
     assertThat("Unexpected current declaration summary.", dto.getCurrentDeclarationSummary(),
         is(DEFAULT_CURRENT_DECLARATION_SUMMARY));
+  }
+
+
+  private static FormRPartB copyForm(FormRPartB input) {
+    FormRPartB output = new FormRPartB();
+    output.setId(input.getId());
+    output.setTraineeTisId(input.getTraineeTisId());
+    output.setForename(input.getForename());
+    output.setSurname(input.getSurname());
+    output.setWork(input.getWork());
+    output.setTotalLeave(input.getTotalLeave());
+    output.setIsHonest(input.getIsHonest());
+    output.setIsHealthy(input.getIsHealthy());
+    output.setHealthStatement(input.getHealthStatement());
+    output.setHavePreviousDeclarations(input.getHavePreviousDeclarations());
+    output.setPreviousDeclarations(input.getPreviousDeclarations());
+    output.setPreviousDeclarationSummary(input.getPreviousDeclarationSummary());
+    output.setHaveCurrentDeclarations(input.getHaveCurrentDeclarations());
+    output.setCurrentDeclarations(input.getCurrentDeclarations());
+    output.setCurrentDeclarationSummary(input.getCurrentDeclarationSummary());
+    return output;
   }
 }

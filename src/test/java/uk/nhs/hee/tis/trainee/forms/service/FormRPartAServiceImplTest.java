@@ -22,7 +22,6 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -40,6 +39,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -91,8 +91,9 @@ class FormRPartAServiceImplTest {
   }
 
   @Test
-  void shouldSaveUnsubmittedFormRPartA() {
+  void shouldSaveDraftFormRPartAToDbAndCloudWhenAlwaysStoreFiles() {
     entity.setId(null);
+    entity.setLifecycleState(LifecycleState.DRAFT);
 
     FormRPartADto dto = new FormRPartADto();
     dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
@@ -102,8 +103,75 @@ class FormRPartAServiceImplTest {
 
     when(repositoryMock.save(entity)).thenAnswer(invocation -> {
       FormRPartA entity = invocation.getArgument(0);
-      entity.setId(DEFAULT_ID);
-      return entity;
+
+      FormRPartA savedEntity = copyForm(entity);
+      savedEntity.setId(DEFAULT_ID);
+      return savedEntity;
+    });
+
+    ReflectionTestUtils.setField(service, "alwaysStoreFiles", true);
+
+    FormRPartADto savedDto = service.save(dto);
+
+    assertThat("Unexpected form ID.", savedDto.getId(), is(DEFAULT_ID));
+    assertThat("Unexpected trainee ID.", savedDto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected forename.", savedDto.getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", savedDto.getSurname(), is(DEFAULT_SURNAME));
+
+    verify(repositoryMock).save(entity);
+    verify(cloudObjectRepository).save(entity);
+  }
+
+  @Test
+  void shouldSaveDraftFormRPartAToDbWhenNotAlwaysStoreFiles() {
+    entity.setId(null);
+    entity.setLifecycleState(LifecycleState.DRAFT);
+
+    FormRPartADto dto = new FormRPartADto();
+    dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    dto.setForename(DEFAULT_FORENAME);
+    dto.setSurname(DEFAULT_SURNAME);
+    dto.setLifecycleState(LifecycleState.DRAFT);
+
+    when(repositoryMock.save(entity)).thenAnswer(invocation -> {
+      FormRPartA entity = invocation.getArgument(0);
+
+      FormRPartA savedEntity = copyForm(entity);
+      savedEntity.setId(DEFAULT_ID);
+      return savedEntity;
+    });
+    ReflectionTestUtils.setField(service, "alwaysStoreFiles", false);
+
+    FormRPartADto savedDto = service.save(dto);
+
+    assertThat("Unexpected form ID.", savedDto.getId(), is(DEFAULT_ID));
+    assertThat("Unexpected trainee ID.", savedDto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected forename.", savedDto.getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", savedDto.getSurname(), is(DEFAULT_SURNAME));
+
+    verify(repositoryMock).save(entity);
+    verifyNoInteractions(cloudObjectRepository);
+  }
+
+  @Test
+  void shouldSaveUnsubmittedFormRPartA() {
+    entity.setId(null);
+    entity.setLifecycleState(LifecycleState.UNSUBMITTED);
+    entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+
+    FormRPartADto dto = new FormRPartADto();
+    dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    dto.setForename(DEFAULT_FORENAME);
+    dto.setSurname(DEFAULT_SURNAME);
+    dto.setLifecycleState(LifecycleState.UNSUBMITTED);
+    dto.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+
+    when(repositoryMock.save(entity)).thenAnswer(invocation -> {
+      FormRPartA entity = invocation.getArgument(0);
+
+      FormRPartA savedEntity = copyForm(entity);
+      savedEntity.setId(DEFAULT_ID);
+      return savedEntity;
     });
 
     FormRPartADto savedDto = service.save(dto);
@@ -113,7 +181,8 @@ class FormRPartAServiceImplTest {
     assertThat("Unexpected forename.", savedDto.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", savedDto.getSurname(), is(DEFAULT_SURNAME));
 
-    verifyNoInteractions(cloudObjectRepository);
+    verify(repositoryMock).save(entity);
+    verify(cloudObjectRepository).save(entity);
   }
 
   @Test
@@ -129,20 +198,23 @@ class FormRPartAServiceImplTest {
     dto.setLifecycleState(LifecycleState.SUBMITTED);
     dto.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
 
-    when(cloudObjectRepository.save(entity)).thenAnswer(invocation -> {
+    when(repositoryMock.save(entity)).thenAnswer(invocation -> {
       FormRPartA entity = invocation.getArgument(0);
-      entity.setId(DEFAULT_ID);
-      return entity;
+
+      FormRPartA savedEntity = copyForm(entity);
+      savedEntity.setId(DEFAULT_ID);
+      return savedEntity;
     });
 
     FormRPartADto savedDto = service.save(dto);
 
-    assertThat("Unexpected form ID.", savedDto.getId(), notNullValue());
+    assertThat("Unexpected form ID.", savedDto.getId(), is(DEFAULT_ID));
     assertThat("Unexpected trainee ID.", savedDto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", savedDto.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", savedDto.getSurname(), is(DEFAULT_SURNAME));
-    entity.setId(savedDto.getId());
+
     verify(repositoryMock).save(entity);
+    verify(cloudObjectRepository).save(entity);
   }
 
   @Test
@@ -241,5 +313,14 @@ class FormRPartAServiceImplTest {
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", dto.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", dto.getSurname(), is(DEFAULT_SURNAME));
+  }
+
+  private static FormRPartA copyForm(FormRPartA input) {
+    FormRPartA output = new FormRPartA();
+    output.setId(input.getId());
+    output.setTraineeTisId(input.getTraineeTisId());
+    output.setForename(input.getForename());
+    output.setSurname(input.getSurname());
+    return output;
   }
 }
