@@ -43,6 +43,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.BeanUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.util.ReflectionUtils;
 import uk.nhs.hee.tis.trainee.forms.dto.DeclarationDto;
@@ -246,7 +247,8 @@ class FormRPartBServiceImplTest {
     when(repositoryMock.save(entity)).thenAnswer(invocation -> {
       FormRPartB entity = invocation.getArgument(0);
 
-      FormRPartB savedEntity = copyForm(entity);
+      FormRPartB savedEntity = new FormRPartB();
+      BeanUtils.copyProperties(entity, savedEntity);
       savedEntity.setId(DEFAULT_ID);
       return savedEntity;
     });
@@ -291,7 +293,8 @@ class FormRPartBServiceImplTest {
     when(repositoryMock.save(entity)).thenAnswer(invocation -> {
       FormRPartB entity = invocation.getArgument(0);
 
-      FormRPartB savedEntity = copyForm(entity);
+      FormRPartB savedEntity = new FormRPartB();
+      BeanUtils.copyProperties(entity, savedEntity);
       savedEntity.setId(DEFAULT_ID);
       return savedEntity;
     });
@@ -335,7 +338,8 @@ class FormRPartBServiceImplTest {
     when(repositoryMock.save(entity)).thenAnswer(invocation -> {
       FormRPartB entity = invocation.getArgument(0);
 
-      FormRPartB savedEntity = copyForm(entity);
+      FormRPartB savedEntity = new FormRPartB();
+      BeanUtils.copyProperties(entity, savedEntity);
       savedEntity.setId(DEFAULT_ID);
       return savedEntity;
     });
@@ -379,7 +383,8 @@ class FormRPartBServiceImplTest {
     when(repositoryMock.save(entity)).thenAnswer(invocation -> {
       FormRPartB entity = invocation.getArgument(0);
 
-      FormRPartB savedEntity = copyForm(entity);
+      FormRPartB savedEntity = new FormRPartB();
+      BeanUtils.copyProperties(entity, savedEntity);
       savedEntity.setId(DEFAULT_ID);
       return savedEntity;
     });
@@ -536,26 +541,5 @@ class FormRPartBServiceImplTest {
         is(Collections.singletonList(currentDeclarationDto)));
     assertThat("Unexpected current declaration summary.", dto.getCurrentDeclarationSummary(),
         is(DEFAULT_CURRENT_DECLARATION_SUMMARY));
-  }
-
-
-  private static FormRPartB copyForm(FormRPartB input) {
-    FormRPartB output = new FormRPartB();
-    output.setId(input.getId());
-    output.setTraineeTisId(input.getTraineeTisId());
-    output.setForename(input.getForename());
-    output.setSurname(input.getSurname());
-    output.setWork(input.getWork());
-    output.setTotalLeave(input.getTotalLeave());
-    output.setIsHonest(input.getIsHonest());
-    output.setIsHealthy(input.getIsHealthy());
-    output.setHealthStatement(input.getHealthStatement());
-    output.setHavePreviousDeclarations(input.getHavePreviousDeclarations());
-    output.setPreviousDeclarations(input.getPreviousDeclarations());
-    output.setPreviousDeclarationSummary(input.getPreviousDeclarationSummary());
-    output.setHaveCurrentDeclarations(input.getHaveCurrentDeclarations());
-    output.setCurrentDeclarations(input.getCurrentDeclarations());
-    output.setCurrentDeclarationSummary(input.getCurrentDeclarationSummary());
-    return output;
   }
 }

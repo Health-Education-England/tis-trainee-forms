@@ -39,6 +39,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.BeanUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
@@ -104,7 +105,8 @@ class FormRPartAServiceImplTest {
     when(repositoryMock.save(entity)).thenAnswer(invocation -> {
       FormRPartA entity = invocation.getArgument(0);
 
-      FormRPartA savedEntity = copyForm(entity);
+      FormRPartA savedEntity = new FormRPartA();
+      BeanUtils.copyProperties(entity, savedEntity);
       savedEntity.setId(DEFAULT_ID);
       return savedEntity;
     });
@@ -136,7 +138,8 @@ class FormRPartAServiceImplTest {
     when(repositoryMock.save(entity)).thenAnswer(invocation -> {
       FormRPartA entity = invocation.getArgument(0);
 
-      FormRPartA savedEntity = copyForm(entity);
+      FormRPartA savedEntity = new FormRPartA();
+      BeanUtils.copyProperties(entity, savedEntity);
       savedEntity.setId(DEFAULT_ID);
       return savedEntity;
     });
@@ -169,7 +172,8 @@ class FormRPartAServiceImplTest {
     when(repositoryMock.save(entity)).thenAnswer(invocation -> {
       FormRPartA entity = invocation.getArgument(0);
 
-      FormRPartA savedEntity = copyForm(entity);
+      FormRPartA savedEntity = new FormRPartA();
+      BeanUtils.copyProperties(entity, savedEntity);
       savedEntity.setId(DEFAULT_ID);
       return savedEntity;
     });
@@ -201,7 +205,8 @@ class FormRPartAServiceImplTest {
     when(repositoryMock.save(entity)).thenAnswer(invocation -> {
       FormRPartA entity = invocation.getArgument(0);
 
-      FormRPartA savedEntity = copyForm(entity);
+      FormRPartA savedEntity = new FormRPartA();
+      BeanUtils.copyProperties(entity, savedEntity);
       savedEntity.setId(DEFAULT_ID);
       return savedEntity;
     });
@@ -313,14 +318,5 @@ class FormRPartAServiceImplTest {
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", dto.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", dto.getSurname(), is(DEFAULT_SURNAME));
-  }
-
-  private static FormRPartA copyForm(FormRPartA input) {
-    FormRPartA output = new FormRPartA();
-    output.setId(input.getId());
-    output.setTraineeTisId(input.getTraineeTisId());
-    output.setForename(input.getForename());
-    output.setSurname(input.getSurname());
-    return output;
   }
 }
