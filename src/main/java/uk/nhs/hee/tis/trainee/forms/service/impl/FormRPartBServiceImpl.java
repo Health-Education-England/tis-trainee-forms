@@ -73,11 +73,10 @@ public class FormRPartBServiceImpl implements FormRPartBService {
     if (alwaysStoreFiles || formRPartB.getLifecycleState() == LifecycleState.SUBMITTED
         || formRPartB.getLifecycleState() == LifecycleState.UNSUBMITTED) {
       s3ObjectRepository.save(formRPartB);
-      //Save in mongo for backward compatibility
-      formRPartBRepository.save(formRPartB);
-    } else {
-      formRPartB = formRPartBRepository.save(formRPartB);
     }
+
+    // Forms stored in cloud are still stored to Mongo for backwards compatibility.
+    formRPartB = formRPartBRepository.save(formRPartB);
     return formRPartBMapper.toDto(formRPartB);
   }
 

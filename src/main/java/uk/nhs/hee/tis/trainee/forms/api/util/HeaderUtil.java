@@ -11,56 +11,7 @@ public final class HeaderUtil {
 
   private static final Logger log = LoggerFactory.getLogger(HeaderUtil.class);
 
-  private static final String APPLICATION_NAME = "traineeReference";
-
   private HeaderUtil() {
-  }
-
-  /**
-   * Create a generic header alert.
-   *
-   * @param message The message to include in the header.
-   * @param param   The params to include in the header.
-   * @return The created {@link HttpHeaders}.
-   */
-  public static HttpHeaders createAlert(String message, String param) {
-    HttpHeaders headers = new HttpHeaders();
-    headers.add("X-traineeReference-alert", message);
-    headers.add("X-traineeReference-params", param);
-    return headers;
-  }
-
-  /**
-   * Create an entity creation header alert.
-   *
-   * @param entityName The name of the created entity.
-   * @param param      The params to include in the header.
-   * @return The created {@link HttpHeaders}.
-   */
-  public static HttpHeaders createEntityCreationAlert(String entityName, String param) {
-    return createAlert(APPLICATION_NAME + "." + entityName + ".created", param);
-  }
-
-  /**
-   * Create an entity update header alert.
-   *
-   * @param entityName The name of the updated entity.
-   * @param param      The params to include in the header.
-   * @return The created {@link HttpHeaders}.
-   */
-  public static HttpHeaders createEntityUpdateAlert(String entityName, String param) {
-    return createAlert(APPLICATION_NAME + "." + entityName + ".updated", param);
-  }
-
-  /**
-   * Create an entity deletion header alert.
-   *
-   * @param entityName The name of the deleted entity.
-   * @param param      The params to include in the header.
-   * @return The created {@link HttpHeaders}.
-   */
-  public static HttpHeaders createEntityDeletionAlert(String entityName, String param) {
-    return createAlert(APPLICATION_NAME + "." + entityName + ".deleted", param);
   }
 
   /**

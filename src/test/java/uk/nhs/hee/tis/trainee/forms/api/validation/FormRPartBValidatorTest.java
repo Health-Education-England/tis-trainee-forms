@@ -26,6 +26,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -183,5 +184,15 @@ class FormRPartBValidatorTest {
         .thenReturn(Lists.emptyList());
 
     assertDoesNotThrow(() -> validator.validate(formRPartBDto));
+  }
+
+  @Test
+  void shouldNotValidateSubmittedForm() {
+    formRPartBDto.setLifecycleState(LifecycleState.SUBMITTED);
+
+    List<FieldError> fieldErrors = validator.checkIfDraftUnique(formRPartBDto);
+
+    assertThat("Unexpected number of errors.", fieldErrors.size(), is(0));
+    verifyNoInteractions(formRPartBRepositoryMock);
   }
 }

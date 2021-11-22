@@ -22,10 +22,14 @@
 package uk.nhs.hee.tis.trainee.forms.service.exception;
 
 import java.io.Serializable;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
 /**
  * View Model for presenting an error with a field.
  */
+@Getter
+@RequiredArgsConstructor
 public class FieldErrorVM implements Serializable {
 
   private static final long serialVersionUID = 1L;
@@ -35,30 +39,4 @@ public class FieldErrorVM implements Serializable {
   private final String field;
 
   private final String message;
-
-  /**
-   * Instantiates a View Model for the provided error.
-   *
-   * @param dto     The name of the object
-   * @param field   The name of the field
-   * @param message The error message
-   */
-  public FieldErrorVM(String dto, String field, String message) {
-    this.objectName = dto;
-    this.field = field;
-    this.message = message;
-  }
-
-  public String getObjectName() {
-    return objectName;
-  }
-
-  public String getField() {
-    return field;
-  }
-
-  public String getMessage() {
-    return message;
-  }
-
 }
