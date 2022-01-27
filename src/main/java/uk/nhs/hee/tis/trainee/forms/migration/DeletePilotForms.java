@@ -35,7 +35,7 @@ import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 
 /**
- *
+ * Delete all forms created during the non-ARCP pilot.
  */
 @Slf4j
 @ChangeUnit(id = "deletePilotForms", order = "1")
@@ -48,7 +48,7 @@ public class DeletePilotForms {
   }
 
   /**
-   *
+   * Delete all forms created before the first ARCP pilot started.
    */
   @Execution
   public void migrate() {
@@ -61,7 +61,7 @@ public class DeletePilotForms {
   }
 
   /**
-   *
+   * Do not attempt rollback, any successfully deleted forms should stay deleted.
    */
   @RollbackExecution
   public void rollback() {
