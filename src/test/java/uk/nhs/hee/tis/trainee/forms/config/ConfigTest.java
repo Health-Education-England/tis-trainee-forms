@@ -46,7 +46,8 @@ class ConfigTest {
     ObjectMapper objectMapper = config.objectMapper();
 
     Set<Object> moduleIds = objectMapper.getRegisteredModuleIds();
-    assertThat("Expected module not found.", moduleIds, hasItem(JavaTimeModule.class.getName()));
+    String expectedModuleName = new JavaTimeModule().getModuleName();
+    assertThat("Expected module not found.", moduleIds, hasItem(expectedModuleName));
   }
 
   @Test
