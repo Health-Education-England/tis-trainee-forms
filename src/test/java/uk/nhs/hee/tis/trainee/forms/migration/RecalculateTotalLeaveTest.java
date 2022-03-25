@@ -29,66 +29,90 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.query.UpdateDefinition;
+import org.springframework.test.util.ReflectionTestUtils;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
+import uk.nhs.hee.tis.trainee.forms.mapper.CovidDeclarationMapperImpl;
+import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
+import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 
 class RecalculateTotalLeaveTest {
 
   private RecalculateTotalLeave migration;
 
   private MongoTemplate template;
+  private FormRPartBService service;
 
   @BeforeEach
   void setUp() {
     template = mock(MongoTemplate.class);
-    migration = new RecalculateTotalLeave(template);
+    service = mock(FormRPartBService.class);
+
+    FormRPartBMapperImpl mapper = new FormRPartBMapperImpl();
+    ReflectionTestUtils.setField(mapper, "covidDeclarationMapper",
+        new CovidDeclarationMapperImpl());
+    migration = new RecalculateTotalLeave(template, service, mapper);
   }
 
   @Test
-  void shouldOnlyRecalculateDocumentsWithZeroTotalLeave() {
+  void shouldOnlyRecalculateDocumentsWithZeroTotalLeaveAndUnCalculatedLeave() {
     migration.migrate();
 
     ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
-    verify(template).updateMulti(queryCaptor.capture(), any(), eq(FormRPartB.class));
+    verify(template).find(queryCaptor.capture(), eq(FormRPartB.class));
 
     Query query = queryCaptor.getValue();
     Document queryObject = query.getQueryObject();
-    int queryFilter = queryObject.getInteger("totalLeave");
-    assertThat("Unexpected query filter.", queryFilter, is(0));
+
+    List<Document> andList = queryObject.get("$and", List.class);
+    assertThat("Unexpected number of AND conditions.", andList.size(), is(1));
+
+    Document andObject = (Document) andList.get(0);
+    int totalLeave = andObject.getInteger("totalLeave");
+    assertThat("Unexpected total leave in filter.", totalLeave, is(0));
+
+    List<Document> orList = andObject.get("$or", List.class);
+    assertThat("Unexpected number of OR conditions.", orList.size(), is(6));
+
+    Set<String> orFields = orList.stream()
+        .filter(doc -> doc.containsValue(new Document().append("$ne", 0)))
+        .flatMap(doc -> doc.keySet().stream())
+        .collect(Collectors.toSet());
+    assertThat("Unexpected OR filter fields.", orFields,
+        hasItems("sicknessAbsence", "parentalLeave", "careerBreaks", "paidLeave",
+            "unauthorisedLeave", "otherLeave"));
   }
 
   @Test
-  void shouldAddAllLeaveFields() {
+  void shouldSumAllLeaveFields() {
+    FormRPartB form = new FormRPartB();
+    form.setSicknessAbsence(1);
+    form.setParentalLeave(10);
+    form.setCareerBreaks(100);
+    form.setPaidLeave(1000);
+    form.setUnauthorisedLeave(10000);
+    form.setOtherLeave(100000);
+    when(template.find(any(), eq(FormRPartB.class))).thenReturn(Collections.singletonList(form));
+
     migration.migrate();
 
-    ArgumentCaptor<UpdateDefinition> updateCaptor = ArgumentCaptor.forClass(UpdateDefinition.class);
-    verify(template).updateMulti(any(), updateCaptor.capture(), eq(FormRPartB.class));
+    ArgumentCaptor<FormRPartBDto> formCaptor = ArgumentCaptor.forClass(FormRPartBDto.class);
+    verify(service).save(formCaptor.capture());
 
-    UpdateDefinition updateDefinition = updateCaptor.getValue();
-    Document root = updateDefinition.getUpdateObject();
-    List<Document> updates = root.getList("", Document.class);
-    assertThat("Unexpected number of updates.", updates.size(), is(1));
-
-    Document update = updates.get(0);
-    List<String> addedFields = update.getEmbedded(
-        List.of("$set", "totalLeave", "$add"), List.class);
-    assertThat("Unexpected field count.", addedFields.size(), is(6));
-    assertThat("Unexpected fields.", addedFields, hasItems(
-        "$sicknessAbsence",
-        "$parentalLeave",
-        "$careerBreaks",
-        "$paidLeave",
-        "$unauthorisedLeave",
-        "$otherLeave"
-    ));
+    FormRPartBDto updatedForm = formCaptor.getValue();
+    assertThat("Unexpected total leave.", form.getTotalLeave(), is(111111));
   }
 
   @Test

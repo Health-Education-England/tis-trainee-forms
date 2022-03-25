@@ -24,13 +24,15 @@ package uk.nhs.hee.tis.trainee.forms.migration;
 import io.mongock.api.annotations.ChangeUnit;
 import io.mongock.api.annotations.Execution;
 import io.mongock.api.annotations.RollbackExecution;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.aggregation.AggregationUpdate;
-import org.springframework.data.mongodb.core.aggregation.ArithmeticOperators.Add;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
+import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
+import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 
 /**
  * Recalculate the total leave field on all Form R Part Bs to resolve an issue where it was not
@@ -43,9 +45,14 @@ public class RecalculateTotalLeave {
   private static final String TOTAL_LEAVE = "totalLeave";
 
   private final MongoTemplate mongoTemplate;
+  private final FormRPartBService formService;
+  private final FormRPartBMapper formMapper;
 
-  public RecalculateTotalLeave(MongoTemplate mongoTemplate) {
+  public RecalculateTotalLeave(MongoTemplate mongoTemplate, FormRPartBService formService,
+      FormRPartBMapper formMapper) {
     this.mongoTemplate = mongoTemplate;
+    this.formService = formService;
+    this.formMapper = formMapper;
   }
 
   /**
@@ -53,19 +60,36 @@ public class RecalculateTotalLeave {
    */
   @Execution
   public void migrate() {
-    var criteria = Criteria.where(TOTAL_LEAVE).is(0);
+    var criteria = new Criteria().andOperator(
+        Criteria.where(TOTAL_LEAVE).is(0).orOperator(
+            Criteria.where("sicknessAbsence").ne(0),
+            Criteria.where("parentalLeave").ne(0),
+            Criteria.where("careerBreaks").ne(0),
+            Criteria.where("paidLeave").ne(0),
+            Criteria.where("unauthorisedLeave").ne(0),
+            Criteria.where("otherLeave").ne(0)
+        )
+    );
     var query = Query.query(criteria);
 
-    var add =
-        Add.valueOf("sicknessAbsence")
-            .add("parentalLeave")
-            .add("careerBreaks")
-            .add("paidLeave")
-            .add("unauthorisedLeave")
-            .add("otherLeave");
-    var update = AggregationUpdate.update().set(TOTAL_LEAVE).toValueOf(add);
+    List<FormRPartB> zeroLeaveForms = mongoTemplate.find(query, FormRPartB.class);
+    log.info("Found {} forms with un-calculated total leave.", zeroLeaveForms.size());
 
-    mongoTemplate.updateMulti(query, update, FormRPartB.class);
+    for (FormRPartB zeroLeaveForm : zeroLeaveForms) {
+      log.info("Updating total leave for form ID {}", zeroLeaveForm.getId());
+
+      int totalLeave = 0;
+      totalLeave += zeroLeaveForm.getSicknessAbsence();
+      totalLeave += zeroLeaveForm.getParentalLeave();
+      totalLeave += zeroLeaveForm.getCareerBreaks();
+      totalLeave += zeroLeaveForm.getPaidLeave();
+      totalLeave += zeroLeaveForm.getUnauthorisedLeave();
+      totalLeave += zeroLeaveForm.getOtherLeave();
+      zeroLeaveForm.setTotalLeave(totalLeave);
+
+      FormRPartBDto zeroLeaveFormDto = formMapper.toDto(zeroLeaveForm);
+      formService.save(zeroLeaveFormDto);
+    }
   }
 
   /**
