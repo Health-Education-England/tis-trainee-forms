@@ -69,4 +69,6 @@ public class FormRPartBDto {
   private LifecycleState lifecycleState;
   private Boolean haveCovidDeclarations;
   private CovidDeclarationDto covidDeclarationDto;
+  private Boolean haveCurrentUnresolvedDeclarations;
+  private Boolean havePreviousUnresolvedDeclarations;
 }

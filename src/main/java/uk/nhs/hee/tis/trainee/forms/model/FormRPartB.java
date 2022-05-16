@@ -67,6 +67,8 @@ public class FormRPartB extends AbstractForm {
   private String compliments;
   private Boolean haveCovidDeclarations;
   private CovidDeclaration covidDeclaration;
+  private Boolean haveCurrentUnresolvedDeclarations;
+  private Boolean havePreviousUnresolvedDeclarations;
 
   @Override
   public String getFormType() {
