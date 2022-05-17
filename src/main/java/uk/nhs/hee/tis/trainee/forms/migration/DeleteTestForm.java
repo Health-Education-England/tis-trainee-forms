@@ -43,6 +43,11 @@ public class DeleteTestForm {
   private final AmazonS3 amazonS3;
   private final String bucketName;
 
+  /**
+   * @param mongoTemplate The interface for operations on the DB
+   * @param amazonS3 The interface for interacting with S3
+   * @param bucketName The bucket to check for the form being deleted
+   */
   public DeleteTestForm(MongoTemplate mongoTemplate, AmazonS3 amazonS3,
       @Value("${application.file-store.bucket}") String bucketName) {
     this.mongoTemplate = mongoTemplate;
