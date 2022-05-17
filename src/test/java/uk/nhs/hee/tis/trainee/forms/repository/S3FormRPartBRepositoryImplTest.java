@@ -289,10 +289,10 @@ class S3FormRPartBRepositoryImplTest {
     assertThat("Unexpected current declarations.", entity.getCurrentDeclarations(), empty());
     assertThat("Unexpected current declaration summary.", entity.getCurrentDeclarationSummary(),
         nullValue());
-    assertThat("Unexpected haveCurrentUnresolvedDeclarations flag.", entity.getHaveCurrentUnresolvedDeclarations(),
-        is(false));
-    assertThat("Unexpected havePreviousUnresolvedDeclarations flag.", entity.getHavePreviousUnresolvedDeclarations(),
-        is(false));
+    assertThat("Unexpected haveCurrentUnresolvedDeclarations flag.",
+        entity.getHaveCurrentUnresolvedDeclarations(), is(false));
+    assertThat("Unexpected havePreviousUnresolvedDeclarations flag.",
+        entity.getHavePreviousUnresolvedDeclarations(), is(false));
     assertThat("Unexpected status.", entity.getLifecycleState(), is(SUBMITTED));
   }
 

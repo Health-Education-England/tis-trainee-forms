@@ -285,9 +285,11 @@ class FormRPartBServiceImplTest {
         is(Collections.singletonList(currentDeclarationDto)));
     assertThat("Unexpected current declaration summary.", savedDto.getCurrentDeclarationSummary(),
         is(DEFAULT_CURRENT_DECLARATION_SUMMARY));
-    assertThat("Unexpected haveCurrentUnresolvedDeclarations flag.", savedDto.getHaveCurrentUnresolvedDeclarations(),
+    assertThat("Unexpected haveCurrentUnresolvedDeclarations flag.",
+        savedDto.getHaveCurrentUnresolvedDeclarations(),
         is(DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS));
-    assertThat("Unexpected havePreviousUnresolvedDeclarations flag.", savedDto.getHavePreviousUnresolvedDeclarations(),
+    assertThat("Unexpected havePreviousUnresolvedDeclarations flag.",
+        savedDto.getHavePreviousUnresolvedDeclarations(),
         is(DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS));
 
     verify(repositoryMock).save(entity);
@@ -334,9 +336,11 @@ class FormRPartBServiceImplTest {
         is(Collections.singletonList(currentDeclarationDto)));
     assertThat("Unexpected current declaration summary.", savedDto.getCurrentDeclarationSummary(),
         is(DEFAULT_CURRENT_DECLARATION_SUMMARY));
-    assertThat("Unexpected haveCurrentUnresolvedDeclarations flag.", savedDto.getHaveCurrentUnresolvedDeclarations(),
+    assertThat("Unexpected haveCurrentUnresolvedDeclarations flag.",
+        savedDto.getHaveCurrentUnresolvedDeclarations(),
         is(DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS));
-    assertThat("Unexpected havePreviousUnresolvedDeclarations flag.", savedDto.getHavePreviousUnresolvedDeclarations(),
+    assertThat("Unexpected havePreviousUnresolvedDeclarations flag.",
+        savedDto.getHavePreviousUnresolvedDeclarations(),
         is(DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS));
 
     verify(repositoryMock).save(entity);
@@ -382,9 +386,11 @@ class FormRPartBServiceImplTest {
         is(Collections.singletonList(currentDeclarationDto)));
     assertThat("Unexpected current declaration summary.", savedDto.getCurrentDeclarationSummary(),
         is(DEFAULT_CURRENT_DECLARATION_SUMMARY));
-    assertThat("Unexpected haveCurrentUnresolvedDeclarations flag.", savedDto.getHaveCurrentUnresolvedDeclarations(),
+    assertThat("Unexpected haveCurrentUnresolvedDeclarations flag.",
+        savedDto.getHaveCurrentUnresolvedDeclarations(),
         is(DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS));
-    assertThat("Unexpected havePreviousUnresolvedDeclarations flag.", savedDto.getHavePreviousUnresolvedDeclarations(),
+    assertThat("Unexpected havePreviousUnresolvedDeclarations flag.",
+        savedDto.getHavePreviousUnresolvedDeclarations(),
         is(DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS));
 
     verify(repositoryMock).save(entity);
@@ -430,9 +436,11 @@ class FormRPartBServiceImplTest {
         is(Collections.singletonList(currentDeclarationDto)));
     assertThat("Unexpected current declaration summary.", savedDto.getCurrentDeclarationSummary(),
         is(DEFAULT_CURRENT_DECLARATION_SUMMARY));
-    assertThat("Unexpected haveCurrentUnresolvedDeclarations flag.", savedDto.getHaveCurrentUnresolvedDeclarations(),
+    assertThat("Unexpected haveCurrentUnresolvedDeclarations flag.",
+        savedDto.getHaveCurrentUnresolvedDeclarations(),
         is(DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS));
-    assertThat("Unexpected havePreviousUnresolvedDeclarations flag.", savedDto.getHavePreviousUnresolvedDeclarations(),
+    assertThat("Unexpected havePreviousUnresolvedDeclarations flag.",
+        savedDto.getHavePreviousUnresolvedDeclarations(),
         is(DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS));
 
     verify(repositoryMock).save(entity);
@@ -531,9 +539,11 @@ class FormRPartBServiceImplTest {
         is(Collections.singletonList(currentDeclarationDto)));
     assertThat("Unexpected current declaration summary.", dto.getCurrentDeclarationSummary(),
         is(DEFAULT_CURRENT_DECLARATION_SUMMARY));
-    assertThat("Unexpected haveCurrentUnresolvedDeclarations flag.", dto.getHaveCurrentUnresolvedDeclarations(),
+    assertThat("Unexpected haveCurrentUnresolvedDeclarations flag.",
+        dto.getHaveCurrentUnresolvedDeclarations(),
         is(DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS));
-    assertThat("Unexpected havePreviousUnresolvedDeclarations flag.", dto.getHavePreviousUnresolvedDeclarations(),
+    assertThat("Unexpected havePreviousUnresolvedDeclarations flag.",
+        dto.getHavePreviousUnresolvedDeclarations(),
         is(DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS));
     assertThat("Unexpected status.", dto.getLifecycleState(), is(LifecycleState.SUBMITTED));
   }
@@ -567,9 +577,11 @@ class FormRPartBServiceImplTest {
         is(Collections.singletonList(currentDeclarationDto)));
     assertThat("Unexpected current declaration summary.", dto.getCurrentDeclarationSummary(),
         is(DEFAULT_CURRENT_DECLARATION_SUMMARY));
-    assertThat("Unexpected haveCurrentUnresolvedDeclarations flag.", dto.getHaveCurrentUnresolvedDeclarations(),
+    assertThat("Unexpected haveCurrentUnresolvedDeclarations flag.",
+        dto.getHaveCurrentUnresolvedDeclarations(),
         is(DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS));
-    assertThat("Unexpected havePreviousUnresolvedDeclarations flag.", dto.getHavePreviousUnresolvedDeclarations(),
+    assertThat("Unexpected havePreviousUnresolvedDeclarations flag.", 
+        dto.getHavePreviousUnresolvedDeclarations(),
         is(DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS));
   }
 }
