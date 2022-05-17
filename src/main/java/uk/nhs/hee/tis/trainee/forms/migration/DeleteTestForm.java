@@ -31,7 +31,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 
 /**
- * This form was submitted to validate that there was no problem with the user's account/data
+ * This form was submitted to validate that there was no problem with the user's account/data.
  */
 @Slf4j
 @ChangeUnit(id = "deleteTestForm", order = "3")
@@ -44,7 +44,7 @@ public class DeleteTestForm {
   }
 
   /**
-   * Run a find and delete for the document's ID
+   * Run a find and delete for the document's ID.
    */
   @Execution
   public void migrate() {
@@ -65,6 +65,6 @@ public class DeleteTestForm {
    */
   @RollbackExecution
   public void rollback() {
-    log.warn("Rollback requested but not available for 'recalculateTotalLeave' migration.");
+    log.warn("Rollback requested but not available for 'deleteTestForm' migration.");
   }
 }
