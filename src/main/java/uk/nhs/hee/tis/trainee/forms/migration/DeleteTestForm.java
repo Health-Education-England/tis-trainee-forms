@@ -21,10 +21,12 @@
 
 package uk.nhs.hee.tis.trainee.forms.migration;
 
+import com.amazonaws.services.s3.AmazonS3;
 import io.mongock.api.annotations.ChangeUnit;
 import io.mongock.api.annotations.Execution;
 import io.mongock.api.annotations.RollbackExecution;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -38,9 +40,14 @@ import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 public class DeleteTestForm {
 
   private final MongoTemplate mongoTemplate;
+  private final AmazonS3 amazonS3;
+  private final String bucketName;
 
-  public DeleteTestForm(MongoTemplate mongoTemplate) {
+  public DeleteTestForm(MongoTemplate mongoTemplate, AmazonS3 amazonS3,
+      @Value("${application.file-store.bucket}") String bucketName) {
     this.mongoTemplate = mongoTemplate;
+    this.amazonS3 = amazonS3;
+    this.bucketName = bucketName;
   }
 
   /**
@@ -52,6 +59,8 @@ public class DeleteTestForm {
     final var deletedFormRPartB = mongoTemplate.findAndRemove(
         Query.query(Criteria.where("_id").is("f874c846-623d-478c-8937-7595afbc969a")),
         FormRPartB.class, "FormRPartB");
+    amazonS3
+        .deleteObject(bucketName, "256060/forms/formr-b/f874c846-623d-478c-8937-7595afbc969a.json");
     if (deletedFormRPartB == null) {
       log.info("Changelog did not remove a document");
     } else {

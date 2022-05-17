@@ -28,6 +28,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.amazonaws.services.s3.AmazonS3;
 import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,17 +39,18 @@ import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 
 class DeleteTestFormTest {
 
+  private static final String BUCKET_NAME = "test-bucket";
   private DeleteTestForm migration;
-
   private MongoTemplate template;
-
   private ArgumentCaptor<Query> queryCaptor;
+  private AmazonS3 s3;
 
   @BeforeEach
   void setUp() {
     template = mock(MongoTemplate.class);
+    s3 = mock(AmazonS3.class);
     queryCaptor = ArgumentCaptor.forClass(Query.class);
-    migration = new DeleteTestForm(template);
+    migration = new DeleteTestForm(template, s3, BUCKET_NAME);
   }
 
   @Test
@@ -61,7 +63,7 @@ class DeleteTestFormTest {
 
     verify(form).getId();
     verify(form).getTraineeTisId();
-    verifyExpectedQuery();
+    verifyExpectedOperations();
   }
 
   @Test
@@ -69,15 +71,16 @@ class DeleteTestFormTest {
     migration.migrate();
 
     verify(template).findAndRemove(queryCaptor.capture(), eq(FormRPartB.class), eq("FormRPartB"));
-    verifyExpectedQuery();
+    verifyExpectedOperations();
   }
 
-  private void verifyExpectedQuery() {
+  private void verifyExpectedOperations() {
     Query query = queryCaptor.getValue();
     Document queryObject = query.getQueryObject();
     assertThat("Unenxpected query \"_id\"",
         queryObject.getString("_id").equals("f874c846-623d-478c-8937-7595afbc969a"));
-
+    verify(s3).deleteObject(BUCKET_NAME,
+        "256060/forms/formr-b/f874c846-623d-478c-8937-7595afbc969a.json");
   }
 
   @Test
