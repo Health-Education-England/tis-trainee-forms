@@ -26,7 +26,7 @@ import io.mongock.api.annotations.ChangeUnit;
 import io.mongock.api.annotations.Execution;
 import io.mongock.api.annotations.RollbackExecution;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -47,14 +47,13 @@ public class DeleteTestForm {
    * Constructs the Mongock change unit.
    *
    * @param mongoTemplate The interface for operations on the DB
-   * @param amazonS3 The interface for interacting with S3
-   * @param bucketName The bucket to check for the form being deleted
+   * @param amazonS3      The interface for interacting with S3
+   * @param env           The environment for access to a property with the file-store bucket name
    */
-  public DeleteTestForm(MongoTemplate mongoTemplate, AmazonS3 amazonS3,
-      @Value("${application.file-store.bucket}") String bucketName) {
+  public DeleteTestForm(MongoTemplate mongoTemplate, AmazonS3 amazonS3, Environment env) {
     this.mongoTemplate = mongoTemplate;
     this.amazonS3 = amazonS3;
-    this.bucketName = bucketName;
+    this.bucketName = env.getProperty("application.file-store.bucket");
   }
 
   /**

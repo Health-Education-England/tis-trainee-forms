@@ -33,6 +33,7 @@ import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.core.env.Environment;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
@@ -50,7 +51,9 @@ class DeleteTestFormTest {
     template = mock(MongoTemplate.class);
     s3 = mock(AmazonS3.class);
     queryCaptor = ArgumentCaptor.forClass(Query.class);
-    migration = new DeleteTestForm(template, s3, BUCKET_NAME);
+    Environment env = mock(Environment.class);
+    when(env.getProperty("application.file-store.bucket")).thenReturn(BUCKET_NAME);
+    migration = new DeleteTestForm(template, s3, env);
   }
 
   @Test
