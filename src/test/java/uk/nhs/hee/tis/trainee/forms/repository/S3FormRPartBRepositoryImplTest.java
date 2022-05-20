@@ -91,6 +91,8 @@ class S3FormRPartBRepositoryImplTest {
           LifecycleState.UNSUBMITTED.name(), "submissiondate",
           DEFAULT_SUBMISSION_DATE.format(ISO_LOCAL_DATE), "traineeid",
           DEFAULT_TRAINEE_TIS_ID);
+  private static final Boolean DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS = true;
+  private static final Boolean DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS = true;
   private static ObjectMapper objectMapper;
   private S3FormRPartBRepositoryImpl repo;
   @Mock
@@ -146,6 +148,8 @@ class S3FormRPartBRepositoryImplTest {
     entity.setCurrentDeclarations(Collections.singletonList(currentDeclaration));
     entity.setCurrentDeclarationSummary(DEFAULT_CURRENT_DECLARATION_SUMMARY);
     entity.setLifecycleState(LifecycleState.DRAFT);
+    entity.setHaveCurrentUnresolvedDeclarations(DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS);
+    entity.setHavePreviousUnresolvedDeclarations(DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS);
     return entity;
   }
 
@@ -285,6 +289,10 @@ class S3FormRPartBRepositoryImplTest {
     assertThat("Unexpected current declarations.", entity.getCurrentDeclarations(), empty());
     assertThat("Unexpected current declaration summary.", entity.getCurrentDeclarationSummary(),
         nullValue());
+    assertThat("Unexpected haveCurrentUnresolvedDeclarations flag.",
+        entity.getHaveCurrentUnresolvedDeclarations(), is(false));
+    assertThat("Unexpected havePreviousUnresolvedDeclarations flag.",
+        entity.getHavePreviousUnresolvedDeclarations(), is(false));
     assertThat("Unexpected status.", entity.getLifecycleState(), is(SUBMITTED));
   }
 

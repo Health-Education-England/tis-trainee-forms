@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.hee.tis.trainee"
-version = "0.5.3"
+version = "0.5.4"
 sourceCompatibility = "11"
 
 configurations {
