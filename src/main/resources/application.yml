@@ -1,7 +1,8 @@
 application:
   file-store:
     always-store: ${APPLICATION_FILESTORE_ALWAYSSTORE:false}
-    bucket: ${APPLICATION_FILESTORE_BUCKET:}
+    bucket: tis-trainee-documents-upload-local
+    aws-region: eu-west-2
 
 features:
   formr-partb:
