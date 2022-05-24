@@ -24,11 +24,9 @@ package uk.nhs.hee.tis.trainee.forms.migration;
 import io.mongock.api.annotations.ChangeUnit;
 import io.mongock.api.annotations.Execution;
 import io.mongock.api.annotations.RollbackExecution;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
@@ -38,7 +36,7 @@ import uk.nhs.hee.tis.trainee.forms.model.Work;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 
 /**
- * Sort the work placements on Form R Part Bs by descending endDate
+ * Sort the work placements on Form R Part Bs by descending endDate.
  */
 @Slf4j
 @ChangeUnit(id = "sortWorkPlacements", order = "4")
@@ -47,6 +45,9 @@ public class SortWorkPlacements {
   private final FormRPartBService formService;
   private final FormRPartBMapper formMapper;
 
+  /**
+   * Sort the work placements on Form R Part Bs by descending endDate.
+   */
   public SortWorkPlacements(MongoTemplate mongoTemplate, FormRPartBService formService,
                             FormRPartBMapper formMapper) {
     this.mongoTemplate = mongoTemplate;

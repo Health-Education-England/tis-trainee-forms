@@ -28,12 +28,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -57,7 +55,9 @@ class SortWorkPlacementsTest {
   private static final LocalDate MIDDLE_WORK = LocalDate.of(2010, 10, 10);
   private static final LocalDate NEWEST_WORK = LocalDate.of(2020, 2, 5);
 
-  private Work workOldest, workMiddle, workNewest;
+  private Work workOldest;
+  private Work workMiddle;
+  private Work workNewest;
 
   private SortWorkPlacements migration;
 
@@ -96,7 +96,7 @@ class SortWorkPlacementsTest {
     FormRPartB form = new FormRPartB();
     form.setWork(workInOrder);
 
-    when(template.find(any(), eq(FormRPartB.class))).thenReturn(Collections.singletonList(form));
+    when(template.findAll(eq(FormRPartB.class))).thenReturn(Collections.singletonList(form));
 
     //when
     migration.migrate();
@@ -117,7 +117,7 @@ class SortWorkPlacementsTest {
     form.setWork(workInOrder);
 
     when(covidDeclarationMapper.toDto(any())).thenReturn(null);
-    when(template.find(any(), eq(FormRPartB.class))).thenReturn(Collections.singletonList(form));
+    when(template.findAll(eq(FormRPartB.class))).thenReturn(Collections.singletonList(form));
 
     //when
     migration.migrate();
