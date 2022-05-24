@@ -24,10 +24,10 @@ package uk.nhs.hee.tis.trainee.forms.migration;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -96,7 +96,7 @@ class SortWorkPlacementsTest {
     FormRPartB form = new FormRPartB();
     form.setWork(workInOrder);
 
-    when(template.findAll(eq(FormRPartB.class))).thenReturn(Collections.singletonList(form));
+    when(template.findAll(FormRPartB.class)).thenReturn(Collections.singletonList(form));
 
     //when
     migration.migrate();
@@ -117,7 +117,7 @@ class SortWorkPlacementsTest {
     form.setWork(workInOrder);
 
     when(covidDeclarationMapper.toDto(any())).thenReturn(null);
-    when(template.findAll(eq(FormRPartB.class))).thenReturn(Collections.singletonList(form));
+    when(template.findAll(FormRPartB.class)).thenReturn(Collections.singletonList(form));
 
     //when
     migration.migrate();
