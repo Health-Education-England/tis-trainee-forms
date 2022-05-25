@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.util.AssertionErrors.assertNull;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -106,6 +107,35 @@ class SortWorkPlacementsTest {
   }
 
   @Test
+  void shouldSortWorkPlacementsWithoutEndDates() {
+    //given
+    List<Work> workInOrder = new ArrayList<>();
+    workInOrder.add(workNewest);
+    workInOrder.add(new Work());
+    workInOrder.add(workOldest);
+
+    FormRPartB form = new FormRPartB();
+    form.setWork(workInOrder);
+
+    when(covidDeclarationMapper.toDto(any())).thenReturn(null);
+    when(template.findAll(FormRPartB.class)).thenReturn(Collections.singletonList(form));
+
+    //when
+    migration.migrate();
+
+    //then
+    ArgumentCaptor<FormRPartBDto> formCaptor = ArgumentCaptor.forClass(FormRPartBDto.class);
+    verify(service).save(formCaptor.capture());
+
+    FormRPartBDto updatedForm = formCaptor.getValue();
+    List<WorkDto> sortedWorkDto = updatedForm.getWork();
+    assertNull("Unexpected work ordering.",
+        sortedWorkDto.get(0).getEndDate());
+    assertThat("Unexpected work ordering.",
+        sortedWorkDto.get(1).getEndDate().isAfter(sortedWorkDto.get(2).getEndDate()), is(true));
+  }
+
+  @Test
   void shouldSaveFormsWithWorkPlacementsThatNeedToBeSorted() {
     //given
     List<Work> workInOrder = new ArrayList<>();
@@ -116,7 +146,6 @@ class SortWorkPlacementsTest {
     FormRPartB form = new FormRPartB();
     form.setWork(workInOrder);
 
-    when(covidDeclarationMapper.toDto(any())).thenReturn(null);
     when(template.findAll(FormRPartB.class)).thenReturn(Collections.singletonList(form));
 
     //when
