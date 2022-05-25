@@ -145,7 +145,7 @@ class SortWorkPlacementsTest {
 
     FormRPartB form = new FormRPartB();
     form.setWork(workInOrder);
-    
+
     when(template.findAll(FormRPartB.class)).thenReturn(Collections.singletonList(form));
 
     //when
