@@ -60,7 +60,8 @@ public class SortWorkPlacements {
    */
   @Execution
   public void migrate() {
-    Comparator<Work> compareEndDates = Comparator.comparing(Work::getEndDate).reversed();
+    Comparator<Work> compareEndDates = Comparator.comparing(Work::getEndDate,
+        Comparator.nullsLast(Comparator.naturalOrder())).reversed();
 
     for (FormRPartB formRPartB : mongoTemplate.findAll(FormRPartB.class)) {
       List<Work> originalList = new ArrayList<>(formRPartB.getWork());
