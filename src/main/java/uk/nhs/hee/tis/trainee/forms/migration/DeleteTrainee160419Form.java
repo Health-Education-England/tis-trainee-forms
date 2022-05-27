@@ -33,7 +33,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 
 /**
- * This form was submitted in error
+ * This form was submitted in error.
  */
 @Slf4j
 @ChangeUnit(id = "deleteTrainee160419Form", order = "5")
