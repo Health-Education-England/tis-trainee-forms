@@ -30,6 +30,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayInputStream;
 import java.lang.reflect.ParameterizedType;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Objects;
@@ -80,7 +81,7 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
       metadata.addUserMetadata("formtype", form.getFormType());
       metadata.addUserMetadata("lifecyclestate", form.getLifecycleState().name());
       metadata.addUserMetadata("submissiondate",
-          form.getSubmissionDate().format(DateTimeFormatter.ISO_LOCAL_DATE));
+          form.getSubmissionDate().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
       metadata.addUserMetadata("traineeid", form.getTraineeTisId());
 
       PutObjectRequest request = new PutObjectRequest(bucketName, key,
@@ -110,7 +111,7 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
         T form = getTypeClass().getConstructor().newInstance();
         form.setId(metadata.getUserMetaDataOf("id"));
         form.setTraineeTisId(metadata.getUserMetaDataOf("traineeid"));
-        form.setSubmissionDate(LocalDate.parse(metadata.getUserMetaDataOf("submissiondate")));
+        form.setSubmissionDate(LocalDateTime.parse(metadata.getUserMetaDataOf("submissiondate")));
         form.setLifecycleState(
             LifecycleState.valueOf(metadata.getUserMetaDataOf("lifecyclestate").toUpperCase()));
         return form;
