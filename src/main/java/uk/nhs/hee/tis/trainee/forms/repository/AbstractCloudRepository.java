@@ -52,6 +52,10 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
 
   protected final ObjectMapper objectMapper;
 
+  private LocalDateTime localDateTime;
+  private LocalDate localDate;
+  private String localString;
+
   protected String bucketName;
 
   protected AbstractCloudRepository(AmazonS3 amazonS3,
@@ -111,7 +115,15 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
         T form = getTypeClass().getConstructor().newInstance();
         form.setId(metadata.getUserMetaDataOf("id"));
         form.setTraineeTisId(metadata.getUserMetaDataOf("traineeid"));
-        form.setSubmissionDate(LocalDateTime.parse(metadata.getUserMetaDataOf("submissiondate")));
+        if(metadata.getUserMetaDataOf("submissiondate").length() == 23)
+        {
+          form.setSubmissionDate(LocalDateTime.parse(metadata.getUserMetaDataOf("submissiondate")));
+        }
+        else
+        {
+          localDateTime = LocalDate.parse(metadata.getUserMetaDataOf("submissiondate")).atStartOfDay();
+          form.setSubmissionDate(localDateTime);
+        }
         form.setLifecycleState(
             LifecycleState.valueOf(metadata.getUserMetaDataOf("lifecyclestate").toUpperCase()));
         return form;
