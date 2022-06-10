@@ -26,6 +26,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -79,7 +80,7 @@ class S3FormRPartARepositoryImplTest {
       .now(ZoneId.systemDefault());
   private static final String DEFAULT_CURRENT_DECLARATION_SUMMARY =
       "DEFAULT_CURRENT_DECLARATION_SUMMARY";
-  private static final LocalDate DEFAULT_SUBMISSION_DATE = LocalDate.of(2020, 8, 29);
+  private static final LocalDateTime DEFAULT_SUBMISSION_DATE = LocalDateTime.now();
   private static final String DEFAULT_SUBMISSION_DATE_STRING = DEFAULT_SUBMISSION_DATE.format(
       DateTimeFormatter.ISO_LOCAL_DATE);
   private static final String DEFAULT_FORM_ID = "my-first-cloud-object-id";
