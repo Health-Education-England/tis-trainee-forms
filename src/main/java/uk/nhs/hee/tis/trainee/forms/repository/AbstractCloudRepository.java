@@ -115,7 +115,7 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
         T form = getTypeClass().getConstructor().newInstance();
         form.setId(metadata.getUserMetaDataOf("id"));
         form.setTraineeTisId(metadata.getUserMetaDataOf("traineeid"));
-        if(metadata.getUserMetaDataOf("submissiondate").length() == 23)
+        if(metadata.getUserMetaDataOf("submissiondate").length() > 10)
         {
           form.setSubmissionDate(LocalDateTime.parse(metadata.getUserMetaDataOf("submissiondate")));
         }

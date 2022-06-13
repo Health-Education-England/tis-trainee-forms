@@ -82,12 +82,12 @@ class S3FormRPartARepositoryImplTest {
       "DEFAULT_CURRENT_DECLARATION_SUMMARY";
   private static final LocalDateTime DEFAULT_SUBMISSION_DATE = LocalDateTime.now();
   private static final String DEFAULT_SUBMISSION_DATE_STRING = DEFAULT_SUBMISSION_DATE.format(
-      DateTimeFormatter.ISO_LOCAL_DATE);
+      DateTimeFormatter.ISO_LOCAL_DATE_TIME);
   private static final String DEFAULT_FORM_ID = "my-first-cloud-object-id";
   private static final Map<String, String> DEFAULT_UNSUBMITTED_METADATA = Map
       .of("id", DEFAULT_FORM_ID, "formtype", "inform", "lifecyclestate",
           LifecycleState.UNSUBMITTED.name(), "submissiondate",
-          DEFAULT_SUBMISSION_DATE.format(ISO_LOCAL_DATE), "traineeid",
+          DEFAULT_SUBMISSION_DATE_STRING, "traineeid",
           DEFAULT_TRAINEE_TIS_ID);
   private static ObjectMapper objectMapper;
   private S3FormRPartARepositoryImpl repo;
