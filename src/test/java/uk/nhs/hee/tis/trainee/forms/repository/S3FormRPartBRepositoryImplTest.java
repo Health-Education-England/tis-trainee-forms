@@ -88,8 +88,8 @@ class S3FormRPartBRepositoryImplTest {
   private static final String DEFAULT_FORM_ID = "my-first-cloud-object-id";
   private static final Map<String, String> DEFAULT_UNSUBMITTED_METADATA = Map
       .of("id", DEFAULT_FORM_ID, "formtype", "inform", "lifecyclestate",
-          LifecycleState.UNSUBMITTED.name(), "submissiondate", DEFAULT_SUBMISSION_DATE_STRING, "traineeid",
-          DEFAULT_TRAINEE_TIS_ID);
+          LifecycleState.UNSUBMITTED.name(), "submissiondate", DEFAULT_SUBMISSION_DATE_STRING,
+          "traineeid", DEFAULT_TRAINEE_TIS_ID);
   private static final Boolean DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS = true;
   private static final Boolean DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS = true;
   private static ObjectMapper objectMapper;

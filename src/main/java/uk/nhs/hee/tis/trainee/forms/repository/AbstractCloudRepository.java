@@ -53,8 +53,7 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
   protected final ObjectMapper objectMapper;
 
   private LocalDateTime localDateTime;
-  private LocalDate localDate;
-  private String localString;
+  private String submissionDate = "submissiondate";
 
   protected String bucketName;
 
@@ -84,7 +83,7 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
       metadata.addUserMetadata("type", "json");
       metadata.addUserMetadata("formtype", form.getFormType());
       metadata.addUserMetadata("lifecyclestate", form.getLifecycleState().name());
-      metadata.addUserMetadata("submissiondate",
+      metadata.addUserMetadata(submissionDate,
           form.getSubmissionDate().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
       metadata.addUserMetadata("traineeid", form.getTraineeTisId());
 
@@ -115,17 +114,17 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
         T form = getTypeClass().getConstructor().newInstance();
         form.setId(metadata.getUserMetaDataOf("id"));
         form.setTraineeTisId(metadata.getUserMetaDataOf("traineeid"));
-        if(metadata.getUserMetaDataOf("submissiondate").length() > 10)
-        {
-          form.setSubmissionDate(LocalDateTime.parse(metadata.getUserMetaDataOf("submissiondate")));
+        if (metadata.getUserMetaDataOf("submissiondate").length() > 10) {
+          form.setSubmissionDate(LocalDateTime.parse(metadata.getUserMetaDataOf(submissionDate)));
         }
-        else
-        {
-          localDateTime = LocalDate.parse(metadata.getUserMetaDataOf("submissiondate")).atStartOfDay();
+        else {
+          localDateTime = LocalDate.parse(metadata
+              .getUserMetaDataOf(submissionDate)).atStartOfDay();
           form.setSubmissionDate(localDateTime);
         }
         form.setLifecycleState(
-            LifecycleState.valueOf(metadata.getUserMetaDataOf("lifecyclestate").toUpperCase()));
+            LifecycleState.valueOf(metadata.getUserMetaDataOf("lifecyclestate")
+                .toUpperCase()));
         return form;
       } catch (Exception e) {
         log.error("Problem reading form [{}] from S3 bucket [{}]", summary.getKey(), bucketName, e);
