@@ -265,16 +265,11 @@ class S3FormRPartBRepositoryImplTest {
         .thenReturn(s3ListingMock);
     S3ObjectSummary s3Summary = new S3ObjectSummary();
     s3Summary.setKey(KEY);
-    String otherKey = KEY + "w/error";
-    S3ObjectSummary errorSummary = new S3ObjectSummary();
-    errorSummary.setKey(otherKey);
-    List<S3ObjectSummary> cloudStoredEntities = List.of(s3Summary, errorSummary);
+    List<S3ObjectSummary> cloudStoredEntities = List.of(s3Summary);
     when(s3ListingMock.getObjectSummaries()).thenReturn(cloudStoredEntities);
     ObjectMetadata metadata = new ObjectMetadata();
     metadata.setUserMetadata(UNSUBMITTED_METADATA_DATE_FORMAT_SUBMISSIONDATE);
     when(s3Mock.getObjectMetadata(bucketName, KEY)).thenReturn(metadata);
-    when(s3Mock.getObjectMetadata(bucketName, otherKey))
-        .thenThrow(new AmazonServiceException("Expected Exception"));
 
     List<FormRPartB> entities = repo.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
 
