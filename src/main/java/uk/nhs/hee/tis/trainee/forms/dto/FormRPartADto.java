@@ -38,11 +38,11 @@ public class FormRPartADto {
   private String surname;
   private String gmcNumber;
   private String localOfficeName;
-  private LocalDate dateOfBirth;
+  private LocalDateTime dateOfBirth;
   private String gender;
   private String immigrationStatus;
   private String qualification;
-  private LocalDate dateAttained;
+  private LocalDateTime dateAttained;
   private String medicalSchool;
   private String address1;
   private String address2;
@@ -58,13 +58,13 @@ public class FormRPartADto {
   private String cctSpecialty1;
   private String cctSpecialty2;
   private String college;
-  private LocalDate completionDate;
+  private LocalDateTime completionDate;
   private String trainingGrade;
-  private LocalDate startDate;
+  private LocalDateTime startDate;
   private String programmeMembershipType;
   private String wholeTimeEquivalent;
   private LocalDateTime submissionDate;
-  private LocalDate lastModifiedDate;
+  private LocalDateTime lastModifiedDate;
   private String otherImmigrationStatus;
   private LifecycleState lifecycleState;
 }
