@@ -32,6 +32,7 @@ import java.lang.reflect.ParameterizedType;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -53,7 +54,7 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
   protected final ObjectMapper objectMapper;
 
   private LocalDateTime localDateTime;
-  private String submissionDate = "submissiondate";
+  private static final String SUBMISSION_DATE = "submissiondate";
 
   protected String bucketName;
 
@@ -83,7 +84,7 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
       metadata.addUserMetadata("type", "json");
       metadata.addUserMetadata("formtype", form.getFormType());
       metadata.addUserMetadata("lifecyclestate", form.getLifecycleState().name());
-      metadata.addUserMetadata(submissionDate,
+      metadata.addUserMetadata(SUBMISSION_DATE,
           form.getSubmissionDate().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
       metadata.addUserMetadata("traineeid", form.getTraineeTisId());
 
@@ -114,12 +115,11 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
         T form = getTypeClass().getConstructor().newInstance();
         form.setId(metadata.getUserMetaDataOf("id"));
         form.setTraineeTisId(metadata.getUserMetaDataOf("traineeid"));
-        if (metadata.getUserMetaDataOf("submissiondate").length() > 10) {
-          form.setSubmissionDate(LocalDateTime.parse(metadata.getUserMetaDataOf(submissionDate)));
-        }
-        else {
-          localDateTime = LocalDate.parse(metadata
-              .getUserMetaDataOf(submissionDate)).atStartOfDay();
+        try {
+          form.setSubmissionDate(LocalDateTime.parse(metadata.getUserMetaDataOf(SUBMISSION_DATE)));
+        } catch (DateTimeParseException e) {
+          log.debug("Existing date {} not in latest format, trying as LocalDate.", e.getParsedString());
+          localDateTime = LocalDate.parse(metadata.getUserMetaDataOf(SUBMISSION_DATE)).atStartOfDay();
           form.setSubmissionDate(localDateTime);
         }
         form.setLifecycleState(
