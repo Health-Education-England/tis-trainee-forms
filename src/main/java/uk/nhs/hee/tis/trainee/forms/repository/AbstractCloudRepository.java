@@ -118,8 +118,10 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
         try {
           form.setSubmissionDate(LocalDateTime.parse(metadata.getUserMetaDataOf(SUBMISSION_DATE)));
         } catch (DateTimeParseException e) {
-          log.debug("Existing date {} not in latest format, trying as LocalDate.", e.getParsedString());
-          localDateTime = LocalDate.parse(metadata.getUserMetaDataOf(SUBMISSION_DATE)).atStartOfDay();
+          log.debug("Existing date {} not in latest format, trying as LocalDate.",
+              e.getParsedString());
+          localDateTime = LocalDate.parse(metadata.getUserMetaDataOf(SUBMISSION_DATE))
+              .atStartOfDay();
           form.setSubmissionDate(localDateTime);
         }
         form.setLifecycleState(
