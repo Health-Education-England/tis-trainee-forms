@@ -21,6 +21,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.dto;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.Data;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -37,11 +38,11 @@ public class FormRPartADto {
   private String surname;
   private String gmcNumber;
   private String localOfficeName;
-  private LocalDateTime dateOfBirth;
+  private LocalDate dateOfBirth;
   private String gender;
   private String immigrationStatus;
   private String qualification;
-  private LocalDateTime dateAttained;
+  private LocalDate dateAttained;
   private String medicalSchool;
   private String address1;
   private String address2;
@@ -57,7 +58,7 @@ public class FormRPartADto {
   private String cctSpecialty1;
   private String cctSpecialty2;
   private String college;
-  private LocalDateTime completionDate;
+  private LocalDate completionDate;
   private String trainingGrade;
   private LocalDateTime startDate;
   private String programmeMembershipType;
