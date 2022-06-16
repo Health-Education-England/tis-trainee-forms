@@ -1,6 +1,5 @@
 package uk.nhs.hee.tis.trainee.forms.repository;
 
-import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 import static org.hamcrest.CoreMatchers.both;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
@@ -28,6 +27,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
@@ -82,15 +82,24 @@ class S3FormRPartBRepositoryImplTest {
       .now(ZoneId.systemDefault());
   private static final String DEFAULT_CURRENT_DECLARATION_SUMMARY =
       "DEFAULT_CURRENT_DECLARATION_SUMMARY";
-  private static final LocalDate DEFAULT_SUBMISSION_DATE = LocalDate.of(2020, 8, 29);
+  private static final LocalDateTime DEFAULT_SUBMISSION_DATE = LocalDateTime.now();
   private static final String DEFAULT_SUBMISSION_DATE_STRING = DEFAULT_SUBMISSION_DATE.format(
+      DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+  private static final LocalDate DATE_FORMAT_SUBMISSION_DATE = LocalDate
+      .of(2020, 8, 29);
+  private static final LocalDateTime DATE_FORMAT_SUBMISSION_DATE_PARSED =
+      DATE_FORMAT_SUBMISSION_DATE.atStartOfDay();
+  private static final String DATE_FORMAT_DATE_STRING = DATE_FORMAT_SUBMISSION_DATE.format(
       DateTimeFormatter.ISO_LOCAL_DATE);
   private static final String DEFAULT_FORM_ID = "my-first-cloud-object-id";
   private static final Map<String, String> DEFAULT_UNSUBMITTED_METADATA = Map
       .of("id", DEFAULT_FORM_ID, "formtype", "inform", "lifecyclestate",
-          LifecycleState.UNSUBMITTED.name(), "submissiondate",
-          DEFAULT_SUBMISSION_DATE.format(ISO_LOCAL_DATE), "traineeid",
-          DEFAULT_TRAINEE_TIS_ID);
+          LifecycleState.UNSUBMITTED.name(), "submissiondate", DEFAULT_SUBMISSION_DATE_STRING,
+          "traineeid", DEFAULT_TRAINEE_TIS_ID);
+  private static final Map<String, String> UNSUBMITTED_METADATA_DATE_FORMAT_SUBMISSIONDATE = Map
+      .of("id", DEFAULT_FORM_ID, "formtype", "inform", "lifecyclestate",
+          LifecycleState.UNSUBMITTED.name(), "submissiondate", DATE_FORMAT_DATE_STRING,
+          "traineeid", DEFAULT_TRAINEE_TIS_ID);
   private static final Boolean DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS = true;
   private static final Boolean DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS = true;
   private static ObjectMapper objectMapper;
@@ -248,6 +257,28 @@ class S3FormRPartBRepositoryImplTest {
         is(DEFAULT_SUBMISSION_DATE));
     assertThat("Unexpected lifecycle state.", entity.getLifecycleState(),
         is(LifecycleState.UNSUBMITTED));
+  }
+
+  @Test
+  void shouldParseSubmissionDateWhenInDateFormat() {
+    when(s3Mock.listObjects(bucketName, DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b"))
+        .thenReturn(s3ListingMock);
+    S3ObjectSummary s3Summary = new S3ObjectSummary();
+    s3Summary.setKey(KEY);
+    List<S3ObjectSummary> cloudStoredEntities = List.of(s3Summary);
+    when(s3ListingMock.getObjectSummaries()).thenReturn(cloudStoredEntities);
+    ObjectMetadata metadata = new ObjectMetadata();
+    metadata.setUserMetadata(UNSUBMITTED_METADATA_DATE_FORMAT_SUBMISSIONDATE);
+    when(s3Mock.getObjectMetadata(bucketName, KEY)).thenReturn(metadata);
+
+    List<FormRPartB> entities = repo.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+
+    assertThat("Unexpected numbers of forms.", entities.size(), is(1));
+
+    FormRPartB entity = entities.get(0);
+
+    assertThat("Unexpected submitted date.", entity.getSubmissionDate(),
+        is(DATE_FORMAT_SUBMISSION_DATE_PARSED));
   }
 
   @Test
