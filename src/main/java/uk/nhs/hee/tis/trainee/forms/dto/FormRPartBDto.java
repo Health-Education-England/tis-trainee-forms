@@ -21,7 +21,6 @@
 package uk.nhs.hee.tis.trainee.forms.dto;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import lombok.Data;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -65,7 +64,7 @@ public class FormRPartBDto {
   private List<DeclarationDto> currentDeclarations;
   private String currentDeclarationSummary;
   private String compliments;
-  private LocalDateTime submissionDate;
+  private LocalDate submissionDate;
   private LocalDate lastModifiedDate;
   private LifecycleState lifecycleState;
   private Boolean haveCovidDeclarations;
