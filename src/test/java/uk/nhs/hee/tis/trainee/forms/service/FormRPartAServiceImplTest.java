@@ -30,7 +30,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -59,7 +58,7 @@ class FormRPartAServiceImplTest {
   private static final String DEFAULT_TRAINEE_TIS_ID = "1";
   private static final String DEFAULT_FORENAME = "DEFAULT_FORENAME";
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";
-  private static final LocalDateTime DEFAULT_SUBMISSION_DATE = LocalDateTime.now();
+  private static final LocalDate DEFAULT_SUBMISSION_DATE = LocalDate.of(2020, 8, 29);
 
   private FormRPartAServiceImpl service;
 

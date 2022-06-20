@@ -30,9 +30,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayInputStream;
 import java.lang.reflect.ParameterizedType;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -52,9 +50,6 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
   protected final AmazonS3 amazonS3;
 
   protected final ObjectMapper objectMapper;
-
-  private LocalDateTime localDateTime;
-  private static final String SUBMISSION_DATE = "submissiondate";
 
   protected String bucketName;
 
@@ -84,8 +79,8 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
       metadata.addUserMetadata("type", "json");
       metadata.addUserMetadata("formtype", form.getFormType());
       metadata.addUserMetadata("lifecyclestate", form.getLifecycleState().name());
-      metadata.addUserMetadata(SUBMISSION_DATE,
-          form.getSubmissionDate().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+      metadata.addUserMetadata("submissiondate",
+          form.getSubmissionDate().format(DateTimeFormatter.ISO_LOCAL_DATE));
       metadata.addUserMetadata("traineeid", form.getTraineeTisId());
 
       PutObjectRequest request = new PutObjectRequest(bucketName, key,
@@ -115,18 +110,9 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
         T form = getTypeClass().getConstructor().newInstance();
         form.setId(metadata.getUserMetaDataOf("id"));
         form.setTraineeTisId(metadata.getUserMetaDataOf("traineeid"));
-        try {
-          form.setSubmissionDate(LocalDateTime.parse(metadata.getUserMetaDataOf(SUBMISSION_DATE)));
-        } catch (DateTimeParseException e) {
-          log.debug("Existing date {} not in latest format, trying as LocalDate.",
-              e.getParsedString());
-          localDateTime = LocalDate.parse(metadata.getUserMetaDataOf(SUBMISSION_DATE))
-              .atStartOfDay();
-          form.setSubmissionDate(localDateTime);
-        }
+        form.setSubmissionDate(LocalDate.parse(metadata.getUserMetaDataOf("submissiondate")));
         form.setLifecycleState(
-            LifecycleState.valueOf(metadata.getUserMetaDataOf("lifecyclestate")
-                .toUpperCase()));
+            LifecycleState.valueOf(metadata.getUserMetaDataOf("lifecyclestate").toUpperCase()));
         return form;
       } catch (Exception e) {
         log.error("Problem reading form [{}] from S3 bucket [{}]", summary.getKey(), bucketName, e);

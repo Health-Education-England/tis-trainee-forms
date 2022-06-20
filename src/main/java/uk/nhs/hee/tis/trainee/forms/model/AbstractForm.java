@@ -22,7 +22,6 @@ package uk.nhs.hee.tis.trainee.forms.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
@@ -39,7 +38,7 @@ public abstract class AbstractForm {
   private String traineeTisId;
 
   private LifecycleState lifecycleState;
-  private LocalDateTime submissionDate;
+  private LocalDate submissionDate;
   private LocalDate lastModifiedDate;
 
   @JsonIgnore
