@@ -60,7 +60,7 @@ public class FormRPartADto {
   private String college;
   private LocalDate completionDate;
   private String trainingGrade;
-  private LocalDate startDate;
+  private LocalDateTime startDate;
   private String programmeMembershipType;
   private String wholeTimeEquivalent;
   private LocalDateTime submissionDate;
