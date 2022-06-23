@@ -21,8 +21,8 @@
 
 package uk.nhs.hee.tis.trainee.forms.dto;
 
-import java.time.LocalDate;
 import lombok.Data;
+import java.time.LocalDateTime;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 @Data
