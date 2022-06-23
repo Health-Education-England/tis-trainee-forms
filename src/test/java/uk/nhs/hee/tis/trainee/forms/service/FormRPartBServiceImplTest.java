@@ -31,6 +31,7 @@ import static org.mockito.Mockito.when;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import java.lang.reflect.Field;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -95,7 +96,7 @@ class FormRPartBServiceImplTest {
       .now(ZoneId.systemDefault());
   private static final String DEFAULT_CURRENT_DECLARATION_SUMMARY =
       "DEFAULT_CURRENT_DECLARATION_SUMMARY";
-  private static final LocalDate DEFAULT_SUBMISSION_DATE = LocalDate.of(2020, 8, 29);
+  private static final LocalDateTime DEFAULT_SUBMISSION_DATE = LocalDateTime.now();
   private static final String DEFAULT_FORM_ID = "my-first-cloud-object-id";
 
   private static final Boolean DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS = true;
@@ -580,7 +581,7 @@ class FormRPartBServiceImplTest {
     assertThat("Unexpected haveCurrentUnresolvedDeclarations flag.",
         dto.getHaveCurrentUnresolvedDeclarations(),
         is(DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS));
-    assertThat("Unexpected havePreviousUnresolvedDeclarations flag.", 
+    assertThat("Unexpected havePreviousUnresolvedDeclarations flag.",
         dto.getHavePreviousUnresolvedDeclarations(),
         is(DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS));
   }
