@@ -25,18 +25,26 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectListing;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.DataInput;
+import java.io.InputStreamReader;
 import java.lang.reflect.ParameterizedType;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -50,6 +58,9 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
   protected final AmazonS3 amazonS3;
 
   protected final ObjectMapper objectMapper;
+
+  private LocalDateTime localDateTime;
+  private static final String SUBMISSION_DATE = "submissiondate";
 
   protected String bucketName;
 
@@ -79,8 +90,8 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
       metadata.addUserMetadata("type", "json");
       metadata.addUserMetadata("formtype", form.getFormType());
       metadata.addUserMetadata("lifecyclestate", form.getLifecycleState().name());
-      metadata.addUserMetadata("submissiondate",
-          form.getSubmissionDate().format(DateTimeFormatter.ISO_LOCAL_DATE));
+      metadata.addUserMetadata(SUBMISSION_DATE,
+          form.getSubmissionDate().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
       metadata.addUserMetadata("traineeid", form.getTraineeTisId());
 
       PutObjectRequest request = new PutObjectRequest(bucketName, key,
@@ -110,9 +121,18 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
         T form = getTypeClass().getConstructor().newInstance();
         form.setId(metadata.getUserMetaDataOf("id"));
         form.setTraineeTisId(metadata.getUserMetaDataOf("traineeid"));
-        form.setSubmissionDate(LocalDate.parse(metadata.getUserMetaDataOf("submissiondate")));
+        try {
+          form.setSubmissionDate(LocalDateTime.parse(metadata.getUserMetaDataOf(SUBMISSION_DATE)));
+        } catch (DateTimeParseException e) {
+          log.debug("Existing date {} not in latest format, trying as LocalDate.",
+              e.getParsedString());
+          localDateTime = LocalDate.parse(metadata.getUserMetaDataOf(SUBMISSION_DATE))
+              .atStartOfDay();
+          form.setSubmissionDate(localDateTime);
+        }
         form.setLifecycleState(
-            LifecycleState.valueOf(metadata.getUserMetaDataOf("lifecyclestate").toUpperCase()));
+            LifecycleState.valueOf(metadata.getUserMetaDataOf("lifecyclestate")
+                .toUpperCase()));
         return form;
       } catch (Exception e) {
         log.error("Problem reading form [{}] from S3 bucket [{}]", summary.getKey(), bucketName, e);
@@ -135,8 +155,64 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
       S3ObjectInputStream content = amazonS3
           .getObject(bucketName, String.format(getObjectKeyTemplate(), traineeTisId, id))
           .getObjectContent();
-      T form = objectMapper.readValue(content, getTypeClass());
+
+
+      ObjectMetadata content2 = amazonS3
+          .getObject(bucketName, String.format(getObjectKeyTemplate(), traineeTisId, id)).getObjectMetadata();
+
+      S3Object content3 = amazonS3
+          .getObject(bucketName, String.format(getObjectKeyTemplate(), traineeTisId, id));
+
+      InputStreamResource resource = new InputStreamResource(content);
+      log.debug("Unaasfadsfads");
+      try (BufferedReader br = new BufferedReader(new InputStreamReader(resource.getInputStream()))) {
+        String line;
+        while ((line = br.readLine()) != null) {
+          System.out.println(line);
+        }
+      }
+
+
+      String submission_date = content2.getUserMetaDataOf("submissionDate");
+      log.debug("submission_date: " + submission_date);
+      LocalDateTime subDate = LocalDate.parse(submission_date).atStartOfDay();
+      submission_date = subDate.toString();
+      Map<String,String> sDate = Map.of("submissionDate",subDate.toString());
+      log.debug("sDate map: " + sDate);
+      content2.setUserMetadata(sDate);
+      log.debug("parsed submission_date: " + submission_date);
+
+
+      content3.setObjectMetadata(content2);
+
+
+      //log.debug("content 2 subdate map: " + content3.getUserMetaDataOf("submissionDate"));
+      S3ObjectInputStream stream = content3.getObjectContent();
+
+
+
+      S3ObjectInputStream content5 = amazonS3
+          .getObject(bucketName, String.format(getObjectKeyTemplate(), traineeTisId, id))
+          .getObjectContent();
+
+
+
+      InputStreamResource resource32 = new InputStreamResource(content5);
+      log.debug("Final Parsed data: ");
+      try (BufferedReader br = new BufferedReader(new InputStreamReader(resource32.getInputStream()))) {
+        String line;
+        while ((line = br.readLine()) != null) {
+          System.out.println(line);
+        }
+      }
+
+
+
+      T form = objectMapper.readValue(content5, getTypeClass());
       return Optional.of(form);
+
+
+
     } catch (AmazonServiceException e) {
       log.debug("Unable to get file from Cloud Storage", e);
       if (e.getStatusCode() == 404) {

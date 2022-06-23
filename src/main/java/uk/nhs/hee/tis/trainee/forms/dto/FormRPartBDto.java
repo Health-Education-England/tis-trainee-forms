@@ -64,8 +64,8 @@ public class FormRPartBDto {
   private List<DeclarationDto> currentDeclarations;
   private String currentDeclarationSummary;
   private String compliments;
-  private LocalDate submissionDate;
-  private LocalDate lastModifiedDate;
+  private LocalDateTime submissionDate;
+  private LocalDateTime lastModifiedDate;
   private LifecycleState lifecycleState;
   private Boolean haveCovidDeclarations;
   private CovidDeclarationDto covidDeclarationDto;

@@ -30,6 +30,6 @@ public class FormRPartSimpleDto {
 
   private String id;
   private String traineeTisId;
-  private LocalDate submissionDate;
+  private LocalDateTime submissionDate;
   private LifecycleState lifecycleState;
 }

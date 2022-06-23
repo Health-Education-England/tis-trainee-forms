@@ -38,8 +38,8 @@ public abstract class AbstractForm {
   private String traineeTisId;
 
   private LifecycleState lifecycleState;
-  private LocalDate submissionDate;
-  private LocalDate lastModifiedDate;
+  private LocalDateTime submissionDate;
+  private LocalDateTime lastModifiedDate;
 
   @JsonIgnore
   public abstract String getFormType();
