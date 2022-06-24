@@ -156,63 +156,8 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
           .getObject(bucketName, String.format(getObjectKeyTemplate(), traineeTisId, id))
           .getObjectContent();
 
-
-      ObjectMetadata content2 = amazonS3
-          .getObject(bucketName, String.format(getObjectKeyTemplate(), traineeTisId, id)).getObjectMetadata();
-
-      S3Object content3 = amazonS3
-          .getObject(bucketName, String.format(getObjectKeyTemplate(), traineeTisId, id));
-
-      InputStreamResource resource = new InputStreamResource(content);
-      log.debug("Unaasfadsfads");
-      try (BufferedReader br = new BufferedReader(new InputStreamReader(resource.getInputStream()))) {
-        String line;
-        while ((line = br.readLine()) != null) {
-          System.out.println(line);
-        }
-      }
-
-
-      String submission_date = content2.getUserMetaDataOf("submissionDate");
-      log.debug("submission_date: " + submission_date);
-      LocalDateTime subDate = LocalDate.parse(submission_date).atStartOfDay();
-      submission_date = subDate.toString();
-      Map<String,String> sDate = Map.of("submissionDate",subDate.toString());
-      log.debug("sDate map: " + sDate);
-      content2.setUserMetadata(sDate);
-      log.debug("parsed submission_date: " + submission_date);
-
-
-      content3.setObjectMetadata(content2);
-
-
-      //log.debug("content 2 subdate map: " + content3.getUserMetaDataOf("submissionDate"));
-      S3ObjectInputStream stream = content3.getObjectContent();
-
-
-
-      S3ObjectInputStream content5 = amazonS3
-          .getObject(bucketName, String.format(getObjectKeyTemplate(), traineeTisId, id))
-          .getObjectContent();
-
-
-
-      InputStreamResource resource32 = new InputStreamResource(content5);
-      log.debug("Final Parsed data: ");
-      try (BufferedReader br = new BufferedReader(new InputStreamReader(resource32.getInputStream()))) {
-        String line;
-        while ((line = br.readLine()) != null) {
-          System.out.println(line);
-        }
-      }
-
-
-
-      T form = objectMapper.readValue(content5, getTypeClass());
+      T form = objectMapper.readValue(content, getTypeClass());
       return Optional.of(form);
-
-
-
     } catch (AmazonServiceException e) {
       log.debug("Unable to get file from Cloud Storage", e);
       if (e.getStatusCode() == 404) {
