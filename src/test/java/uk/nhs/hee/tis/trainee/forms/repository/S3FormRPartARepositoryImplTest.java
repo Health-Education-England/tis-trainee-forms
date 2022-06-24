@@ -87,7 +87,6 @@ class S3FormRPartARepositoryImplTest {
   private static final Map<String, String> DEFAULT_UNSUBMITTED_METADATA = Map
       .of("id", DEFAULT_FORM_ID, "formtype", "inform", "lifecyclestate",
           LifecycleState.UNSUBMITTED.name(), "submissiondate",
-          DEFAULT_SUBMISSION_DATE.format(ISO_LOCAL_DATE), "traineeid",
           DEFAULT_SUBMISSION_DATE_STRING, "traineeid",
           DEFAULT_TRAINEE_TIS_ID);
   private static ObjectMapper objectMapper;
