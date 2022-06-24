@@ -30,13 +30,12 @@ import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
 import java.io.IOException;
 import java.time.LocalDateTime;
 
-/**
- * TODO: rename me to something more serious
- */
-public class MagicDateDeserializer extends JsonDeserializer<LocalDateTime> {
+public class DateDeserializer extends JsonDeserializer<LocalDateTime> {
 
-  private static final LocalDateTimeDeserializer LOCAL_DATE_TIME_DESERIALIZER = LocalDateTimeDeserializer.INSTANCE;
-  private static final LocalDateDeserializer LOCAL_DATE_DESERIALIZER = LocalDateDeserializer.INSTANCE;
+  private static final LocalDateTimeDeserializer LOCAL_DATE_TIME_DESERIALIZER =
+      LocalDateTimeDeserializer.INSTANCE;
+  private static final LocalDateDeserializer LOCAL_DATE_DESERIALIZER =
+      LocalDateDeserializer.INSTANCE;
 
   @Override
   public LocalDateTime deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {

@@ -43,7 +43,7 @@ public class Config {
     ObjectMapper objectMapper = new ObjectMapper();
 
     JavaTimeModule timeModule = new JavaTimeModule();
-    timeModule.addDeserializer(LocalDateTime.class, new MagicDateDeserializer());
+    timeModule.addDeserializer(LocalDateTime.class, new DateDeserializer());
     objectMapper.registerModule(timeModule);
 
     objectMapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd"));
