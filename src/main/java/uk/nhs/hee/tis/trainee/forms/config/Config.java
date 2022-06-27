@@ -26,6 +26,7 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -40,7 +41,11 @@ public class Config {
   @Bean
   public ObjectMapper objectMapper() {
     ObjectMapper objectMapper = new ObjectMapper();
-    objectMapper.registerModule(new JavaTimeModule());
+
+    JavaTimeModule timeModule = new JavaTimeModule();
+    timeModule.addDeserializer(LocalDateTime.class, new DateDeserializer());
+    objectMapper.registerModule(timeModule);
+
     objectMapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd"));
     return objectMapper;
   }
