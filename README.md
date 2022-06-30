@@ -60,7 +60,7 @@ PUT api/forms/{formr-partb}
 
 This method is used to return a collection of submitted and draft forms. when this request is 
 received with the TraineeTisId it retrives a list of forms from the S3 bucket using
-the traineeTisId recived, this method maps the stream of formRs received to a collection of objects, for 
+the traineeTisId, this method maps the stream of formRs received to a collection of objects, for 
 each object the date type of submissionType is checked, if it is a LocalDateTime format it is added
 to the metadata, otherwise it is parsed from LocalDate to LocalDateTime and then added.
 
