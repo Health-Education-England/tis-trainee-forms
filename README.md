@@ -29,16 +29,18 @@ Error and exception logging is done using Sentry.
 
 #### Environmental Variables
 
-| Name                                  | Description                                  | Default                              |
-|---------------------------------------|----------------------------------------------|--------------------------------------|
-| DB_HOST                               | The MongoDB host to connect to.              | localhost                            |
-| DB_PORT                               | The port to connect to MongoDB on.           | 27017                                |
-| DB_USER                               | The username to access the MongoDB instance. | admin                                |
-| DB_NAME                               | The name of the MongoDB instance.            | forms                                |
-| DB_PASSWORD                           | The password to access the MongoDB instance. | pwd                                  |
-| SENTRY_DSN                            | A Sentry error monitoring Data Source Name.  | local                                |
-| FEATURE_FORMR_PARTB_COVID_DECLARATION |                                              | true                                 |
-| APPLICATION_FILESTORE_BUCKET          | the S3 bucket the forms are stored in.       | tis-trainee-documents-upload-preprod |
+| Name                                  | Description                                  | Default   |
+|---------------------------------------|----------------------------------------------|-----------|
+| DB_HOST                               | The MongoDB host to connect to.              | localhost |
+| DB_PORT                               | The port to connect to MongoDB on.           | 27017     |
+| DB_USER                               | The username to access the MongoDB instance. | admin     |
+| DB_NAME                               | The name of the MongoDB instance.            | forms     |
+| DB_PASSWORD                           | The password to access the MongoDB instance. | pwd       |
+| SENTRY_DSN                            | A Sentry error monitoring Data Source Name.  |           |
+| SENTRY_ENVIRONMENT                    | A Sentry error monitoring DSN environment.   | local     |
+| FEATURE_FORMR_PARTB_COVID_DECLARATION |                                              | true      |
+| APPLICATION_FILESTORE_BUCKET          | the S3 bucket the forms are stored in.       |           |
+| APPLICATION_FILESTORE_ALWAYSSTORE     |                                              | false     |
 
 ## Usage
 ### Saving Forms
