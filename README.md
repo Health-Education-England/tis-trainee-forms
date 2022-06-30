@@ -65,19 +65,24 @@ to the metadata, otherwise it is parsed from LocalDate to LocalDateTime and then
 
 ##### Get Forms By TraineeTisId Example
 ```
-api/forms/formr-partb/{TraineeTisId}
+GET api/forms/formr-partbs
 ```
 ```
-api/forms/formr-parta/{TraineeTisId}
+GET api/forms/formr-partas
 ```
 
-###getFormRPartBById
-this method is used when loading a submitted form to view or continuing a draft form. this method 
-needs the form ID, traineeTisId in order to find the form. 
+###findByIdAndTraineeTisId
+this method is used when requesting a single form to view. this method uses an S3ObjectInputStream
+ti get the form object from the amazonS3 bucket. the data from the InputStream is then mapped
+using an objectMapper into a form matching the type requested, this is then returned as an optional
+of that form type. 
 
-
-
-
+```
+GET api/forms/formr-parta/{Id}
+```
+```
+GET api/forms/formr-partb/{Id}
+```
 
 ## Versioning
 This project uses [Semantic Versioning](semver.org).
