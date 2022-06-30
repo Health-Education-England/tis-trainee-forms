@@ -76,7 +76,7 @@ GET api/forms/formr-partas
 
 ###findByIdAndTraineeTisId
 this method is used when requesting a single form to view. this method uses an S3ObjectInputStream
-ti get the form object from the amazonS3 bucket. the data from the InputStream is then mapped
+to get the form object from the amazonS3 bucket. the data from the InputStream is then mapped
 using an objectMapper into a form matching the type requested, this is then returned as an optional
 of that form type. 
 
