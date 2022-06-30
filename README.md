@@ -29,28 +29,24 @@ Error and exception logging is done using Sentry.
 
 #### Environmental Variables
 
-| Name               | Description                                   | Default   |
-|--------------------|-----------------------------------------------|-----------|
-| DB_HOST                         | The MongoDB host to connect to.               | localhost |
-| DB_PORT                         | The port to connect to MongoDB on.            |   27017   |
-| DB_USER                         | The username to access the MongoDB instance.  |   admin   |
-| DB_NAME                         | The name of the MongoDB instance.             |   forms   |
-| DB_PASSWORD                     | The password to access the MongoDB instance.  |    pwd    |
-| SENTRY_DSN                      | A Sentry error monitoring Data Source Name.   |   local   |
-| APPLICATION_FILESTORE_BUCKET    | the S3 bucket the forms are stored in.        |tis-trainee-documents-upload-preprod|
+| Name                         | Description                                  | Default                              |
+|------------------------------|----------------------------------------------|--------------------------------------|
+| DB_HOST                      | The MongoDB host to connect to.              | localhost                            |
+| DB_PORT                      | The port to connect to MongoDB on.           | 27017                                |
+| DB_USER                      | The username to access the MongoDB instance. | admin                                |
+| DB_NAME                      | The name of the MongoDB instance.            | forms                                |
+| DB_PASSWORD                  | The password to access the MongoDB instance. | pwd                                  |
+| SENTRY_DSN                   | A Sentry error monitoring Data Source Name.  | local                                |
+| APPLICATION_FILESTORE_BUCKET | the S3 bucket the forms are stored in.       | tis-trainee-documents-upload-preprod |
 
-## Deployment
- - Provide `SENTRY_DSN` and `SENTRY_ENVIRONMENT` as environmental variables
-   during deployment.
-   
 ## Usage
 ### Saving Forms
-When a form is saved in the front end it is sent to either 'FormRPartAServiceImpl' or 
-FormRPartBServiceImpl depending on the form, the metadata is then mapped an FormRPartA
-or B object and sent to the AbstractCloudRepository.
-from there the trainee-ui a key is created containing the template for the form
-recieved, the traineeTisId and the ID of the form. an ObjectMetadata is created containing the 
-information from the recieved form and the SubmissionDate is generated and added to the metadata.
+
+To save the form that is received a key is made from the ObjectKeyTemplate, TraineeTisID and form
+Id and the metadata is mapped from the form into an ObjectMetadata and the submissionDate is generated
+in a LocalDateTime format. these objects are then made into a PutObjectRequest and put into the amazonS3
+bucket. 
+
 ##### Save Forms Example
 ```
 PUT api/forms/{formr-parta}
@@ -60,11 +56,12 @@ PUT api/forms/{formr-partb}
 ```
 
 ### getFormRPartBsByTraineeTisId
+
 This method is used to return a collection of submitted and draft forms. when this request is 
-received with the TraineeTisId it retrives a list of forms from the AbstractCloudRepository using
-the traineeTisId recived, this method maps the stream of formRs to a collection of objects, for 
+received with the TraineeTisId it retrives a list of forms from the S3 bucket using
+the traineeTisId recived, this method maps the stream of formRs received to a collection of objects, for 
 each object the date type of submissionType is checked, if it is a LocalDateTime format it is added
-to the metadata, otherwise it is parsed from LocalDate to LocalDateTime.
+to the metadata, otherwise it is parsed from LocalDate to LocalDateTime and then added.
 
 ##### Get Forms By TraineeTisId Example
 ```
