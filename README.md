@@ -87,7 +87,7 @@ GET api/forms/formr-partb/{Id}
 
 ## Testing
 
-to test this service you can right-click on the test file in the context menue and 
+to test this service you can right-click on the test file in the context menu and 
 click 'run 'tests in trainee-forms'
 
 otherwise you can run the  Gradle `test` task can be used to run automated tests
