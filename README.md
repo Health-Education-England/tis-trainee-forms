@@ -27,6 +27,17 @@ Code quality checking and enforcement is done with the following tools:
 
 Error and exception logging is done using Sentry.
 
+#### Environmental Variables
+
+| Name               | Description                                   | Default   |
+|--------------------|-----------------------------------------------|-----------|
+| DB_HOST                         | The MongoDB host to connect to.               |           |
+| DB_PORT                         | The port to connect to MongoDB on.            |           |
+| DB_USER                         | The username to access the MongoDB instance.  |           |
+| DB_PASSWORD                     | The password to access the MongoDB instance.  |           |
+| SENTRY_DSN                      | A Sentry error monitoring Data Source Name.   |           |
+| APPLICATION_FILESTORE_BUCKET    | the S3 bucket the forms are stored in.        |tis-trainee-documents-upload-preprod|
+
 ## Deployment
  - Provide `SENTRY_DSN` and `SENTRY_ENVIRONMENT` as environmental variables
    during deployment.
@@ -63,13 +74,14 @@ api/forms/formr-parta/{TraineeTisId}
 ```
 
 ###getFormRPartBById
-this method is used when loading a submitted form or continueing a draft form. 
+this method is used when loading a submitted form to view or continuing a draft form. this method 
+needs the form ID, traineeTisId in order to find the form. 
 
 
 
-
-
-
+```
+api/forms/formr-partb/{TraineeTisId}
+```
 
 ## Versioning
 This project uses [Semantic Versioning](semver.org).
