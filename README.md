@@ -85,6 +85,17 @@ GET api/forms/formr-parta/{Id}
 GET api/forms/formr-partb/{Id}
 ```
 
+## Testing
+
+to test this service you can right-click on the test file in the context menue and 
+click 'run 'tests in trainee-forms'
+
+otherwise you can run the  Gradle `test` task can be used to run automated tests
+and produce coverage reports.
+```shell
+gradlew test
+```
+
 ## Versioning
 This project uses [Semantic Versioning](semver.org).
 
