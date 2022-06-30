@@ -59,11 +59,11 @@ PUT api/forms/{formr-partb}
 ```
 
 ### getFormRPartBsByTraineeTisId
-This method is used to return a collection of submitted and draft forms. when this request is received with
-the TraineeTisId it retrives a list of forms from the AbstractCloudRepository using the traineeTisId 
-recived, this method maps the stream of formRs to a collection of objects, for each object the date
-type of submissionType is checked, if it is a LocalDateTime format it is added to the metadata, 
-otherwise it is parsed from LocalDate to LocalDateTime.
+This method is used to return a collection of submitted and draft forms. when this request is 
+received with the TraineeTisId it retrives a list of forms from the AbstractCloudRepository using
+the traineeTisId recived, this method maps the stream of formRs to a collection of objects, for 
+each object the date type of submissionType is checked, if it is a LocalDateTime format it is added
+to the metadata, otherwise it is parsed from LocalDate to LocalDateTime.
 
 ##### Get Forms By TraineeTisId Example
 ```
@@ -79,9 +79,7 @@ needs the form ID, traineeTisId in order to find the form.
 
 
 
-```
-api/forms/formr-partb/{TraineeTisId}
-```
+
 
 ## Versioning
 This project uses [Semantic Versioning](semver.org).
