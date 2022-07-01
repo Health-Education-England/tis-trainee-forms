@@ -52,10 +52,10 @@ bucket.
 
 ##### Save Forms Example
 ```
-PUT api/forms/{formr-parta}
+PUT api/forms/formr-parta
 ```
 ```
-PUT api/forms/{formr-partb}
+PUT api/forms/formr-partb
 ```
 
 ### getFormRPartBsByTraineeTisId
