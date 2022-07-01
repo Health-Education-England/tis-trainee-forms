@@ -5,9 +5,8 @@ Deployment Status: ![CI/CD Workflow](https://github.com/Health-Education-England
 ## About
 
 This service is used to retrieve and parse forms from an S3 Bucket, and to attach to saved forms
-the 'submissionDate' and 'lastModified' values before saving to the bucket.  Forms that are submitted
-are saved into the S3 bucket while those that are saved as draft are stored within a Mongo database
-
+the 'submissionDate' and 'lastModified' values before saving to the bucket.  Forms that are not in a Draft state
+are saved into the S3 bucket; all forms are saved in the Mongo database
 
 This is a service to manage trainee forms with the following technology:
 
@@ -46,10 +45,9 @@ Error and exception logging is done using Sentry.
 ## Usage
 ### Saving Forms
 
-To save the form that is received a key is made from the ObjectKeyTemplate, TraineeTisID and form
-Id and the metadata is mapped from the form into an ObjectMetadata and the submissionDate is generated
-in a LocalDateTime format. these objects are then made into a PutObjectRequest and put into the amazonS3
-bucket. 
+To save the form that is received a key is made from the ObjectKeyTemplate (which comprises of TraineeTisID and Id.json)
+, TraineeTisID and form Id and the metadata is mapped from the form into an ObjectMetadata and the submissionDate is
+generated in a LocalDateTime format.
 
 ##### Save Forms Example
 ```
