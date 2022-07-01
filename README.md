@@ -59,12 +59,11 @@ PUT api/forms/formr-partb
 
 ### getFormRPartBsByTraineeTisId
 
-This method is used to return a collection of submitted and draft forms. when this request is 
-received with the TraineeTisId it retrives a list of forms from the S3 bucket using
-the traineeTisId, this method maps the stream of formRs received to a collection of objects, for 
-each object the date type of submissionType is checked, if it is a LocalDateTime format it is added
-to the metadata, otherwise it is parsed from LocalDate to LocalDateTime and then added.
-
+this method is used to request submitted and draft forms in a collection of FormROartSimpleDtos in JSON
+format. when this method recives the TraineeTisId it creates an ObjectListing, this listing contains each forms
+metadata of 'id', 'traineeid', 'submissiondate' and 'lifecyclestate'. 
+i.e. [{"id":"62bac33d332e487b84a3bdcc","traineeTisId":"47165","submissionDate":"2022-06-28T09:01:00.337","lifecycleState":"SUBMITTED"}]
+if the submission date is not a localDateTime format it is parsed and then entered into the metadata.
 ##### Get Forms By TraineeTisId Example
 ```
 GET api/forms/formr-partbs
@@ -87,11 +86,7 @@ GET api/forms/formr-partb/{Id}
 ```
 
 ## Testing
-
-to test this service you can right-click on the test file in the context menu and 
-click 'run 'tests in trainee-forms'
-
-otherwise you can run the  Gradle `test` task can be used to run automated tests
+you can run the  Gradle `test` task can be used to run automated tests
 and produce coverage reports.
 ```shell
 gradlew test
