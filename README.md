@@ -1,6 +1,11 @@
-Main Branch Status: ![CI/CD Workflow](https://github.com/Health-Education-England/tis-trainee-forms/workflows/CI/CD%20Workflow/badge.svg?branch=main)  
-Deployment Status: ![CI/CD Workflow](https://github.com/Health-Education-England/tis-trainee-forms/workflows/CI/CD%20Workflow/badge.svg?branch=main&event=deployment_status)
 # TIS Trainee Forms Service
+
+
+[![Build Status][build-badge]][build-href]
+[![License][license-badge]][license-href]
+[![Quality Gate Status][quality-gate-badge]][quality-gate-href]
+[![Coverage Stats][coverage-badge]][coverage-href]
+
 
 ## About
 
@@ -97,3 +102,13 @@ This project uses [Semantic Versioning](semver.org).
 
 ## License
 This project is license under [The MIT License (MIT)](LICENSE).
+[coverage-badge]:
+https://sonarcloud.io/api/project_badges/measure?project=Health-Education-England_tis-trainee-forms&metric=coverage
+[coverage-href]:
+https://sonarcloud.io/component_measures?metric=coverage&id=Health-Education-England_tis-trainee-forms
+[build-badge]: https://badgen.net/github/checks/health-education-england/tis-trainee-forms?label=build&icon=github
+[build-href]: https://github.com/Health-Education-England/tis-trainee-forms/actions/workflows/ci-cd-workflow.yml
+[license-badge]: https://badgen.net/github/license/health-education-england/tis-trainee-forms
+[license-href]: LICENSE
+[quality-gate-badge]: https://sonarcloud.io/api/project_badges/measure?project=Health-Education-England_tis-trainee-rforms&metric=alert_status
+[quality-gate-href]: https://sonarcloud.io/summary/new_code?id=Health-Education-England_tis-trainee-forms
