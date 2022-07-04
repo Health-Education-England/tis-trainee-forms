@@ -10,7 +10,7 @@
 ## About
 
 This service is used to retrieve and parse forms from an S3 Bucket, and to attach to saved forms
-the 'submissionDate' and 'lastModified' values before saving to the bucket.  Forms that are not in a Draft state
+the 'submissionDate' and 'lastModified' values before saving to the bucket. Forms that are not in a Draft state
 are saved into the S3 bucket; all forms are saved in the Mongo database
 
 This is a service to manage trainee forms with the following technology:
@@ -43,9 +43,9 @@ Error and exception logging is done using Sentry.
 | DB_PASSWORD                           | The password to access the MongoDB instance.                                   | pwd       |
 | SENTRY_DSN                            | A Sentry error monitoring Data Source Name.                                    |           |
 | SENTRY_ENVIRONMENT                    | A Sentry error monitoring DSN environment.                                     | local     |
-| FEATURE_FORMR_PARTB_COVID_DECLARATION | this controls whether forms are stored in the S3 regardless of Lifecycle State | true      |
-| APPLICATION_FILESTORE_BUCKET          | the S3 bucket the forms are stored in.                                         |           |
-| APPLICATION_FILESTORE_ALWAYSSTORE     | this feature flag controls whether to show this section in FormR PartB         | false     |
+| FEATURE_FORMR_PARTB_COVID_DECLARATION | This controls whether forms are stored in the S3 regardless of Lifecycle State | true      |
+| APPLICATION_FILESTORE_BUCKET          | The S3 bucket the forms are stored in.                                         |           |
+| APPLICATION_FILESTORE_ALWAYSSTORE     | This feature flag controls whether to show this section in FormR PartB         | false     |
 
 ## Usage
 ### Saving Forms
@@ -64,11 +64,11 @@ PUT api/forms/formr-partb
 
 ### getFormRPartBsByTraineeTisId
 
-this method is used to request submitted and draft forms in a collection of FormROartSimpleDtos in JSON
-format. when this method recives the TraineeTisId it creates an ObjectListing, this listing contains each forms
+This method is used to request submitted and draft forms in a collection of FormROartSimpleDtos in JSON
+format. When this method recives the TraineeTisId it creates an ObjectListing, this listing contains each forms
 metadata of 'id', 'traineeid', 'submissiondate' and 'lifecyclestate'. 
 i.e. [{"id":"62bac33d332e487b84a3bdcc","traineeTisId":"47165","submissionDate":"2022-06-28T09:01:00.337","lifecycleState":"SUBMITTED"}]
-if the submission date is not a localDateTime format it is parsed and then entered into the metadata.
+If the submission date is not a localDateTime format it is parsed and then entered into the metadata.
 ##### Get Forms By TraineeTisId Example
 ```
 GET api/forms/formr-partbs
@@ -78,8 +78,8 @@ GET api/forms/formr-partas
 ```
 
 ###findByIdAndTraineeTisId
-this method is used when requesting a single form to view. this method uses an S3ObjectInputStream
-to get the form object from the amazonS3 bucket. the data from the InputStream is then mapped
+This method is used when requesting a single form to view. This method uses an S3ObjectInputStream
+to get the form object from the amazonS3 bucket. The data from the InputStream is then mapped
 using an objectMapper into a form matching the type requested, this is then returned as an optional
 of that form type. 
 
@@ -91,7 +91,7 @@ GET api/forms/formr-partb/{Id}
 ```
 
 ## Testing
-you can run the  Gradle `test` task can be used to run automated tests
+You can run the  Gradle `test` task can be used to run automated tests
 and produce coverage reports.
 ```shell
 gradlew test
