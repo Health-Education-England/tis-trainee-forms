@@ -110,5 +110,5 @@ https://sonarcloud.io/component_measures?metric=coverage&id=Health-Education-Eng
 [build-href]: https://github.com/Health-Education-England/tis-trainee-forms/actions/workflows/ci-cd-workflow.yml
 [license-badge]: https://badgen.net/github/license/health-education-england/tis-trainee-forms
 [license-href]: LICENSE
-[quality-gate-badge]: https://sonarcloud.io/api/project_badges/measure?project=Health-Education-England_tis-trainee-rforms&metric=alert_status
+[quality-gate-badge]: https://sonarcloud.io/api/project_badges/measure?project=Health-Education-England_tis-trainee-forms&metric=alert_status
 [quality-gate-href]: https://sonarcloud.io/summary/new_code?id=Health-Education-England_tis-trainee-forms
