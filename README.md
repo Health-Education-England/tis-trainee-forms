@@ -102,6 +102,7 @@ This project uses [Semantic Versioning](semver.org).
 
 ## License
 This project is license under [The MIT License (MIT)](LICENSE).
+
 [coverage-badge]:
 https://sonarcloud.io/api/project_badges/measure?project=Health-Education-England_tis-trainee-forms&metric=coverage
 [coverage-href]:
