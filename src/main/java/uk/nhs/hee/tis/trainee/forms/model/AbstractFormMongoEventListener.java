@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2020 Crown Copyright (Health Education England)
+ * Copyright 2022 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -19,39 +19,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.service;
+package uk.nhs.hee.tis.trainee.forms.model;
 
-import java.util.List;
 import java.util.UUID;
-import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
-import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
+import org.springframework.data.mongodb.core.mapping.event.AbstractMongoEventListener;
+import org.springframework.data.mongodb.core.mapping.event.BeforeConvertEvent;
+import org.springframework.stereotype.Component;
 
-public interface FormRPartAService {
+@Component
+public class AbstractFormMongoEventListener extends AbstractMongoEventListener<AbstractForm> {
 
-  String FORM_TYPE = "formr-a";
+  @Override
+  public void onBeforeConvert(BeforeConvertEvent<AbstractForm> event) {
+    AbstractForm source = event.getSource();
 
-  /**
-   * Save the given form.
-   *
-   * @param formRPartADto The form to save.
-   * @return The saved form.
-   */
-  FormRPartADto save(FormRPartADto formRPartADto);
+    if (source.getId() == null) {
+      source.setId(UUID.randomUUID());
+    }
 
-  /**
-   * Get the forms for a trainee.
-   *
-   * @param traineeTisId The ID of the trainee to get the forms for.
-   * @return A collection of forms found for the trainee.
-   */
-  List<FormRPartSimpleDto> getFormRPartAsByTraineeTisId(String traineeTisId);
-
-  /**
-   * Get a form by id.
-   *
-   * @param id           The ID of the form.
-   * @param traineeTisId The ID of the trainee to get the form for.
-   * @return The retrieved form.
-   */
-  FormRPartADto getFormRPartAById(UUID id, String traineeTisId);
+    super.onBeforeConvert(event);
+  }
 }

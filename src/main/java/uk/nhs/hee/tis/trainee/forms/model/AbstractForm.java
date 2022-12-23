@@ -22,6 +22,7 @@ package uk.nhs.hee.tis.trainee.forms.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
@@ -32,7 +33,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 public abstract class AbstractForm {
 
   @Id
-  private String id;
+  private UUID id;
   @Indexed
   @Field(value = "traineeTisId")
   private String traineeTisId;

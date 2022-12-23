@@ -25,6 +25,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -153,7 +154,7 @@ public class FormRPartBResource {
    * @return the formR partB based on the id
    */
   @GetMapping("/formr-partb/{id}")
-  public ResponseEntity<FormRPartBDto> getFormRPartAsById(@PathVariable String id,
+  public ResponseEntity<FormRPartBDto> getFormRPartAsById(@PathVariable UUID id,
       @RequestHeader(HttpHeaders.AUTHORIZATION) String token) {
     log.debug("FormR-PartA by id {}", id);
 

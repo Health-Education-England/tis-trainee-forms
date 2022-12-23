@@ -23,6 +23,7 @@ package uk.nhs.hee.tis.trainee.forms.dto;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.Data;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
@@ -32,7 +33,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 @Data
 public class FormRPartADto {
 
-  private String id;
+  private UUID id;
   private String traineeTisId;
   private String forename;
   private String surname;

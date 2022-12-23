@@ -30,6 +30,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.UUID;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,7 +48,7 @@ import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
 @ExtendWith(MockitoExtension.class)
 class FormRPartBValidatorTest {
 
-  private static final String DEFAULT_ID = "DEFAULT_ID";
+  private static final UUID DEFAULT_ID = UUID.randomUUID();
   private static final String DEFAULT_TRAINEE_TIS_ID = "DEFAULT_TRAINEE_TIS_ID";
   private static final LifecycleState DEFAULT_LIFECYCLESTATE = LifecycleState.DRAFT;
 
@@ -85,12 +86,12 @@ class FormRPartBValidatorTest {
   void validateDraftIfMultipleDraftsFound() {
     FormRPartB formRPartB1 = new FormRPartB();
     formRPartB1.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    formRPartB1.setId("ANOTHER_ID_1");
+    formRPartB1.setId(UUID.randomUUID());
     formRPartB1.setLifecycleState(LifecycleState.DRAFT);
 
     FormRPartB formRPartB2 = new FormRPartB();
     formRPartB2.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    formRPartB2.setId("ANOTHER_ID_2");
+    formRPartB2.setId(UUID.randomUUID());
     formRPartB2.setLifecycleState(LifecycleState.DRAFT);
 
     when(formRPartBRepositoryMock
@@ -124,7 +125,7 @@ class FormRPartBValidatorTest {
   void validateUpdateDraftIfOneDraftWithDifferentIdFound() {
     FormRPartB formRPartB = new FormRPartB();
     formRPartB.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    formRPartB.setId("ANOTHER_ID");
+    formRPartB.setId(UUID.randomUUID());
     formRPartB.setLifecycleState(LifecycleState.DRAFT);
 
     when(formRPartBRepositoryMock
@@ -144,7 +145,7 @@ class FormRPartBValidatorTest {
 
     FormRPartB formRPartB = new FormRPartB();
     formRPartB.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    formRPartB.setId("ANOTHER_ID");
+    formRPartB.setId(UUID.randomUUID());
     formRPartB.setLifecycleState(LifecycleState.DRAFT);
 
     when(formRPartBRepositoryMock
@@ -162,7 +163,7 @@ class FormRPartBValidatorTest {
   void validateShouldThrowExceptionWhenValidationFails() {
     FormRPartB formRPartB = new FormRPartB();
     formRPartB.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    formRPartB.setId("ANOTHER_ID");
+    formRPartB.setId(UUID.randomUUID());
     formRPartB.setLifecycleState(LifecycleState.DRAFT);
 
     when(formRPartBRepositoryMock

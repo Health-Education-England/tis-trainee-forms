@@ -1,6 +1,5 @@
 package uk.nhs.hee.tis.trainee.forms.repository;
 
-import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 import static org.hamcrest.CoreMatchers.both;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
@@ -33,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,7 +54,7 @@ import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 class S3FormRPartARepositoryImplTest {
 
   private static final String KEY = "object.name";
-  private static final String DEFAULT_ID = "DEFAULT_ID";
+  private static final UUID DEFAULT_ID = UUID.randomUUID();
   private static final String DEFAULT_TRAINEE_TIS_ID = "1";
   private static final String DEFAULT_FORENAME = "DEFAULT_FORENAME";
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";
@@ -148,8 +148,8 @@ class S3FormRPartARepositoryImplTest {
         is(String.join("/", DEFAULT_TRAINEE_TIS_ID, "forms", FormRPartAService.FORM_TYPE,
             entity.getId() + ".json")));
     Map<String, String> expectedMetadata = Map
-        .of("id", entity.getId(), "name", entity.getId() + ".json", "type", "json", "formtype",
-            FormRPartAService.FORM_TYPE, "lifecyclestate", LifecycleState.SUBMITTED.name(),
+        .of("id", entity.getId().toString(), "name", entity.getId() + ".json", "type", "json",
+            "formtype", FormRPartAService.FORM_TYPE, "lifecyclestate", LifecycleState.SUBMITTED.name(),
             "submissiondate", DEFAULT_SUBMISSION_DATE_STRING, "traineeid", DEFAULT_TRAINEE_TIS_ID);
 
     assertThat("Unexpected metadata.", actualRequest.getMetadata().getUserMetadata().entrySet(),

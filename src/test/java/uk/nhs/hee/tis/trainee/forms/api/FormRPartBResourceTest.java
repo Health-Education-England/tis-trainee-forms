@@ -37,6 +37,7 @@ import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -65,7 +66,7 @@ class FormRPartBResourceTest {
 
   private static final String TIS_ID_ATTRIBUTE = "custom:tisId";
 
-  private static final String DEFAULT_ID = "DEFAULT_ID";
+  private static final UUID DEFAULT_ID = UUID.randomUUID();
   private static final String DEFAULT_TRAINEE_TIS_ID = "1";
   private static final String DEFAULT_FORENAME = "DEFAULT_FORENAME";
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";

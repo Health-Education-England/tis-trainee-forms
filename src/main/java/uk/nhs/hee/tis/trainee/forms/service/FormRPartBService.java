@@ -21,6 +21,7 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import java.util.List;
+import java.util.UUID;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 
@@ -51,5 +52,5 @@ public interface FormRPartBService {
    * @param traineeTisId The ID of the trainee to get the form for.
    * @return The retrieved form.
    */
-  FormRPartBDto getFormRPartBById(String id, String traineeTisId);
+  FormRPartBDto getFormRPartBById(UUID id, String traineeTisId);
 }

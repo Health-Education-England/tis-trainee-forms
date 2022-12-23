@@ -22,6 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.service.impl;
 
 import java.util.List;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -101,7 +102,7 @@ public class FormRPartAServiceImpl implements FormRPartAService {
    * get FormRPartA by id.
    */
   @Override
-  public FormRPartADto getFormRPartAById(String id, String traineeTisId) {
+  public FormRPartADto getFormRPartAById(UUID id, String traineeTisId) {
     log.info("Request to get FormRPartA by id : {}", id);
     FormRPartA formRPartA = cloudObjectRepository.findByIdAndTraineeTisId(id, traineeTisId)
         .or(() -> repository.findByIdAndTraineeTisId(id, traineeTisId))

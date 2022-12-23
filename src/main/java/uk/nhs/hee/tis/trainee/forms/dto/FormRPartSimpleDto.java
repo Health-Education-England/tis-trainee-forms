@@ -22,13 +22,14 @@
 package uk.nhs.hee.tis.trainee.forms.dto;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.Data;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 @Data
 public class FormRPartSimpleDto {
 
-  private String id;
+  private UUID id;
   private String traineeTisId;
   private LocalDateTime submissionDate;
   private LifecycleState lifecycleState;
