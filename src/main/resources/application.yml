@@ -28,5 +28,6 @@ server:
 spring:
   data:
     mongodb:
-      uri: mongodb://${DB_USER:admin}:${DB_PASSWORD:pwd}@${DB_HOST:localhost}:${DB_PORT:27017}/${DB_NAME:forms}?authSource=admin&replicaSet=rs0&readPreference=secondaryPreferred
+      # URI Modifications needed due to local Mongo container config, need to set up local cluster instead of standalone.
+      uri: mongodb://${DB_USER:admin}:${DB_PASSWORD:pwd}@${DB_HOST:localhost}:${DB_PORT:27017}/${DB_NAME:forms}?authSource=admin
       uuid-representation: standard
