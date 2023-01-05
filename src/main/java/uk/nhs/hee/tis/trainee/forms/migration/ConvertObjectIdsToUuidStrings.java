@@ -104,16 +104,16 @@ public class ConvertObjectIdsToUuidStrings {
       form.setId(uuid);
       log.info("UUID {} was generated for form {}.", uuid, originalId);
 
-      // Save the updated form to the database and, if applicable, S3.
+      // Save the updated form to the database and S3.
       saveNewForm(form);
 
-      // Delete the existing form from the database and, if the ID format changed, S3.
+      // Delete the existing form from the database and S3.
       deleteOriginalForms(originalId, form);
     }
   }
 
   /**
-   * Save the new form to both the database and, if applicable, S3.
+   * Save the new form to both the database and S3.
    *
    * @param abstractForm The form to save.
    */
