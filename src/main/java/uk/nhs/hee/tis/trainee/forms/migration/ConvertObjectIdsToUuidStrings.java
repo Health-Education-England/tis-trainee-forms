@@ -33,7 +33,6 @@ import org.springframework.core.env.Environment;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.schema.JsonSchemaObject.Type;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapper;
@@ -52,6 +51,9 @@ import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 public class ConvertObjectIdsToUuidStrings {
 
   private static final String ID_FIELD = "_id";
+  private static final String UUID_REGEX =
+      "[0-9a-fA-F]{8}\\-[0-9a-fA-F]{4}\\-[0-9a-fA-F]{4}\\-[0-9a-fA-F]{4}\\-[0-9a-fA-F]{12}";
+
   private final MongoTemplate mongoTemplate;
   private final AmazonS3 amazonS3;
   private final String bucketName;
@@ -89,14 +91,15 @@ public class ConvertObjectIdsToUuidStrings {
     String collectionName = mongoTemplate.getCollectionName(formClass);
     log.info("Generating UUID strings for forms in collection {}.", collectionName);
 
-    // Querying for only ObjectId forms, so that retries can skip migrated forms.
-    Criteria objectIdCriteria = Criteria.where(ID_FIELD).type(Type.OBJECT_ID);
-    Query objectIdQuery = Query.query(objectIdCriteria);
-    List<? extends AbstractForm> forms = mongoTemplate.find(objectIdQuery, formClass,
-        collectionName);
-    log.info("Found {} form(s) that require UUID strings generating.", forms.size());
+    // Filter to only ObjectId forms, so that retries can skip migrated forms.
+    List<? extends AbstractForm> allForms = mongoTemplate.findAll(formClass, collectionName);
+    List<? extends AbstractForm> objectIdForms = allForms.stream()
+        .filter(form -> !form.getId().matches(UUID_REGEX))
+        .toList();
 
-    for (AbstractForm form : forms) {
+    log.info("Found {} form(s) that require UUID strings generating.", objectIdForms.size());
+
+    for (AbstractForm form : objectIdForms) {
       String originalId = form.getId();
 
       // Generate a UUID string for the form.

@@ -100,19 +100,23 @@ class ConvertObjectIdsToUuidStringsTest {
 
   @Test
   void shouldOnlyIncludeObjectIdsInMigration() {
-    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
-    when(template.find(queryCaptor.capture(), any(), any())).thenReturn(List.of());
+    FormRPartA form1 = new FormRPartA();
+    form1.setId("not-uuid-1");
+
+    FormRPartA form2 = new FormRPartA();
+    String uuid = UUID.randomUUID().toString();
+    form2.setId(uuid);
+
+    when(template.findAll(any(), any())).thenReturn(List.of(form1, form2));
+    when(template.remove(any(), any(Class.class))).thenReturn(DeleteResult.acknowledged(1));
 
     migration.migrateCollections();
 
-    List<Query> queries = queryCaptor.getAllValues();
-    assertThat("Unexpected query count.", queries.size(), is(2));
+    verify(partAService).save(any());
+    verify(template).remove(any(), eq(FormRPartA.class));
 
-    for (Query query : queries) {
-      Document queryObject = query.getQueryObject();
-      Object type = queryObject.getEmbedded(List.of("_id", "$type"), List.class).get(0);
-      assertThat("Unexpected ID requirement.", type, is("objectId"));
-    }
+    verifyNoInteractions(partBService);
+    verify(template, new Times(0)).remove(any(), eq(FormRPartB.class));
   }
 
   @Test
@@ -123,7 +127,7 @@ class ConvertObjectIdsToUuidStringsTest {
     FormRPartA form2 = new FormRPartA();
     form2.setId("not-uuid-2");
 
-    when(template.find(any(), eq(FormRPartA.class), eq(PART_A_COLLECTION_NAME))).thenReturn(
+    when(template.findAll(eq(FormRPartA.class), eq(PART_A_COLLECTION_NAME))).thenReturn(
         List.of(form1, form2));
     when(template.remove(any(), eq(FormRPartA.class))).thenReturn(DeleteResult.acknowledged(1));
 
@@ -149,7 +153,7 @@ class ConvertObjectIdsToUuidStringsTest {
     FormRPartB form2 = new FormRPartB();
     form2.setId("not-uuid-2");
 
-    when(template.find(any(), eq(FormRPartB.class), eq(PART_B_COLLECTION_NAME))).thenReturn(
+    when(template.findAll(eq(FormRPartB.class), eq(PART_B_COLLECTION_NAME))).thenReturn(
         List.of(form1, form2));
     when(template.remove(any(), eq(FormRPartB.class))).thenReturn(DeleteResult.acknowledged(1));
 
@@ -175,7 +179,7 @@ class ConvertObjectIdsToUuidStringsTest {
     FormRPartA form2 = new FormRPartA();
     form2.setId("not-uuid-2");
 
-    when(template.find(any(), eq(FormRPartA.class), any())).thenReturn(List.of(form1, form2));
+    when(template.findAll(eq(FormRPartA.class), any())).thenReturn(List.of(form1, form2));
 
     ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
     when(template.remove(queryCaptor.capture(), eq(FormRPartA.class))).thenReturn(
@@ -203,7 +207,7 @@ class ConvertObjectIdsToUuidStringsTest {
     FormRPartB form2 = new FormRPartB();
     form2.setId("not-uuid-2");
 
-    when(template.find(any(), eq(FormRPartB.class), any())).thenReturn(List.of(form1, form2));
+    when(template.findAll(eq(FormRPartB.class), any())).thenReturn(List.of(form1, form2));
 
     ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
     when(template.remove(queryCaptor.capture(), eq(FormRPartB.class))).thenReturn(
@@ -232,8 +236,8 @@ class ConvertObjectIdsToUuidStringsTest {
     FormRPartB form2 = new FormRPartB();
     form2.setId("not-uuid-2");
 
-    when(template.find(any(), eq(FormRPartA.class), any())).thenReturn(List.of(form1));
-    when(template.find(any(), eq(FormRPartB.class), any())).thenReturn(List.of(form2));
+    when(template.findAll(eq(FormRPartA.class), any())).thenReturn(List.of(form1));
+    when(template.findAll(eq(FormRPartB.class), any())).thenReturn(List.of(form2));
     when(template.remove(any(), any(Class.class))).thenReturn(
         DeleteResult.acknowledged(deletedCount));
 
@@ -251,7 +255,7 @@ class ConvertObjectIdsToUuidStringsTest {
     form2.setId("not-uuid-2");
     form2.setTraineeTisId("trainee2");
 
-    when(template.find(any(), eq(FormRPartA.class), any())).thenReturn(List.of(form1, form2));
+    when(template.findAll(eq(FormRPartA.class), any())).thenReturn(List.of(form1, form2));
 
     ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
     when(template.remove(queryCaptor.capture(), eq(FormRPartA.class))).thenReturn(
@@ -276,7 +280,7 @@ class ConvertObjectIdsToUuidStringsTest {
     form2.setId("not-uuid-2");
     form2.setTraineeTisId("trainee2");
 
-    when(template.find(any(), eq(FormRPartB.class), any())).thenReturn(List.of(form1, form2));
+    when(template.findAll(eq(FormRPartB.class), any())).thenReturn(List.of(form1, form2));
 
     ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
     when(template.remove(queryCaptor.capture(), eq(FormRPartB.class))).thenReturn(
@@ -299,8 +303,8 @@ class ConvertObjectIdsToUuidStringsTest {
     FormRPartB form2 = new FormRPartB();
     form2.setId("not-uuid-2");
 
-    when(template.find(any(), eq(FormRPartA.class), any())).thenReturn(List.of(form1));
-    when(template.find(any(), eq(FormRPartB.class), any())).thenReturn(List.of(form2));
+    when(template.findAll(eq(FormRPartA.class), any())).thenReturn(List.of(form1));
+    when(template.findAll(eq(FormRPartB.class), any())).thenReturn(List.of(form2));
     when(template.remove(any(), any(Class.class))).thenReturn(DeleteResult.acknowledged(1));
 
     doThrow(RuntimeException.class).when(s3).deleteObject(any(), any());
