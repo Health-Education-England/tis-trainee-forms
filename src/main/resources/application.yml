@@ -10,8 +10,8 @@ features:
 logging:
   level:
     root: INFO
-    org.springframework.data: DEBUG
-    uk.nhs.hee.tis.trainee.forms: TRACE
+    org.springframework.data: INFO
+    uk.nhs.hee.tis.trainee.forms: INFO
 
 mongock:
   migration-scan-package: uk.nhs.hee.tis.trainee.forms.migration
