@@ -29,6 +29,7 @@ import io.mongock.api.annotations.RollbackExecution;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.Document;
 import org.springframework.core.env.Environment;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -92,26 +93,29 @@ public class ConvertObjectIdsToUuidStrings {
     log.info("Generating UUID strings for forms in collection {}.", collectionName);
 
     // Filter to only ObjectId forms, so that retries can skip migrated forms.
-    List<? extends AbstractForm> allForms = mongoTemplate.findAll(formClass, collectionName);
-    List<? extends AbstractForm> objectIdForms = allForms.stream()
-        .filter(form -> !form.getId().matches(UUID_REGEX))
+    List<Document> allForms = mongoTemplate.findAll(Document.class, collectionName);
+    List<Document> objectIdForms = allForms.stream()
+        .filter(form -> !form.get(ID_FIELD).toString().matches(UUID_REGEX))
         .toList();
 
     log.info("Found {} form(s) that require UUID strings generating.", objectIdForms.size());
 
-    for (AbstractForm form : objectIdForms) {
-      String originalId = form.getId();
+    for (Document form : objectIdForms) {
+      String originalId = form.get(ID_FIELD).toString();
 
       // Generate a UUID string for the form.
       String uuid = UUID.randomUUID().toString();
-      form.setId(uuid);
+      form.put(ID_FIELD, uuid);
       log.info("UUID {} was generated for form {}.", uuid, originalId);
 
+      // Now the ID has been set generically we can convert to the correct Form object.
+      AbstractForm abstractForm = mongoTemplate.getConverter().read(formClass, form);
+
       // Save the updated form to the database and S3.
-      saveNewForm(form);
+      saveNewForm(abstractForm);
 
       // Delete the existing form from the database and S3.
-      deleteOriginalForms(originalId, form);
+      deleteOriginalForms(originalId, abstractForm);
     }
   }
 
