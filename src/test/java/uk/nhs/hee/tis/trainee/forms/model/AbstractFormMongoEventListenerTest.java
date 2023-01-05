@@ -24,7 +24,6 @@ package uk.nhs.hee.tis.trainee.forms.model;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,20 +46,20 @@ class AbstractFormMongoEventListenerTest {
     BeforeConvertEvent<AbstractForm> event = new BeforeConvertEvent<>(form, "StubForm");
     listener.onBeforeConvert(event);
 
-    String id = form.getId();
+    UUID id = form.getId();
     assertThat("Unexpected form ID.", id, notNullValue());
-    assertDoesNotThrow(() -> UUID.fromString(id), "Unexpected ID format.");
   }
 
   @Test
   void shouldNotModifyIdBeforeConvertWhenIdPopulated() {
     StubForm form = new StubForm();
-    form.setId("test_id");
+    UUID uuid = UUID.randomUUID();
+    form.setId(uuid);
 
     BeforeConvertEvent<AbstractForm> event = new BeforeConvertEvent<>(form, "StubForm");
     listener.onBeforeConvert(event);
 
-    assertThat("Unexpected form ID.", form.getId(), is("test_id"));
+    assertThat("Unexpected form ID.", form.getId(), is(uuid));
   }
 
   /**

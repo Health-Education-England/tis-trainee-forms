@@ -40,7 +40,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractForm;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
@@ -72,14 +71,14 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
    * @return the saved entity
    */
   public T save(T form) {
-    if (!StringUtils.hasText(form.getId())) {
-      form.setId(UUID.randomUUID().toString());
+    if (form.getId() == null) {
+      form.setId(UUID.randomUUID());
     }
     String fileName = form.getId() + ".json";
     try {
       String key = String.format(getObjectKeyTemplate(), form.getTraineeTisId(), form.getId());
       ObjectMetadata metadata = new ObjectMetadata();
-      metadata.addUserMetadata("id", form.getId());
+      metadata.addUserMetadata("id", form.getId().toString());
       metadata.addUserMetadata("name", fileName);
       metadata.addUserMetadata("type", "json");
       metadata.addUserMetadata("formtype", form.getFormType());
@@ -113,7 +112,7 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
       try {
         ObjectMetadata metadata = amazonS3.getObjectMetadata(bucketName, summary.getKey());
         T form = getTypeClass().getConstructor().newInstance();
-        form.setId(metadata.getUserMetaDataOf("id"));
+        form.setId(UUID.fromString(metadata.getUserMetaDataOf("id")));
         form.setTraineeTisId(metadata.getUserMetaDataOf("traineeid"));
         try {
           form.setSubmissionDate(LocalDateTime.parse(metadata.getUserMetaDataOf(SUBMISSION_DATE)));

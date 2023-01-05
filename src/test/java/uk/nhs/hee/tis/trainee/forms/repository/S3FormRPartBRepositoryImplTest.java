@@ -1,6 +1,5 @@
 package uk.nhs.hee.tis.trainee.forms.repository;
 
-import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 import static org.hamcrest.CoreMatchers.both;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
@@ -36,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -57,7 +57,8 @@ import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 class S3FormRPartBRepositoryImplTest {
 
   private static final String KEY = "object.name";
-  private static final String DEFAULT_ID = "DEFAULT_ID";
+  private static final UUID DEFAULT_ID = UUID.randomUUID();
+  private static final String DEFAULT_ID_STRING = DEFAULT_ID.toString();
   private static final String DEFAULT_TRAINEE_TIS_ID = "1";
   private static final String DEFAULT_FORENAME = "DEFAULT_FORENAME";
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";
@@ -92,7 +93,7 @@ class S3FormRPartBRepositoryImplTest {
       DATE_FORMAT_SUBMISSION_DATE.atStartOfDay();
   private static final String DATE_FORMAT_DATE_STRING = DATE_FORMAT_SUBMISSION_DATE.format(
       DateTimeFormatter.ISO_LOCAL_DATE);
-  private static final String DEFAULT_FORM_ID = "my-first-cloud-object-id";
+  private static final String DEFAULT_FORM_ID = UUID.randomUUID().toString();
   private static final Map<String, String> DEFAULT_UNSUBMITTED_METADATA = Map
       .of("id", DEFAULT_FORM_ID, "formtype", "inform", "lifecyclestate",
           LifecycleState.UNSUBMITTED.name(), "submissiondate", DEFAULT_SUBMISSION_DATE_STRING,
@@ -212,9 +213,10 @@ class S3FormRPartBRepositoryImplTest {
         is(String.join("/", DEFAULT_TRAINEE_TIS_ID, "forms", FormRPartBService.FORM_TYPE,
             entity.getId() + ".json")));
     Map<String, String> expectedMetadata = Map
-        .of("id", entity.getId(), "name", entity.getId() + ".json", "type", "json", "formtype",
-            FormRPartBService.FORM_TYPE, "lifecyclestate", LifecycleState.SUBMITTED.name(),
-            "submissiondate", DEFAULT_SUBMISSION_DATE_STRING, "traineeid", DEFAULT_TRAINEE_TIS_ID);
+        .of("id", entity.getId().toString(), "name", entity.getId() + ".json", "type", "json",
+            "formtype", FormRPartBService.FORM_TYPE, "lifecyclestate",
+            LifecycleState.SUBMITTED.name(), "submissiondate", DEFAULT_SUBMISSION_DATE_STRING,
+            "traineeid", DEFAULT_TRAINEE_TIS_ID);
 
     assertThat("Unexpected metadata.", actualRequest.getMetadata().getUserMetadata().entrySet(),
         containsInAnyOrder(expectedMetadata.entrySet().toArray(new Entry[0])));
@@ -252,7 +254,7 @@ class S3FormRPartBRepositoryImplTest {
     assertThat("Unexpected numbers of forms.", entities.size(), is(1));
 
     FormRPartB entity = entities.get(0);
-    assertThat("Unexpected form ID.", entity.getId(), is(DEFAULT_FORM_ID));
+    assertThat("Unexpected form ID.", entity.getId(), is(UUID.fromString(DEFAULT_FORM_ID)));
     assertThat("Unexpected trainee ID.", entity.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected submitted date.", entity.getSubmissionDate(),
         is(DEFAULT_SUBMISSION_DATE));
@@ -291,7 +293,8 @@ class S3FormRPartBRepositoryImplTest {
         DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b/" + DEFAULT_ID + ".json"))
         .thenReturn(s3Object);
 
-    Optional<FormRPartB> actual = repo.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID);
+    Optional<FormRPartB> actual = repo.findByIdAndTraineeTisId(DEFAULT_ID_STRING,
+        DEFAULT_TRAINEE_TIS_ID);
 
     assertThat("Unexpected empty optional.", actual.isPresent());
     FormRPartB entity = actual.get();
@@ -332,18 +335,18 @@ class S3FormRPartBRepositoryImplTest {
   void findByIdAndTraineeIdShouldReturnEmpty() {
     AmazonServiceException awsException = new AmazonServiceException("Expected Exception");
     awsException.setStatusCode(404);
-    when(s3Mock.getObject(bucketName, "1/forms/formr-b/DEFAULT_ID.json"))
+    when(s3Mock.getObject(bucketName, String.format("1/forms/formr-b/%s.json", DEFAULT_ID)))
         .thenThrow(awsException);
     assertThat("Unexpected Optional content.",
-        repo.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID).isEmpty());
+        repo.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID).isEmpty());
   }
 
   @ParameterizedTest
   @ValueSource(classes = {AmazonServiceException.class, SdkClientException.class})
   void findByIdAndTraineeIdShouldThrowException(Class clazz) throws Exception {
-    when(s3Mock.getObject(bucketName, "1/forms/formr-b/DEFAULT_ID.json"))
+    when(s3Mock.getObject(bucketName, String.format("1/forms/formr-b/%s.json", DEFAULT_ID)))
         .thenThrow((Exception) clazz.getDeclaredConstructor(String.class).newInstance("Expected"));
     assertThrows(ApplicationException.class,
-        () -> repo.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID));
+        () -> repo.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID));
   }
 }

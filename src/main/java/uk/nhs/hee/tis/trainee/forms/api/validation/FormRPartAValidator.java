@@ -80,7 +80,8 @@ public class FormRPartAValidator {
       if (!existingFormRPartA.isEmpty()) {
         if (existingFormRPartA.size() == 1) {
           FormRPartA formRPartA = existingFormRPartA.get(0);
-          if (formRPartADto.getId() == null || !formRPartA.getId().equals(formRPartADto.getId())) {
+          if (formRPartADto.getId() == null || !formRPartA.getId().toString()
+              .equals(formRPartADto.getId())) {
             fieldErrors.add(new FieldError(FORMR_PARTA_DTO_NAME, "lifecycleState",
                 "Draft form R Part A already exists"));
           }

@@ -34,7 +34,7 @@ public class AbstractFormMongoEventListener extends AbstractMongoEventListener<A
     AbstractForm source = event.getSource();
 
     if (source.getId() == null) {
-      source.setId(UUID.randomUUID().toString());
+      source.setId(UUID.randomUUID());
     }
 
     super.onBeforeConvert(event);

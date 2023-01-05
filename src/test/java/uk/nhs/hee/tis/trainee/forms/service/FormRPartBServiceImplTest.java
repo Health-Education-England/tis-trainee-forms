@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -66,7 +67,8 @@ import uk.nhs.hee.tis.trainee.forms.service.impl.FormRPartBServiceImpl;
 @ExtendWith(MockitoExtension.class)
 class FormRPartBServiceImplTest {
 
-  private static final String DEFAULT_ID = "DEFAULT_ID";
+  private static final UUID DEFAULT_ID = UUID.randomUUID();
+  private static final String DEFAULT_ID_STRING = DEFAULT_ID.toString();
   private static final String DEFAULT_TRAINEE_TIS_ID = "1";
   private static final String DEFAULT_FORENAME = "DEFAULT_FORENAME";
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";
@@ -97,7 +99,7 @@ class FormRPartBServiceImplTest {
   private static final String DEFAULT_CURRENT_DECLARATION_SUMMARY =
       "DEFAULT_CURRENT_DECLARATION_SUMMARY";
   private static final LocalDateTime DEFAULT_SUBMISSION_DATE = LocalDateTime.now();
-  private static final String DEFAULT_FORM_ID = "my-first-cloud-object-id";
+  private static final UUID DEFAULT_FORM_ID = UUID.randomUUID();
 
   private static final Boolean DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS = true;
   private static final Boolean DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS = true;
@@ -264,7 +266,7 @@ class FormRPartBServiceImplTest {
 
     FormRPartBDto savedDto = service.save(dto);
 
-    assertThat("Unexpected form ID.", savedDto.getId(), is(DEFAULT_ID));
+    assertThat("Unexpected form ID.", savedDto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", savedDto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", savedDto.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", savedDto.getSurname(), is(DEFAULT_SURNAME));
@@ -315,7 +317,7 @@ class FormRPartBServiceImplTest {
 
     FormRPartBDto savedDto = service.save(dto);
 
-    assertThat("Unexpected form ID.", savedDto.getId(), is(DEFAULT_ID));
+    assertThat("Unexpected form ID.", savedDto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", savedDto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", savedDto.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", savedDto.getSurname(), is(DEFAULT_SURNAME));
@@ -365,7 +367,7 @@ class FormRPartBServiceImplTest {
 
     FormRPartBDto savedDto = service.save(dto);
 
-    assertThat("Unexpected form ID.", savedDto.getId(), is(DEFAULT_ID));
+    assertThat("Unexpected form ID.", savedDto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", savedDto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", savedDto.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", savedDto.getSurname(), is(DEFAULT_SURNAME));
@@ -415,7 +417,7 @@ class FormRPartBServiceImplTest {
     });
 
     FormRPartBDto savedDto = service.save(dto);
-    assertThat("Unexpected form ID.", savedDto.getId(), is(DEFAULT_ID));
+    assertThat("Unexpected form ID.", savedDto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", savedDto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", savedDto.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", savedDto.getSurname(), is(DEFAULT_SURNAME));
@@ -473,7 +475,7 @@ class FormRPartBServiceImplTest {
 
     assertThat("Unexpected numbers of forms.", dtos.size(), is(entities.size()));
     FormRPartSimpleDto dto = dtos.get(0);
-    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID));
+    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
   }
 
@@ -498,11 +500,11 @@ class FormRPartBServiceImplTest {
 
     FormRPartSimpleDto dto = dtos.stream().filter(
         f -> f.getLifecycleState() == LifecycleState.DRAFT).findAny().orElseThrow();
-    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID));
+    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     dto = dtos.stream().filter(
         f -> f.getLifecycleState() == LifecycleState.UNSUBMITTED).findAny().orElseThrow();
-    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_FORM_ID));
+    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_FORM_ID.toString()));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected submitted date.", dto.getSubmissionDate(), is(DEFAULT_SUBMISSION_DATE));
     assertThat("Unexpected lifecycle state.", dto.getLifecycleState(),
@@ -512,13 +514,13 @@ class FormRPartBServiceImplTest {
   @Test
   void shouldGetFormRPartBFromCloudStorageById() {
     entity.setLifecycleState(LifecycleState.SUBMITTED);
-    when(s3FormRPartBRepository.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
+    when(s3FormRPartBRepository.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.of(entity));
 
-    FormRPartBDto dto = service.getFormRPartBById(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID);
+    FormRPartBDto dto = service.getFormRPartBById(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID);
 
     verifyNoInteractions(repositoryMock);
-    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID));
+    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", dto.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", dto.getSurname(), is(DEFAULT_SURNAME));
@@ -551,12 +553,12 @@ class FormRPartBServiceImplTest {
 
   @Test
   void shouldGetDraftFormRPartBById() {
-    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
+    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.of(entity));
 
-    FormRPartBDto dto = service.getFormRPartBById(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID);
+    FormRPartBDto dto = service.getFormRPartBById(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID);
 
-    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID));
+    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", dto.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", dto.getSurname(), is(DEFAULT_SURNAME));
