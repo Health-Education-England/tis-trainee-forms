@@ -100,7 +100,7 @@ class ConvertObjectIdsToUuidStringsTest {
       Document document = args.getArgument(1);
 
       AbstractForm form = formClass.getConstructor().newInstance();
-      form.setId(document.get(ID_FIELD).toString());
+      form.setId(UUID.fromString(document.get(ID_FIELD).toString()));
       form.setTraineeTisId(document.getString(TRAINEE_ID_FIELD));
       return form;
     });
@@ -109,7 +109,7 @@ class ConvertObjectIdsToUuidStringsTest {
 
   @Test
   void shouldNotFailWhenNoDocumentsToMigrate() {
-    when(template.find(any(), any(), any())).thenReturn(List.of());
+    when(template.findAll(eq(Document.class), any())).thenReturn(List.of());
 
     assertDoesNotThrow(() -> migration.migrateCollections());
   }
