@@ -21,6 +21,7 @@
 package uk.nhs.hee.tis.trainee.forms.service.impl;
 
 import java.util.List;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -100,7 +101,7 @@ public class FormRPartBServiceImpl implements FormRPartBService {
   public FormRPartBDto getFormRPartBById(String id, String traineeTisId) {
     log.info("Request to get FormRPartB by id : {}", id);
     FormRPartB formRPartB = s3ObjectRepository.findByIdAndTraineeTisId(id, traineeTisId)
-        .or(() -> formRPartBRepository.findByIdAndTraineeTisId(id, traineeTisId))
+        .or(() -> formRPartBRepository.findByIdAndTraineeTisId(UUID.fromString(id), traineeTisId))
         .orElse(null);
     return formRPartBMapper.toDto(formRPartB);
   }

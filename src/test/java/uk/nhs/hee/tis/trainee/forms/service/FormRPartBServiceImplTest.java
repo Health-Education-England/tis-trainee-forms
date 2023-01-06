@@ -553,7 +553,7 @@ class FormRPartBServiceImplTest {
 
   @Test
   void shouldGetDraftFormRPartBById() {
-    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID))
+    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.of(entity));
 
     FormRPartBDto dto = service.getFormRPartBById(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID);

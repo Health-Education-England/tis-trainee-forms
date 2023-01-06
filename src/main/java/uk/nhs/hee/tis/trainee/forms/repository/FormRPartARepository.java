@@ -23,6 +23,7 @@ package uk.nhs.hee.tis.trainee.forms.repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -30,9 +31,9 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 
 @Repository
-public interface FormRPartARepository extends MongoRepository<FormRPartA, String> {
+public interface FormRPartARepository extends MongoRepository<FormRPartA, UUID> {
 
-  Optional<FormRPartA> findByIdAndTraineeTisId(String id, String traineeTisId);
+  Optional<FormRPartA> findByIdAndTraineeTisId(UUID id, String traineeTisId);
 
   @Query(fields = "{traineeTisId:1, id:1, submissionDate:1, lifecycleState:1}")
   List<FormRPartA> findByTraineeTisIdAndLifecycleState(String traineeTisId,
