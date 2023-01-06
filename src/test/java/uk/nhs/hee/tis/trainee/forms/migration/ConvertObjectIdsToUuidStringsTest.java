@@ -45,6 +45,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.internal.verification.Times;
 import org.springframework.core.env.Environment;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.test.util.ReflectionTestUtils;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
@@ -54,6 +55,7 @@ import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapperImpl;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractForm;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
@@ -61,6 +63,8 @@ import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 
 class ConvertObjectIdsToUuidStringsTest {
 
+  private static final String ID_FIELD = "_id";
+  private static final String TRAINEE_ID_FIELD = "traineeTisId";
   private static final String BUCKET_NAME = "test-bucket";
   private static final String PART_A_COLLECTION_NAME = "part-a-collection";
   private static final String PART_B_COLLECTION_NAME = "part-b-collection";
@@ -89,6 +93,18 @@ class ConvertObjectIdsToUuidStringsTest {
 
     when(template.getCollectionName(FormRPartA.class)).thenReturn(PART_A_COLLECTION_NAME);
     when(template.getCollectionName(FormRPartB.class)).thenReturn(PART_B_COLLECTION_NAME);
+
+    MappingMongoConverter converter = mock(MappingMongoConverter.class);
+    when(converter.read(any(), any())).thenAnswer(args -> {
+      Class<? extends AbstractForm> formClass = args.getArgument(0);
+      Document document = args.getArgument(1);
+
+      AbstractForm form = formClass.getConstructor().newInstance();
+      form.setId(document.get(ID_FIELD).toString());
+      form.setTraineeTisId(document.getString(TRAINEE_ID_FIELD));
+      return form;
+    });
+    when(template.getConverter()).thenReturn(converter);
   }
 
   @Test
@@ -100,14 +116,15 @@ class ConvertObjectIdsToUuidStringsTest {
 
   @Test
   void shouldOnlyIncludeObjectIdsInMigration() {
-    FormRPartA form1 = new FormRPartA();
-    form1.setId("not-uuid-1");
+    Document document1 = new Document();
+    document1.put(ID_FIELD, "not-uuid-1");
 
-    FormRPartA form2 = new FormRPartA();
+    Document document2 = new Document();
     String uuid = UUID.randomUUID().toString();
-    form2.setId(uuid);
+    document2.put(ID_FIELD, uuid);
 
-    when(template.findAll(any(), any())).thenReturn(List.of(form1, form2));
+    when(template.findAll(eq(Document.class), any())).thenReturn(List.of(document1, document2),
+        List.of());
     when(template.remove(any(), any(Class.class))).thenReturn(DeleteResult.acknowledged(1));
 
     migration.migrateCollections();
@@ -121,14 +138,14 @@ class ConvertObjectIdsToUuidStringsTest {
 
   @Test
   void shouldSaveFormRPartAsWithNewUuid() {
-    FormRPartA form1 = new FormRPartA();
-    form1.setId("not-uuid-1");
+    Document document1 = new Document();
+    document1.put(ID_FIELD, "not-uuid-1");
 
-    FormRPartA form2 = new FormRPartA();
-    form2.setId("not-uuid-2");
+    Document document2 = new Document();
+    document2.put(ID_FIELD, "not-uuid-2");
 
-    when(template.findAll(eq(FormRPartA.class), eq(PART_A_COLLECTION_NAME))).thenReturn(
-        List.of(form1, form2));
+    when(template.findAll(eq(Document.class), eq(PART_A_COLLECTION_NAME))).thenReturn(
+        List.of(document1, document2));
     when(template.remove(any(), eq(FormRPartA.class))).thenReturn(DeleteResult.acknowledged(1));
 
     migration.migrateCollections();
@@ -147,14 +164,14 @@ class ConvertObjectIdsToUuidStringsTest {
 
   @Test
   void shouldSaveFormRPartBsWithNewUuid() {
-    FormRPartB form1 = new FormRPartB();
-    form1.setId("not-uuid-1");
+    Document document1 = new Document();
+    document1.put(ID_FIELD, "not-uuid-1");
 
-    FormRPartB form2 = new FormRPartB();
-    form2.setId("not-uuid-2");
+    Document document2 = new Document();
+    document2.put(ID_FIELD, "not-uuid-2");
 
-    when(template.findAll(eq(FormRPartB.class), eq(PART_B_COLLECTION_NAME))).thenReturn(
-        List.of(form1, form2));
+    when(template.findAll(eq(Document.class), eq(PART_B_COLLECTION_NAME))).thenReturn(
+        List.of(document1, document2));
     when(template.remove(any(), eq(FormRPartB.class))).thenReturn(DeleteResult.acknowledged(1));
 
     migration.migrateCollections();
@@ -173,16 +190,17 @@ class ConvertObjectIdsToUuidStringsTest {
 
   @Test
   void shouldDeleteOriginalFormRPartAsFromDatabase() {
-    FormRPartA form1 = new FormRPartA();
-    form1.setId("not-uuid-1");
+    Document document1 = new Document();
+    document1.put(ID_FIELD, "not-uuid-1");
 
-    FormRPartA form2 = new FormRPartA();
-    form2.setId("not-uuid-2");
+    Document document2 = new Document();
+    document2.put(ID_FIELD, "not-uuid-2");
 
-    when(template.findAll(eq(FormRPartA.class), any())).thenReturn(List.of(form1, form2));
+    when(template.findAll(eq(Document.class), eq(PART_A_COLLECTION_NAME))).thenReturn(
+        List.of(document1, document2));
 
     ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
-    when(template.remove(queryCaptor.capture(), eq(FormRPartA.class))).thenReturn(
+    when(template.remove(queryCaptor.capture(), any(Class.class))).thenReturn(
         DeleteResult.acknowledged(1));
 
     migration.migrateCollections();
@@ -201,16 +219,17 @@ class ConvertObjectIdsToUuidStringsTest {
 
   @Test
   void shouldDeleteOriginalFormRPartBsFromDatabase() {
-    FormRPartB form1 = new FormRPartB();
-    form1.setId("not-uuid-1");
+    Document document1 = new Document();
+    document1.put(ID_FIELD, "not-uuid-1");
 
-    FormRPartB form2 = new FormRPartB();
-    form2.setId("not-uuid-2");
+    Document document2 = new Document();
+    document2.put(ID_FIELD, "not-uuid-2");
 
-    when(template.findAll(eq(FormRPartB.class), any())).thenReturn(List.of(form1, form2));
+    when(template.findAll(eq(Document.class), eq(PART_B_COLLECTION_NAME))).thenReturn(
+        List.of(document1, document2));
 
     ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
-    when(template.remove(queryCaptor.capture(), eq(FormRPartB.class))).thenReturn(
+    when(template.remove(queryCaptor.capture(), any(Class.class))).thenReturn(
         DeleteResult.acknowledged(1));
 
     migration.migrateCollections();
@@ -230,14 +249,14 @@ class ConvertObjectIdsToUuidStringsTest {
   @ParameterizedTest
   @ValueSource(ints = {0, 2})
   void shouldNotFailMigrationWhenDeleteFromDatabaseFails(int deletedCount) {
-    FormRPartA form1 = new FormRPartA();
-    form1.setId("not-uuid-1");
+    Document document1 = new Document();
+    document1.put(ID_FIELD, "not-uuid-1");
 
-    FormRPartB form2 = new FormRPartB();
-    form2.setId("not-uuid-2");
+    Document document2 = new Document();
+    document2.put(ID_FIELD, "not-uuid-2");
 
-    when(template.findAll(eq(FormRPartA.class), any())).thenReturn(List.of(form1));
-    when(template.findAll(eq(FormRPartB.class), any())).thenReturn(List.of(form2));
+    when(template.findAll(eq(Document.class), any())).thenReturn(List.of(document1),
+        List.of(document2));
     when(template.remove(any(), any(Class.class))).thenReturn(
         DeleteResult.acknowledged(deletedCount));
 
@@ -247,64 +266,66 @@ class ConvertObjectIdsToUuidStringsTest {
 
   @Test
   void shouldDeleteOriginalFormRPartAsFromS3() {
-    FormRPartA form1 = new FormRPartA();
-    form1.setId("not-uuid-1");
-    form1.setTraineeTisId("trainee1");
+    Document document1 = new Document();
+    document1.put(ID_FIELD, "not-uuid-1");
+    document1.put(TRAINEE_ID_FIELD, "trainee1");
 
-    FormRPartA form2 = new FormRPartA();
-    form2.setId("not-uuid-2");
-    form2.setTraineeTisId("trainee2");
+    Document document2 = new Document();
+    document2.put(ID_FIELD, "not-uuid-2");
+    document2.put(TRAINEE_ID_FIELD, "trainee2");
 
-    when(template.findAll(eq(FormRPartA.class), any())).thenReturn(List.of(form1, form2));
+    when(template.findAll(eq(Document.class), eq(PART_A_COLLECTION_NAME))).thenReturn(
+        List.of(document1, document2));
 
     ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
-    when(template.remove(queryCaptor.capture(), eq(FormRPartA.class))).thenReturn(
+    when(template.remove(queryCaptor.capture(), any(Class.class))).thenReturn(
         DeleteResult.acknowledged(1));
 
     migration.migrateCollections();
 
     String keyTemplate = "%s/forms/%s/%s.json";
     verify(s3).deleteObject(BUCKET_NAME,
-        String.format(keyTemplate, "trainee1", form1.getFormType(), "not-uuid-1"));
+        String.format(keyTemplate, "trainee1", "formr-a", "not-uuid-1"));
     verify(s3).deleteObject(BUCKET_NAME,
-        String.format(keyTemplate, "trainee2", form1.getFormType(), "not-uuid-2"));
+        String.format(keyTemplate, "trainee2", "formr-a", "not-uuid-2"));
   }
 
   @Test
   void shouldDeleteOriginalFormRPartBsFromS3() {
-    FormRPartB form1 = new FormRPartB();
-    form1.setId("not-uuid-1");
-    form1.setTraineeTisId("trainee1");
+    Document document1 = new Document();
+    document1.put(ID_FIELD, "not-uuid-1");
+    document1.put(TRAINEE_ID_FIELD, "trainee1");
 
-    FormRPartB form2 = new FormRPartB();
-    form2.setId("not-uuid-2");
-    form2.setTraineeTisId("trainee2");
+    Document document2 = new Document();
+    document2.put(ID_FIELD, "not-uuid-2");
+    document2.put(TRAINEE_ID_FIELD, "trainee2");
 
-    when(template.findAll(eq(FormRPartB.class), any())).thenReturn(List.of(form1, form2));
+    when(template.findAll(eq(Document.class), eq(PART_B_COLLECTION_NAME))).thenReturn(
+        List.of(document1, document2));
 
     ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
-    when(template.remove(queryCaptor.capture(), eq(FormRPartB.class))).thenReturn(
+    when(template.remove(queryCaptor.capture(), any(Class.class))).thenReturn(
         DeleteResult.acknowledged(1));
 
     migration.migrateCollections();
 
     String keyTemplate = "%s/forms/%s/%s.json";
     verify(s3).deleteObject(BUCKET_NAME,
-        String.format(keyTemplate, "trainee1", form1.getFormType(), "not-uuid-1"));
+        String.format(keyTemplate, "trainee1", "formr-b", "not-uuid-1"));
     verify(s3).deleteObject(BUCKET_NAME,
-        String.format(keyTemplate, "trainee2", form1.getFormType(), "not-uuid-2"));
+        String.format(keyTemplate, "trainee2", "formr-b", "not-uuid-2"));
   }
 
   @Test
   void shouldNotFailMigrationWhenDeleteFromS3Fails() {
-    FormRPartA form1 = new FormRPartA();
-    form1.setId("not-uuid-1");
+    Document document1 = new Document();
+    document1.put(ID_FIELD, "not-uuid-1");
 
-    FormRPartB form2 = new FormRPartB();
-    form2.setId("not-uuid-2");
+    Document document2 = new Document();
+    document2.put(ID_FIELD, "not-uuid-2");
 
-    when(template.findAll(eq(FormRPartA.class), any())).thenReturn(List.of(form1));
-    when(template.findAll(eq(FormRPartB.class), any())).thenReturn(List.of(form2));
+    when(template.findAll(eq(Document.class), any())).thenReturn(List.of(document1),
+        List.of(document2));
     when(template.remove(any(), any(Class.class))).thenReturn(DeleteResult.acknowledged(1));
 
     doThrow(RuntimeException.class).when(s3).deleteObject(any(), any());
