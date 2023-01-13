@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2020 Crown Copyright (Health Education England)
+ * Copyright 2023 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -19,12 +19,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.dto.enumeration;
+package uk.nhs.hee.tis.trainee.forms.dto;
 
-public enum LifecycleState {
-  DRAFT,
-  SUBMITTED,
-  UNSUBMITTED,
-  DELETED
+import lombok.Data;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.DeleteType;
+
+/**
+ * A DTO for delete event notification from queue.
+ */
+@Data
+public class DeleteEventDto {
+
+  private String bucket;
+  private String key;
+  private DeleteType deleteType;
+  private String[] fixedFields;
 
 }

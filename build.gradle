@@ -46,6 +46,9 @@ dependencies {
 
   // Sentry reporting
   implementation "io.sentry:sentry-spring-boot-starter:6.11.0"
+
+  // SQS
+  implementation "io.awspring.cloud:spring-cloud-starter-aws-messaging:2.3.2"
 }
 
 checkstyle {

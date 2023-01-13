@@ -20,7 +20,12 @@
 
 package uk.nhs.hee.tis.trainee.forms.service.impl;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,11 +39,14 @@ import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
 import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartBRepositoryImpl;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
+import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
 @Slf4j
 @Service
 @Transactional
 public class FormRPartBServiceImpl implements FormRPartBService {
+
+  private static final String ATTRIBUTE_NAME_LIFE_CYCLE_STATE = "lifecycleState";
 
   private final FormRPartBMapper formRPartBMapper;
 
@@ -51,7 +59,7 @@ public class FormRPartBServiceImpl implements FormRPartBService {
 
 
   /**
-   * Constructor for a FormR PartA service.
+   * Constructor for a FormR PartB service.
    *
    * @param formRPartBRepository spring data repository
    * @param s3ObjectRepository   S3 Repository for forms
@@ -104,5 +112,43 @@ public class FormRPartBServiceImpl implements FormRPartBService {
         .or(() -> formRPartBRepository.findByIdAndTraineeTisId(UUID.fromString(id), traineeTisId))
         .orElse(null);
     return formRPartBMapper.toDto(formRPartB);
+  }
+
+  /**
+   * Partial delete a form by id.
+   */
+  @Override
+  public FormRPartBDto partialDeleteFormRPartBById(
+      String id, String traineeTisId, String[] fixedFields) {
+    log.info("Request to partial delete FormRPartB by id : {}", id);
+
+    try {
+      FormRPartB formRPartB = formRPartBRepository
+          .findByIdAndTraineeTisId(UUID.fromString(id), traineeTisId)
+          .orElse(null);
+
+      if (formRPartB != null) {
+        ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+        JsonNode jsonForm = objectMapper.valueToTree(formRPartB);
+
+        for (Iterator<String> fieldIterator = jsonForm.fieldNames(); fieldIterator.hasNext(); ) {
+          String fieldName = fieldIterator.next();
+
+          if (!Set.of(fixedFields).contains(fieldName)) {
+            fieldIterator.remove();
+          }
+        }
+        ((ObjectNode) jsonForm).put(ATTRIBUTE_NAME_LIFE_CYCLE_STATE,
+            LifecycleState.DELETED.name());
+        formRPartB = objectMapper.convertValue(jsonForm, FormRPartB.class);
+
+        formRPartBRepository.save(formRPartB);
+      }
+      return formRPartBMapper.toDto(formRPartB);
+
+    } catch (Exception e) {
+      log.error("Fail to partial delete FormR PartB: {}", e);
+      throw new ApplicationException("Fail to partial delete FormR PartB:", e);
+    }
   }
 }

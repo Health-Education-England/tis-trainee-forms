@@ -21,7 +21,12 @@
 
 package uk.nhs.hee.tis.trainee.forms.service.impl;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,11 +40,14 @@ import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
 import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartARepositoryImpl;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
+import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
 @Slf4j
 @Service
 @Transactional
 public class FormRPartAServiceImpl implements FormRPartAService {
+
+  private static final String ATTRIBUTE_NAME_LIFE_CYCLE_STATE = "lifecycleState";
 
   private final FormRPartAMapper mapper;
 
@@ -110,4 +118,40 @@ public class FormRPartAServiceImpl implements FormRPartAService {
     return mapper.toDto(formRPartA);
   }
 
+  /**
+   * Partial delete a form by id.
+   */
+  @Override
+  public FormRPartADto partialDeleteFormRPartAById(
+      String id, String traineeTisId, String[] fixedFields) {
+    log.info("Request to partial delete FormRPartA by id : {}", id);
+
+    try {
+      FormRPartA formRPartA = repository.findByIdAndTraineeTisId(UUID.fromString(id), traineeTisId)
+          .orElse(null);
+
+      if (formRPartA != null) {
+        ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+        JsonNode jsonForm = objectMapper.valueToTree(formRPartA);
+
+        for (Iterator<String> fieldIterator = jsonForm.fieldNames(); fieldIterator.hasNext(); ) {
+          String fieldName = fieldIterator.next();
+
+          if (!Set.of(fixedFields).contains(fieldName)) {
+            fieldIterator.remove();
+          }
+        }
+        ((ObjectNode) jsonForm).put(ATTRIBUTE_NAME_LIFE_CYCLE_STATE,
+            LifecycleState.DELETED.name());
+        formRPartA = objectMapper.convertValue(jsonForm, FormRPartA.class);
+
+        repository.save(formRPartA);
+      }
+      return mapper.toDto(formRPartA);
+
+    } catch (Exception e) {
+      log.error("Fail to partial delete FormR PartA: {}", e);
+      throw new ApplicationException("Fail to partial delete FormR PartA:", e);
+    }
+  }
 }
