@@ -40,6 +40,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.DeleteType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractForm;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
@@ -54,6 +55,8 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
 
   private LocalDateTime localDateTime;
   private static final String SUBMISSION_DATE = "submissiondate";
+  private static final String FIXED_FIELDS =
+      "id,traineeTisId,lifecycleState,submissionDate,lastModifiedDate";
 
   protected String bucketName;
 
@@ -86,6 +89,8 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
       metadata.addUserMetadata(SUBMISSION_DATE,
           form.getSubmissionDate().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
       metadata.addUserMetadata("traineeid", form.getTraineeTisId());
+      metadata.addUserMetadata("deletetype", DeleteType.PARTIAL.name());
+      metadata.addUserMetadata("fixedfields", FIXED_FIELDS);
 
       PutObjectRequest request = new PutObjectRequest(bucketName, key,
           new ByteArrayInputStream(objectMapper.writeValueAsBytes(form)), metadata);
