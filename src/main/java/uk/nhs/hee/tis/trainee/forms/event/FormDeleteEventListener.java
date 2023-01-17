@@ -46,7 +46,7 @@ public class FormDeleteEventListener {
   }
 
   /**
-   * Listener for receiving form delete event from SQS queue
+   * Listener for receiving form delete event from SQS queue.
    */
   @SqsListener("${application.aws.sqs.delete-event}")
   public void getFormDeleteEvent(String message) throws IOException {
