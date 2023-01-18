@@ -1,5 +1,5 @@
 /*
- * The MIT License (MIT)
+ * The MIT License (MIT).
  *
  * Copyright 2023 Crown Copyright (Health Education England)
  *
@@ -32,6 +32,9 @@ import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
+/**
+ * Listener for receiving form delete event from SQS queue.
+ */
 @Slf4j
 @Component
 public class FormDeleteEventListener {
@@ -46,10 +49,10 @@ public class FormDeleteEventListener {
   }
 
   /**
-   * Listener for receiving form delete event from SQS queue.
+   * Listener for handling form delete form event.
    */
   @SqsListener("${application.aws.sqs.delete-event}")
-  public void getFormDeleteEvent(String message) throws IOException {
+  public void handleFormDeleteEvent(String message) throws IOException {
     try {
       log.info("Form delete event received: {}", message);
       ObjectMapper objectMapper = new ObjectMapper();
@@ -68,7 +71,6 @@ public class FormDeleteEventListener {
           log.info("Partial delete successfully for trainee {} with form Id {} (FormRPartA)",
               traineeTisId, formId);
         } else if (eventDetails[2].equals("formr-b")) {
-          log.info("trainee: {}, Form B", eventDetails[0]);
           formRPartBService.partialDeleteFormRPartBById(formId, traineeTisId, fixFields);
           log.info("Partial delete successfully for trainee {} with form Id {} (FormRPartB)",
               traineeTisId, formId);
