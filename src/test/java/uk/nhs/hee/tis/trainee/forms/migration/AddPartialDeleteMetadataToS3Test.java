@@ -63,16 +63,28 @@ class AddPartialDeleteMetadataToS3Test {
   private S3ObjectSummary objectSummary1;
   private S3ObjectSummary objectSummary2;
   private S3ObjectSummary objectSummary3;
+  private S3ObjectSummary objectSummary4;
+  private S3ObjectSummary objectSummary5;
+  private S3ObjectSummary objectSummary6;
   private S3Object object1;
   private S3Object object2;
   private S3Object object3;
+  private S3Object object4;
+  private S3Object object5;
+  private S3Object object6;
   private InputStream objectContent1;
   private InputStream objectContent2;
   private InputStream objectContent3;
-  private ObjectMetadata[] metadatas;
+  private InputStream objectContent4;
+  private InputStream objectContent5;
+  private InputStream objectContent6;
+  private ObjectMetadata[] expectedMetadatas;
   private ObjectMetadata metadata1;
   private ObjectMetadata metadata2;
   private ObjectMetadata metadata3;
+  private ObjectMetadata metadata4;
+  private ObjectMetadata metadata5;
+  private ObjectMetadata metadata6;
 
   @BeforeEach
   void setUp() {
@@ -89,22 +101,34 @@ class AddPartialDeleteMetadataToS3Test {
     objectSummary2.setKey("2");
     objectSummary3 = new S3ObjectSummary();
     objectSummary3.setKey("3");
+    objectSummary4 = new S3ObjectSummary();
+    objectSummary4.setKey("4");
+    objectSummary5 = new S3ObjectSummary();
+    objectSummary5.setKey("5");
+    objectSummary6 = new S3ObjectSummary();
+    objectSummary6.setKey("6");
 
     objects = new ObjectListing();
     objects.setTruncated(true);
     List<S3ObjectSummary> objectSummaries = objects.getObjectSummaries();
     objectSummaries.add(objectSummary1);
     objectSummaries.add(objectSummary2);
+    objectSummaries.add(objectSummary3);
 
     objects2 = new ObjectListing();
     objects2.setTruncated(false);
     List<S3ObjectSummary> objectSummaries2 = objects2.getObjectSummaries();
-    objectSummaries2.add(objectSummary3);
+    objectSummaries2.add(objectSummary4);
+    objectSummaries2.add(objectSummary5);
+    objectSummaries2.add(objectSummary6);
 
     // set up S3Objects
     objectContent1 = new ByteArrayInputStream("{\"id\":\"1\"}".getBytes());
     objectContent2 = new ByteArrayInputStream("{\"id\":\"2\"}".getBytes());
     objectContent3 = new ByteArrayInputStream("{\"id\":\"3\"}".getBytes());
+    objectContent4 = new ByteArrayInputStream("{\"id\":\"4\"}".getBytes());
+    objectContent5 = new ByteArrayInputStream("{\"id\":\"5\"}".getBytes());
+    objectContent6 = new ByteArrayInputStream("{\"id\":\"6\"}".getBytes());
 
     metadata1 = new ObjectMetadata();
     metadata1.addUserMetadata("metaName1", "mataValue1");
@@ -113,12 +137,32 @@ class AddPartialDeleteMetadataToS3Test {
     metadata2 = new ObjectMetadata();
     metadata2.addUserMetadata("metaName1", "mataValue1");
     metadata2.addUserMetadata("metaName2", "mataValue2");
+    metadata2.addUserMetadata("deletetype", DeleteType.HARD.name());
+    metadata2.addUserMetadata("fixedfields", FIXED_FIELDS);
 
     metadata3 = new ObjectMetadata();
     metadata3.addUserMetadata("metaName1", "mataValue1");
     metadata3.addUserMetadata("metaName2", "mataValue2");
+    metadata3.addUserMetadata("deletetype", DeleteType.PARTIAL.name());
+    metadata3.addUserMetadata("fixedfields", "");
 
-    metadatas = new ObjectMetadata[]{metadata1, metadata2, metadata3};
+    metadata4 = new ObjectMetadata();
+    metadata4.addUserMetadata("metaName1", "mataValue1");
+    metadata4.addUserMetadata("metaName2", "mataValue2");
+    metadata4.addUserMetadata("deletetype", DeleteType.PARTIAL.name());
+
+    metadata5 = new ObjectMetadata();
+    metadata5.addUserMetadata("metaName1", "mataValue1");
+    metadata5.addUserMetadata("metaName2", "mataValue2");
+    metadata5.addUserMetadata("fixedfields", FIXED_FIELDS);
+
+    metadata6 = new ObjectMetadata();
+    metadata6.addUserMetadata("metaName1", "mataValue1");
+    metadata6.addUserMetadata("metaName2", "mataValue2");
+    metadata6.addUserMetadata("deletetype", DeleteType.PARTIAL.name());
+    metadata6.addUserMetadata("fixedfields", FIXED_FIELDS);
+
+    expectedMetadatas = new ObjectMetadata[]{metadata1, metadata2, metadata3, metadata4, metadata5};
 
     object1 = new S3Object();
     object1.setBucketName(BUCKET_NAME);
@@ -137,6 +181,24 @@ class AddPartialDeleteMetadataToS3Test {
     object3.setKey("3");
     object3.setObjectContent(objectContent3);
     object3.setObjectMetadata(metadata3);
+
+    object4 = new S3Object();
+    object4.setBucketName(BUCKET_NAME);
+    object4.setKey("4");
+    object4.setObjectContent(objectContent4);
+    object4.setObjectMetadata(metadata4);
+
+    object5 = new S3Object();
+    object5.setBucketName(BUCKET_NAME);
+    object5.setKey("5");
+    object5.setObjectContent(objectContent5);
+    object5.setObjectMetadata(metadata5);
+
+    object6 = new S3Object();
+    object6.setBucketName(BUCKET_NAME);
+    object6.setKey("6");
+    object6.setObjectContent(objectContent6);
+    object6.setObjectMetadata(metadata6);
   }
 
   @Test
@@ -146,13 +208,16 @@ class AddPartialDeleteMetadataToS3Test {
     when(s3.getObject(BUCKET_NAME, "1")).thenReturn(object1);
     when(s3.getObject(BUCKET_NAME, "2")).thenReturn(object2);
     when(s3.getObject(BUCKET_NAME, "3")).thenReturn(object3);
+    when(s3.getObject(BUCKET_NAME, "4")).thenReturn(object4);
+    when(s3.getObject(BUCKET_NAME, "5")).thenReturn(object5);
+    when(s3.getObject(BUCKET_NAME, "6")).thenReturn(object6);
 
     migration.migrate();
 
-    verify(s3, times(3)).putObject(putRequestCaptor.capture());
+    verify(s3, times(5)).putObject(putRequestCaptor.capture());
     List<PutObjectRequest> putObjectRequests = putRequestCaptor.getAllValues();
     assertThat("Unexpected put object request count.",
-        putObjectRequests.size(), CoreMatchers.is(3));
+        putObjectRequests.size(), CoreMatchers.is(5));
 
     int assertId = 1;
     for (PutObjectRequest putObjectRequest : putObjectRequests) {
@@ -168,7 +233,7 @@ class AddPartialDeleteMetadataToS3Test {
 
       final Map<String, String> resultUserMetadata =
           putObjectRequest.getMetadata().getUserMetadata();
-      metadatas[assertId - 1].getUserMetadata().entrySet().stream()
+      expectedMetadatas[assertId - 1].getUserMetadata().entrySet().stream()
           .forEach(entry -> assertThat(resultUserMetadata.entrySet(), hasItem(entry)));
       assertThat("Unexpected deletetype in object Metadata.",
           resultUserMetadata.get("deletetype"), is(DeleteType.PARTIAL.name()));

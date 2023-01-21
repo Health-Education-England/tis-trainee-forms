@@ -62,5 +62,6 @@ public interface FormRPartAService {
    * @param traineeTisId The ID of the trainee to partial delete for.
    * @return The updated form.
    */
-  FormRPartADto partialDeleteFormRPartAById(String id, String traineeTisId, Set<String> fixedFields);
+  FormRPartADto partialDeleteFormRPartAById(
+      String id, String traineeTisId, Set<String> fixedFields);
 }

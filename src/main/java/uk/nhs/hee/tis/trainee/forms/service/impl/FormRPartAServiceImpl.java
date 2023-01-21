@@ -149,10 +149,12 @@ public class FormRPartAServiceImpl implements FormRPartAService {
         formRPartA = objectMapper.convertValue(jsonForm, FormRPartA.class);
 
         repository.save(formRPartA);
+        log.info("Partial delete successfully for trainee {} with form Id {} (FormRPartA)",
+            traineeTisId, id);
+      } else {
+        log.error("FormR PartB with ID '{}' not found", id);
       }
 
-      log.info("Partial delete successfully for trainee {} with form Id {} (FormRPartA)",
-          traineeTisId, id);
       return mapper.toDto(formRPartA);
 
     } catch (Exception e) {
