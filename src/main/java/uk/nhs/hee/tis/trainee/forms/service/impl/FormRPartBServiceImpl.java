@@ -54,6 +54,8 @@ public class FormRPartBServiceImpl implements FormRPartBService {
 
   private final S3FormRPartBRepositoryImpl s3ObjectRepository;
 
+  private final ObjectMapper objectMapper;
+
   @Value("${application.file-store.always-store}")
   private boolean alwaysStoreFiles;
 
@@ -66,10 +68,13 @@ public class FormRPartBServiceImpl implements FormRPartBService {
    * @param formRPartBMapper     maps between the form entity and dto
    */
   public FormRPartBServiceImpl(FormRPartBRepository formRPartBRepository,
-      S3FormRPartBRepositoryImpl s3ObjectRepository, FormRPartBMapper formRPartBMapper) {
+      S3FormRPartBRepositoryImpl s3ObjectRepository,
+      FormRPartBMapper formRPartBMapper,
+      ObjectMapper objectMapper) {
     this.formRPartBRepository = formRPartBRepository;
     this.formRPartBMapper = formRPartBMapper;
     this.s3ObjectRepository = s3ObjectRepository;
+    this.objectMapper = objectMapper;
   }
 
   /**
@@ -119,7 +124,7 @@ public class FormRPartBServiceImpl implements FormRPartBService {
    */
   @Override
   public FormRPartBDto partialDeleteFormRPartBById(
-      String id, String traineeTisId, String[] fixedFields) {
+      String id, String traineeTisId, Set<String> fixedFields) {
     log.info("Request to partial delete FormRPartB by id : {}", id);
 
     try {
@@ -128,13 +133,12 @@ public class FormRPartBServiceImpl implements FormRPartBService {
           .orElse(null);
 
       if (formRPartB != null) {
-        ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
         JsonNode jsonForm = objectMapper.valueToTree(formRPartB);
 
         for (Iterator<String> fieldIterator = jsonForm.fieldNames(); fieldIterator.hasNext(); ) {
           String fieldName = fieldIterator.next();
 
-          if (!Set.of(fixedFields).contains(fieldName)) {
+          if (!fixedFields.contains(fieldName)) {
             fieldIterator.remove();
           }
         }
@@ -144,6 +148,9 @@ public class FormRPartBServiceImpl implements FormRPartBService {
 
         formRPartBRepository.save(formRPartB);
       }
+
+      log.info("Partial delete successfully for trainee {} with form Id {} (FormRPartB)",
+          traineeTisId, id);
       return formRPartBMapper.toDto(formRPartB);
 
     } catch (Exception e) {

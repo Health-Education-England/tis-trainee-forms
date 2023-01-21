@@ -24,10 +24,6 @@ package uk.nhs.hee.tis.trainee.forms.migration;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.core.Is.is;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -41,18 +37,15 @@ import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mongodb.client.result.DeleteResult;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
-import org.bson.Document;
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.internal.verification.Times;
 import org.springframework.core.env.Environment;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.DeleteType;
 
@@ -76,7 +69,10 @@ class AddPartialDeleteMetadataToS3Test {
   private InputStream objectContent1;
   private InputStream objectContent2;
   private InputStream objectContent3;
-  private ObjectMetadata metadata;
+  private ObjectMetadata[] metadatas;
+  private ObjectMetadata metadata1;
+  private ObjectMetadata metadata2;
+  private ObjectMetadata metadata3;
 
   @BeforeEach
   void setUp() {
@@ -110,28 +106,37 @@ class AddPartialDeleteMetadataToS3Test {
     objectContent2 = new ByteArrayInputStream("{\"id\":\"2\"}".getBytes());
     objectContent3 = new ByteArrayInputStream("{\"id\":\"3\"}".getBytes());
 
-    metadata = new ObjectMetadata();
-    metadata.addUserMetadata("metaName1", "mataValue1");
-    metadata.addUserMetadata("metaName2", "mataValue2");
-    metadata.addUserMetadata("metaName3", "mataValue3");
+    metadata1 = new ObjectMetadata();
+    metadata1.addUserMetadata("metaName1", "mataValue1");
+    metadata1.addUserMetadata("metaName2", "mataValue2");
+
+    metadata2 = new ObjectMetadata();
+    metadata2.addUserMetadata("metaName1", "mataValue1");
+    metadata2.addUserMetadata("metaName2", "mataValue2");
+
+    metadata3 = new ObjectMetadata();
+    metadata3.addUserMetadata("metaName1", "mataValue1");
+    metadata3.addUserMetadata("metaName2", "mataValue2");
+
+    metadatas = new ObjectMetadata[]{metadata1, metadata2, metadata3};
 
     object1 = new S3Object();
     object1.setBucketName(BUCKET_NAME);
     object1.setKey("1");
     object1.setObjectContent(objectContent1);
-    object1.setObjectMetadata(metadata);
+    object1.setObjectMetadata(metadata1);
 
     object2 = new S3Object();
     object2.setBucketName(BUCKET_NAME);
     object2.setKey("2");
     object2.setObjectContent(objectContent2);
-    object2.setObjectMetadata(metadata);
+    object2.setObjectMetadata(metadata2);
 
     object3 = new S3Object();
     object3.setBucketName(BUCKET_NAME);
     object3.setKey("3");
     object3.setObjectContent(objectContent3);
-    object3.setObjectMetadata(metadata);
+    object3.setObjectMetadata(metadata3);
   }
 
   @Test
@@ -149,21 +154,21 @@ class AddPartialDeleteMetadataToS3Test {
     assertThat("Unexpected put object request count.",
         putObjectRequests.size(), CoreMatchers.is(3));
 
-    var assertId = 1;
-    for (var putObjectRequest : putObjectRequests) {
+    int assertId = 1;
+    for (PutObjectRequest putObjectRequest : putObjectRequests) {
       assertThat("Unexpected bucket.",
           putObjectRequest.getBucketName(), is(BUCKET_NAME));
       assertThat("Unexpected key.",
           putObjectRequest.getKey(), is(Integer.toString(assertId)));
-      final var resultInputStream = putObjectRequest.getInputStream();
+      final InputStream resultInputStream = putObjectRequest.getInputStream();
       ObjectMapper mapper = new ObjectMapper();
       Map<String, Object> resultJsonMap = mapper.readValue(resultInputStream, Map.class);
       assertThat("Unexpected input stream.",
           resultJsonMap.get("id"), is(Integer.toString(assertId)));
 
-      final var resultUserMetadata =
+      final Map<String, String> resultUserMetadata =
           putObjectRequest.getMetadata().getUserMetadata();
-      metadata.getUserMetadata().entrySet().stream()
+      metadatas[assertId - 1].getUserMetadata().entrySet().stream()
           .forEach(entry -> assertThat(resultUserMetadata.entrySet(), hasItem(entry)));
       assertThat("Unexpected deletetype in object Metadata.",
           resultUserMetadata.get("deletetype"), is(DeleteType.PARTIAL.name()));
@@ -172,19 +177,6 @@ class AddPartialDeleteMetadataToS3Test {
 
       assertId++;
     }
-  }
-
-  @Test
-  void shouldNotFailMigrationWhenAddMetadataFails() {
-    when(s3.listObjects(BUCKET_NAME)).thenReturn(objects);
-    when(s3.listNextBatchOfObjects(objects)).thenReturn(objects2);
-    when(s3.getObject(BUCKET_NAME, "1")).thenReturn(object1);
-    when(s3.getObject(BUCKET_NAME, "2")).thenReturn(object2);
-    when(s3.getObject(BUCKET_NAME, "3")).thenReturn(object3);
-
-    doThrow(RuntimeException.class).when(s3).putObject(any());
-
-    assertDoesNotThrow(() -> migration.migrate());
   }
 
   @Test

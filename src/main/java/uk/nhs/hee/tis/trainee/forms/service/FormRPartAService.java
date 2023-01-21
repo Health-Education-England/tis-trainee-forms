@@ -22,6 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import java.util.List;
+import java.util.Set;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 
@@ -61,5 +62,5 @@ public interface FormRPartAService {
    * @param traineeTisId The ID of the trainee to partial delete for.
    * @return The updated form.
    */
-  FormRPartADto partialDeleteFormRPartAById(String id, String traineeTisId, String[] fixedFields);
+  FormRPartADto partialDeleteFormRPartAById(String id, String traineeTisId, Set<String> fixedFields);
 }

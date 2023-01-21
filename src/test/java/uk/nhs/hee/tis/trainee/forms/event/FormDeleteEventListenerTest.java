@@ -28,16 +28,15 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
-@ExtendWith(MockitoExtension.class)
 class FormDeleteEventListenerTest {
 
   private FormDeleteEventListener listener;
@@ -48,41 +47,57 @@ class FormDeleteEventListenerTest {
   void setUp() {
     formRPartAService = mock(FormRPartAService.class);
     formRPartBService = mock(FormRPartBService.class);
-    listener = new FormDeleteEventListener(formRPartAService, formRPartBService);
+    listener = new FormDeleteEventListener(
+        formRPartAService,
+        formRPartBService,
+        new ObjectMapper()
+    );
   }
 
   @Test
   void shouldPartialDeleteFormA() throws IOException {
-    final String MESSAGE = "{\"deleteType\":\"PARTIAL\","
-        + "\"bucket\":\"document-upload\","
-        + "\"key\":\"1/forms/formr-a/1000a.json\","
-        + "\"fixedFields\":[\"id\",\"traineeTisId\"]}";
+    final String MESSAGE = """
+      {
+        "deleteType": "PARTIAL",
+        "bucket": "document-upload",
+        "key": "1/forms/formr-a/1000a.json",
+        "fixedFields": ["id", "traineeTisId"]
+      }
+    """;
 
     listener.handleFormDeleteEvent(MESSAGE);
 
     verify(formRPartAService).partialDeleteFormRPartAById(
-        "1000a", "1", new String[]{"id", "traineeTisId"});
+        "1000a", "1", Set.of("id", "traineeTisId"));
   }
 
   @Test
   void shouldPartialDeleteFormB() throws IOException {
-    final String MESSAGE = "{\"deleteType\":\"PARTIAL\","
-        + "\"bucket\":\"document-upload\","
-        + "\"key\":\"1/forms/formr-b/2000b.json\","
-        + "\"fixedFields\":[\"id\",\"traineeTisId\"]}";
+    final String MESSAGE = """
+      {
+        "deleteType": "PARTIAL",
+        "bucket": "document-upload",
+        "key": "1/forms/formr-b/2000b.json",
+        "fixedFields": ["id", "traineeTisId"]
+      }
+    """;
 
     listener.handleFormDeleteEvent(MESSAGE);
 
     verify(formRPartBService).partialDeleteFormRPartBById(
-        "2000b", "1", new String[]{"id", "traineeTisId"});
+        "2000b", "1", Set.of("id", "traineeTisId"));
   }
 
   @Test
   void shouldNotPartialDeleteFormsIfFormNameNotMatch() throws IOException {
-    final String MESSAGE = "{\"deleteType\":\"PARTIAL\","
-        + "\"bucket\":\"document-upload\","
-        + "\"key\":\"1/forms/formr-c/2000b.json\","
-        + "\"fixedFields\":[\"id\",\"traineeTisId\"]}";
+    final String MESSAGE = """
+      {
+        "deleteType": "PARTIAL",
+        "bucket": "document-upload",
+        "key": "1/forms/formr-c/1000a.json",
+        "fixedFields": ["id", "traineeTisId"]
+      }
+    """;
 
     listener.handleFormDeleteEvent(MESSAGE);
 
@@ -92,10 +107,14 @@ class FormDeleteEventListenerTest {
 
   @Test
   void shouldThrowExceptionWhenDeleteTypeNotPartial() throws IOException {
-    final String MESSAGE = "{\"deleteType\":\"HARD\","
-        + "\"bucket\":\"document-upload\","
-        + "\"key\":\"1/forms/formr-a/1000a.json\","
-        + "\"fixedFields\":[\"id\",\"traineeTisId\"]}";
+    final String MESSAGE = """
+      {
+        "deleteType": "HARD",
+        "bucket": "document-upload",
+        "key": "1/forms/formr-a/1000a.json",
+        "fixedFields": ["id", "traineeTisId"]
+      }
+    """;
 
     verifyNoInteractions(formRPartAService);
     verifyNoInteractions(formRPartBService);
@@ -104,10 +123,14 @@ class FormDeleteEventListenerTest {
 
   @Test
   void shouldThrowExceptionWhenFailToPartialDeleteForm() throws IOException {
-    final String MESSAGE = "{\"deleteType\":\"PARTIAL\","
-        + "\"bucket\":\"document-upload\","
-        + "\"key\":\"1/forms/formr-a/1000a.json\","
-        + "\"fixedFields\":[\"id\",\"traineeTisId\"]}";
+    final String MESSAGE = """
+      {
+        "deleteType": "HARD",
+        "bucket": "document-upload",
+        "key": "1/forms/formr-a/1000a.json",
+        "fixedFields": ["id", "traineeTisId"]
+      }
+    """;
 
     doThrow(ApplicationException.class)
         .when(formRPartAService).partialDeleteFormRPartAById(any(), any(), any());

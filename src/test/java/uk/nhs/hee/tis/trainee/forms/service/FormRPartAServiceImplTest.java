@@ -22,22 +22,21 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import java.io.IOException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -67,8 +66,8 @@ class FormRPartAServiceImplTest {
   private static final String DEFAULT_FORENAME = "DEFAULT_FORENAME";
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";
   private static final LocalDateTime DEFAULT_SUBMISSION_DATE = LocalDateTime.now();
-  private static final String[] FIXED_FIELDS =
-      new String[]{"id", "traineeTisId", "lifecycleState"};
+  private static final Set<String> FIXED_FIELDS =
+      Set.of("id", "traineeTisId", "lifecycleState");
 
   private FormRPartAServiceImpl service;
 
@@ -86,8 +85,11 @@ class FormRPartAServiceImplTest {
 
   @BeforeEach
   void setUp() {
-    service = new FormRPartAServiceImpl(repositoryMock, cloudObjectRepository,
-        new FormRPartAMapperImpl());
+    service = new FormRPartAServiceImpl(
+        repositoryMock,
+        cloudObjectRepository,
+        new FormRPartAMapperImpl(),
+        new ObjectMapper().findAndRegisterModules());
     entity = createEntity();
   }
 
@@ -338,23 +340,22 @@ class FormRPartAServiceImplTest {
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.of(entity));
 
-    service.partialDeleteFormRPartAById(
+    FormRPartADto resultDto = service.partialDeleteFormRPartAById(
         DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID, FIXED_FIELDS);
 
-    verify(repositoryMock).save(formRPartACaptor.capture());
-    FormRPartA dto = formRPartACaptor.getValue();
-    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID));
-    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
-    assertThat("Unexpected lifecycle states.",
-        dto.getLifecycleState(), is(LifecycleState.DELETED));
-    assertThat("Unexpected forename.", dto.getForename(), is(nullValue()));
-    assertThat("Unexpected surname.", dto.getSurname(), is(nullValue()));
+    FormRPartADto expectedDto = new FormRPartADto();
+    expectedDto.setId(DEFAULT_ID.toString());
+    expectedDto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    expectedDto.setLifecycleState(LifecycleState.DELETED);
+
+    verify(repositoryMock).save(any());
+    assertThat("Unexpected DTO.", resultDto, is(expectedDto));
   }
 
   @Test
   void shouldNotPartialDeleteWhenFormRPartANotFoundInDb() {
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
-        .thenReturn(Optional.ofNullable(null));
+        .thenReturn(Optional.empty());
 
     service.partialDeleteFormRPartAById(
         DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID, FIXED_FIELDS);
@@ -364,8 +365,8 @@ class FormRPartAServiceImplTest {
 
   @Test
   void shouldThrowExceptionWhenFailToPartialDeleteFormRPartA() throws ApplicationException {
-    doThrow(IllegalArgumentException.class)
-        .when(repositoryMock).findByIdAndTraineeTisId(any(), any());
+    when(repositoryMock.findByIdAndTraineeTisId(any(), any()))
+        .thenThrow(IllegalArgumentException.class);
     assertThrows(ApplicationException.class, () -> service.partialDeleteFormRPartAById(
         DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID, FIXED_FIELDS));
   }

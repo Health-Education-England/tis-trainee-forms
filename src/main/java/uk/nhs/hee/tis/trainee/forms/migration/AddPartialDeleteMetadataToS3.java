@@ -22,7 +22,10 @@
 package uk.nhs.hee.tis.trainee.forms.migration;
 
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.ObjectListing;
+import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
 import io.mongock.api.annotations.ChangeUnit;
 import io.mongock.api.annotations.Execution;
@@ -61,34 +64,31 @@ public class AddPartialDeleteMetadataToS3 {
   public void migrate() {
     log.info("Starting migration to add partial delete related metadata to existing forms on S3.");
 
-    try {
-      List<S3ObjectSummary> keyList = new ArrayList<>();
-      var objects = amazonS3.listObjects(bucketName);
+    List<S3ObjectSummary> keyList = new ArrayList<>();
+    ObjectListing objects = amazonS3.listObjects(bucketName);
+    keyList.addAll(objects.getObjectSummaries());
+
+    while (objects.isTruncated()) {
+      objects = amazonS3.listNextBatchOfObjects(objects);
       keyList.addAll(objects.getObjectSummaries());
+    }
+    log.info("Updating {} objects in the bucket {}", keyList.size(), bucketName);
 
-      while (objects.isTruncated()) {
-        objects = amazonS3.listNextBatchOfObjects(objects);
-        keyList.addAll(objects.getObjectSummaries());
-      }
-      log.info("Updating {} objects in the bucket {}", keyList.size(), bucketName);
+    for (S3ObjectSummary obj : keyList) {
+      final S3Object object = amazonS3.getObject(bucketName, obj.getKey());
 
-      for (var obj : keyList) {
-        final var object = amazonS3.getObject(bucketName, obj.getKey());
-
-        var metadata = object.getObjectMetadata();
+      ObjectMetadata metadata = object.getObjectMetadata();
+      if (! (checkExist(metadata, "deletetype", DeleteType.PARTIAL.name())
+          && checkExist(metadata, "fixedfields", FIXED_FIELDS))) {
         metadata.addUserMetadata("deletetype", DeleteType.PARTIAL.name());
         metadata.addUserMetadata("fixedfields", FIXED_FIELDS);
 
-        final var request = new PutObjectRequest(
+        final PutObjectRequest request = new PutObjectRequest(
             bucketName, obj.getKey(), object.getObjectContent(), metadata);
         amazonS3.putObject(request);
       }
-
-      log.info("Finish migration");
     }
-    catch (Exception e) {
-      log.error("Fail to add metadata to existing forms in bucket " + bucketName + ": ", e);
-    }
+    log.info("Finish migration");
   }
 
   /**
@@ -97,5 +97,10 @@ public class AddPartialDeleteMetadataToS3 {
   @RollbackExecution
   public void rollback() {
     log.warn("Rollback requested but not available for 'AddPartialDeleteMetadataToS3' migration.");
+  }
+
+  private boolean checkExist(ObjectMetadata metadata, String metaName, String metaValue) {
+    return  (metadata.getUserMetaDataOf(metaName) != null
+        && metadata.getUserMetaDataOf(metaName).equals(metaValue));
   }
 }

@@ -21,17 +21,16 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -40,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -106,17 +106,18 @@ class FormRPartBServiceImplTest {
 
   private static final Boolean DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS = true;
   private static final Boolean DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS = true;
-  private static final String[] FIXED_FIELDS =
-      new String[]{"id", "traineeTisId", "lifecycleState"};
+  private static final Set<String> FIXED_FIELDS =
+      Set.of("id", "traineeTisId", "lifecycleState");
 
 
   private FormRPartBServiceImpl service;
 
   @Mock
   private FormRPartBRepository repositoryMock;
-
   @Mock
   private S3FormRPartBRepositoryImpl s3FormRPartBRepository;
+
+  private ObjectMapper objectMapper;
 
   @Captor
   private ArgumentCaptor<PutObjectRequest> putRequestCaptor;
@@ -136,11 +137,13 @@ class FormRPartBServiceImplTest {
   @BeforeEach
   void setUp() {
     mapper = new FormRPartBMapperImpl();
+    objectMapper = new ObjectMapper().findAndRegisterModules();
     Field field = ReflectionUtils.findField(FormRPartBMapperImpl.class, "covidDeclarationMapper");
     field.setAccessible(true);
     ReflectionUtils.setField(field, mapper, new CovidDeclarationMapperImpl());
 
-    service = new FormRPartBServiceImpl(repositoryMock, s3FormRPartBRepository, mapper);
+    service = new FormRPartBServiceImpl(
+        repositoryMock, s3FormRPartBRepository, mapper, objectMapper);
     initData();
   }
 
@@ -600,47 +603,22 @@ class FormRPartBServiceImplTest {
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.of(entity));
 
-    service.partialDeleteFormRPartBById(
+    FormRPartBDto resultDto = service.partialDeleteFormRPartBById(
         DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID, FIXED_FIELDS);
 
-    verify(repositoryMock).save(formRPartBCaptor.capture());
-    FormRPartB dto = formRPartBCaptor.getValue();
-    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID));
-    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
-    assertThat("Unexpected lifecycle states.",
-        dto.getLifecycleState(), is(LifecycleState.DELETED));
-    assertThat("Unexpected forename.", dto.getForename(), is(nullValue()));
-    assertThat("Unexpected surname.", dto.getSurname(), is(nullValue()));
-    assertThat("Unexpected work.", dto.getWork(), is(Collections.emptyList()));
-    assertThat("Unexpected total leave.", dto.getTotalLeave(), is(nullValue()));
-    assertThat("Unexpected isHonest flag.", dto.getIsHonest(), is(nullValue()));
-    assertThat("Unexpected isHealthy flag.", dto.getIsHealthy(), is(nullValue()));
-    assertThat("Unexpected health statement.", dto.getHealthStatement(),
-        is(nullValue()));
-    assertThat("Unexpected havePreviousDeclarations flag.", dto.getHavePreviousDeclarations(),
-        is(nullValue()));
-    assertThat("Unexpected previous declarations.", dto.getPreviousDeclarations(),
-        is(Collections.emptyList()));
-    assertThat("Unexpected previous declaration summary.", dto.getPreviousDeclarationSummary(),
-        is(nullValue()));
-    assertThat("Unexpected haveCurrentDeclarations flag.", dto.getHaveCurrentDeclarations(),
-        is(nullValue()));
-    assertThat("Unexpected current declarations.", dto.getCurrentDeclarations(),
-        is(Collections.emptyList()));
-    assertThat("Unexpected current declaration summary.", dto.getCurrentDeclarationSummary(),
-        is(nullValue()));
-    assertThat("Unexpected haveCurrentUnresolvedDeclarations flag.",
-        dto.getHaveCurrentUnresolvedDeclarations(),
-        is(nullValue()));
-    assertThat("Unexpected havePreviousUnresolvedDeclarations flag.",
-        dto.getHavePreviousUnresolvedDeclarations(),
-        is(nullValue()));
+    FormRPartB expectedForm = new FormRPartB();
+    expectedForm.setId(DEFAULT_ID);
+    expectedForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    expectedForm.setLifecycleState(LifecycleState.DELETED);
+
+    verify(repositoryMock).save(any());
+    assertThat("Unexpected DTO.", resultDto, is(mapper.toDto(expectedForm)));
   }
 
   @Test
   void shouldNotPartialDeleteWhenFormRPartBNotFoundInDb() {
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
-        .thenReturn(Optional.ofNullable(null));
+        .thenReturn(Optional.empty());
 
     service.partialDeleteFormRPartBById(
         DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID, FIXED_FIELDS);
@@ -650,8 +628,8 @@ class FormRPartBServiceImplTest {
 
   @Test
   void shouldThrowExceptionWhenFailToPartialDeleteFormRPartB() throws ApplicationException {
-    doThrow(IllegalArgumentException.class)
-        .when(repositoryMock).findByIdAndTraineeTisId(any(), any());
+    when(repositoryMock.findByIdAndTraineeTisId(any(), any()))
+        .thenThrow(IllegalArgumentException.class);
     assertThrows(ApplicationException.class, () -> service.partialDeleteFormRPartBById(
         DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID, FIXED_FIELDS));
   }

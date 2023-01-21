@@ -55,6 +55,8 @@ public class FormRPartAServiceImpl implements FormRPartAService {
 
   private final S3FormRPartARepositoryImpl cloudObjectRepository;
 
+  private final ObjectMapper objectMapper;
+
   @Value("${application.file-store.always-store}")
   private boolean alwaysStoreFiles;
 
@@ -70,10 +72,12 @@ public class FormRPartAServiceImpl implements FormRPartAService {
    */
   public FormRPartAServiceImpl(FormRPartARepository repository,
       S3FormRPartARepositoryImpl cloudObjectRepository,
-      FormRPartAMapper mapper) {
+      FormRPartAMapper mapper,
+      ObjectMapper objectMapper) {
     this.repository = repository;
     this.cloudObjectRepository = cloudObjectRepository;
     this.mapper = mapper;
+    this.objectMapper = objectMapper;
   }
 
   /**
@@ -123,7 +127,7 @@ public class FormRPartAServiceImpl implements FormRPartAService {
    */
   @Override
   public FormRPartADto partialDeleteFormRPartAById(
-      String id, String traineeTisId, String[] fixedFields) {
+      String id, String traineeTisId, Set<String> fixedFields) {
     log.info("Request to partial delete FormRPartA by id : {}", id);
 
     try {
@@ -131,13 +135,12 @@ public class FormRPartAServiceImpl implements FormRPartAService {
           .orElse(null);
 
       if (formRPartA != null) {
-        ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
         JsonNode jsonForm = objectMapper.valueToTree(formRPartA);
 
         for (Iterator<String> fieldIterator = jsonForm.fieldNames(); fieldIterator.hasNext(); ) {
           String fieldName = fieldIterator.next();
 
-          if (!Set.of(fixedFields).contains(fieldName)) {
+          if (!fixedFields.contains(fieldName)) {
             fieldIterator.remove();
           }
         }
@@ -147,6 +150,9 @@ public class FormRPartAServiceImpl implements FormRPartAService {
 
         repository.save(formRPartA);
       }
+
+      log.info("Partial delete successfully for trainee {} with form Id {} (FormRPartA)",
+          traineeTisId, id);
       return mapper.toDto(formRPartA);
 
     } catch (Exception e) {

@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.event;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.messaging.listener.annotation.SqsListener;
 import java.io.IOException;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import uk.nhs.hee.tis.trainee.forms.dto.DeleteEventDto;
@@ -41,11 +42,14 @@ public class FormDeleteEventListener {
 
   private final FormRPartAService formRPartAService;
   private final FormRPartBService formRPartBService;
+  private final ObjectMapper objectMapper;
 
   FormDeleteEventListener(FormRPartAService formRPartAService,
-      FormRPartBService formRPartBService) {
+      FormRPartBService formRPartBService,
+      ObjectMapper objectMapper) {
     this.formRPartAService = formRPartAService;
     this.formRPartBService = formRPartBService;
+    this.objectMapper = objectMapper;
   }
 
   /**
@@ -55,25 +59,24 @@ public class FormDeleteEventListener {
   public void handleFormDeleteEvent(String message) throws IOException {
     try {
       log.info("Form delete event received: {}", message);
-      ObjectMapper objectMapper = new ObjectMapper();
       DeleteEventDto deleteEvent = objectMapper.readValue(message, DeleteEventDto.class);
 
-
       if (deleteEvent.getDeleteType() == DeleteType.PARTIAL) {
-        final var eventDetails =
+        final String[] eventDetails =
             deleteEvent.getKey().split("/");
-        final var formId = eventDetails[3].split(".json")[0];
-        final var traineeTisId = eventDetails[0];
-        final var fixFields = deleteEvent.getFixedFields();
+        final String formId = eventDetails[3].split(".json")[0];
+        final String traineeTisId = eventDetails[0];
+        final String[] fixFields = deleteEvent.getFixedFields();
 
-        if (eventDetails[2].equals("formr-a")) {
-          formRPartAService.partialDeleteFormRPartAById(formId, traineeTisId, fixFields);
-          log.info("Partial delete successfully for trainee {} with form Id {} (FormRPartA)",
-              traineeTisId, formId);
-        } else if (eventDetails[2].equals("formr-b")) {
-          formRPartBService.partialDeleteFormRPartBById(formId, traineeTisId, fixFields);
-          log.info("Partial delete successfully for trainee {} with form Id {} (FormRPartB)",
-              traineeTisId, formId);
+        switch (eventDetails[2]) {
+          case "formr-a":
+            formRPartAService.partialDeleteFormRPartAById(formId, traineeTisId, Set.of(fixFields));
+            break;
+          case "formr-b":
+            formRPartBService.partialDeleteFormRPartBById(formId, traineeTisId, Set.of(fixFields));
+            break;
+          default:
+            log.error("Unknown form type: {}", eventDetails[2]);
         }
       } else {
         log.error("Unexpected deleteType of form: {}" + deleteEvent.getDeleteType());
