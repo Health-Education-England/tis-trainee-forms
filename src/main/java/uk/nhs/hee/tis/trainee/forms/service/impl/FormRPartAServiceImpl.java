@@ -21,7 +21,12 @@
 
 package uk.nhs.hee.tis.trainee.forms.service.impl;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,17 +40,22 @@ import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
 import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartARepositoryImpl;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
+import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
 @Slf4j
 @Service
 @Transactional
 public class FormRPartAServiceImpl implements FormRPartAService {
 
+  private static final String ATTRIBUTE_NAME_LIFE_CYCLE_STATE = "lifecycleState";
+
   private final FormRPartAMapper mapper;
 
   private final FormRPartARepository repository;
 
   private final S3FormRPartARepositoryImpl cloudObjectRepository;
+
+  private final ObjectMapper objectMapper;
 
   @Value("${application.file-store.always-store}")
   private boolean alwaysStoreFiles;
@@ -62,10 +72,12 @@ public class FormRPartAServiceImpl implements FormRPartAService {
    */
   public FormRPartAServiceImpl(FormRPartARepository repository,
       S3FormRPartARepositoryImpl cloudObjectRepository,
-      FormRPartAMapper mapper) {
+      FormRPartAMapper mapper,
+      ObjectMapper objectMapper) {
     this.repository = repository;
     this.cloudObjectRepository = cloudObjectRepository;
     this.mapper = mapper;
+    this.objectMapper = objectMapper;
   }
 
   /**
@@ -110,4 +122,44 @@ public class FormRPartAServiceImpl implements FormRPartAService {
     return mapper.toDto(formRPartA);
   }
 
+  /**
+   * Partial delete a form by id.
+   */
+  @Override
+  public FormRPartADto partialDeleteFormRPartAById(
+      String id, String traineeTisId, Set<String> fixedFields) {
+    log.info("Request to partial delete FormRPartA by id : {}", id);
+
+    try {
+      FormRPartA formRPartA = repository.findByIdAndTraineeTisId(UUID.fromString(id), traineeTisId)
+          .orElse(null);
+
+      if (formRPartA != null) {
+        JsonNode jsonForm = objectMapper.valueToTree(formRPartA);
+
+        for (Iterator<String> fieldIterator = jsonForm.fieldNames(); fieldIterator.hasNext(); ) {
+          String fieldName = fieldIterator.next();
+
+          if (!fixedFields.contains(fieldName)) {
+            fieldIterator.remove();
+          }
+        }
+        ((ObjectNode) jsonForm).put(ATTRIBUTE_NAME_LIFE_CYCLE_STATE,
+            LifecycleState.DELETED.name());
+        formRPartA = objectMapper.convertValue(jsonForm, FormRPartA.class);
+
+        repository.save(formRPartA);
+        log.info("Partial delete successfully for trainee {} with form Id {} (FormRPartA)",
+            traineeTisId, id);
+      } else {
+        log.error("FormR PartB with ID '{}' not found", id);
+      }
+
+      return mapper.toDto(formRPartA);
+
+    } catch (Exception e) {
+      log.error("Fail to partial delete FormR PartA: {}", e);
+      throw new ApplicationException("Fail to partial delete FormR PartA:", e);
+    }
+  }
 }

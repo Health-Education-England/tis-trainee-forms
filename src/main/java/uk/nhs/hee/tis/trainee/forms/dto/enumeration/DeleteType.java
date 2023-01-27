@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2020 Crown Copyright (Health Education England)
+ * Copyright 2023 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -21,10 +21,11 @@
 
 package uk.nhs.hee.tis.trainee.forms.dto.enumeration;
 
-public enum LifecycleState {
-  DRAFT,
-  SUBMITTED,
-  UNSUBMITTED,
-  DELETED
+/**
+ * An enumeration for object delete type.
+ */
+public enum DeleteType {
+
+  HARD, PARTIAL, SOFT;
 
 }

@@ -46,6 +46,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.DeleteType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.Declaration;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
@@ -104,6 +105,8 @@ class S3FormRPartBRepositoryImplTest {
           "traineeid", DEFAULT_TRAINEE_TIS_ID);
   private static final Boolean DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS = true;
   private static final Boolean DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS = true;
+  private static final String FIXED_FIELDS =
+      "id,traineeTisId,lifecycleState,submissionDate,lastModifiedDate";
   private static ObjectMapper objectMapper;
   private S3FormRPartBRepositoryImpl repo;
   @Mock
@@ -213,10 +216,15 @@ class S3FormRPartBRepositoryImplTest {
         is(String.join("/", DEFAULT_TRAINEE_TIS_ID, "forms", FormRPartBService.FORM_TYPE,
             entity.getId() + ".json")));
     Map<String, String> expectedMetadata = Map
-        .of("id", entity.getId().toString(), "name", entity.getId() + ".json", "type", "json",
-            "formtype", FormRPartBService.FORM_TYPE, "lifecyclestate",
-            LifecycleState.SUBMITTED.name(), "submissiondate", DEFAULT_SUBMISSION_DATE_STRING,
-            "traineeid", DEFAULT_TRAINEE_TIS_ID);
+        .of("id", entity.getId().toString(),
+            "name", entity.getId() + ".json",
+            "type", "json",
+            "formtype", FormRPartBService.FORM_TYPE,
+            "lifecyclestate", LifecycleState.SUBMITTED.name(),
+            "submissiondate", DEFAULT_SUBMISSION_DATE_STRING,
+            "traineeid", DEFAULT_TRAINEE_TIS_ID,
+            "deletetype", DeleteType.PARTIAL.name(),
+            "fixedfields", FIXED_FIELDS);
 
     assertThat("Unexpected metadata.", actualRequest.getMetadata().getUserMetadata().entrySet(),
         containsInAnyOrder(expectedMetadata.entrySet().toArray(new Entry[0])));

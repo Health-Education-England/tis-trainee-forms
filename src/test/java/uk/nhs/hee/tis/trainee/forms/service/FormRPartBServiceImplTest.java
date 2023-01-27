@@ -24,11 +24,13 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -37,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -103,18 +106,23 @@ class FormRPartBServiceImplTest {
 
   private static final Boolean DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS = true;
   private static final Boolean DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS = true;
+  private static final Set<String> FIXED_FIELDS =
+      Set.of("id", "traineeTisId", "lifecycleState");
 
 
   private FormRPartBServiceImpl service;
 
   @Mock
   private FormRPartBRepository repositoryMock;
-
   @Mock
   private S3FormRPartBRepositoryImpl s3FormRPartBRepository;
 
+  private ObjectMapper objectMapper;
+
   @Captor
   private ArgumentCaptor<PutObjectRequest> putRequestCaptor;
+  @Captor
+  private ArgumentCaptor<FormRPartB> formRPartBCaptor;
 
   private FormRPartBMapper mapper;
 
@@ -129,11 +137,13 @@ class FormRPartBServiceImplTest {
   @BeforeEach
   void setUp() {
     mapper = new FormRPartBMapperImpl();
+    objectMapper = new ObjectMapper().findAndRegisterModules();
     Field field = ReflectionUtils.findField(FormRPartBMapperImpl.class, "covidDeclarationMapper");
     field.setAccessible(true);
     ReflectionUtils.setField(field, mapper, new CovidDeclarationMapperImpl());
 
-    service = new FormRPartBServiceImpl(repositoryMock, s3FormRPartBRepository, mapper);
+    service = new FormRPartBServiceImpl(
+        repositoryMock, s3FormRPartBRepository, mapper, objectMapper);
     initData();
   }
 
@@ -586,5 +596,41 @@ class FormRPartBServiceImplTest {
     assertThat("Unexpected havePreviousUnresolvedDeclarations flag.",
         dto.getHavePreviousUnresolvedDeclarations(),
         is(DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS));
+  }
+
+  @Test
+  void shouldPartialDeleteFormRPartBById() {
+    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
+        .thenReturn(Optional.of(entity));
+
+    FormRPartBDto resultDto = service.partialDeleteFormRPartBById(
+        DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID, FIXED_FIELDS);
+
+    FormRPartB expectedForm = new FormRPartB();
+    expectedForm.setId(DEFAULT_ID);
+    expectedForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    expectedForm.setLifecycleState(LifecycleState.DELETED);
+
+    verify(repositoryMock).save(any());
+    assertThat("Unexpected DTO.", resultDto, is(mapper.toDto(expectedForm)));
+  }
+
+  @Test
+  void shouldNotPartialDeleteWhenFormRPartBNotFoundInDb() {
+    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
+        .thenReturn(Optional.empty());
+
+    service.partialDeleteFormRPartBById(
+        DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID, FIXED_FIELDS);
+
+    verify(repositoryMock, never()).save(formRPartBCaptor.capture());
+  }
+
+  @Test
+  void shouldThrowExceptionWhenFailToPartialDeleteFormRPartB() throws ApplicationException {
+    when(repositoryMock.findByIdAndTraineeTisId(any(), any()))
+        .thenThrow(IllegalArgumentException.class);
+    assertThrows(ApplicationException.class, () -> service.partialDeleteFormRPartBById(
+        DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID, FIXED_FIELDS));
   }
 }

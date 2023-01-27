@@ -2,6 +2,9 @@ application:
   file-store:
     always-store: ${APPLICATION_FILESTORE_ALWAYSSTORE:false}
     bucket: ${APPLICATION_FILESTORE_BUCKET:}
+  aws:
+    sqs:
+      delete-event: ${DELETE_EVENT_QUEUE:}
 
 features:
   formr-partb:
