@@ -46,6 +46,7 @@ Error and exception logging is done using Sentry.
 | FEATURE_FORMR_PARTB_COVID_DECLARATION | This controls whether forms are stored in the S3 regardless of Lifecycle State | true      |
 | APPLICATION_FILESTORE_BUCKET          | The S3 bucket the forms are stored in.                                         |           |
 | APPLICATION_FILESTORE_ALWAYSSTORE     | This feature flag controls whether to show this section in FormR PartB         | false     |
+| DELETE_EVENT_QUEUE                    | The URL of the SQS queue to partial delete forms from DB.                      |           |
 
 ## Usage
 ### Saving Forms
@@ -88,6 +89,24 @@ GET api/forms/formr-parta/{Id}
 ```
 ```
 GET api/forms/formr-partb/{Id}
+```
+
+### Event Listener
+
+The service responds to available messages on the queues from which it reads. The examples below use
+localstack to post messages, but the equivalent example using AWS SQS would mean simply posting the
+message-body content to the appropriate queue.
+
+##### Partial Delete FormR Example
+```
+awslocal sqs send-message 
+  --queue-url {DELETE_EVENT_QUEUE} 
+  --message-body '{
+    "deleteType": "PARTIAL",
+    "bucket": "{APPLICATION_FILESTORE_BUCKET}",
+    "key": "47165/forms/formr-a/8ca0402a-7d7e-4a23-ae30-6f6716ab4363.json",
+    "fixedFields":["id","traineeTisId","lifecycleState","submissionDate","lastModifiedDate"]
+  }'
 ```
 
 ## Testing
