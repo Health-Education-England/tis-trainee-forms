@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2020 Crown Copyright (Health Education England)
+ * Copyright 2021 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -19,24 +19,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms;
+package uk.nhs.hee.tis.trainee.forms.config;
 
-import com.amazonaws.xray.spring.aop.BaseAbstractXRayInterceptor;
-import io.mongock.runner.springboot.EnableMongock;
-import org.aspectj.lang.annotation.Pointcut;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import com.amazonaws.xray.javax.servlet.AWSXRayServletFilter;
+import javax.servlet.Filter;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
-@EnableMongock
-@SpringBootApplication
-public class TraineeFormsApplication extends BaseAbstractXRayInterceptor {
-
-  public static void main(String[] args) {
-    SpringApplication.run(TraineeFormsApplication.class);
-  }
-
-  @Override
-  @Pointcut("@within(com.amazonaws.xray.spring.aop.XRayEnabled) && bean(*)")
-  public void xrayEnabledClasses() {
+@Configuration
+@ConditionalOnExpression("!T(org.springframework.util.StringUtils)"
+    + ".isEmpty('${com.amazonaws.xray.emitters.daemon-address}')")
+public class AwsXrayConfiguration {
+  @Bean
+  public Filter tracingFilter(@Value("${application.environment}") String environment) {
+    return new AWSXRayServletFilter("tis-trainee-forms-" + environment);
   }
 }

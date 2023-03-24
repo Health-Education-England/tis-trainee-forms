@@ -5,6 +5,7 @@ application:
   aws:
     sqs:
       delete-event: ${DELETE_EVENT_QUEUE:}
+    environment: ${ENVIRONMENT:local}
 
 features:
   formr-partb:
@@ -21,7 +22,7 @@ mongock:
 
 sentry:
   dsn: ${SENTRY_DSN:}
-  environment: ${SENTRY_ENVIRONMENT:local}
+  environment: ${ENVIRONMENT:local}
 
 server:
   port: 8207
@@ -33,3 +34,9 @@ spring:
     mongodb:
       uri: mongodb://${DB_USER:admin}:${DB_PASSWORD:pwd}@${DB_HOST:localhost}:${DB_PORT:27017}/${DB_NAME:forms}?authSource=admin&replicaSet=rs0&readPreference=secondaryPreferred
       uuid-representation: standard
+
+com:
+  amazonaws:
+    xray:
+      emitters:
+        daemon-address: ${AWS_XRAY_DAEMON_ADDRESS:}
