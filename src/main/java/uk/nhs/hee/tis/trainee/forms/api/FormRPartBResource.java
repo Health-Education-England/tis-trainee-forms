@@ -20,6 +20,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.api;
 
+import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -47,6 +48,7 @@ import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 @Slf4j
 @RestController
 @RequestMapping("/api")
+@XRayEnabled
 public class FormRPartBResource {
 
   private static final String ENTITY_NAME = "formR_partB";

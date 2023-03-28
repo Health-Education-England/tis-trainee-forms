@@ -32,6 +32,7 @@ import org.springframework.context.annotation.Configuration;
 @ConditionalOnExpression("!T(org.springframework.util.StringUtils)"
     + ".isEmpty('${com.amazonaws.xray.emitters.daemon-address}')")
 public class AwsXrayConfiguration {
+
   @Bean
   public Filter tracingFilter(@Value("${application.environment}") String environment) {
     return new AWSXRayServletFilter("tis-trainee-forms-" + environment);

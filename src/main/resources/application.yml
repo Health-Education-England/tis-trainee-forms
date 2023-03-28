@@ -1,11 +1,11 @@
 application:
+  environment: ${ENVIRONMENT:local}
   file-store:
     always-store: ${APPLICATION_FILESTORE_ALWAYSSTORE:false}
     bucket: ${APPLICATION_FILESTORE_BUCKET:}
   aws:
     sqs:
       delete-event: ${DELETE_EVENT_QUEUE:}
-    environment: ${ENVIRONMENT:local}
 
 features:
   formr-partb:
@@ -22,7 +22,7 @@ mongock:
 
 sentry:
   dsn: ${SENTRY_DSN:}
-  environment: ${ENVIRONMENT:local}
+  environment: ${application.environment}
 
 server:
   port: 8207
