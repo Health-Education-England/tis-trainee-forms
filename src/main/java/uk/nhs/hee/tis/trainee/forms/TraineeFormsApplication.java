@@ -21,22 +21,15 @@
 
 package uk.nhs.hee.tis.trainee.forms;
 
-import com.amazonaws.xray.spring.aop.BaseAbstractXRayInterceptor;
 import io.mongock.runner.springboot.EnableMongock;
-import org.aspectj.lang.annotation.Pointcut;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @EnableMongock
 @SpringBootApplication
-public class TraineeFormsApplication extends BaseAbstractXRayInterceptor {
+public class TraineeFormsApplication {
 
   public static void main(String[] args) {
     SpringApplication.run(TraineeFormsApplication.class);
-  }
-
-  @Override
-  @Pointcut("@within(com.amazonaws.xray.spring.aop.XRayEnabled) && bean(*)")
-  public void xrayEnabledClasses() {
   }
 }
