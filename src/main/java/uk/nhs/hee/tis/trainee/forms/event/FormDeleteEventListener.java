@@ -56,7 +56,7 @@ public class FormDeleteEventListener {
    * Listener for handling form delete form event.
    */
   @SqsListener("${application.aws.sqs.delete-event}")
-  public void handleFormDeleteEvent(String message) throws IOException {
+  public void handleFormDeleteEvent(String message) {
     try {
       log.info("Form delete event received: {}", message);
       DeleteEventDto deleteEvent = objectMapper.readValue(message, DeleteEventDto.class);

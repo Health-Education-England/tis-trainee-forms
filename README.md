@@ -41,8 +41,8 @@ Error and exception logging is done using Sentry.
 | DB_USER                               | The username to access the MongoDB instance.                                   | admin     |
 | DB_NAME                               | The name of the MongoDB instance.                                              | forms     |
 | DB_PASSWORD                           | The password to access the MongoDB instance.                                   | pwd       |
+| ENVIRONMENT                           | The environment to log events against.                                         | local     |
 | SENTRY_DSN                            | A Sentry error monitoring Data Source Name.                                    |           |
-| SENTRY_ENVIRONMENT                    | A Sentry error monitoring DSN environment.                                     | local     |
 | FEATURE_FORMR_PARTB_COVID_DECLARATION | This controls whether forms are stored in the S3 regardless of Lifecycle State | true      |
 | APPLICATION_FILESTORE_BUCKET          | The S3 bucket the forms are stored in.                                         |           |
 | APPLICATION_FILESTORE_ALWAYSSTORE     | This feature flag controls whether to show this section in FormR PartB         | false     |

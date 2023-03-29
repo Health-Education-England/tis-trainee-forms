@@ -21,6 +21,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.service.impl;
 
+import com.amazonaws.xray.spring.aop.XRayEnabled;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -44,6 +45,7 @@ import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
 @Slf4j
 @Service
+@XRayEnabled
 @Transactional
 public class FormRPartAServiceImpl implements FormRPartAService {
 

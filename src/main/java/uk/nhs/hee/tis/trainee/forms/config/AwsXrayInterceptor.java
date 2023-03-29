@@ -19,36 +19,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.api;
+package uk.nhs.hee.tis.trainee.forms.config;
 
-import com.amazonaws.xray.spring.aop.XRayEnabled;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import uk.nhs.hee.tis.trainee.forms.config.FeatureConfigurationProperties;
+import com.amazonaws.xray.spring.aop.AbstractXRayInterceptor;
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Pointcut;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.stereotype.Component;
 
-@Slf4j
-@RestController
-@RequestMapping("/api/feature-flags")
-@XRayEnabled
-public class FeatureFlagResource {
+@Aspect
+@Component
+@ConditionalOnExpression("!T(org.springframework.util.StringUtils)"
+    + ".isEmpty('${com.amazonaws.xray.emitters.daemon-address}')")
+public class AwsXrayInterceptor extends AbstractXRayInterceptor {
 
-  private final FeatureConfigurationProperties featureConfig;
+  @Override
+  @Pointcut(
+      "@within(com.amazonaws.xray.spring.aop.XRayEnabled) && (bean(*Resource) || bean(*Service))")
+  public void xrayEnabledClasses() {
 
-  FeatureFlagResource(FeatureConfigurationProperties featureConfig) {
-    this.featureConfig = featureConfig;
-  }
-
-  /**
-   * GET /feature-flags : Get the feature flags for forms.
-   *
-   * @return A list of the feature flags.
-   */
-  @GetMapping
-  public ResponseEntity<FeatureConfigurationProperties> getFeatureFlags() {
-    log.debug("Get all the feature flags for forms");
-    return ResponseEntity.ok(featureConfig);
   }
 }
