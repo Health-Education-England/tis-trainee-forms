@@ -155,7 +155,7 @@ public class FormRPartBResource {
    * @return the formR partB based on the id
    */
   @GetMapping("/formr-partb/{id}")
-  public ResponseEntity<FormRPartBDto> getFormRPartAsById(@PathVariable String id,
+  public ResponseEntity<FormRPartBDto> getFormRPartBsById(@PathVariable String id,
       @RequestHeader(HttpHeaders.AUTHORIZATION) String token) {
     log.debug("FormR-PartA by id {}", id);
 
