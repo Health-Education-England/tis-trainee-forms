@@ -55,10 +55,9 @@ import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
 import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartARepositoryImpl;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
-import uk.nhs.hee.tis.trainee.forms.service.impl.FormRPartAServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
-class FormRPartAServiceImplTest {
+class FormRPartAServiceTest {
 
   private static final UUID DEFAULT_ID = UUID.randomUUID();
   private static final String DEFAULT_ID_STRING = DEFAULT_ID.toString();
@@ -69,7 +68,7 @@ class FormRPartAServiceImplTest {
   private static final Set<String> FIXED_FIELDS =
       Set.of("id", "traineeTisId", "lifecycleState");
 
-  private FormRPartAServiceImpl service;
+  private FormRPartAService service;
 
   @Mock
   private FormRPartARepository repositoryMock;
@@ -85,7 +84,7 @@ class FormRPartAServiceImplTest {
 
   @BeforeEach
   void setUp() {
-    service = new FormRPartAServiceImpl(
+    service = new FormRPartAService(
         repositoryMock,
         cloudObjectRepository,
         new FormRPartAMapperImpl(),

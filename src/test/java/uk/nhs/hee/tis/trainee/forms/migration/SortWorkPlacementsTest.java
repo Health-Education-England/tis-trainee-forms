@@ -48,7 +48,7 @@ import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.model.Work;
-import uk.nhs.hee.tis.trainee.forms.service.impl.FormRPartBServiceImpl;
+import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 
 @ExtendWith(MockitoExtension.class)
 class SortWorkPlacementsTest {
@@ -69,7 +69,7 @@ class SortWorkPlacementsTest {
   private CovidDeclarationMapper covidDeclarationMapper;
 
   @Mock
-  private FormRPartBServiceImpl service;
+  private FormRPartBService service;
 
   @InjectMocks
   FormRPartBMapper mapper = new FormRPartBMapperImpl();
