@@ -65,10 +65,9 @@ import uk.nhs.hee.tis.trainee.forms.model.Work;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
 import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartBRepositoryImpl;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
-import uk.nhs.hee.tis.trainee.forms.service.impl.FormRPartBServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
-class FormRPartBServiceImplTest {
+class FormRPartBServiceTest {
 
   private static final UUID DEFAULT_ID = UUID.randomUUID();
   private static final String DEFAULT_ID_STRING = DEFAULT_ID.toString();
@@ -110,7 +109,7 @@ class FormRPartBServiceImplTest {
       Set.of("id", "traineeTisId", "lifecycleState");
 
 
-  private FormRPartBServiceImpl service;
+  private FormRPartBService service;
 
   @Mock
   private FormRPartBRepository repositoryMock;
@@ -142,7 +141,7 @@ class FormRPartBServiceImplTest {
     field.setAccessible(true);
     ReflectionUtils.setField(field, mapper, new CovidDeclarationMapperImpl());
 
-    service = new FormRPartBServiceImpl(
+    service = new FormRPartBService(
         repositoryMock, s3FormRPartBRepository, mapper, objectMapper);
     initData();
   }
