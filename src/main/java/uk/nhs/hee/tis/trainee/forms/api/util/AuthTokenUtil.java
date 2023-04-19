@@ -51,7 +51,7 @@ public class AuthTokenUtil {
    */
   public static String getTraineeTisId(String token) throws IOException {
     String[] tokenSections = token.split("\\.");
-    byte[] payloadBytes = Base64.getDecoder()
+    byte[] payloadBytes = Base64.getUrlDecoder()
         .decode(tokenSections[1].getBytes(StandardCharsets.UTF_8));
 
     Map<?, ?> payload = mapper.readValue(payloadBytes, Map.class);
