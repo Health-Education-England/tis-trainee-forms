@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.api.util;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
@@ -37,6 +38,16 @@ import org.springframework.http.ResponseEntity;
 class AuthTokenUtilTest {
 
   private static final String TIS_ID_ATTRIBUTE = "custom:tisId";
+
+  @Test
+  void getShouldHandleUrlCharactersInToken() {
+    // The payload is specifically crafted to include an underscore, the ID is 12.
+    String token = "aGVhZGVy.eyJjdXN0b206dGlzSWQiOiAiMTIiLCJuYW1lIjogIkpvaG4gRG_DqyJ9.c2lnbmF0dXJl";
+
+    String tisId = assertDoesNotThrow(() -> AuthTokenUtil.getTraineeTisId(token));
+
+    assertThat("Unexpected trainee TIS ID.", tisId, is("12"));
+  }
 
   @Test
   void getTraineeTisIdShouldThrowExceptionWhenTokenPayloadNotMap() {
