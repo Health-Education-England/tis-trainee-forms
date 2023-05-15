@@ -25,15 +25,14 @@ import com.amazonaws.xray.entities.Subsegment;
 import com.amazonaws.xray.spring.aop.AbstractXRayInterceptor;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
+import java.util.Optional;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 import uk.nhs.hee.tis.trainee.forms.config.EcsMetadataConfiguration.EcsMetadata;
-
-import java.util.Map;
-import java.util.Optional;
 
 @Aspect
 @Component

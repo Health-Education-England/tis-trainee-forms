@@ -44,7 +44,8 @@ public class EcsMetadataConfiguration {
    */
   @Bean
   public EcsMetadata ecsMetadata(RestTemplate restTemplate,
-                                 @Value("${ecs.container.metadata.uri.v4}") String metadataEndpoint) {
+                                 @Value("${ecs.container.metadata.uri.v4}")
+                                 String metadataEndpoint) {
     ContainerMetadata containerMetadata = restTemplate.getForObject(metadataEndpoint,
         ContainerMetadata.class);
     TaskMetadata taskMetadata = restTemplate.getForObject(metadataEndpoint + "/task",
