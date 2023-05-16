@@ -42,7 +42,7 @@ public class Config {
   @Bean
   public ObjectMapper objectMapper() {
     ObjectMapper objectMapper = new ObjectMapper();
-    objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,false);
+    objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     JavaTimeModule timeModule = new JavaTimeModule();
     timeModule.addDeserializer(LocalDateTime.class, new DateDeserializer());
