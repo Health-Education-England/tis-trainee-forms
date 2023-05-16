@@ -23,6 +23,7 @@ package uk.nhs.hee.tis.trainee.forms.config;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.text.SimpleDateFormat;
@@ -41,6 +42,7 @@ public class Config {
   @Bean
   public ObjectMapper objectMapper() {
     ObjectMapper objectMapper = new ObjectMapper();
+    objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,false);
 
     JavaTimeModule timeModule = new JavaTimeModule();
     timeModule.addDeserializer(LocalDateTime.class, new DateDeserializer());
