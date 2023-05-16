@@ -50,7 +50,7 @@ public class AwsXrayInterceptor extends AbstractXRayInterceptor {
 
   @Override
   protected Map<String, Map<String, Object>> generateMetadata(ProceedingJoinPoint pjp,
-                                                              Subsegment subsegment) {
+      Subsegment subsegment) {
     Map<String, Map<String, Object>> metadata = super.generateMetadata(pjp, subsegment);
 
     Map<String, Object> taskMetadataMap = mapper.convertValue(ecsMetadata, new TypeReference<>() {
