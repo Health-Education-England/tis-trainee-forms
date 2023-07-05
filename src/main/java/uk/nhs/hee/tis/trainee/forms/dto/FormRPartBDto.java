@@ -72,4 +72,5 @@ public class FormRPartBDto {
   private CovidDeclarationDto covidDeclarationDto;
   private Boolean haveCurrentUnresolvedDeclarations;
   private Boolean havePreviousUnresolvedDeclarations;
+  private Number arcpYear;
 }

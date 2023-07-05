@@ -45,5 +45,6 @@
   "haveCovidDeclarations": false,
   "covidDeclaration": null,
   "haveCurrentUnresolvedDeclarations": false,
-  "havePreviousUnresolvedDeclarations": false
+  "havePreviousUnresolvedDeclarations": false,
+  "arcpYear": 2023
 }
