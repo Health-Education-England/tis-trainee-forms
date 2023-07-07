@@ -22,6 +22,7 @@ package uk.nhs.hee.tis.trainee.forms.dto;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Year;
 import java.util.List;
 import lombok.Data;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -72,5 +73,5 @@ public class FormRPartBDto {
   private CovidDeclarationDto covidDeclarationDto;
   private Boolean haveCurrentUnresolvedDeclarations;
   private Boolean havePreviousUnresolvedDeclarations;
-  private Number arcpYear;
+  private Year arcpYear;
 }

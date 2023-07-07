@@ -35,6 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
+import java.time.Year;
 import java.util.Base64;
 import java.util.Collections;
 import org.junit.jupiter.api.BeforeEach;
@@ -64,11 +65,11 @@ import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 class FormRPartBResourceTest {
 
   private static final String TIS_ID_ATTRIBUTE = "custom:tisId";
-
   private static final String DEFAULT_ID = "DEFAULT_ID";
   private static final String DEFAULT_TRAINEE_TIS_ID = "1";
   private static final String DEFAULT_FORENAME = "DEFAULT_FORENAME";
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";
+  private static final Year DEFAULT_ARCPYEAR = Year.of(2022);
   private static final LifecycleState DEFAULT_LIFECYCLESTATE = LifecycleState.DRAFT;
 
   private static final String AUTH_TOKEN;
@@ -115,6 +116,7 @@ class FormRPartBResourceTest {
     dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     dto.setForename(DEFAULT_FORENAME);
     dto.setSurname(DEFAULT_SURNAME);
+    dto.setArcpYear(DEFAULT_ARCPYEAR);
     dto.setLifecycleState(DEFAULT_LIFECYCLESTATE);
 
     simpleDto = new FormRPartSimpleDto();
@@ -352,6 +354,7 @@ class FormRPartBResourceTest {
         .andExpect(jsonPath("$.traineeTisId").value(DEFAULT_TRAINEE_TIS_ID))
         .andExpect(jsonPath("$.forename").value(DEFAULT_FORENAME))
         .andExpect(jsonPath("$.surname").value(DEFAULT_SURNAME))
+        .andExpect(jsonPath("$.arcpYear").value(DEFAULT_ARCPYEAR.getValue()))
         .andExpect(jsonPath("$.lifecycleState").value(DEFAULT_LIFECYCLESTATE.name()));
   }
 }

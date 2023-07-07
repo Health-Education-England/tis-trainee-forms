@@ -21,6 +21,7 @@
 package uk.nhs.hee.tis.trainee.forms.model;
 
 import java.time.LocalDate;
+import java.time.Year;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Data;
@@ -69,7 +70,7 @@ public class FormRPartB extends AbstractForm {
   private CovidDeclaration covidDeclaration;
   private Boolean haveCurrentUnresolvedDeclarations;
   private Boolean havePreviousUnresolvedDeclarations;
-  private Number arcpYear;
+  private Year arcpYear;
 
   @Override
   public String getFormType() {
