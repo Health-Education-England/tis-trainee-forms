@@ -334,7 +334,7 @@ class FormRPartBServiceTest {
     assertThat("Unexpected trainee ID.", savedDto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", savedDto.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", savedDto.getSurname(), is(DEFAULT_SURNAME));
-    assertThat("Unexpected arcpYear.", savedDto.getArcpYear(),is(DEFAULT_ARCPYEAR));
+    assertThat("Unexpected arcpYear.", savedDto.getArcpYear(), is(DEFAULT_ARCPYEAR));
     assertThat("Unexpected work.", savedDto.getWork(), is(Collections.singletonList(workDto)));
     assertThat("Unexpected total leave.", savedDto.getTotalLeave(), is(DEFAULT_TOTAL_LEAVE));
     assertThat("Unexpected isHonest flag.", savedDto.getIsHonest(), is(DEFAULT_IS_HONEST));
@@ -385,7 +385,7 @@ class FormRPartBServiceTest {
     assertThat("Unexpected trainee ID.", savedDto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", savedDto.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", savedDto.getSurname(), is(DEFAULT_SURNAME));
-    assertThat("Unexpected arcpYear.", savedDto.getArcpYear(),is(DEFAULT_ARCPYEAR));
+    assertThat("Unexpected arcpYear.", savedDto.getArcpYear(), is(DEFAULT_ARCPYEAR));
     assertThat("Unexpected work.", savedDto.getWork(), is(Collections.singletonList(workDto)));
     assertThat("Unexpected total leave.", savedDto.getTotalLeave(), is(DEFAULT_TOTAL_LEAVE));
     assertThat("Unexpected isHonest flag.", savedDto.getIsHonest(), is(DEFAULT_IS_HONEST));
@@ -436,7 +436,7 @@ class FormRPartBServiceTest {
     assertThat("Unexpected trainee ID.", savedDto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", savedDto.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", savedDto.getSurname(), is(DEFAULT_SURNAME));
-    assertThat("Unexpected arcpYear.", savedDto.getArcpYear(),is(DEFAULT_ARCPYEAR));
+    assertThat("Unexpected arcpYear.", savedDto.getArcpYear(), is(DEFAULT_ARCPYEAR));
     assertThat("Unexpected work.", savedDto.getWork(), is(Collections.singletonList(workDto)));
     assertThat("Unexpected total leave.", savedDto.getTotalLeave(), is(DEFAULT_TOTAL_LEAVE));
     assertThat("Unexpected isHonest flag.", savedDto.getIsHonest(), is(DEFAULT_IS_HONEST));
@@ -540,7 +540,7 @@ class FormRPartBServiceTest {
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", dto.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", dto.getSurname(), is(DEFAULT_SURNAME));
-    assertThat("Unexpected arcpYear.", dto.getArcpYear(),is(DEFAULT_ARCPYEAR));
+    assertThat("Unexpected arcpYear.", dto.getArcpYear(), is(DEFAULT_ARCPYEAR));
     assertThat("Unexpected work.", dto.getWork(), is(Collections.singletonList(workDto)));
     assertThat("Unexpected total leave.", dto.getTotalLeave(), is(DEFAULT_TOTAL_LEAVE));
     assertThat("Unexpected isHonest flag.", dto.getIsHonest(), is(DEFAULT_IS_HONEST));
@@ -579,7 +579,7 @@ class FormRPartBServiceTest {
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", dto.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", dto.getSurname(), is(DEFAULT_SURNAME));
-    assertThat("Unexpected arcpYear.", dto.getArcpYear(),is(DEFAULT_ARCPYEAR));
+    assertThat("Unexpected arcpYear.", dto.getArcpYear(), is(DEFAULT_ARCPYEAR));
     assertThat("Unexpected work.", dto.getWork(), is(Collections.singletonList(workDto)));
     assertThat("Unexpected total leave.", dto.getTotalLeave(), is(DEFAULT_TOTAL_LEAVE));
     assertThat("Unexpected isHonest flag.", dto.getIsHonest(), is(DEFAULT_IS_HONEST));
