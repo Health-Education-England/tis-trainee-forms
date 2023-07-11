@@ -69,6 +69,7 @@ class S3FormRPartBRepositoryImplTest {
   private static final String DEFAULT_WORK_TRAINING_POST = "DEFAULT_WORK_TRAINING_POST";
   private static final String DEFAULT_WORK_SITE = "DEFAULT_WORK_SITE";
   private static final String DEFAULT_WORK_SITE_LOCATION = "DEFAULT_WORK_SITE_LOCATION";
+  private static final String DEFAULT_WORK_SITE_KNOWN_AS = "DEFAULT_WORK_SITE_KNOWN_AS";
   private static final Integer DEFAULT_TOTAL_LEAVE = 10;
   private static final Boolean DEFAULT_IS_HONEST = true;
   private static final Boolean DEFAULT_IS_HEALTHY = true;
@@ -180,6 +181,7 @@ class S3FormRPartBRepositoryImplTest {
     work.setTrainingPost(DEFAULT_WORK_TRAINING_POST);
     work.setSite(DEFAULT_WORK_SITE);
     work.setSiteLocation(DEFAULT_WORK_SITE_LOCATION);
+    work.setSiteKnownAs(DEFAULT_WORK_SITE_KNOWN_AS);
     return work;
   }
 

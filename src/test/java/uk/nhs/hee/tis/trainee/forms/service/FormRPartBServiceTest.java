@@ -81,6 +81,7 @@ class FormRPartBServiceTest {
   private static final String DEFAULT_WORK_TRAINING_POST = "DEFAULT_WORK_TRAINING_POST";
   private static final String DEFAULT_WORK_SITE = "DEFAULT_WORK_SITE";
   private static final String DEFAULT_WORK_SITE_LOCATION = "DEFAULT_WORK_SITE_LOCATION";
+  private static final String DEFAULT_WORK_SITE_KNOWN_AS = "DEFAULT_WORK_SITE_KNOWN_AS";
   private static final Integer DEFAULT_TOTAL_LEAVE = 10;
 
   private static final Boolean DEFAULT_IS_HONEST = true;
@@ -201,6 +202,7 @@ class FormRPartBServiceTest {
     work.setTrainingPost(DEFAULT_WORK_TRAINING_POST);
     work.setSite(DEFAULT_WORK_SITE);
     work.setSiteLocation(DEFAULT_WORK_SITE_LOCATION);
+    work.setSiteKnownAs(DEFAULT_WORK_SITE_KNOWN_AS);
     return work;
   }
 
@@ -217,6 +219,7 @@ class FormRPartBServiceTest {
     workDto.setTrainingPost(DEFAULT_WORK_TRAINING_POST);
     workDto.setSite(DEFAULT_WORK_SITE);
     workDto.setSiteLocation(DEFAULT_WORK_SITE_LOCATION);
+    workDto.setSiteKnownAs(DEFAULT_WORK_SITE_KNOWN_AS);
     return workDto;
   }
 
