@@ -32,4 +32,5 @@ public class Work {
   private String trainingPost;
   private String site;
   private String siteLocation;
+  private String siteKnownAs;
 }

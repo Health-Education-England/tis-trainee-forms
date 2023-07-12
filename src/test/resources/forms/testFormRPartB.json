@@ -18,7 +18,8 @@
     "endDate": "2020-12-31",
     "trainingPost": "Yes",
     "site": "Addenbrookes Hospital",
-    "siteLocation": "Hills Road Cambridge Cambridgeshire"
+    "siteLocation": "Hills Road Cambridge Cambridgeshire",
+    "siteKnownAs": "Addenbrooke's Hospital (RT1) (RT190)"
   }],
   "sicknessAbsence": 0,
   "parentalLeave": 0,
