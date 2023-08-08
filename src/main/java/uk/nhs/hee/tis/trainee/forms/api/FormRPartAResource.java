@@ -31,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -68,7 +69,7 @@ public class FormRPartAResource {
    * @param dto   the dto to create
    * @param token The authorization token from the request header.
    * @return the ResponseEntity with status 201 (Created) and with body the new dto, or with status
-   *     400 (Bad Request) if the formRPartA has already an ID
+   * 400 (Bad Request) if the formRPartA has already an ID
    * @throws URISyntaxException if the Location URI syntax is incorrect
    */
   @PostMapping("/formr-parta")
@@ -99,8 +100,8 @@ public class FormRPartAResource {
    * @param dto   the dto to update
    * @param token The authorization token from the request header.
    * @return the ResponseEntity with status 200 and with body the new dto, or with status 500
-   *     (Internal Server Error) if the formRPartBDto couldn't be updated. If the id is not
-   *     provided, will create a new FormRPartA
+   * (Internal Server Error) if the formRPartBDto couldn't be updated. If the id is not provided,
+   * will create a new FormRPartA
    * @throws URISyntaxException if the Location URI syntax is incorrect
    */
   @PutMapping("/formr-parta")
@@ -169,5 +170,41 @@ public class FormRPartAResource {
 
     FormRPartADto formRPartADto = service.getFormRPartAById(id, traineeTisId);
     return ResponseEntity.of(Optional.ofNullable(formRPartADto));
+  }
+
+  /**
+   * DELETE: /formr-parta/:id.
+   *
+   * @param id    The ID of the form
+   * @param token The authorization token from the request header.
+   * @return the status of the deletion.
+   */
+  @DeleteMapping("/formr-parta/{id}")
+  public ResponseEntity<Void> deleteFormRPartAById(@PathVariable String id,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) String token) {
+    log.info("Delete FormR-PartA by id {}", id);
+
+    String traineeTisId;
+    try {
+      traineeTisId = AuthTokenUtil.getTraineeTisId(token);
+    } catch (IOException e) {
+      log.warn("Unable to read tisId from token.", e);
+      return ResponseEntity.badRequest().build();
+    }
+
+    boolean deleted;
+
+    try {
+      deleted = service.deleteFormRPartAById(id, traineeTisId);
+    } catch (IllegalArgumentException e) {
+      log.error(e.getMessage());
+      return ResponseEntity.badRequest().build();
+    }
+
+    if (deleted) {
+      return ResponseEntity.noContent().build();
+    } else {
+      return ResponseEntity.notFound().build();
+    }
   }
 }

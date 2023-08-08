@@ -41,6 +41,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -332,6 +335,42 @@ class FormRPartAServiceTest {
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", dto.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", dto.getSurname(), is(DEFAULT_SURNAME));
+  }
+
+  @Test
+  void shouldReturnTrueWhenDeletingDraft() {
+    entity.setLifecycleState(LifecycleState.DRAFT);
+
+    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
+        .thenReturn(Optional.of(entity));
+
+    boolean deleted = service.deleteFormRPartAById(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID);
+
+    assertThat("Unexpected delete result.", deleted, is(true));
+  }
+
+  @Test
+  void shouldReturnFalseWhenFormToDeleteNotFound() {
+    entity.setLifecycleState(LifecycleState.DRAFT);
+
+    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
+        .thenReturn(Optional.empty());
+
+    boolean deleted = service.deleteFormRPartAById(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID);
+
+    assertThat("Unexpected delete result.", deleted, is(false));
+  }
+
+  @ParameterizedTest(name = "Should throw exception when deleting form with {0} state")
+  @EnumSource(names = {"DRAFT"}, mode = Mode.EXCLUDE)
+  void shouldThrowExceptionWhenDeletingNonDraftForm(LifecycleState state) {
+    entity.setLifecycleState(state);
+
+    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
+        .thenReturn(Optional.of(entity));
+
+    assertThrows(IllegalArgumentException.class,
+        () -> service.deleteFormRPartAById(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID));
   }
 
   @Test

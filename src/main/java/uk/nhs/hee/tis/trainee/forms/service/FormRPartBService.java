@@ -27,6 +27,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -118,6 +119,38 @@ public class FormRPartBService {
         .or(() -> formRPartBRepository.findByIdAndTraineeTisId(UUID.fromString(id), traineeTisId))
         .orElse(null);
     return formRPartBMapper.toDto(formRPartB);
+  }
+
+  /**
+   * Delete the form for the given ID and trainee ID, only DRAFT forms are supported.
+   *
+   * @param id           The ID of the form to delete.
+   * @param traineeTisId The ID of the trainee to delete the form for.
+   * @return true if the form was found and deleted, false if not found.
+   */
+  public boolean deleteFormRPartBById(String id, String traineeTisId) {
+    log.info("Request to delete FormRPartB by id : {}", id);
+    Optional<FormRPartB> optionalForm = formRPartBRepository.findByIdAndTraineeTisId(
+        UUID.fromString(id), traineeTisId);
+
+    if (optionalForm.isEmpty()) {
+      log.info("FormRPartB {} did not exist.", id);
+      return false;
+    }
+
+    FormRPartB form = optionalForm.get();
+    LifecycleState state = form.getLifecycleState();
+
+    if (!state.equals(LifecycleState.DRAFT)) {
+      String message = String.format("Unable to delete forms with lifecycle state %s.", state);
+      log.warn(message);
+      throw new IllegalArgumentException(message);
+    }
+
+    formRPartBRepository.delete(form);
+    log.info("Deleted FormRPartB {}", id);
+
+    return true;
   }
 
   /**

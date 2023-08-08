@@ -25,6 +25,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -127,8 +128,8 @@ class FormRPartAResourceTest {
   void postShouldNotCreateFormWhenNoToken() throws Exception {
     dto.setId(null);
     mockMvc.perform(post("/api/formr-parta")
-        .contentType(TestUtil.APPLICATION_JSON_UTF8)
-        .content(TestUtil.convertObjectToJsonBytes(dto)))
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(TestUtil.convertObjectToJsonBytes(dto)))
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
@@ -138,9 +139,9 @@ class FormRPartAResourceTest {
   void postShouldNotCreateFormWhenTokenIsInvalid() throws Exception {
     dto.setId(null);
     mockMvc.perform(post("/api/formr-parta")
-        .contentType(TestUtil.APPLICATION_JSON_UTF8)
-        .content(TestUtil.convertObjectToJsonBytes(dto))
-        .header(HttpHeaders.AUTHORIZATION, "aa.bb.cc"))
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(TestUtil.convertObjectToJsonBytes(dto))
+            .header(HttpHeaders.AUTHORIZATION, "aa.bb.cc"))
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
@@ -149,9 +150,9 @@ class FormRPartAResourceTest {
   @Test
   void postShouldNotCreateFormWhenFormExists() throws Exception {
     mockMvc.perform(post("/api/formr-parta")
-        .contentType(TestUtil.APPLICATION_JSON_UTF8)
-        .content(TestUtil.convertObjectToJsonBytes(dto))
-        .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(TestUtil.convertObjectToJsonBytes(dto))
+            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
@@ -170,9 +171,9 @@ class FormRPartAResourceTest {
     doThrow(exception).when(validator).validate(dto);
 
     mockMvc.perform(post("/api/formr-parta")
-        .contentType(TestUtil.APPLICATION_JSON_UTF8)
-        .content(TestUtil.convertObjectToJsonBytes(dto))
-        .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(TestUtil.convertObjectToJsonBytes(dto))
+            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
@@ -188,9 +189,9 @@ class FormRPartAResourceTest {
     when(service.save(dto)).thenReturn(createdDto);
 
     mockMvc.perform(put("/api/formr-parta")
-        .contentType(TestUtil.APPLICATION_JSON_UTF8)
-        .content(TestUtil.convertObjectToJsonBytes(dto))
-        .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(TestUtil.convertObjectToJsonBytes(dto))
+            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
         .andExpect(status().isCreated())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(header().string(HttpHeaders.LOCATION, "/api/formr-parta/" + DEFAULT_ID))
@@ -201,8 +202,8 @@ class FormRPartAResourceTest {
   @Test
   void putShouldNotUpdateFormWhenNoToken() throws Exception {
     mockMvc.perform(put("/api/formr-parta")
-        .contentType(TestUtil.APPLICATION_JSON_UTF8)
-        .content(TestUtil.convertObjectToJsonBytes(dto)))
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(TestUtil.convertObjectToJsonBytes(dto)))
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
@@ -211,9 +212,9 @@ class FormRPartAResourceTest {
   @Test
   void putShouldNotUpdateFormWhenTokenIsInvalid() throws Exception {
     mockMvc.perform(put("/api/formr-parta")
-        .contentType(TestUtil.APPLICATION_JSON_UTF8)
-        .content(TestUtil.convertObjectToJsonBytes(dto))
-        .header(HttpHeaders.AUTHORIZATION, "aa.bb.cc"))
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(TestUtil.convertObjectToJsonBytes(dto))
+            .header(HttpHeaders.AUTHORIZATION, "aa.bb.cc"))
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
@@ -230,9 +231,9 @@ class FormRPartAResourceTest {
     doThrow(exception).when(validator).validate(dto);
 
     mockMvc.perform(put("/api/formr-parta")
-        .contentType(TestUtil.APPLICATION_JSON_UTF8)
-        .content(TestUtil.convertObjectToJsonBytes(dto))
-        .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(TestUtil.convertObjectToJsonBytes(dto))
+            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
@@ -247,9 +248,9 @@ class FormRPartAResourceTest {
     when(service.save(dto)).thenReturn(savedDto);
 
     mockMvc.perform(put("/api/formr-parta")
-        .contentType(TestUtil.APPLICATION_JSON_UTF8)
-        .content(TestUtil.convertObjectToJsonBytes(dto))
-        .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(TestUtil.convertObjectToJsonBytes(dto))
+            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.id").value(DEFAULT_ID))
@@ -266,9 +267,9 @@ class FormRPartAResourceTest {
     when(service.save(dto)).thenReturn(createdDto);
 
     mockMvc.perform(put("/api/formr-parta")
-        .contentType(TestUtil.APPLICATION_JSON_UTF8)
-        .content(TestUtil.convertObjectToJsonBytes(dto))
-        .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(TestUtil.convertObjectToJsonBytes(dto))
+            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
         .andExpect(status().isCreated())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(header().string(HttpHeaders.LOCATION, "/api/formr-parta/" + DEFAULT_ID))
@@ -279,7 +280,7 @@ class FormRPartAResourceTest {
   @Test
   void getShouldNotReturnTraineesFormsWhenNoToken() throws Exception {
     mockMvc.perform(get("/api/formr-partas")
-        .contentType(TestUtil.APPLICATION_JSON_UTF8))
+            .contentType(TestUtil.APPLICATION_JSON_UTF8))
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
@@ -288,8 +289,8 @@ class FormRPartAResourceTest {
   @Test
   void getShouldNotReturnTraineesFormsWhenTokenHasNoTraineeId() throws Exception {
     mockMvc.perform(get("/api/formr-partas")
-        .contentType(TestUtil.APPLICATION_JSON_UTF8)
-        .header(HttpHeaders.AUTHORIZATION, "aa.bb.cc"))
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .header(HttpHeaders.AUTHORIZATION, "aa.bb.cc"))
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
@@ -301,8 +302,8 @@ class FormRPartAResourceTest {
         .thenReturn(Collections.singletonList(simpleDto));
 
     mockMvc.perform(get("/api/formr-partas")
-        .contentType(TestUtil.APPLICATION_JSON_UTF8)
-        .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$").value(hasSize(1)))
@@ -314,7 +315,7 @@ class FormRPartAResourceTest {
   @Test
   void getByIdShouldNotReturnFormWhenNoToken() throws Exception {
     mockMvc.perform(get("/api/formr-parta/" + DEFAULT_ID)
-        .contentType(TestUtil.APPLICATION_JSON_UTF8))
+            .contentType(TestUtil.APPLICATION_JSON_UTF8))
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
@@ -323,8 +324,8 @@ class FormRPartAResourceTest {
   @Test
   void getByIdShouldNotReturnFormWhenTokenHasNoTraineeId() throws Exception {
     mockMvc.perform(get("/api/formr-parta/" + DEFAULT_ID)
-        .contentType(TestUtil.APPLICATION_JSON_UTF8)
-        .header(HttpHeaders.AUTHORIZATION, "aa.bb.cc"))
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .header(HttpHeaders.AUTHORIZATION, "aa.bb.cc"))
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
@@ -334,8 +335,8 @@ class FormRPartAResourceTest {
   void getByIdShouldNotReturnFormWhenFormIsNotTrainees() throws Exception {
     when(service.getFormRPartAById(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID)).thenReturn(null);
     mockMvc.perform(get("/api/formr-parta/" + DEFAULT_ID)
-        .contentType(TestUtil.APPLICATION_JSON_UTF8)
-        .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
         .andExpect(status().isNotFound());
   }
 
@@ -344,8 +345,8 @@ class FormRPartAResourceTest {
     when(service.getFormRPartAById(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(dto);
     mockMvc.perform(get("/api/formr-parta/" + DEFAULT_ID)
-        .contentType(TestUtil.APPLICATION_JSON_UTF8)
-        .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.id").value(DEFAULT_ID))
@@ -353,5 +354,42 @@ class FormRPartAResourceTest {
         .andExpect(jsonPath("$.forename").value(DEFAULT_FORENAME))
         .andExpect(jsonPath("$.surname").value(DEFAULT_SURNAME))
         .andExpect(jsonPath("$.lifecycleState").value(DEFAULT_LIFECYCLESTATE.name()));
+  }
+
+  @Test
+  void deleteByIdShouldNotDeleteFormWhenNoToken() throws Exception {
+    mockMvc.perform(delete("/api/formr-parta/" + DEFAULT_ID)
+            .contentType(TestUtil.APPLICATION_JSON_UTF8))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(service);
+  }
+
+  @Test
+  void deleteByIdShouldNotDeleteFormWhenTokenHasNoTraineeId() throws Exception {
+    mockMvc.perform(delete("/api/formr-parta/" + DEFAULT_ID)
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .header(HttpHeaders.AUTHORIZATION, "aa.bb.cc"))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(service);
+  }
+
+  @Test
+  void deleteByIdShouldReturnNotFoundWhenFormIsNotDeleted() throws Exception {
+    when(service.deleteFormRPartAById(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID)).thenReturn(false);
+    mockMvc.perform(delete("/api/formr-parta/" + DEFAULT_ID)
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void deleteByIdShouldReturnNoContentWhenFormIsDeleted() throws Exception {
+    when(service.deleteFormRPartAById(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID)).thenReturn(true);
+    mockMvc.perform(delete("/api/formr-parta/" + DEFAULT_ID)
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
+        .andExpect(status().isNoContent());
   }
 }
