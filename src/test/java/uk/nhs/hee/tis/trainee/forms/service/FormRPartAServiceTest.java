@@ -280,7 +280,7 @@ class FormRPartAServiceTest {
   }
 
   @Test
-  void shouldGetFormRPartBFromCloudStorageById() {
+  void shouldGetFormRPartAFromCloudStorageById() {
     entity.setLifecycleState(LifecycleState.SUBMITTED);
     when(cloudObjectRepository.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.of(entity));

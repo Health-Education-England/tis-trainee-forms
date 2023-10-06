@@ -265,7 +265,7 @@ class FormRPartBServiceTest {
   @ParameterizedTest(name = "Should save to db and cloud when always store files "
       + "and form state is {0}.")
   @EnumSource(value = LifecycleState.class, names = {"DRAFT", "UNSUBMITTED"})
-  void shouldSaveFormRPartAToDbAndCloudWhenAlwaysStoreFiles(LifecycleState state) {
+  void shouldSaveFormRPartBToDbAndCloudWhenAlwaysStoreFiles(LifecycleState state) {
     entity.setId(null);
     entity.setLifecycleState(state);
     FormRPartBDto dto = mapper.toDto(entity);
@@ -319,7 +319,7 @@ class FormRPartBServiceTest {
   @ParameterizedTest(name = "Should save to db only when not always store files "
       + "and form state is {0}.")
   @EnumSource(value = LifecycleState.class, names = {"DRAFT", "UNSUBMITTED"})
-  void shouldSaveFormRPartAToDbWhenNotAlwaysStoreFiles(LifecycleState state) {
+  void shouldSaveFormRPartBToDbWhenNotAlwaysStoreFiles(LifecycleState state) {
     entity.setId(null);
     entity.setLifecycleState(state);
     FormRPartBDto dto = mapper.toDto(entity);
