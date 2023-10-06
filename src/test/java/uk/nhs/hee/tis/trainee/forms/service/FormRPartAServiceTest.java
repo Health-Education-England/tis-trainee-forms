@@ -108,16 +108,18 @@ class FormRPartAServiceTest {
     return entity;
   }
 
-  @Test
-  void shouldSaveDraftFormRPartAToDbAndCloudWhenAlwaysStoreFiles() {
+  @ParameterizedTest(name = "Should save to db and cloud when always store files "
+      + "and form state is {0}.")
+  @EnumSource(value = LifecycleState.class, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldSaveFormRPartAToDbAndCloudWhenAlwaysStoreFiles(LifecycleState state) {
     entity.setId(null);
-    entity.setLifecycleState(LifecycleState.DRAFT);
+    entity.setLifecycleState(state);
 
     FormRPartADto dto = new FormRPartADto();
     dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     dto.setForename(DEFAULT_FORENAME);
     dto.setSurname(DEFAULT_SURNAME);
-    dto.setLifecycleState(LifecycleState.DRAFT);
+    dto.setLifecycleState(state);
 
     when(repositoryMock.save(entity)).thenAnswer(invocation -> {
       FormRPartA entity = invocation.getArgument(0);
@@ -141,16 +143,18 @@ class FormRPartAServiceTest {
     verify(cloudObjectRepository).save(entity);
   }
 
-  @Test
-  void shouldSaveDraftFormRPartAToDbWhenNotAlwaysStoreFiles() {
+  @ParameterizedTest(name = "Should save to db only when not always store files "
+      + "and form state is {0}.")
+  @EnumSource(value = LifecycleState.class, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldSaveFormRPartAToDbOnlyWhenNotAlwaysStoreFiles(LifecycleState state) {
     entity.setId(null);
-    entity.setLifecycleState(LifecycleState.DRAFT);
+    entity.setLifecycleState(state);
 
     FormRPartADto dto = new FormRPartADto();
     dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     dto.setForename(DEFAULT_FORENAME);
     dto.setSurname(DEFAULT_SURNAME);
-    dto.setLifecycleState(LifecycleState.DRAFT);
+    dto.setLifecycleState(state);
 
     when(repositoryMock.save(entity)).thenAnswer(invocation -> {
       FormRPartA entity = invocation.getArgument(0);
@@ -171,39 +175,6 @@ class FormRPartAServiceTest {
 
     verify(repositoryMock).save(entity);
     verifyNoInteractions(cloudObjectRepository);
-  }
-
-  @Test
-  void shouldSaveUnsubmittedFormRPartA() {
-    entity.setId(null);
-    entity.setLifecycleState(LifecycleState.UNSUBMITTED);
-    entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
-
-    FormRPartADto dto = new FormRPartADto();
-    dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    dto.setForename(DEFAULT_FORENAME);
-    dto.setSurname(DEFAULT_SURNAME);
-    dto.setLifecycleState(LifecycleState.UNSUBMITTED);
-    dto.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
-
-    when(repositoryMock.save(entity)).thenAnswer(invocation -> {
-      FormRPartA entity = invocation.getArgument(0);
-
-      FormRPartA savedEntity = new FormRPartA();
-      BeanUtils.copyProperties(entity, savedEntity);
-      savedEntity.setId(DEFAULT_ID);
-      return savedEntity;
-    });
-
-    FormRPartADto savedDto = service.save(dto);
-
-    assertThat("Unexpected form ID.", savedDto.getId(), is(DEFAULT_ID_STRING));
-    assertThat("Unexpected trainee ID.", savedDto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
-    assertThat("Unexpected forename.", savedDto.getForename(), is(DEFAULT_FORENAME));
-    assertThat("Unexpected surname.", savedDto.getSurname(), is(DEFAULT_SURNAME));
-
-    verify(repositoryMock).save(entity);
-    verify(cloudObjectRepository).save(entity);
   }
 
   @Test
