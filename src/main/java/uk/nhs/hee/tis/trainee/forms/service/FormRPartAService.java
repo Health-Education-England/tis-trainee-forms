@@ -90,8 +90,7 @@ public class FormRPartAService {
   public FormRPartADto save(FormRPartADto formRPartADto) {
     log.info("Request to save FormRPartA : {}", formRPartADto);
     FormRPartA formRPartA = mapper.toEntity(formRPartADto);
-    if (alwaysStoreFiles || formRPartA.getLifecycleState() == LifecycleState.SUBMITTED
-        || formRPartA.getLifecycleState() == LifecycleState.UNSUBMITTED) {
+    if (alwaysStoreFiles || formRPartA.getLifecycleState() == LifecycleState.SUBMITTED) {
       cloudObjectRepository.save(formRPartA);
     }
 

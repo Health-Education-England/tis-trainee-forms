@@ -262,10 +262,12 @@ class FormRPartBServiceTest {
     return declarationDto;
   }
 
-  @Test
-  void shouldSaveDraftFormRPartAToDbAndCloudWhenAlwaysStoreFiles() {
+  @ParameterizedTest(name = "Should save to db and cloud when always store files "
+      + "and form state is {0}.")
+  @EnumSource(value = LifecycleState.class, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldSaveFormRPartBToDbAndCloudWhenAlwaysStoreFiles(LifecycleState state) {
     entity.setId(null);
-    entity.setLifecycleState(LifecycleState.DRAFT);
+    entity.setLifecycleState(state);
     FormRPartBDto dto = mapper.toDto(entity);
 
     when(repositoryMock.save(entity)).thenAnswer(invocation -> {
@@ -314,10 +316,12 @@ class FormRPartBServiceTest {
     verify(s3FormRPartBRepository).save(entity);
   }
 
-  @Test
-  void shouldSaveDraftFormRPartAToDbWhenNotAlwaysStoreFiles() {
+  @ParameterizedTest(name = "Should save to db only when not always store files "
+      + "and form state is {0}.")
+  @EnumSource(value = LifecycleState.class, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldSaveFormRPartBToDbWhenNotAlwaysStoreFiles(LifecycleState state) {
     entity.setId(null);
-    entity.setLifecycleState(LifecycleState.DRAFT);
+    entity.setLifecycleState(state);
     FormRPartBDto dto = mapper.toDto(entity);
 
     when(repositoryMock.save(entity)).thenAnswer(invocation -> {
@@ -363,56 +367,6 @@ class FormRPartBServiceTest {
 
     verify(repositoryMock).save(entity);
     verifyNoInteractions(s3FormRPartBRepository);
-  }
-
-  @Test
-  void shouldSaveUnsubmittedFormRPartB() {
-    entity.setId(null);
-    entity.setLifecycleState(LifecycleState.UNSUBMITTED);
-    FormRPartBDto dto = mapper.toDto(entity);
-
-    when(repositoryMock.save(entity)).thenAnswer(invocation -> {
-      FormRPartB entity = invocation.getArgument(0);
-
-      FormRPartB savedEntity = new FormRPartB();
-      BeanUtils.copyProperties(entity, savedEntity);
-      savedEntity.setId(DEFAULT_ID);
-      return savedEntity;
-    });
-
-    FormRPartBDto savedDto = service.save(dto);
-
-    assertThat("Unexpected form ID.", savedDto.getId(), is(DEFAULT_ID_STRING));
-    assertThat("Unexpected trainee ID.", savedDto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
-    assertThat("Unexpected forename.", savedDto.getForename(), is(DEFAULT_FORENAME));
-    assertThat("Unexpected surname.", savedDto.getSurname(), is(DEFAULT_SURNAME));
-    assertThat("Unexpected work.", savedDto.getWork(), is(Collections.singletonList(workDto)));
-    assertThat("Unexpected total leave.", savedDto.getTotalLeave(), is(DEFAULT_TOTAL_LEAVE));
-    assertThat("Unexpected isHonest flag.", savedDto.getIsHonest(), is(DEFAULT_IS_HONEST));
-    assertThat("Unexpected isHealthy flag.", savedDto.getIsHealthy(), is(DEFAULT_IS_HEALTHY));
-    assertThat("Unexpected health statement.", savedDto.getHealthStatement(),
-        is(DEFAULT_HEALTHY_STATEMENT));
-    assertThat("Unexpected havePreviousDeclarations flag.", savedDto.getHavePreviousDeclarations(),
-        is(DEFAULT_HAVE_PREVIOUS_DECLARATIONS));
-    assertThat("Unexpected previous declarations.", savedDto.getPreviousDeclarations(),
-        is(Collections.singletonList(previousDeclarationDto)));
-    assertThat("Unexpected previous declaration summary.", savedDto.getPreviousDeclarationSummary(),
-        is(DEFAULT_PREVIOUS_DECLARATION_SUMMARY));
-    assertThat("Unexpected haveCurrentDeclarations flag.", savedDto.getHaveCurrentDeclarations(),
-        is(DEFAULT_HAVE_CURRENT_DECLARATIONS));
-    assertThat("Unexpected current declarations.", savedDto.getCurrentDeclarations(),
-        is(Collections.singletonList(currentDeclarationDto)));
-    assertThat("Unexpected current declaration summary.", savedDto.getCurrentDeclarationSummary(),
-        is(DEFAULT_CURRENT_DECLARATION_SUMMARY));
-    assertThat("Unexpected haveCurrentUnresolvedDeclarations flag.",
-        savedDto.getHaveCurrentUnresolvedDeclarations(),
-        is(DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS));
-    assertThat("Unexpected havePreviousUnresolvedDeclarations flag.",
-        savedDto.getHavePreviousUnresolvedDeclarations(),
-        is(DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS));
-
-    verify(repositoryMock).save(entity);
-    verify(s3FormRPartBRepository).save(entity);
   }
 
   @Test
