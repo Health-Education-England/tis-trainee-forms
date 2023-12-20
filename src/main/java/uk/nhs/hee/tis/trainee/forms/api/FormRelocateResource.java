@@ -22,22 +22,23 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
+import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.api.util.HeaderUtil;
 import uk.nhs.hee.tis.trainee.forms.service.FormRelocateService;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
-
-import java.io.IOException;
 
 @Slf4j
 @RestController
 @RequestMapping("/api")
 @XRayEnabled
 public class FormRelocateResource {
-
-  private static final String ENTITY_NAME = "formR_partA";
 
   private final FormRelocateService service;
 
@@ -46,7 +47,7 @@ public class FormRelocateResource {
   }
 
   /**
-   * POST  /form-relocate : Relocate a form (attach a form from one trainee to another)
+   * POST  /form-relocate : Relocate a form (attach a form from one trainee to another).
    *
    * @param formId  The ID of the form that need to relocate
    * @param targetTrainee  The TraineeTisId of the target trainee
@@ -54,7 +55,7 @@ public class FormRelocateResource {
    */
   @PostMapping("/form-relocate/{formId}")
   public ResponseEntity<Void> relocateFormR(@PathVariable String formId,
-                                            @RequestParam String targetTrainee) throws IOException{
+                                            @RequestParam String targetTrainee) throws IOException {
     log.info("Request received to relocate Form with ID {} to trainee {}", formId, targetTrainee);
 
     if (targetTrainee.isEmpty()) {
@@ -67,10 +68,10 @@ public class FormRelocateResource {
     try {
       service.relocateFormR(formId, targetTrainee);
     } catch (ApplicationException e) {
-      log.warn("Unable to relocate form R to target trainee. {}", e);
+      log.warn("Unable to relocate form R to target trainee: " + e);
       return ResponseEntity.badRequest().headers(HeaderUtil
           .moveFailureAlert(e.toString(),
-              "Unable to relocate form R to target trainee."+e)).body(null);
+              "Unable to relocate form R to target trainee."+ e)).body(null);
     }
 
     return ResponseEntity.noContent().build();

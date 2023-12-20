@@ -22,9 +22,17 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.*;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.amazonaws.services.s3.model.S3Object;
+import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import com.amazonaws.xray.spring.aop.XRayEnabled;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -37,9 +45,6 @@ import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.util.*;
 
 @Slf4j
 @Service
@@ -116,12 +121,10 @@ public class FormRelocateService {
           formRPartBRepository.findById(UUID.fromString(formId));
 
       if (optionalFormRPartA.isPresent()) {
-        AbstractForm formRPartA = optionalFormRPartA.get();
-        return formRPartA;
+        return optionalFormRPartA.get();
       }
       else if (optionalFormRPartB.isPresent()) {
-        AbstractForm formRPartB = optionalFormRPartB.get();
-        return formRPartB;
+        return optionalFormRPartB.get();
       }
       return null;
     } catch (Exception e) {
@@ -138,7 +141,8 @@ public class FormRelocateService {
     } else if (abstractForm instanceof FormRPartB formRPartB) {
       formRPartBRepository.save(formRPartB);
     }
-    log.info("Form R with ID " + abstractForm.getId() + " moved under " + targetTrainee + " in DB ");
+    log.info("Form R with ID " + abstractForm.getId()
+        + " moved under " + targetTrainee + " in DB ");
   }
 
   private void relocateFormInS3(
