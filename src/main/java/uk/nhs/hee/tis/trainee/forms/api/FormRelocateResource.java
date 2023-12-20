@@ -26,7 +26,7 @@ import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -47,13 +47,13 @@ public class FormRelocateResource {
   }
 
   /**
-   * POST  /form-relocate : Relocate a form (attach a form from one trainee to another).
+   * PATCH  /form-relocate : Relocate a form (attach a form from one trainee to another).
    *
    * @param formId  The ID of the form that need to relocate
    * @param targetTrainee  The TraineeTisId of the target trainee
    * @return the status of relocation
    */
-  @PostMapping("/form-relocate/{formId}")
+  @PatchMapping("/form-relocate/{formId}")
   public ResponseEntity<Void> relocateFormR(@PathVariable String formId,
                                             @RequestParam String targetTrainee) throws IOException {
     log.info("Request received to relocate Form with ID {} to trainee {}", formId, targetTrainee);
