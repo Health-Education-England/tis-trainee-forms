@@ -51,7 +51,8 @@ public class FeatureFlagResource {
     log.debug("Get all the feature flags for forms");
 
     // Create a new instance of FormRPartB and set covidDeclaration to false
-    FeatureConfigurationProperties.FormRPartB formRPartB = new FeatureConfigurationProperties.FormRPartB();
+    FeatureConfigurationProperties.FormRPartB formRPartB =
+        new FeatureConfigurationProperties.FormRPartB();
     formRPartB.setCovidDeclaration(false);
 
     // Update the featureConfig object with the new FormRPartB instance
