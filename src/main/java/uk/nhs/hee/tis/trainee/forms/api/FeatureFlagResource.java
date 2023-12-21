@@ -49,6 +49,7 @@ public class FeatureFlagResource {
   @GetMapping
   public ResponseEntity<FeatureConfigurationProperties> getFeatureFlags() {
     log.debug("Get all the feature flags for forms");
+
     return ResponseEntity.ok(featureConfig);
   }
 }

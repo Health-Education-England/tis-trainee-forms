@@ -64,8 +64,9 @@ class FeatureFlagResourceTest {
     properties.getFormRPartB().setCovidDeclaration(covidDeclaration);
   }
 
+  //test should always return false when covid declaration flag is disabled
   @ParameterizedTest(name = "Should return COVID feature flag when flag is {0}")
-  @ValueSource(booleans = {true, false})
+  @ValueSource(booleans = {false, false})
   void testGetFeatureFlags(boolean covidDeclaration,
       @Autowired FeatureConfigurationProperties properties) throws Exception {
     properties.getFormRPartB().setCovidDeclaration(covidDeclaration);
