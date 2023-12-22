@@ -56,8 +56,6 @@ public class FormRelocateService {
   private final FormRPartBRepository formRPartBRepository;
   protected final AmazonS3 amazonS3;
 
-  protected final ObjectMapper objectMapper;
-
   @Value("${application.file-store.bucket}")
   private String bucketName;
 
@@ -71,11 +69,11 @@ public class FormRelocateService {
   public FormRelocateService(FormRPartARepository formRPartARepository,
                              FormRPartBRepository formRPartBRepository,
                              AmazonS3 amazonS3,
-                             ObjectMapper objectMapper) {
+                             String bucketName) {
     this.formRPartARepository = formRPartARepository;
     this.formRPartBRepository = formRPartBRepository;
     this.amazonS3 = amazonS3;
-    this.objectMapper = objectMapper;
+    this.bucketName = bucketName;
   }
 
   /**
@@ -173,7 +171,7 @@ public class FormRelocateService {
       final PutObjectRequest request = new PutObjectRequest(
           bucketName,
           targetKey,
-          new ByteArrayInputStream(objectMapper.writeValueAsBytes(formr)),
+          new ByteArrayInputStream(mapper.writeValueAsBytes(formr)),
           metadata);
       amazonS3.putObject(request);
       log.info("Form R in S3 relocated from " + sourceKey + " to " + targetKey);
