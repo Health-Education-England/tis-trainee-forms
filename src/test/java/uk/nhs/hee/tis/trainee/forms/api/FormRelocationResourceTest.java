@@ -21,6 +21,11 @@
 
 package uk.nhs.hee.tis.trainee.forms.api;
 
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,11 +36,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import uk.nhs.hee.tis.trainee.forms.service.FormRelocateService;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
-
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(SpringExtension.class)
 @WebMvcTest(controllers = FormRelocateResource.class)
@@ -64,7 +64,7 @@ class FormRelocationResourceTest {
     mockMvc.perform(patch("/api/form-relocate/" + FORM_ID)
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
             .param("targetTrainee",TARGET_TRAINEE))
-        .andExpect(status().isNoContent());
+            .andExpect(status().isNoContent());
   }
 
   @Test
@@ -72,7 +72,7 @@ class FormRelocationResourceTest {
     mockMvc.perform(patch("/api/form-relocate/" + FORM_ID)
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
             .param("targetTrainee",""))
-        .andExpect(status().isBadRequest());
+            .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
   }
@@ -85,6 +85,6 @@ class FormRelocationResourceTest {
     mockMvc.perform(patch("/api/form-relocate/" + FORM_ID)
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
             .param("targetTrainee",TARGET_TRAINEE))
-        .andExpect(status().isBadRequest());
+            .andExpect(status().isBadRequest());
   }
 }

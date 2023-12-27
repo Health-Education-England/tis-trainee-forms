@@ -21,11 +21,30 @@
 
 package uk.nhs.hee.tis.trainee.forms.service;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.amazonaws.services.s3.model.S3Object;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,23 +58,6 @@ import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
-
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.time.LocalDateTime;
-import java.util.*;
-
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class FormRelocateServiceTest {
@@ -93,7 +95,7 @@ class FormRelocateServiceTest {
   private S3Object object1;
   private S3Object movedObject;
   private InputStream objectContent1;
-  private InputStream MovedObjectContent;
+  private InputStream movedObjectContent;
   private ObjectMetadata metadata1;
 
   @BeforeEach
@@ -121,7 +123,8 @@ class FormRelocateServiceTest {
     formRPartB.setLifecycleState(LifecycleState.SUBMITTED);
 
     objectContent1 = new ByteArrayInputStream("{\"traineeTisId\":\"DEFAULT_TRAINEE\"}".getBytes());
-    MovedObjectContent = new ByteArrayInputStream("{\"traineeTisId\":\"DEFAULT_TRAINEE\"}".getBytes());
+    movedObjectContent =
+        new ByteArrayInputStream("{\"traineeTisId\":\"DEFAULT_TRAINEE\"}".getBytes());
 
     metadata1 = new ObjectMetadata();
     metadata1.addUserMetadata("traineeid", DEFAULT_TRAINEE_TIS_ID);
@@ -136,7 +139,7 @@ class FormRelocateServiceTest {
     movedObject = new S3Object();
     movedObject.setBucketName(BUCKET_NAME);
     movedObject.setKey(TARGET_TRAINEE);
-    movedObject.setObjectContent(MovedObjectContent);
+    movedObject.setObjectContent(movedObjectContent);
     movedObject.setObjectMetadata(metadata1);
   }
 
@@ -280,8 +283,10 @@ class FormRelocateServiceTest {
 
     List<FormRPartB> formRPartBs = formRPartBCaptor.getAllValues();
     assertThat("Unexpected form ID.", formRPartBs.get(1).getId(), is(FORM_ID));
-    assertThat("Unexpected trainee ID.", formRPartBs.get(1).getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
-    assertThat("Unexpected forename.", formRPartBs.get(1).getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected trainee ID.", formRPartBs.get(1).getTraineeTisId(),
+        is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected forename.", formRPartBs.get(1).getForename(),
+        is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", formRPartBs.get(1).getSurname(), is(DEFAULT_SURNAME));
     assertThat("Unexpected submissionDate.", formRPartBs.get(1).getSubmissionDate(),
         is(DEFAULT_SUBMISSION_DATE));
