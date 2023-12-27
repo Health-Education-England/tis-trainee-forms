@@ -63,7 +63,7 @@ class FormRelocationResourceTest {
   void shouldRelocateForm() throws Exception {
     mockMvc.perform(patch("/api/form-relocate/" + FORM_ID)
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .param("targetTrainee",TARGET_TRAINEE))
+            .param("targetTrainee", TARGET_TRAINEE))
             .andExpect(status().isNoContent());
   }
 
@@ -71,7 +71,7 @@ class FormRelocationResourceTest {
   void shouldNotRelocateFormWhenNoTargetTrainee() throws Exception {
     mockMvc.perform(patch("/api/form-relocate/" + FORM_ID)
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .param("targetTrainee",""))
+            .param("targetTrainee", ""))
             .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
@@ -84,7 +84,7 @@ class FormRelocationResourceTest {
 
     mockMvc.perform(patch("/api/form-relocate/" + FORM_ID)
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .param("targetTrainee",TARGET_TRAINEE))
+            .param("targetTrainee", TARGET_TRAINEE))
             .andExpect(status().isBadRequest());
   }
 }

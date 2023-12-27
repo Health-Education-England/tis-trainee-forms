@@ -156,29 +156,27 @@ public class FormRelocateService {
     // Get Form R from S3
     S3Object object = amazonS3.getObject(bucketName, sourceKey);
 
-    if (object != null) {
-      // Set target trainee Id to S3 metadata
-      ObjectMetadata metadata = object.getObjectMetadata();
-      metadata.addUserMetadata("traineeid", targetTrainee);
+    // Set target trainee Id to S3 metadata
+    ObjectMetadata metadata = object.getObjectMetadata();
+    metadata.addUserMetadata("traineeid", targetTrainee);
 
-      // Set target trainee Id to S3 content
-      S3ObjectInputStream content = object.getObjectContent();
-      ObjectMapper mapper = new ObjectMapper();
-      Map<String, Object> formr = mapper.readValue(content, Map.class);
-      formr.put("traineeTisId", targetTrainee);
+    // Set target trainee Id to S3 content
+    S3ObjectInputStream content = object.getObjectContent();
+    ObjectMapper mapper = new ObjectMapper();
+    Map<String, Object> formr = mapper.readValue(content, Map.class);
+    formr.put("traineeTisId", targetTrainee);
 
-      // Save the form under target trainee
-      final PutObjectRequest request = new PutObjectRequest(
-          bucketName,
-          targetKey,
-          new ByteArrayInputStream(mapper.writeValueAsBytes(formr)),
-          metadata);
-      amazonS3.putObject(request);
-      log.info("Form R in S3 relocated from " + sourceKey + " to " + targetKey);
+    // Save the form under target trainee
+    final PutObjectRequest request = new PutObjectRequest(
+        bucketName,
+        targetKey,
+        new ByteArrayInputStream(mapper.writeValueAsBytes(formr)),
+        metadata);
+    amazonS3.putObject(request);
+    log.info("Form R in S3 relocated from " + sourceKey + " to " + targetKey);
 
-      // Delete Form R from source trainee
-      amazonS3.deleteObject(bucketName, sourceKey);
-      log.info("Form R in S3 " + sourceKey + " deleted.");
-    }
+    // Delete Form R from source trainee
+    amazonS3.deleteObject(bucketName, sourceKey);
+    log.info("Form R in S3 " + sourceKey + " deleted.");
   }
 }
