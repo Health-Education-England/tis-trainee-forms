@@ -70,6 +70,12 @@ class FormRelocateServiceTest {
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";
   private static final LocalDateTime DEFAULT_SUBMISSION_DATE = LocalDateTime.now();
   private static final String BUCKET_NAME = "BUCKET_NAME";
+  private static final String SOURCE_KEY =
+      DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b/" + FORM_ID_STRING + ".json";
+  private static final String TARGET_KEY =
+      TARGET_TRAINEE + "/forms/formr-b/" + FORM_ID_STRING + ".json";
+
+
 
   private FormRelocateService service;
 
@@ -220,8 +226,6 @@ class FormRelocateServiceTest {
 
   @Test
   void shouldRollBackAndThrowExceptionWhenMoveSubmittedFormInDbFail() throws IOException {
-
-
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
     when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartB));
     when(formRPartBRepositoryMock.save(formRPartB)).
@@ -249,11 +253,9 @@ class FormRelocateServiceTest {
 
   @Test
   void shouldMoveSubmittedFormInDbAndS3() throws IOException {
-    String sourceKey = DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b/" + FORM_ID_STRING + ".json";
-
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
     when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartB));
-    when(amazonS3Mock.getObject(BUCKET_NAME, sourceKey)).thenReturn(object1);
+    when(amazonS3Mock.getObject(BUCKET_NAME, SOURCE_KEY)).thenReturn(object1);
 
     service.relocateFormR(FORM_ID_STRING, TARGET_TRAINEE);
 
@@ -289,16 +291,14 @@ class FormRelocateServiceTest {
     assertThat("Unexpected input stream.",
         resultJsonMap.get("traineeTisId"), is(TARGET_TRAINEE));
 
-    verify(amazonS3Mock).deleteObject(BUCKET_NAME, sourceKey);
+    verify(amazonS3Mock).deleteObject(BUCKET_NAME, SOURCE_KEY);
   }
 
   @Test
   void shouldThrowExceptionWhenMoveSubmittedFormInS3IfFormNotFound() throws IOException {
-    String sourceKey = DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b/" + FORM_ID_STRING + ".json";
-
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
     when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartB));
-    when(amazonS3Mock.getObject(BUCKET_NAME, sourceKey)).thenReturn(null);
+    when(amazonS3Mock.getObject(BUCKET_NAME, SOURCE_KEY)).thenReturn(null);
 
     assertThrows(ApplicationException.class, () ->
         service.relocateFormR(FORM_ID_STRING, TARGET_TRAINEE));
@@ -310,12 +310,9 @@ class FormRelocateServiceTest {
 
   @Test
   void shouldRollBackAndThrowExceptionWhenMoveSubmittedFormInS3Fail() throws IOException {
-    String sourceKey = DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b/" + FORM_ID_STRING + ".json";
-    String targetKey = TARGET_TRAINEE + "/forms/formr-b/" + FORM_ID_STRING + ".json";
-
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
     when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartB));
-    when(amazonS3Mock.getObject(BUCKET_NAME, targetKey)).thenReturn(object1);
+    when(amazonS3Mock.getObject(BUCKET_NAME, TARGET_KEY)).thenReturn(object1);
 
     when(amazonS3Mock.putObject(any())).
         thenThrow(new ApplicationException("Expected Exception"));
@@ -343,7 +340,7 @@ class FormRelocateServiceTest {
     PutObjectRequest request = putRequestCaptor.getValue();
     assertThat("Unexpected bucket name.", request.getBucketName(), is(BUCKET_NAME));
     assertThat("Unexpected key.", request.getKey(),
-        is(sourceKey));
+        is(SOURCE_KEY));
 
     Map<String, String> expectedMetadata = Map
         .of("submissiondate", DEFAULT_SUBMISSION_DATE.toString(),
