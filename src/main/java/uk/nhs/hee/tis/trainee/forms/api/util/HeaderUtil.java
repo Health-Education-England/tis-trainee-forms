@@ -32,7 +32,7 @@ public final class HeaderUtil {
   }
 
   /**
-   * Create an formR relocation failure header alert.
+   * Create an form relocation failure header alert.
    *
    * @param errorKey       The message key for the error.
    * @param defaultMessage The default message.
@@ -40,7 +40,7 @@ public final class HeaderUtil {
    */
   public static HttpHeaders moveFailureAlert(String errorKey,
                                              String defaultMessage) {
-    log.error("FormR relocation failed, {}", defaultMessage);
+    log.error("Form relocation failed, {}", defaultMessage);
     HttpHeaders headers = new HttpHeaders();
     headers.add("X-traineeForms-error", "error." + errorKey);
     return headers;

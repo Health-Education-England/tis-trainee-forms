@@ -158,7 +158,7 @@ class FormRelocateServiceTest {
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartA));
     when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
 
-    service.relocateFormR(FORM_ID_STRING, TARGET_TRAINEE);
+    service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE);
 
     verify(formRPartARepositoryMock).save(formRPartACaptor.capture());
     verify(formRPartBRepositoryMock, never()).save(any());
@@ -182,7 +182,7 @@ class FormRelocateServiceTest {
         .thenThrow(new ApplicationException("Expected Exception"));
 
     assertThrows(ApplicationException.class, () ->
-        service.relocateFormR(FORM_ID_STRING, TARGET_TRAINEE));
+        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE));
     verify(formRPartARepositoryMock, never()).save(any());
     verify(formRPartBRepositoryMock, never()).save(any());
     verifyNoInteractions(amazonS3Mock);
@@ -194,7 +194,7 @@ class FormRelocateServiceTest {
     when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
 
     assertThrows(ApplicationException.class, () ->
-        service.relocateFormR(FORM_ID_STRING, TARGET_TRAINEE));
+        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE));
 
     verify(formRPartARepositoryMock, never()).save(any());
     verify(formRPartBRepositoryMock, never()).save(any());
@@ -209,7 +209,7 @@ class FormRelocateServiceTest {
         .thenThrow(new ApplicationException("Expected Exception"));
 
     assertThrows(ApplicationException.class, () ->
-        service.relocateFormR(FORM_ID_STRING, TARGET_TRAINEE));
+        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE));
 
     verify(formRPartARepositoryMock, times(2)).save(formRPartACaptor.capture());
     verify(formRPartBRepositoryMock, never()).save(any());
@@ -236,7 +236,7 @@ class FormRelocateServiceTest {
         .thenThrow(new ApplicationException("Expected Exception"));
 
     assertThrows(ApplicationException.class, () ->
-        service.relocateFormR(FORM_ID_STRING, TARGET_TRAINEE));
+        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE));
 
     verify(formRPartARepositoryMock, never()).save(any());
     verify(formRPartBRepositoryMock, times(2)).save(formRPartBCaptor.capture());
@@ -261,7 +261,7 @@ class FormRelocateServiceTest {
     when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartB));
     when(amazonS3Mock.getObject(BUCKET_NAME, SOURCE_KEY)).thenReturn(object1);
 
-    service.relocateFormR(FORM_ID_STRING, TARGET_TRAINEE);
+    service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE);
 
     // should update DB
     verify(formRPartARepositoryMock, never()).save(any());
@@ -305,7 +305,7 @@ class FormRelocateServiceTest {
     when(amazonS3Mock.getObject(BUCKET_NAME, SOURCE_KEY)).thenReturn(null);
 
     assertThrows(ApplicationException.class, () ->
-        service.relocateFormR(FORM_ID_STRING, TARGET_TRAINEE));
+        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE));
 
     // should update S3
     verify(amazonS3Mock, never()).putObject(any());
@@ -321,7 +321,7 @@ class FormRelocateServiceTest {
     when(amazonS3Mock.putObject(any()))
         .thenThrow(new ApplicationException("Expected Exception"));
     assertThrows(ApplicationException.class, () ->
-        service.relocateFormR(FORM_ID_STRING, TARGET_TRAINEE));
+        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE));
 
     // should roll back DB
     verify(formRPartARepositoryMock, never()).save(any());

@@ -78,34 +78,34 @@ public class FormRelocateService {
   /**
    * Relocate Form R.
    */
-  public void relocateFormR(String formId, String targetTrainee) throws IOException {
+  public void relocateForm(String formId, String targetTrainee) throws IOException {
 
     // Get Form R from MongoDB by FormId
-    AbstractForm formR = getMoveFormInfoInDb(formId);
+    AbstractForm form = getMoveFormInfoInDb(formId);
 
-    if (formR == null) {
-      log.error("Cannot find FormR with ID " + formId + " from DB.");
-      throw new ApplicationException("Cannot find FormR with ID " + formId + " from DB.");
+    if (form == null) {
+      log.error("Cannot find form with ID " + formId + " from DB.");
+      throw new ApplicationException("Cannot find form with ID " + formId + " from DB.");
     }
     else {
-      String formType = formR.getFormType();
-      String sourceTrainee = formR.getTraineeTisId();
+      String formType = form.getFormType();
+      String sourceTrainee = form.getTraineeTisId();
       try {
-        updateTargetTraineeInDb(formR, targetTrainee);
-        if (formR.getLifecycleState() != LifecycleState.DRAFT) {
+        updateTargetTraineeInDb(form, targetTrainee);
+        if (form.getLifecycleState() != LifecycleState.DRAFT) {
           relocateFormInS3(formType, formId, sourceTrainee, targetTrainee);
         }
       } catch (Exception e) {
-        log.error("Fail to relocate FormR to target trainee: " + e + ". Rolling back...");
+        log.error("Fail to relocate form to target trainee: " + e + ". Rolling back...");
         try {
-          updateTargetTraineeInDb(formR, sourceTrainee);
-          if (formR.getLifecycleState() != LifecycleState.DRAFT) {
+          updateTargetTraineeInDb(form, sourceTrainee);
+          if (form.getLifecycleState() != LifecycleState.DRAFT) {
             relocateFormInS3(formType, formId, targetTrainee, sourceTrainee);
           }
         } catch (Exception ex) {
           log.error("Fail to roll back: " + ex);
         }
-        throw new ApplicationException("Fail to relocate FormR to target trainee: " + e.toString());
+        throw new ApplicationException("Fail to relocate form to target trainee: " + e.toString());
       }
     }
   }
@@ -125,8 +125,8 @@ public class FormRelocateService {
       }
       return null;
     } catch (Exception e) {
-      log.error("Fail to get FormR with ID " + formId + ": " + e);
-      throw new ApplicationException("Fail to get FormR with ID " + formId + ": " + e.toString());
+      log.error("Fail to get form with ID " + formId + ": " + e);
+      throw new ApplicationException("Fail to get form with ID " + formId + ": " + e.toString());
     }
   }
 
@@ -162,14 +162,14 @@ public class FormRelocateService {
     // Set target trainee Id to S3 content
     S3ObjectInputStream content = object.getObjectContent();
     ObjectMapper mapper = new ObjectMapper();
-    Map<String, Object> formr = mapper.readValue(content, Map.class);
-    formr.put("traineeTisId", targetTrainee);
+    Map<String, Object> form = mapper.readValue(content, Map.class);
+    form.put("traineeTisId", targetTrainee);
 
     // Save the form under target trainee
     final PutObjectRequest request = new PutObjectRequest(
         bucketName,
         targetKey,
-        new ByteArrayInputStream(mapper.writeValueAsBytes(formr)),
+        new ByteArrayInputStream(mapper.writeValueAsBytes(form)),
         metadata);
     amazonS3.putObject(request);
     log.info("Form R in S3 relocated from " + sourceKey + " to " + targetKey);

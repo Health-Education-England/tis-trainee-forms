@@ -54,24 +54,24 @@ public class FormRelocateResource {
    * @return the status of relocation
    */
   @PatchMapping("/form-relocate/{formId}")
-  public ResponseEntity<Void> relocateFormR(@PathVariable String formId,
+  public ResponseEntity<Void> relocateForm(@PathVariable String formId,
                                             @RequestParam String targetTrainee) throws IOException {
     log.info("Request received to relocate Form with ID {} to trainee {}", formId, targetTrainee);
 
     if (targetTrainee.isEmpty()) {
       return ResponseEntity.badRequest().headers(HeaderUtil
           .moveFailureAlert("TargetTrainee is empty",
-              "Unable to relocate form R to target trainee: targetTrainee is empty"))
+              "Unable to relocate form to target trainee: targetTrainee is empty"))
           .body(null);
     }
 
     try {
-      service.relocateFormR(formId, targetTrainee);
+      service.relocateForm(formId, targetTrainee);
     } catch (ApplicationException e) {
-      log.warn("Unable to relocate form R to target trainee: " + e);
+      log.warn("Unable to relocate form to target trainee: " + e);
       return ResponseEntity.badRequest().headers(HeaderUtil
           .moveFailureAlert(e.toString(),
-              "Unable to relocate form R to target trainee." + e)).body(null);
+              "Unable to relocate form to target trainee." + e)).body(null);
     }
 
     return ResponseEntity.noContent().build();

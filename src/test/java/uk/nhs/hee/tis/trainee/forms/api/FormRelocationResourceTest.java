@@ -80,7 +80,7 @@ class FormRelocationResourceTest {
   @Test
   void shouldNotRelocateFormWhenExceptionOccurs() throws Exception {
     ApplicationException applicationException = new ApplicationException("");
-    doThrow(applicationException).when(service).relocateFormR(FORM_ID, TARGET_TRAINEE);
+    doThrow(applicationException).when(service).relocateForm(FORM_ID, TARGET_TRAINEE);
 
     mockMvc.perform(patch("/api/form-relocate/" + FORM_ID)
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
