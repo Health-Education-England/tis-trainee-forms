@@ -26,6 +26,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -52,6 +53,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.env.Environment;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
@@ -86,7 +88,6 @@ class FormRelocateServiceTest {
   @Mock
   private AmazonS3 amazonS3Mock;
 
-
   @Captor
   private ArgumentCaptor<FormRPartA> formRPartACaptor;
   @Captor
@@ -106,11 +107,14 @@ class FormRelocateServiceTest {
 
   @BeforeEach
   void setUp() {
+    Environment env = mock(Environment.class);
+    when(env.getProperty("application.file-store.bucket")).thenReturn(BUCKET_NAME);
     service = new FormRelocateService(
         formRPartARepositoryMock,
         formRPartBRepositoryMock,
         amazonS3Mock,
-        BUCKET_NAME);
+        env
+        );
 
     formRPartA = new FormRPartA();
     formRPartA.setId(FORM_ID);
@@ -174,8 +178,8 @@ class FormRelocateServiceTest {
   @Test
   void shouldThrowExceptionWhenGetMoveFormInfoInDbFailed() throws IOException {
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartA));
-    when(formRPartBRepositoryMock.findById(FORM_ID)).
-        thenThrow(new ApplicationException("Expected Exception"));
+    when(formRPartBRepositoryMock.findById(FORM_ID))
+        .thenThrow(new ApplicationException("Expected Exception"));
 
     assertThrows(ApplicationException.class, () ->
         service.relocateFormR(FORM_ID_STRING, TARGET_TRAINEE));
@@ -201,8 +205,8 @@ class FormRelocateServiceTest {
   void shouldRollBackAndThrowExceptionWhenMoveDraftFormInDbFail() throws IOException {
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartA));
     when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
-    when(formRPartARepositoryMock.save(formRPartA)).
-        thenThrow(new ApplicationException("Expected Exception"));
+    when(formRPartARepositoryMock.save(formRPartA))
+        .thenThrow(new ApplicationException("Expected Exception"));
 
     assertThrows(ApplicationException.class, () ->
         service.relocateFormR(FORM_ID_STRING, TARGET_TRAINEE));
@@ -228,8 +232,8 @@ class FormRelocateServiceTest {
   void shouldRollBackAndThrowExceptionWhenMoveSubmittedFormInDbFail() throws IOException {
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
     when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartB));
-    when(formRPartBRepositoryMock.save(formRPartB)).
-        thenThrow(new ApplicationException("Expected Exception"));
+    when(formRPartBRepositoryMock.save(formRPartB))
+        .thenThrow(new ApplicationException("Expected Exception"));
 
     assertThrows(ApplicationException.class, () ->
         service.relocateFormR(FORM_ID_STRING, TARGET_TRAINEE));
@@ -314,8 +318,8 @@ class FormRelocateServiceTest {
     when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartB));
     when(amazonS3Mock.getObject(BUCKET_NAME, TARGET_KEY)).thenReturn(object1);
 
-    when(amazonS3Mock.putObject(any())).
-        thenThrow(new ApplicationException("Expected Exception"));
+    when(amazonS3Mock.putObject(any()))
+        .thenThrow(new ApplicationException("Expected Exception"));
     assertThrows(ApplicationException.class, () ->
         service.relocateFormR(FORM_ID_STRING, TARGET_TRAINEE));
 

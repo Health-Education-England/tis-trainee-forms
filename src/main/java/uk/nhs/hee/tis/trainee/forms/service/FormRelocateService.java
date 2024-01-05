@@ -34,7 +34,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -56,7 +56,6 @@ public class FormRelocateService {
   private final FormRPartBRepository formRPartBRepository;
   protected final AmazonS3 amazonS3;
 
-  @Value("${application.file-store.bucket}")
   private String bucketName;
 
   /**
@@ -69,11 +68,11 @@ public class FormRelocateService {
   public FormRelocateService(FormRPartARepository formRPartARepository,
                              FormRPartBRepository formRPartBRepository,
                              AmazonS3 amazonS3,
-                             String bucketName) {
+                             Environment env) {
     this.formRPartARepository = formRPartARepository;
     this.formRPartBRepository = formRPartBRepository;
     this.amazonS3 = amazonS3;
-    this.bucketName = bucketName;
+    this.bucketName = env.getProperty("application.file-store.bucket");
   }
 
   /**
