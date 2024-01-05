@@ -9,7 +9,7 @@ application:
 
 features:
   formr-partb:
-    covid-declaration: ${FEATURE_FORMR_PARTB_COVID_DECLARATION:true}
+    covid-declaration: ${FEATURE_FORMR_PARTB_COVID_DECLARATION:false}
 
 logging:
   level:
