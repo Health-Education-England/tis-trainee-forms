@@ -156,12 +156,11 @@ class FormRelocateServiceTest {
   @Test
   void shouldMoveDraftFormRPartAInDb() throws IOException {
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartA));
-    when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
 
     service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE);
 
     verify(formRPartARepositoryMock).save(formRPartACaptor.capture());
-    verify(formRPartBRepositoryMock, never()).save(any());
+    verifyNoInteractions(formRPartBRepositoryMock);
     verifyNoInteractions(amazonS3Mock);
 
     FormRPartA formRPartA = formRPartACaptor.getValue();
@@ -177,14 +176,13 @@ class FormRelocateServiceTest {
 
   @Test
   void shouldThrowExceptionWhenGetMoveFormInfoInDbFailed() throws IOException {
-    when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartA));
-    when(formRPartBRepositoryMock.findById(FORM_ID))
+    when(formRPartARepositoryMock.findById(FORM_ID))
         .thenThrow(new ApplicationException("Expected Exception"));
 
     assertThrows(ApplicationException.class, () ->
         service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE));
     verify(formRPartARepositoryMock, never()).save(any());
-    verify(formRPartBRepositoryMock, never()).save(any());
+    verifyNoInteractions(formRPartBRepositoryMock);
     verifyNoInteractions(amazonS3Mock);
   }
 
@@ -204,7 +202,6 @@ class FormRelocateServiceTest {
   @Test
   void shouldRollBackAndThrowExceptionWhenMoveDraftFormInDbFail() throws IOException {
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartA));
-    when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
     when(formRPartARepositoryMock.save(formRPartA))
         .thenThrow(new ApplicationException("Expected Exception"));
 
@@ -212,7 +209,7 @@ class FormRelocateServiceTest {
         service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE));
 
     verify(formRPartARepositoryMock, times(2)).save(formRPartACaptor.capture());
-    verify(formRPartBRepositoryMock, never()).save(any());
+    verifyNoInteractions(formRPartBRepositoryMock);
     verifyNoInteractions(amazonS3Mock);
 
     // should roll back DB

@@ -106,6 +106,7 @@ public class FormRelocateService {
   private void performRelocate(AbstractForm form, String fromTraineeId, String toTraineeId)
       throws IOException {
     updateTargetTraineeInDb(form, toTraineeId);
+
     if (form.getLifecycleState() != LifecycleState.DRAFT) {
       String formId = form.getId().toString();
       String formType = form.getFormType();
@@ -117,16 +118,14 @@ public class FormRelocateService {
     try {
       Optional<FormRPartA> optionalFormRPartA =
           formRPartARepository.findById(UUID.fromString(formId));
-      Optional<FormRPartB> optionalFormRPartB =
-          formRPartBRepository.findById(UUID.fromString(formId));
-
       if (optionalFormRPartA.isPresent()) {
         return optionalFormRPartA.get();
       }
-      else if (optionalFormRPartB.isPresent()) {
+      else {
+        Optional<FormRPartB> optionalFormRPartB =
+            formRPartBRepository.findById(UUID.fromString(formId));
         return optionalFormRPartB.get();
       }
-      return null;
     } catch (Exception e) {
       log.error("Fail to get form with ID " + formId + ": " + e);
       throw new ApplicationException("Fail to get form with ID " + formId + ": " + e.toString());
