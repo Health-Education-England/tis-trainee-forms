@@ -88,25 +88,28 @@ public class FormRelocateService {
       throw new ApplicationException("Cannot find form with ID " + formId + " from DB.");
     }
     else {
-      String formType = form.getFormType();
       String sourceTrainee = form.getTraineeTisId();
       try {
-        updateTargetTraineeInDb(form, targetTrainee);
-        if (form.getLifecycleState() != LifecycleState.DRAFT) {
-          relocateFormInS3(formType, formId, sourceTrainee, targetTrainee);
-        }
+        performRelocate(form, sourceTrainee, targetTrainee);
       } catch (Exception e) {
         log.error("Fail to relocate form to target trainee: " + e + ". Rolling back...");
         try {
-          updateTargetTraineeInDb(form, sourceTrainee);
-          if (form.getLifecycleState() != LifecycleState.DRAFT) {
-            relocateFormInS3(formType, formId, targetTrainee, sourceTrainee);
-          }
+          performRelocate(form, targetTrainee, sourceTrainee);
         } catch (Exception ex) {
           log.error("Fail to roll back: " + ex);
         }
         throw new ApplicationException("Fail to relocate form to target trainee: " + e.toString());
       }
+    }
+  }
+
+  private void performRelocate(AbstractForm form, String fromTraineeId, String toTraineeId)
+      throws IOException {
+    updateTargetTraineeInDb(form, toTraineeId);
+    if (form.getLifecycleState() != LifecycleState.DRAFT) {
+      String formId = form.getId().toString();
+      String formType = form.getFormType();
+      relocateFormInS3(formType, formId, fromTraineeId, toTraineeId);
     }
   }
 
