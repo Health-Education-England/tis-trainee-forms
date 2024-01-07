@@ -21,20 +21,10 @@
 
 package uk.nhs.hee.tis.trainee.forms.service;
 
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.amazonaws.services.s3.model.S3Object;
-import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import com.amazonaws.xray.spring.aop.XRayEnabled;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -43,6 +33,8 @@ import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
+import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartARepositoryImpl;
+import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartBRepositoryImpl;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
 
@@ -54,31 +46,31 @@ public class FormRelocateService {
 
   private final FormRPartARepository formRPartARepository;
   private final FormRPartBRepository formRPartBRepository;
-  protected final AmazonS3 amazonS3;
-
-  private String bucketName;
+  private final S3FormRPartARepositoryImpl abstractCloudRepositoryA;
+  private final S3FormRPartBRepositoryImpl abstractCloudRepositoryB;
 
   /**
    * Constructor for Form Relocate service.
    *
    * @param formRPartARepository  spring data repository (Form R Part A)
    * @param formRPartBRepository  spring data repository (Form R Part B)
-   * @param amazonS3              client for S3 service
+   * @param abstractCloudRepositoryA  abstract cloud repository (Form R Part A)
+   * @param abstractCloudRepositoryB  abstract cloud repository (Form R Part B)
    */
   public FormRelocateService(FormRPartARepository formRPartARepository,
                              FormRPartBRepository formRPartBRepository,
-                             AmazonS3 amazonS3,
-                             Environment env) {
+                             S3FormRPartARepositoryImpl abstractCloudRepositoryA,
+                             S3FormRPartBRepositoryImpl abstractCloudRepositoryB) {
     this.formRPartARepository = formRPartARepository;
     this.formRPartBRepository = formRPartBRepository;
-    this.amazonS3 = amazonS3;
-    this.bucketName = env.getProperty("application.file-store.bucket");
+    this.abstractCloudRepositoryA = abstractCloudRepositoryA;
+    this.abstractCloudRepositoryB = abstractCloudRepositoryB;
   }
 
   /**
    * Relocate Form R.
    */
-  public void relocateForm(String formId, String targetTrainee) throws IOException {
+  public void relocateForm(String formId, String targetTrainee) {
 
     // Get Form R from MongoDB by FormId
     AbstractForm form = getMoveFormInfoInDb(formId);
@@ -103,17 +95,6 @@ public class FormRelocateService {
     }
   }
 
-  private void performRelocate(AbstractForm form, String fromTraineeId, String toTraineeId)
-      throws IOException {
-    updateTargetTraineeInDb(form, toTraineeId);
-
-    if (form.getLifecycleState() != LifecycleState.DRAFT) {
-      String formId = form.getId().toString();
-      String formType = form.getFormType();
-      relocateFormInS3(formType, formId, fromTraineeId, toTraineeId);
-    }
-  }
-
   private AbstractForm getMoveFormInfoInDb(String formId) {
     try {
       Optional<FormRPartA> optionalFormRPartA =
@@ -132,9 +113,18 @@ public class FormRelocateService {
     }
   }
 
-  private void updateTargetTraineeInDb(AbstractForm abstractForm, String targetTrainee) {
-    abstractForm.setTraineeTisId(targetTrainee);
+  private void performRelocate(AbstractForm abstractForm,
+                               String fromTraineeId,
+                               String toTraineeId) {
+    abstractForm.setTraineeTisId(toTraineeId);
+    updateTargetTraineeInDb(abstractForm, toTraineeId);
 
+    if (abstractForm.getLifecycleState() != LifecycleState.DRAFT) {
+      relocateFormInS3(abstractForm, fromTraineeId, toTraineeId);
+    }
+  }
+
+  private void updateTargetTraineeInDb(AbstractForm abstractForm, String targetTrainee) {
     if (abstractForm instanceof FormRPartA formRPartA) {
       formRPartARepository.save(formRPartA);
     } else if (abstractForm instanceof FormRPartB formRPartB) {
@@ -144,40 +134,23 @@ public class FormRelocateService {
         + " moved under " + targetTrainee + " in DB ");
   }
 
-  private void relocateFormInS3(
-      String formType, String formId, String sourceTrainee, String targetTrainee)
-      throws IOException {
+  private void relocateFormInS3(AbstractForm abstractForm,
+                                String sourceTrainee,
+                                String targetTrainee) {
+    String formId = abstractForm.getId().toString();
 
-    String sourceKey = sourceTrainee + "/forms/" + formType + "/" + formId + ".json";
-    String targetKey = targetTrainee + "/forms/" + formType + "/" + formId + ".json";
-
-    log.info("sourceKey : " + sourceKey);
-    log.info("targetKey : " + targetKey);
-
-    // Get Form R from S3
-    S3Object object = amazonS3.getObject(bucketName, sourceKey);
-
-    // Set target trainee Id to S3 metadata
-    ObjectMetadata metadata = object.getObjectMetadata();
-    metadata.addUserMetadata("traineeid", targetTrainee);
-
-    // Set target trainee Id to S3 content
-    S3ObjectInputStream content = object.getObjectContent();
-    ObjectMapper mapper = new ObjectMapper();
-    Map<String, Object> form = mapper.readValue(content, Map.class);
-    form.put("traineeTisId", targetTrainee);
-
-    // Save the form under target trainee
-    final PutObjectRequest request = new PutObjectRequest(
-        bucketName,
-        targetKey,
-        new ByteArrayInputStream(mapper.writeValueAsBytes(form)),
-        metadata);
-    amazonS3.putObject(request);
-    log.info("Form R in S3 relocated from " + sourceKey + " to " + targetKey);
-
-    // Delete Form R from source trainee
-    amazonS3.deleteObject(bucketName, sourceKey);
-    log.info("Form R in S3 " + sourceKey + " deleted.");
+    if (abstractForm instanceof FormRPartA formRPartA) {
+      abstractCloudRepositoryA.save(formRPartA);
+      log.info("Form " + formId + " in S3 relocated from "
+          + sourceTrainee + " to " + targetTrainee);
+      abstractCloudRepositoryA.delete(formId, sourceTrainee);
+      log.info("Form " + formId + " in S3 deleted.");
+    } else if (abstractForm instanceof FormRPartB formRPartB) {
+      abstractCloudRepositoryB.save(formRPartB);
+      log.info("Form " + formId + " in S3 relocated from "
+          + sourceTrainee + " to " + targetTrainee);
+      abstractCloudRepositoryB.delete(formId, sourceTrainee);
+      log.info("Form " + formId + " in S3 deleted.");
+    }
   }
 }

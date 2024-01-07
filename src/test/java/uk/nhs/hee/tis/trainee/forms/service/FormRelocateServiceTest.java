@@ -23,10 +23,8 @@ package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -43,7 +41,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,12 +50,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.core.env.Environment;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
+import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartARepositoryImpl;
+import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartBRepositoryImpl;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
 @ExtendWith(MockitoExtension.class)
@@ -78,13 +76,16 @@ class FormRelocateServiceTest {
       TARGET_TRAINEE + "/forms/formr-b/" + FORM_ID_STRING + ".json";
 
 
-
   private FormRelocateService service;
 
   @Mock
   private FormRPartARepository formRPartARepositoryMock;
   @Mock
   private FormRPartBRepository formRPartBRepositoryMock;
+  @Mock
+  private S3FormRPartARepositoryImpl abstractCloudRepositoryAMock;
+  @Mock
+  private S3FormRPartBRepositoryImpl abstractCloudRepositoryBMock;
   @Mock
   private AmazonS3 amazonS3Mock;
 
@@ -107,13 +108,11 @@ class FormRelocateServiceTest {
 
   @BeforeEach
   void setUp() {
-    Environment env = mock(Environment.class);
-    when(env.getProperty("application.file-store.bucket")).thenReturn(BUCKET_NAME);
     service = new FormRelocateService(
         formRPartARepositoryMock,
         formRPartBRepositoryMock,
-        amazonS3Mock,
-        env
+        abstractCloudRepositoryAMock,
+        abstractCloudRepositoryBMock
         );
 
     formRPartA = new FormRPartA();
@@ -253,10 +252,46 @@ class FormRelocateServiceTest {
   }
 
   @Test
+  void shouldMoveUnsubmittedFormInDbAndS3() throws IOException {
+    formRPartA.setLifecycleState(LifecycleState.UNSUBMITTED);
+    when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartA));
+
+    service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE);
+
+    // should update DB
+    verify(formRPartARepositoryMock).save(formRPartACaptor.capture());
+    verifyNoInteractions(formRPartBRepositoryMock);
+
+    FormRPartA formRPartA = formRPartACaptor.getValue();
+    assertThat("Unexpected form ID.", formRPartA.getId(), is(FORM_ID));
+    assertThat("Unexpected trainee ID.", formRPartA.getTraineeTisId(), is(TARGET_TRAINEE));
+    assertThat("Unexpected forename.", formRPartA.getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", formRPartA.getSurname(), is(DEFAULT_SURNAME));
+    assertThat("Unexpected submissionDate.", formRPartA.getSubmissionDate(),
+        is(DEFAULT_SUBMISSION_DATE));
+    assertThat("Unexpected lifecycleState.", formRPartA.getLifecycleState(),
+        is(LifecycleState.UNSUBMITTED));
+
+    // should update S3
+    verify(abstractCloudRepositoryBMock, never()).save(any());
+    verify(abstractCloudRepositoryAMock).save(formRPartACaptor.capture());
+    FormRPartA s3FormRPartA = formRPartACaptor.getValue();
+    assertThat("Unexpected form ID.", s3FormRPartA.getId(), is(FORM_ID));
+    assertThat("Unexpected trainee ID.", s3FormRPartA.getTraineeTisId(),
+        is(TARGET_TRAINEE));
+    assertThat("Unexpected forename.", s3FormRPartA.getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", s3FormRPartA.getSurname(), is(DEFAULT_SURNAME));
+    assertThat("Unexpected submissionDate.", s3FormRPartA.getSubmissionDate(),
+        is(DEFAULT_SUBMISSION_DATE));
+    assertThat("Unexpected lifecycleState.", s3FormRPartA.getLifecycleState(),
+        is(LifecycleState.UNSUBMITTED));
+    verify(abstractCloudRepositoryAMock).delete(FORM_ID.toString(), DEFAULT_TRAINEE_TIS_ID);
+  }
+
+  @Test
   void shouldMoveSubmittedFormInDbAndS3() throws IOException {
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
     when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartB));
-    when(amazonS3Mock.getObject(BUCKET_NAME, SOURCE_KEY)).thenReturn(object1);
 
     service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE);
 
@@ -275,47 +310,27 @@ class FormRelocateServiceTest {
         is(LifecycleState.SUBMITTED));
 
     // should update S3
-    verify(amazonS3Mock).putObject(putRequestCaptor.capture());
-    PutObjectRequest request = putRequestCaptor.getValue();
-    assertThat("Unexpected bucket name.", request.getBucketName(), is(BUCKET_NAME));
-    assertThat("Unexpected key.", request.getKey(),
-        is(TARGET_TRAINEE + "/forms/formr-b/" + FORM_ID_STRING + ".json"));
-
-    Map<String, String> expectedMetadata = Map
-        .of("submissiondate", DEFAULT_SUBMISSION_DATE.toString(),
-            "traineeid", TARGET_TRAINEE);
-    assertThat("Unexpected metadata.", request.getMetadata().getUserMetadata().entrySet(),
-        containsInAnyOrder(expectedMetadata.entrySet().toArray(new Map.Entry[0])));
-
-    final InputStream resultInputStream = request.getInputStream();
-    Map<String, Object> resultJsonMap = mapper.readValue(resultInputStream, Map.class);
-    assertThat("Unexpected input stream.",
-        resultJsonMap.get("traineeTisId"), is(TARGET_TRAINEE));
-
-    verify(amazonS3Mock).deleteObject(BUCKET_NAME, SOURCE_KEY);
-  }
-
-  @Test
-  void shouldThrowExceptionWhenMoveSubmittedFormInS3IfFormNotFound() throws IOException {
-    when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
-    when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartB));
-    when(amazonS3Mock.getObject(BUCKET_NAME, SOURCE_KEY)).thenReturn(null);
-
-    assertThrows(ApplicationException.class, () ->
-        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE));
-
-    // should update S3
-    verify(amazonS3Mock, never()).putObject(any());
-    verify(amazonS3Mock, never()).deleteObject(any());
+    verify(abstractCloudRepositoryAMock, never()).save(any());
+    verify(abstractCloudRepositoryBMock).save(formRPartBCaptor.capture());
+    FormRPartB s3FormRPartB = formRPartBCaptor.getValue();
+    assertThat("Unexpected form ID.", s3FormRPartB.getId(), is(FORM_ID));
+    assertThat("Unexpected trainee ID.", s3FormRPartB.getTraineeTisId(),
+        is(TARGET_TRAINEE));
+    assertThat("Unexpected forename.", s3FormRPartB.getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", s3FormRPartB.getSurname(), is(DEFAULT_SURNAME));
+    assertThat("Unexpected submissionDate.", s3FormRPartB.getSubmissionDate(),
+        is(DEFAULT_SUBMISSION_DATE));
+    assertThat("Unexpected lifecycleState.", s3FormRPartB.getLifecycleState(),
+        is(LifecycleState.SUBMITTED));
+    verify(abstractCloudRepositoryBMock).delete(FORM_ID.toString(), DEFAULT_TRAINEE_TIS_ID);
   }
 
   @Test
   void shouldRollBackAndThrowExceptionWhenMoveSubmittedFormInS3Fail() throws IOException {
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
     when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartB));
-    when(amazonS3Mock.getObject(BUCKET_NAME, TARGET_KEY)).thenReturn(object1);
 
-    when(amazonS3Mock.putObject(any()))
+    when(abstractCloudRepositoryBMock.save(formRPartB))
         .thenThrow(new ApplicationException("Expected Exception"));
     assertThrows(ApplicationException.class, () ->
         service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE));
@@ -337,21 +352,18 @@ class FormRelocateServiceTest {
         is(LifecycleState.SUBMITTED));
 
     // should roll back S3
-    verify(amazonS3Mock).putObject(putRequestCaptor.capture());
-    PutObjectRequest request = putRequestCaptor.getValue();
-    assertThat("Unexpected bucket name.", request.getBucketName(), is(BUCKET_NAME));
-    assertThat("Unexpected key.", request.getKey(),
-        is(SOURCE_KEY));
-
-    Map<String, String> expectedMetadata = Map
-        .of("submissiondate", DEFAULT_SUBMISSION_DATE.toString(),
-            "traineeid", DEFAULT_TRAINEE_TIS_ID);
-    assertThat("Unexpected metadata.", request.getMetadata().getUserMetadata().entrySet(),
-        containsInAnyOrder(expectedMetadata.entrySet().toArray(new Map.Entry[0])));
-
-    final InputStream resultInputStream = request.getInputStream();
-    Map<String, Object> resultJsonMap = mapper.readValue(resultInputStream, Map.class);
-    assertThat("Unexpected input stream.",
-        resultJsonMap.get("traineeTisId"), is(DEFAULT_TRAINEE_TIS_ID));
+    verify(abstractCloudRepositoryAMock, never()).save(any());
+    verify(abstractCloudRepositoryBMock, times(2)).save(formRPartBCaptor.capture());
+    List<FormRPartB> s3FormRPartBs = formRPartBCaptor.getAllValues();
+    assertThat("Unexpected form ID.", s3FormRPartBs.get(1).getId(), is(FORM_ID));
+    assertThat("Unexpected trainee ID.", s3FormRPartBs.get(1).getTraineeTisId(),
+        is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected forename.", s3FormRPartBs.get(1).getForename(),
+        is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", s3FormRPartBs.get(1).getSurname(), is(DEFAULT_SURNAME));
+    assertThat("Unexpected submissionDate.", s3FormRPartBs.get(1).getSubmissionDate(),
+        is(DEFAULT_SUBMISSION_DATE));
+    assertThat("Unexpected lifecycleState.", s3FormRPartBs.get(1).getLifecycleState(),
+        is(LifecycleState.SUBMITTED));
   }
 }
