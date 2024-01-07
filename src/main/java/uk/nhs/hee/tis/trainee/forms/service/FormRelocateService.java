@@ -68,11 +68,11 @@ public class FormRelocateService {
   }
 
   /**
-   * Relocate Form R.
+   * Relocate Form.
    */
   public void relocateForm(String formId, String targetTrainee) {
 
-    // Get Form R from MongoDB by FormId
+    // Get Form from MongoDB by FormId
     AbstractForm form = getMoveFormInfoInDb(formId);
 
     if (form == null) {
@@ -130,7 +130,7 @@ public class FormRelocateService {
     } else if (abstractForm instanceof FormRPartB formRPartB) {
       formRPartBRepository.save(formRPartB);
     }
-    log.info("Form R with ID " + abstractForm.getId()
+    log.info("Form with ID " + abstractForm.getId()
         + " moved under " + targetTrainee + " in DB ");
   }
 
