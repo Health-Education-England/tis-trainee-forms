@@ -169,6 +169,21 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
     }
   }
 
+  /**
+   * Hard Delete the form.
+   *
+   * @param id           The id of the form
+   * @param traineeTisId the id of the trainee assigned by TIS
+   */
+  public void delete(String id, String traineeTisId) {
+    try {
+      amazonS3.deleteObject(bucketName, String.format(getObjectKeyTemplate(), traineeTisId, id));
+    } catch (Exception e) {
+      log.error("Unable to delete form {} for trainee {} from Cloud Storage", id, traineeTisId, e);
+      throw new ApplicationException("An error occurred deleting form.", e);
+    }
+  }
+
   @SuppressWarnings("unchecked")
   private Class<T> getTypeClass() {
     return (Class<T>) ((ParameterizedType) this.getClass()

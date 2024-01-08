@@ -15,7 +15,7 @@ public final class HeaderUtil {
   }
 
   /**
-   * Create a generic failure header alert.
+   * Create an entity creation failure header alert.
    *
    * @param entityName     The name of the entity.
    * @param errorKey       The message key for the error.
@@ -28,6 +28,21 @@ public final class HeaderUtil {
     HttpHeaders headers = new HttpHeaders();
     headers.add("X-traineeReference-error", "error." + errorKey);
     headers.add("X-traineeReference-params", entityName);
+    return headers;
+  }
+
+  /**
+   * Create an form relocation failure header alert.
+   *
+   * @param errorKey       The message key for the error.
+   * @param defaultMessage The default message.
+   * @return The created {@link HttpHeaders}.
+   */
+  public static HttpHeaders moveFailureAlert(String errorKey,
+                                             String defaultMessage) {
+    log.error("Form relocation failed, {}", defaultMessage);
+    HttpHeaders headers = new HttpHeaders();
+    headers.add("X-traineeForms-error", "error." + errorKey);
     return headers;
   }
 }
