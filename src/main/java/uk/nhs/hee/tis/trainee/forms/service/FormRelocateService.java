@@ -91,15 +91,15 @@ public class FormRelocateService {
 
   private AbstractForm getMoveFormInfoInDb(String formId) {
     try {
-      Optional<FormRPartA> optionalFormRPartA =
-          formRPartARepository.findById(UUID.fromString(formId));
+      UUID formUuid = UUID.fromString(formId);
+      Optional<FormRPartA> optionalFormRPartA = formRPartARepository.findById(formUuid);
+
       if (optionalFormRPartA.isPresent()) {
-        return optionalFormRPartA.get();
+        return Optional.of(optionalFormRPartA.get()).get();
       }
       else {
-        Optional<FormRPartB> optionalFormRPartB =
-            formRPartBRepository.findById(UUID.fromString(formId));
-        return optionalFormRPartB.get();
+        Optional<FormRPartB> optionalFormRPartB = formRPartBRepository.findById(formUuid);
+        return Optional.ofNullable(optionalFormRPartB.orElse(null)).get();
       }
     } catch (Exception e) {
       log.error("Fail to get form with ID " + formId + ": " + e);
