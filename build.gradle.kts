@@ -23,7 +23,7 @@ repositories {
 }
 
 dependencies {
-  implementation("com.amazonaws:aws-java-sdk-s3:1.12.629")
+  implementation("com.amazonaws:aws-java-sdk-s3:1.12.632")
   // Spring Boot starters
   implementation("org.springframework.boot:spring-boot-starter-actuator")
   implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
