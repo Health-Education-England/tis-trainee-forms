@@ -75,23 +75,17 @@ public class FormRelocateService {
     // Get Form from MongoDB by FormId
     AbstractForm form = getMoveFormInfoInDb(formId);
 
-    if (form == null) {
-      log.error("Cannot find form with ID " + formId + " from DB.");
-      throw new ApplicationException("Cannot find form with ID " + formId + " from DB.");
-    }
-    else {
-      String sourceTrainee = form.getTraineeTisId();
+    String sourceTrainee = form.getTraineeTisId();
+    try {
+      performRelocate(form, sourceTrainee, targetTrainee);
+    } catch (Exception e) {
+      log.error("Fail to relocate form to target trainee: " + e + ". Rolling back...");
       try {
-        performRelocate(form, sourceTrainee, targetTrainee);
-      } catch (Exception e) {
-        log.error("Fail to relocate form to target trainee: " + e + ". Rolling back...");
-        try {
-          performRelocate(form, targetTrainee, sourceTrainee);
-        } catch (Exception ex) {
-          log.error("Fail to roll back: " + ex);
-        }
-        throw new ApplicationException("Fail to relocate form to target trainee: " + e.toString());
+        performRelocate(form, targetTrainee, sourceTrainee);
+      } catch (Exception ex) {
+        log.error("Fail to roll back: " + ex);
       }
+      throw new ApplicationException("Fail to relocate form to target trainee: " + e.toString());
     }
   }
 

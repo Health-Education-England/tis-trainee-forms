@@ -10,6 +10,7 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.empty;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
@@ -358,5 +359,20 @@ class S3FormRPartBRepositoryImplTest {
         .thenThrow((Exception) clazz.getDeclaredConstructor(String.class).newInstance("Expected"));
     assertThrows(ApplicationException.class,
         () -> repo.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID));
+  }
+
+  @Test
+  void shouldDeleteFormRPartBFromCloudStorage() {
+    repo.delete(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID);
+    verify(s3Mock).deleteObject(bucketName, String.format("1/forms/formr-b/%s.json", DEFAULT_ID));
+  }
+
+  @Test
+  void shouldThrowExceptionWhenFormRPartBDeleteFailed() {
+    doThrow(new ApplicationException("Expected Exception"))
+        .when(s3Mock).deleteObject(any());
+
+    assertThrows(ApplicationException.class, () ->
+        repo.delete(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID));
   }
 }
