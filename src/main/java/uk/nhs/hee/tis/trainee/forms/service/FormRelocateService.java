@@ -73,33 +73,40 @@ public class FormRelocateService {
   public void relocateForm(String formId, String targetTrainee) {
 
     // Get Form from MongoDB by FormId
-    AbstractForm form = getMoveFormInfoInDb(formId);
+    Optional<AbstractForm> optionalForm = getMoveFormInfoInDb(formId);
 
-    String sourceTrainee = form.getTraineeTisId();
-    try {
-      performRelocate(form, sourceTrainee, targetTrainee);
-    } catch (Exception e) {
-      log.error("Fail to relocate form to target trainee: " + e + ". Rolling back...");
+    if (!optionalForm.isPresent()) {
+      log.error("Cannot find form with ID " + formId + " from DB.");
+      throw new ApplicationException("Cannot find form with ID " + formId + " from DB.");
+    }
+    else {
+      AbstractForm form = optionalForm.get();
+      String sourceTrainee = form.getTraineeTisId();
       try {
-        performRelocate(form, targetTrainee, sourceTrainee);
-      } catch (Exception ex) {
-        log.error("Fail to roll back: " + ex);
+        performRelocate(form, sourceTrainee, targetTrainee);
+      } catch (Exception e) {
+        log.error("Fail to relocate form to target trainee: " + e + ". Rolling back...");
+        try {
+          performRelocate(form, targetTrainee, sourceTrainee);
+        } catch (Exception ex) {
+          log.error("Fail to roll back: " + ex);
+        }
+        throw new ApplicationException("Fail to relocate form to target trainee: " + e.toString());
       }
-      throw new ApplicationException("Fail to relocate form to target trainee: " + e.toString());
     }
   }
 
-  private AbstractForm getMoveFormInfoInDb(String formId) {
+  private Optional<AbstractForm> getMoveFormInfoInDb(String formId) {
     try {
       UUID formUuid = UUID.fromString(formId);
       Optional<FormRPartA> optionalFormRPartA = formRPartARepository.findById(formUuid);
 
       if (optionalFormRPartA.isPresent()) {
-        return Optional.of(optionalFormRPartA.get()).get();
+        return Optional.of(optionalFormRPartA.get());
       }
       else {
         Optional<FormRPartB> optionalFormRPartB = formRPartBRepository.findById(formUuid);
-        return Optional.ofNullable(optionalFormRPartB.orElse(null)).get();
+        return Optional.ofNullable(optionalFormRPartB.orElse(null));
       }
     } catch (Exception e) {
       log.error("Fail to get form with ID " + formId + ": " + e);
