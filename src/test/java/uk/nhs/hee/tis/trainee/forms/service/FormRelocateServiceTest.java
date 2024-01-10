@@ -199,6 +199,19 @@ class FormRelocateServiceTest {
   }
 
   @Test
+  void shouldNotUpdateDbAndS3WhenSourceTraineeIsSameAsTargetTrainee() throws IOException {
+    formRPartA.setTraineeTisId(TARGET_TRAINEE);
+    when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartA));
+
+    assertThrows(ApplicationException.class, () ->
+        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE));
+
+    verify(formRPartARepositoryMock, never()).save(any());
+    verify(formRPartBRepositoryMock, never()).save(any());
+    verifyNoInteractions(amazonS3Mock);
+  }
+
+  @Test
   void shouldRollBackAndThrowExceptionWhenMoveDraftFormInDbFail() throws IOException {
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartA));
     when(formRPartARepositoryMock.save(formRPartA))
