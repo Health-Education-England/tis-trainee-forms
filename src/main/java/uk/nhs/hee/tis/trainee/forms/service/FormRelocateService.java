@@ -82,6 +82,13 @@ public class FormRelocateService {
     else {
       AbstractForm form = optionalForm.get();
       String sourceTrainee = form.getTraineeTisId();
+
+      if (sourceTrainee.equals(targetTrainee)) {
+        log.error("The form is attached to the trainee " + targetTrainee + " already.");
+        throw new ApplicationException(
+            "The form is attached to the trainee " + targetTrainee + " already.");
+      }
+
       try {
         performRelocate(form, sourceTrainee, targetTrainee);
       } catch (Exception e) {
@@ -145,13 +152,13 @@ public class FormRelocateService {
       log.info("Form " + formId + " in S3 relocated from "
           + sourceTrainee + " to " + targetTrainee);
       abstractCloudRepositoryA.delete(formId, sourceTrainee);
-      log.info("Form " + formId + " in S3 deleted.");
+      log.info("Form " + formId + " in S3 deleted from " + sourceTrainee + ".");
     } else if (abstractForm instanceof FormRPartB formRPartB) {
       abstractCloudRepositoryB.save(formRPartB);
       log.info("Form " + formId + " in S3 relocated from "
           + sourceTrainee + " to " + targetTrainee);
       abstractCloudRepositoryB.delete(formId, sourceTrainee);
-      log.info("Form " + formId + " in S3 deleted.");
+      log.info("Form " + formId + " in S3 deleted from " + sourceTrainee + ".");
     }
   }
 }
