@@ -4,7 +4,8 @@ mongock:
 spring:
   config:
     import: file:src/main/resources/application.yml
-  cloud:
-    aws:
-      region:
-        static: eu-west-2
+
+cloud:
+  aws:
+    region:
+      static: eu-west-2
