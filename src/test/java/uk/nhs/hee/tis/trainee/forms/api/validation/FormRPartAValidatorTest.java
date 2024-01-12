@@ -35,6 +35,12 @@ import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.EnumSource.Mode;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -196,5 +202,34 @@ class FormRPartAValidatorTest {
 
     assertThat("Unexpected number of errors.", fieldErrors.size(), is(0));
     verifyNoInteractions(formRPartARepositoryMock);
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  void shouldReturnFieldErrorWhenSubmittedFormWteMissingOrNull(String value) {
+    formRPartADto.setLifecycleState(LifecycleState.SUBMITTED);
+    formRPartADto.setWholeTimeEquivalent(value);
+    List<FieldError> fieldErrors = validator.checkSubmittedFormContent(formRPartADto);
+    assertThat("Should return an error", fieldErrors.size(), is(1));
+  }
+
+  @Test
+  void shouldNotReturnFieldErrorWhenSubmittedFormWteValid() {
+    formRPartADto.setLifecycleState(LifecycleState.SUBMITTED);
+    formRPartADto.setWholeTimeEquivalent("0.99");
+    List<FieldError> fieldErrors = validator.checkSubmittedFormContent(formRPartADto);
+    assertThat("Should not return an error", fieldErrors.size(), is(0));
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = LifecycleState.class,
+      names = {"SUBMITTED"},
+      mode = Mode.EXCLUDE)
+  void shouldNotReturnFieldErrorWhenNotSubmittedForm(LifecycleState state) {
+    formRPartADto.setLifecycleState(state);
+    formRPartADto.setWholeTimeEquivalent(null);
+    List<FieldError> fieldErrors = validator.checkSubmittedFormContent(formRPartADto);
+    assertThat("Should not return an error", fieldErrors.size(), is(0));
   }
 }
