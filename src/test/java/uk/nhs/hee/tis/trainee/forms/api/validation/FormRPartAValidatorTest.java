@@ -25,7 +25,9 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -35,6 +37,9 @@ import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -198,18 +203,12 @@ class FormRPartAValidatorTest {
     verifyNoInteractions(formRPartARepositoryMock);
   }
 
-  @Test
-  void shouldSetWteInSubmittedFormIfEmpty() {
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = {""})
+  void shouldSetWteInSubmittedFormIfMissingOrNull(String value) {
     formRPartADto.setLifecycleState(LifecycleState.SUBMITTED);
-    formRPartADto.setWholeTimeEquivalent("");
-    validator.checkSubmittedFormContent(formRPartADto);
-    assertThat("Unexpected WTE value.", formRPartADto.getWholeTimeEquivalent(), is("1"));
-  }
-
-  @Test
-  void shouldSetWteInSubmittedFormIfMissing() {
-    formRPartADto.setLifecycleState(LifecycleState.SUBMITTED);
-    formRPartADto.setWholeTimeEquivalent(null);
+    formRPartADto.setWholeTimeEquivalent(value);
     validator.checkSubmittedFormContent(formRPartADto);
     assertThat("Unexpected WTE value.", formRPartADto.getWholeTimeEquivalent(), is("1"));
   }
@@ -220,5 +219,12 @@ class FormRPartAValidatorTest {
     formRPartADto.setWholeTimeEquivalent("0.99");
     validator.checkSubmittedFormContent(formRPartADto);
     assertThat("Unexpected WTE value.", formRPartADto.getWholeTimeEquivalent(), is("0.99"));
+  }
+
+  @Test
+  void shouldNotSetWteOnDraftForm() {
+    formRPartADto.setWholeTimeEquivalent(null);
+    validator.checkSubmittedFormContent(formRPartADto);
+    assertNull(formRPartADto.getWholeTimeEquivalent(), "Unexpected WTE value.");
   }
 }

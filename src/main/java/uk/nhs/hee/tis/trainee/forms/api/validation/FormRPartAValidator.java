@@ -106,7 +106,7 @@ public class FormRPartAValidator {
 
     if (lifecycleState.equals(LifecycleState.SUBMITTED)
         && (formRPartADto.getWholeTimeEquivalent() == null
-        || formRPartADto.getWholeTimeEquivalent() == "")) {
+        || formRPartADto.getWholeTimeEquivalent().isEmpty())) {
       log.info("Form {} has no WTE, setting this to 1.", formRPartADto.getId());
       formRPartADto.setWholeTimeEquivalent("1");
     }
