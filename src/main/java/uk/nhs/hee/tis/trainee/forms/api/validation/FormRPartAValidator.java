@@ -107,9 +107,9 @@ public class FormRPartAValidator {
     if (lifecycleState.equals(LifecycleState.SUBMITTED)
         && (formRPartADto.getWholeTimeEquivalent() == null
         || formRPartADto.getWholeTimeEquivalent().isEmpty())) {
-      log.info("Form {} has no WTE, setting this to 1.", formRPartADto.getId());
-      formRPartADto.setWholeTimeEquivalent("1");
+      fieldErrors.add(new FieldError(FORMR_PARTA_DTO_NAME, "wholeTimeEquivalent",
+          "wholeTimeEquivalent is missing or empty"));
     }
-    return fieldErrors; //always empty at this point
+    return fieldErrors;
   }
 }

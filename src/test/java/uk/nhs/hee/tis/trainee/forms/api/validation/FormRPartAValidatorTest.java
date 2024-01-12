@@ -25,9 +25,7 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -206,25 +204,25 @@ class FormRPartAValidatorTest {
   @ParameterizedTest
   @NullSource
   @ValueSource(strings = {""})
-  void shouldSetWteInSubmittedFormIfMissingOrNull(String value) {
+  void shouldReturnFieldErrorWhenSubmittedFormWteMissingOrNull(String value) {
     formRPartADto.setLifecycleState(LifecycleState.SUBMITTED);
     formRPartADto.setWholeTimeEquivalent(value);
-    validator.checkSubmittedFormContent(formRPartADto);
-    assertThat("Unexpected WTE value.", formRPartADto.getWholeTimeEquivalent(), is("1"));
+    List<FieldError> fieldErrors = validator.checkSubmittedFormContent(formRPartADto);
+    assertThat("Should return an error", fieldErrors.size(), is(1));
   }
 
   @Test
-  void shouldNotSetWteInSubmittedFormIfValid() {
+  void shouldNotReturnFieldErrorWhenSubmittedFormWteValid() {
     formRPartADto.setLifecycleState(LifecycleState.SUBMITTED);
     formRPartADto.setWholeTimeEquivalent("0.99");
-    validator.checkSubmittedFormContent(formRPartADto);
-    assertThat("Unexpected WTE value.", formRPartADto.getWholeTimeEquivalent(), is("0.99"));
+    List<FieldError> fieldErrors = validator.checkSubmittedFormContent(formRPartADto);
+    assertThat("Should not return an error", fieldErrors.size(), is(0));
   }
 
   @Test
-  void shouldNotSetWteOnDraftForm() {
+  void shouldNotReturnFieldErrorWhenDraftForm() {
     formRPartADto.setWholeTimeEquivalent(null);
-    validator.checkSubmittedFormContent(formRPartADto);
-    assertNull(formRPartADto.getWholeTimeEquivalent(), "Unexpected WTE value.");
+    List<FieldError> fieldErrors = validator.checkSubmittedFormContent(formRPartADto);
+    assertThat("Should not return an error", fieldErrors.size(), is(0));
   }
 }
