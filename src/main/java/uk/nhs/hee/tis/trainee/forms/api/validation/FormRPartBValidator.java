@@ -24,17 +24,20 @@ package uk.nhs.hee.tis.trainee.forms.api.validation;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.MethodParameter;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
 
 @Component
+@Slf4j
 public class FormRPartBValidator {
 
   private static final String FORMR_PARTB_DTO_NAME = "FormRPartBDto";
@@ -54,6 +57,7 @@ public class FormRPartBValidator {
   public void validate(FormRPartBDto formRPartBDto) throws MethodArgumentNotValidException {
     List<FieldError> fieldErrors = new ArrayList<>();
     fieldErrors.addAll(checkIfDraftUnique(formRPartBDto));
+    fieldErrors.addAll(checkSubmittedFormContent(formRPartBDto));
 
     if (!fieldErrors.isEmpty()) {
       BeanPropertyBindingResult bindingResult =
@@ -90,6 +94,19 @@ public class FormRPartBValidator {
               "More than one draft form R Part B already exist"));
         }
       }
+    }
+    return fieldErrors;
+  }
+
+  /**
+   * When formR PartB Dto is submitted, its content should be validated.
+   */
+  List<FieldError> checkSubmittedFormContent(FormRPartBDto formRPartBDto) {
+    List<FieldError> fieldErrors = new ArrayList<>();
+    LifecycleState lifecycleState = formRPartBDto.getLifecycleState();
+
+    if (lifecycleState.equals(LifecycleState.SUBMITTED)) {
+      log.info("Submitted form R Part B should be validated in detail.");
     }
     return fieldErrors;
   }

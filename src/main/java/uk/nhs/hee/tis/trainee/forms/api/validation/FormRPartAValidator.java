@@ -22,6 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.api.validation;
 
 import java.lang.reflect.Method;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +35,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
+import uk.nhs.hee.tis.trainee.forms.service.FormFieldValidationService;
 
 @Component
 @Slf4j
@@ -43,8 +45,12 @@ public class FormRPartAValidator {
 
   FormRPartARepository formRPartARepository;
 
-  public FormRPartAValidator(FormRPartARepository formRPartARepository) {
+  FormFieldValidationService validatingService;
+
+  public FormRPartAValidator(FormRPartARepository formRPartARepository,
+      FormFieldValidationService validatingService) {
     this.formRPartARepository = formRPartARepository;
+    this.validatingService = validatingService;
   }
 
   /**
@@ -104,11 +110,36 @@ public class FormRPartAValidator {
     List<FieldError> fieldErrors = new ArrayList<>();
     LifecycleState lifecycleState = formRPartADto.getLifecycleState();
 
-    if (lifecycleState.equals(LifecycleState.SUBMITTED)
-        && (formRPartADto.getWholeTimeEquivalent() == null
-        || formRPartADto.getWholeTimeEquivalent().isEmpty())) {
-      fieldErrors.add(new FieldError(FORMR_PARTA_DTO_NAME, "wholeTimeEquivalent",
-          "wholeTimeEquivalent is missing or empty"));
+    if (lifecycleState.equals(LifecycleState.SUBMITTED)) {
+      //temporary - should be replaced by annotation
+      if (formRPartADto.getWholeTimeEquivalent() == null
+          || formRPartADto.getWholeTimeEquivalent().isEmpty()) {
+        fieldErrors.add(new FieldError(FORMR_PARTA_DTO_NAME, "wholeTimeEquivalent",
+            "wholeTimeEquivalent is missing or empty"));
+      }
+
+      log.info("Submitted form R Part A should be validated in detail.");
+      formRPartADto.setForename("1234567890abcdefghij1234567890abcdefghij1234567890abcdefghij1234567890abcdefghij1234567890abcdefghij1234567890abcdefghij");
+      formRPartADto.setEmail("potato");
+      formRPartADto.setSurname(null);
+      formRPartADto.setDateOfBirth(LocalDate.of(2010,1,1));
+      //TODO:
+      //@validated - group validation, useful for checking field combinations
+      //??: strategy pattern on existing dto https://stackoverflow.com/questions/38184481/business-logic-validation-patterns-advices
+      //yup regexp: https://github.com/jquense/yup/blob/master/src/string.ts
+      //create custom annotation: https://medium.com/codex/spring-boot-create-custom-annotation-to-validate-request-parameter-dcf483539d90
+      //https://blog.clairvoyantsoft.com/spring-boot-creating-a-custom-annotation-for-validation-edafbf9a97a4
+      //ui: formAValidationSchema.ts
+
+      try {
+        validatingService.validateFormRPartA(formRPartADto);
+      } catch (Exception e) {
+        //do nothing for now
+        //iterate collection, adding fieldErrors.add(new FieldError(FORMR_PARTA_DTO_NAME, <field>, <message>));
+        String gotError = e.toString();
+        log.info(gotError);
+      }
+
     }
     return fieldErrors;
   }

@@ -23,7 +23,16 @@ package uk.nhs.hee.tis.trainee.forms.dto;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import javax.validation.constraints.Email;
+import javax.validation.constraints.FutureOrPresent;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.PastOrPresent;
+import javax.validation.constraints.Pattern;
+import javax.validation.constraints.Size;
 import lombok.Data;
+import uk.nhs.hee.tis.trainee.forms.annotations.LegalAgeValidation;
+import uk.nhs.hee.tis.trainee.forms.annotations.MaxDateValidation;
+import uk.nhs.hee.tis.trainee.forms.annotations.MinDateValidation;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 /**
@@ -34,34 +43,65 @@ public class FormRPartADto {
 
   private String id;
   private String traineeTisId;
+  @Size(min = 1, max = 100)
   private String forename;
+  @Size(min = 1, max = 100)
   private String surname;
+  @Size(min = 1, max = 100)
   private String gmcNumber;
+  @Size(min = 1, max = 100)
   private String localOfficeName;
+  @LegalAgeValidation
+  @MinDateValidation
   private LocalDate dateOfBirth;
+  @Size(min = 1, max = 100)
   private String gender;
+  @Size(min = 1, max = 200)
   private String immigrationStatus;
+  @Size(min = 1, max = 100)
   private String qualification;
+  @PastOrPresent
+  @MinDateValidation
   private LocalDate dateAttained;
+  @Size(min = 1, max = 100)
   private String medicalSchool;
+  @Size(min = 1, max = 100)
   private String address1;
+  @Size(min = 1, max = 100)
   private String address2;
   private String address3;
   private String address4;
+  @Size(min = 1, max = 20)
   private String postCode;
+  @Pattern(regexp = "^\\+?(?:\\d\\s?){10,15}$", message = "Invalid telephone number")
   private String telephoneNumber;
+  @Pattern(regexp = "^\\+?(?:\\d\\s?){10,15}$", message = "Invalid telephone number")
   private String mobileNumber;
+  @Email
   private String email;
+  @NotNull
   private String declarationType;
   private Boolean isLeadingToCct;
+  @Size(min = 1, max = 100)
   private String programmeSpecialty;
+  @Size(min = 1, max = 100)
   private String cctSpecialty1;
   private String cctSpecialty2;
+  @Size(min = 1, max = 100)
   private String college;
+  @FutureOrPresent
+  @MaxDateValidation
   private LocalDate completionDate;
+  @Size(min = 1, max = 100)
   private String trainingGrade;
+  @MaxDateValidation(maxYearsInFuture = 25)
+  @MinDateValidation(maxYearsAgo = 25)
   private LocalDate startDate;
+  @Size(min = 1, max = 100)
   private String programmeMembershipType;
+  @Pattern(regexp = "^((0\\.[1-9])?|(0\\.(\\d[1-9]|[1-9]\\d))|1(\\.0{1,2})?)$",
+      message = "Training hours (Full Time Equivalent) needs to be a number less than or equal to "
+          + "1 and greater than zero (a maximum of 2 decimal places)")
   private String wholeTimeEquivalent;
   private LocalDateTime submissionDate;
   private LocalDateTime lastModifiedDate;
