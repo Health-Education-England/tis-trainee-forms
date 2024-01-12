@@ -227,9 +227,9 @@ class FormRPartAValidatorTest {
       names = {"SUBMITTED"},
       mode = Mode.EXCLUDE)
   void shouldNotReturnFieldErrorWhenNotSubmittedForm(LifecycleState state) {
-      formRPartADto.setLifecycleState(state);
-      formRPartADto.setWholeTimeEquivalent(null);
-      List<FieldError> fieldErrors = validator.checkSubmittedFormContent(formRPartADto);
-      assertThat("Should not return an error", fieldErrors.size(), is(0));
+    formRPartADto.setLifecycleState(state);
+    formRPartADto.setWholeTimeEquivalent(null);
+    List<FieldError> fieldErrors = validator.checkSubmittedFormContent(formRPartADto);
+    assertThat("Should not return an error", fieldErrors.size(), is(0));
   }
 }
