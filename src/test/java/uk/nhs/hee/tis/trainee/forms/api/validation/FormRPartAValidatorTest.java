@@ -36,6 +36,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.EnumSource.Mode;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
@@ -202,8 +205,7 @@ class FormRPartAValidatorTest {
   }
 
   @ParameterizedTest
-  @NullSource
-  @ValueSource(strings = {""})
+  @NullAndEmptySource
   void shouldReturnFieldErrorWhenSubmittedFormWteMissingOrNull(String value) {
     formRPartADto.setLifecycleState(LifecycleState.SUBMITTED);
     formRPartADto.setWholeTimeEquivalent(value);
@@ -219,10 +221,15 @@ class FormRPartAValidatorTest {
     assertThat("Should not return an error", fieldErrors.size(), is(0));
   }
 
-  @Test
-  void shouldNotReturnFieldErrorWhenDraftForm() {
-    formRPartADto.setWholeTimeEquivalent(null);
-    List<FieldError> fieldErrors = validator.checkSubmittedFormContent(formRPartADto);
-    assertThat("Should not return an error", fieldErrors.size(), is(0));
+  @ParameterizedTest
+  @EnumSource(
+      value = LifecycleState.class,
+      names = {"SUBMITTED"},
+      mode = Mode.EXCLUDE)
+  void shouldNotReturnFieldErrorWhenNotSubmittedForm(LifecycleState state) {
+      formRPartADto.setLifecycleState(state);
+      formRPartADto.setWholeTimeEquivalent(null);
+      List<FieldError> fieldErrors = validator.checkSubmittedFormContent(formRPartADto);
+      assertThat("Should not return an error", fieldErrors.size(), is(0));
   }
 }
