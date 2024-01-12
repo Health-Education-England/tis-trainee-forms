@@ -197,4 +197,28 @@ class FormRPartAValidatorTest {
     assertThat("Unexpected number of errors.", fieldErrors.size(), is(0));
     verifyNoInteractions(formRPartARepositoryMock);
   }
+
+  @Test
+  void shouldSetWteInSubmittedFormIfEmpty() {
+    formRPartADto.setLifecycleState(LifecycleState.SUBMITTED);
+    formRPartADto.setWholeTimeEquivalent("");
+    validator.checkSubmittedFormContent(formRPartADto);
+    assertThat("Unexpected WTE value.", formRPartADto.getWholeTimeEquivalent(), is("1"));
+  }
+
+  @Test
+  void shouldSetWteInSubmittedFormIfMissing() {
+    formRPartADto.setLifecycleState(LifecycleState.SUBMITTED);
+    formRPartADto.setWholeTimeEquivalent(null);
+    validator.checkSubmittedFormContent(formRPartADto);
+    assertThat("Unexpected WTE value.", formRPartADto.getWholeTimeEquivalent(), is("1"));
+  }
+
+  @Test
+  void shouldNotSetWteInSubmittedFormIfValid() {
+    formRPartADto.setLifecycleState(LifecycleState.SUBMITTED);
+    formRPartADto.setWholeTimeEquivalent("0.99");
+    validator.checkSubmittedFormContent(formRPartADto);
+    assertThat("Unexpected WTE value.", formRPartADto.getWholeTimeEquivalent(), is("0.99"));
+  }
 }

@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.api.validation;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.MethodParameter;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.BeanPropertyBindingResult;
@@ -35,6 +36,7 @@ import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
 
 @Component
+@Slf4j
 public class FormRPartAValidator {
 
   private static final String FORMR_PARTA_DTO_NAME = "FormRPartADto";
@@ -54,6 +56,7 @@ public class FormRPartAValidator {
   public void validate(FormRPartADto formRPartADto) throws MethodArgumentNotValidException {
     List<FieldError> fieldErrors = new ArrayList<>();
     fieldErrors.addAll(checkIfDraftUnique(formRPartADto));
+    fieldErrors.addAll(checkSubmittedFormContent(formRPartADto));
 
     if (!fieldErrors.isEmpty()) {
       BeanPropertyBindingResult bindingResult =
@@ -92,5 +95,21 @@ public class FormRPartAValidator {
       }
     }
     return fieldErrors;
+  }
+
+  /**
+   * When formR PartA Dto is submitted, its content should be validated.
+   */
+  List<FieldError> checkSubmittedFormContent(FormRPartADto formRPartADto) {
+    List<FieldError> fieldErrors = new ArrayList<>();
+    LifecycleState lifecycleState = formRPartADto.getLifecycleState();
+
+    if (lifecycleState.equals(LifecycleState.SUBMITTED)
+        && (formRPartADto.getWholeTimeEquivalent() == null
+        || formRPartADto.getWholeTimeEquivalent() == "")) {
+      log.info("Form {} has no WTE, setting this to 1.", formRPartADto.getId());
+      formRPartADto.setWholeTimeEquivalent("1");
+    }
+    return fieldErrors; //always empty at this point
   }
 }
