@@ -2,7 +2,6 @@ package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.amazonaws.services.s3.AmazonS3;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import javax.validation.ValidationException;
@@ -11,7 +10,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -19,28 +17,24 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 @ExtendWith(SpringExtension.class)
 @ExtendWith(MockitoExtension.class)
 @SpringBootTest
-//@ComponentScan(basePackageClasses = {Config.class})
 class FormFieldValidationServiceTest {
-
-  @MockBean
-  AmazonS3 amazonS3;
 
   @Autowired
   private FormFieldValidationService service;
 
   @Test
-  void whenInputIsValidThenThrowsNoException(){
+  void whenInputIsValidThenThrowsNoException() {
     FormRPartADto input = new FormRPartADto();
     input.setId("a3586ddb-adea-4709-9806-18e5bd200a69");
     input.setForename("David");
     input.setSurname("Short");
     input.setGmcNumber("8999999");
     input.setLocalOfficeName("Health Education England South London");
-    input.setDateOfBirth(LocalDate.of(2000,1,1));
+    input.setDateOfBirth(LocalDate.of(2000, 1, 1));
     input.setGender("Male");
     input.setImmigrationStatus("British National Overseas");
     input.setQualification("Degree");
-    input.setDateAttained(LocalDate.of(1997,10,5));
+    input.setDateAttained(LocalDate.of(1997, 10, 5));
     input.setMedicalSchool("Sheffield University");
     input.setAddress1("3rd Floor");
     input.setAddress2("3 Piccadilly Place");
@@ -55,13 +49,13 @@ class FormFieldValidationServiceTest {
     input.setCctSpecialty1("GP Returner");
     input.setCctSpecialty2("GP Returner");
     input.setCollege("Faculty of Intensive Care Medicine");
-    input.setCompletionDate(LocalDate.of(2027,7,3));
+    input.setCompletionDate(LocalDate.of(2027, 7, 3));
     input.setTrainingGrade("Core Training Year 3");
-    input.setStartDate(LocalDate.of(2024,1,9));
+    input.setStartDate(LocalDate.of(2024, 1, 9));
     input.setProgrammeMembershipType("Military");
     input.setWholeTimeEquivalent("1");
-    input.setSubmissionDate(LocalDateTime.of(2024,1,11,16,4,48));
-    input.setLastModifiedDate(LocalDateTime.of(2024,1,11,16,4,48));
+    input.setSubmissionDate(LocalDateTime.of(2024, 1, 11, 16, 4, 48));
+    input.setLastModifiedDate(LocalDateTime.of(2024, 1, 11, 16, 4, 48));
     input.setOtherImmigrationStatus("");
     input.setLifecycleState(LifecycleState.SUBMITTED);
 
@@ -71,9 +65,11 @@ class FormFieldValidationServiceTest {
   }
 
   @Test
-  void whenInputIsInvalidThenThrowsException(){
+  void whenInputIsInvalidThenThrowsException() {
     FormRPartADto input = new FormRPartADto();
-    input.setForename("0123456789abcdefghij0123456789abcdefghij0123456789abcdefghij0123456789abcdefghij0123456789abcdefghij0123456789abcdefghij");
+    input.setForename(
+        "0123456789abcdefghij0123456789abcdefghij0123456789abcdefghij0123456789abcdefghij0123456"
+            + "789abcdefghij0123456789abcdefghij");
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
