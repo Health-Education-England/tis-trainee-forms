@@ -2,6 +2,7 @@ package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.amazonaws.services.s3.AmazonS3;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import javax.validation.ValidationException;
@@ -13,6 +14,7 @@ import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -26,6 +28,9 @@ class FormFieldValidationServiceTest {
   private static final String STRING_120_CHARS = "0123456789abcdefghij0123456789abcdefghij"
       + "0123456789abcdefghij0123456789abcdefghij0123456789abcdefghij0123456789abcdefghij";
   private static final String STRING_240_CHARS = STRING_120_CHARS + STRING_120_CHARS;
+
+  @MockBean
+  AmazonS3 amazonS3;
 
   @Autowired
   private FormFieldValidationService service;
