@@ -119,10 +119,6 @@ public class FormRPartAValidator {
       }
 
       log.info("Submitted form R Part A should be validated in detail.");
-      formRPartADto.setForename("1234567890abcdefghij1234567890abcdefghij1234567890abcdefghij1234567890abcdefghij1234567890abcdefghij1234567890abcdefghij");
-      formRPartADto.setEmail("potato");
-      formRPartADto.setSurname(null);
-      formRPartADto.setDateOfBirth(LocalDate.of(2010,1,1));
       //TODO:
       //@validated - group validation, useful for checking field combinations
       //??: strategy pattern on existing dto https://stackoverflow.com/questions/38184481/business-logic-validation-patterns-advices
