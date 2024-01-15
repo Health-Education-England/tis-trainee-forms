@@ -10,16 +10,19 @@ import java.lang.annotation.Target;
 import javax.validation.Constraint;
 import javax.validation.Payload;
 
-@Target( { FIELD, PARAMETER })
+@Target({FIELD, PARAMETER})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @Constraint(validatedBy = LegalAgeValidator.class)
 public @interface LegalAgeValidation {
+
   int adultAgeYears() default 18;
+
   public String message() default "You must be at least 18 years old";
 
   //represents group of constraints
   public Class<?>[] groups() default {};
+
   //represents additional information about annotation
   public Class<? extends Payload>[] payload() default {};
 }

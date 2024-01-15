@@ -9,3 +9,5 @@ cloud:
   aws:
     sqs:
       enabled: false
+    region:
+      static: eu-west-2

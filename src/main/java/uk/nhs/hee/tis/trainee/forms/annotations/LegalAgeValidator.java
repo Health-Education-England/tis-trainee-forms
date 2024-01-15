@@ -22,7 +22,7 @@ public class LegalAgeValidator implements ConstraintValidator<LegalAgeValidation
     if (!isValid) {
       cxt.disableDefaultConstraintViolation();
       cxt.buildConstraintViolationWithTemplate(
-          "You must be at least " + this.adultAgeYears + " years old")
+              "You must be at least " + this.adultAgeYears + " years old")
           .addConstraintViolation();
     }
     return isValid;
