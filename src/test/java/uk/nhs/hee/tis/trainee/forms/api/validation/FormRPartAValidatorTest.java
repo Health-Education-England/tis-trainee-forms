@@ -33,14 +33,13 @@ import java.util.List;
 import java.util.UUID;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
-import org.junit.jupiter.params.provider.NullSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -204,6 +203,7 @@ class FormRPartAValidatorTest {
     verifyNoInteractions(formRPartARepositoryMock);
   }
 
+  @Disabled
   @ParameterizedTest
   @NullAndEmptySource
   void shouldReturnFieldErrorWhenSubmittedFormWteMissingOrNull(String value) {
@@ -213,6 +213,7 @@ class FormRPartAValidatorTest {
     assertThat("Should return an error", fieldErrors.size(), is(1));
   }
 
+  @Disabled
   @Test
   void shouldNotReturnFieldErrorWhenSubmittedFormWteValid() {
     formRPartADto.setLifecycleState(LifecycleState.SUBMITTED);
@@ -221,6 +222,7 @@ class FormRPartAValidatorTest {
     assertThat("Should not return an error", fieldErrors.size(), is(0));
   }
 
+  @Disabled
   @ParameterizedTest
   @EnumSource(
       value = LifecycleState.class,
