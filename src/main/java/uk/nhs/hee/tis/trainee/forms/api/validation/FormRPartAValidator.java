@@ -25,6 +25,7 @@ import java.lang.reflect.Method;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import javax.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.MethodParameter;
 import org.springframework.stereotype.Component;
@@ -118,24 +119,28 @@ public class FormRPartAValidator {
             "wholeTimeEquivalent is missing or empty"));
       }
 
-      log.info("Submitted form R Part A should be validated in detail.");
-      //TODO:
-      //@validated - group validation, useful for checking field combinations
-      //??: strategy pattern on existing dto https://stackoverflow.com/questions/38184481/business-logic-validation-patterns-advices
-      //yup regexp: https://github.com/jquense/yup/blob/master/src/string.ts
-      //create custom annotation: https://medium.com/codex/spring-boot-create-custom-annotation-to-validate-request-parameter-dcf483539d90
-      //https://blog.clairvoyantsoft.com/spring-boot-creating-a-custom-annotation-for-validation-edafbf9a97a4
-      //ui: formAValidationSchema.ts
-
+      formRPartADto.setSurname(null);
+      formRPartADto.setForename("afgasflhsashfaspolhfoashf;lasfklashfklhasfasfasfasfasfasfasfasfasfasfasfasfasfasfasfkljhaslhflashfkklhfslkhasflkhasfklhasfklhasfklh");
+      formRPartADto.setDeclarationType("I have been appointed to a programme leading to award of CCT");
+      formRPartADto.setCctSpecialty1(null);
       try {
         validatingService.validateFormRPartA(formRPartADto);
-      } catch (Exception e) {
-        //do nothing for now
-        //iterate collection, adding fieldErrors.add(new FieldError(FORMR_PARTA_DTO_NAME, <field>, <message>));
-        String gotError = e.toString();
-        log.info(gotError);
-      }
+      } catch (ConstraintViolationException e) {
+        log.warn("Form R Part A field validation failed for form {}", formRPartADto.getId());
 
+        e.getConstraintViolations().forEach(c -> {
+          String[] propertyPath = c.getPropertyPath().toString().split("\\.");
+          FieldError err = new FieldError(FORMR_PARTA_DTO_NAME,
+              propertyPath[propertyPath.length - 1],
+              c.getInvalidValue(),
+              false,
+              null,
+              null,
+              c.getMessage());
+
+          fieldErrors.add(err);
+        });
+      }
     }
     return fieldErrors;
   }

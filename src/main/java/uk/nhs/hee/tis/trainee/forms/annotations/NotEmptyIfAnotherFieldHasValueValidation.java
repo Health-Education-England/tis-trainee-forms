@@ -26,7 +26,7 @@ public @interface NotEmptyIfAnotherFieldHasValueValidation {
   String fieldValue();
   String dependFieldName();
 
-  String message() default "{NotEmptyIfAnotherFieldHasValueValidation.message}";
+  String message() default "This field must have a value";
   Class<?>[] groups() default {};
   Class<? extends Payload>[] payload() default {};
 

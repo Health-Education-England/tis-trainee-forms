@@ -44,7 +44,8 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 @NotEmptyIfAnotherFieldHasValueValidation(
     fieldName = "declarationType",
     fieldValue = "I have been appointed to a programme leading to award of CCT",
-    dependFieldName = "cctSpecialty1"
+    dependFieldName = "cctSpecialty1",
+    message = "This declaration type requires a CCT specialty to be selected"
 )
 public class FormRPartADto {
 

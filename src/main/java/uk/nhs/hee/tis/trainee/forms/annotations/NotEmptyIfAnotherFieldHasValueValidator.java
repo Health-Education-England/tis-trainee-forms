@@ -14,12 +14,14 @@ public class NotEmptyIfAnotherFieldHasValueValidator
   private String fieldName;
   private String expectedFieldValue;
   private String dependFieldName;
+  private String message;
 
   @Override
   public void initialize(NotEmptyIfAnotherFieldHasValueValidation annotation) {
     fieldName          = annotation.fieldName();
     expectedFieldValue = annotation.fieldValue();
     dependFieldName    = annotation.dependFieldName();
+    message            = annotation.message();
   }
 
   @Override
@@ -37,8 +39,8 @@ public class NotEmptyIfAnotherFieldHasValueValidator
       if (expectedFieldValue.equals(fieldValue)
           && (dependFieldValue == null || dependFieldValue.isEmpty())) {
         ctx.disableDefaultConstraintViolation();
-        ctx.buildConstraintViolationWithTemplate(ctx.getDefaultConstraintMessageTemplate())
-            .addNode(dependFieldName)
+        ctx.buildConstraintViolationWithTemplate(message)
+            .addPropertyNode(dependFieldName)
             .addConstraintViolation();
         return false;
       }
