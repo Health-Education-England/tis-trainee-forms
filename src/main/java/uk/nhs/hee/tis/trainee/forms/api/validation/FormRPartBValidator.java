@@ -24,17 +24,18 @@ package uk.nhs.hee.tis.trainee.forms.api.validation;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import javax.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.MethodParameter;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
+import uk.nhs.hee.tis.trainee.forms.service.FormFieldValidationService;
 
 @Component
 @Slf4j
@@ -44,8 +45,12 @@ public class FormRPartBValidator {
 
   FormRPartBRepository formRPartBRepository;
 
-  public FormRPartBValidator(FormRPartBRepository formRPartBRepository) {
+  FormFieldValidationService validatingService;
+
+  public FormRPartBValidator(FormRPartBRepository formRPartBRepository,
+      FormFieldValidationService validatingService) {
     this.formRPartBRepository = formRPartBRepository;
+    this.validatingService = validatingService;
   }
 
   /**
@@ -106,7 +111,25 @@ public class FormRPartBValidator {
     LifecycleState lifecycleState = formRPartBDto.getLifecycleState();
 
     if (lifecycleState.equals(LifecycleState.SUBMITTED)) {
-      log.info("Submitted form R Part B should be validated in detail.");
+
+      try {
+        validatingService.validateFormRPartB(formRPartBDto);
+      } catch (ConstraintViolationException e) {
+        log.warn("Form R Part B field validation failed for form {}", formRPartBDto.getId());
+
+        e.getConstraintViolations().forEach(c -> {
+          String[] propertyPath = c.getPropertyPath().toString().split("\\.");
+          FieldError err = new FieldError(FORMR_PARTB_DTO_NAME,
+              propertyPath[propertyPath.length - 1],
+              c.getInvalidValue(),
+              false,
+              null,
+              null,
+              c.getMessage());
+
+          fieldErrors.add(err);
+        });
+      }
     }
     return fieldErrors;
   }

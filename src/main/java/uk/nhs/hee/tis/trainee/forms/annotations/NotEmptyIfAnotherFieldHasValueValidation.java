@@ -12,12 +12,12 @@ import javax.validation.Constraint;
 import javax.validation.Payload;
 
 /**
- * Validates that field {@code dependFieldName} is not null or empty if
- * field {@code fieldName} has value {@code fieldValue}.
+ * Validates that field {@code dependFieldName} is not null or empty if field {@code fieldName} has
+ * value {@code fieldValue}.
  **/
 @Target({TYPE, ANNOTATION_TYPE})
 @Retention(RUNTIME)
-@Repeatable(NotEmptyIfAnotherFieldHasValueValidation.List.class) // only with hibernate-validator >= 6.x
+@Repeatable(NotEmptyIfAnotherFieldHasValueValidation.List.class)
 @Constraint(validatedBy = NotEmptyIfAnotherFieldHasValueValidator.class)
 @Documented
 public @interface NotEmptyIfAnotherFieldHasValueValidation {
@@ -32,7 +32,7 @@ public @interface NotEmptyIfAnotherFieldHasValueValidation {
   /**
    * The constraining field value.
    *
-   * @return the constraining field value.
+   * @return The constraining field value.
    */
   String fieldValue();
 
@@ -40,13 +40,14 @@ public @interface NotEmptyIfAnotherFieldHasValueValidation {
    * The dependent field, that cannot have a null or empty value if the constraining field has the
    * constraining value.
    *
-   * @return the dependent field name.
+   * @return The dependent field name.
    */
   String dependFieldName();
 
   /**
+   * The error message if the dependent value is not valid.
    *
-   * @return
+   * @return The error message.
    */
   String message() default "This field must have a value";
 
@@ -68,6 +69,7 @@ public @interface NotEmptyIfAnotherFieldHasValueValidation {
   @Retention(RUNTIME)
   @Documented
   @interface List {
+
     NotEmptyIfAnotherFieldHasValueValidation[] value();
   }
 

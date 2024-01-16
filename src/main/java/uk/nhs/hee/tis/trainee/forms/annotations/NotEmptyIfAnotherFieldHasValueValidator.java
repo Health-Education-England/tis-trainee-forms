@@ -18,19 +18,20 @@ public class NotEmptyIfAnotherFieldHasValueValidator
 
   @Override
   public void initialize(NotEmptyIfAnotherFieldHasValueValidation annotation) {
-    fieldName          = annotation.fieldName();
+    fieldName = annotation.fieldName();
     expectedFieldValue = annotation.fieldValue();
-    dependFieldName    = annotation.dependFieldName();
-    message            = annotation.message();
+    dependFieldName = annotation.dependFieldName();
+    message = annotation.message();
   }
 
   /**
    * Is the value of the dependent field valid, i.e. is it a string of length at least 1 if the
-   * fieldName field has expectedFieldValue value; otherwise it can have any value.
-   * @param value object to validate
-   * @param ctx context in which the constraint is evaluated
+   * fieldName field has expectedFieldValue value; otherwise it can be null or empty.
    *
-   * @return true if the dependent field is valid, otherwise false.
+   * @param value The object to validate.
+   * @param ctx   The context in which the constraint is evaluated.
+   *
+   * @return True if the dependent field is valid, otherwise false.
    */
   @Override
   public boolean isValid(Object value, ConstraintValidatorContext ctx) {
@@ -40,9 +41,8 @@ public class NotEmptyIfAnotherFieldHasValueValidator
     }
 
     try {
-      String fieldValue       = BeanUtils.getProperty(value, fieldName);
+      String fieldValue = BeanUtils.getProperty(value, fieldName);
       String dependFieldValue = BeanUtils.getProperty(value, dependFieldName);
-
 
       if (expectedFieldValue.equals(fieldValue)
           && (dependFieldValue == null || dependFieldValue.isEmpty())) {
