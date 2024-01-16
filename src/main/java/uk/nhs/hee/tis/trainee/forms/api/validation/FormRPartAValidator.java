@@ -22,7 +22,6 @@
 package uk.nhs.hee.tis.trainee.forms.api.validation;
 
 import java.lang.reflect.Method;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import javax.validation.ConstraintViolationException;
@@ -119,10 +118,6 @@ public class FormRPartAValidator {
             "wholeTimeEquivalent is missing or empty"));
       }
 
-      formRPartADto.setSurname(null);
-      formRPartADto.setForename("afgasflhsashfaspolhfoashf;lasfklashfklhasfasfasfasfasfasfasfasfasfasfasfasfasfasfasfkljhaslhflashfkklhfslkhasflkhasfklhasfklhasfklh");
-      formRPartADto.setDeclarationType("I have been appointed to a programme leading to award of CCT");
-      formRPartADto.setCctSpecialty1(null);
       try {
         validatingService.validateFormRPartA(formRPartADto);
       } catch (ConstraintViolationException e) {
