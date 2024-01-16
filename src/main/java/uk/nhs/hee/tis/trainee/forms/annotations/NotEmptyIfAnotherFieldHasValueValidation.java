@@ -22,13 +22,47 @@ import javax.validation.Payload;
 @Documented
 public @interface NotEmptyIfAnotherFieldHasValueValidation {
 
+  /**
+   * The constraining field.
+   *
+   * @return The constraining field.
+   */
   String fieldName();
+
+  /**
+   * The constraining field value.
+   *
+   * @return the constraining field value.
+   */
   String fieldValue();
+
+  /**
+   * The dependent field, that cannot have a null or empty value if the constraining field has the
+   * constraining value.
+   *
+   * @return the dependent field name.
+   */
   String dependFieldName();
 
+  /**
+   *
+   * @return
+   */
   String message() default "This field must have a value";
-  Class<?>[] groups() default {};
-  Class<? extends Payload>[] payload() default {};
+
+  /**
+   * The group of constraints.
+   *
+   * @return The array of constraint classes.
+   */
+  public Class<?>[] groups() default {};
+
+  /**
+   * Additional information about the annotation.
+   *
+   * @return The payload extension.
+   */
+  public Class<? extends Payload>[] payload() default {};
 
   @Target({TYPE, ANNOTATION_TYPE})
   @Retention(RUNTIME)

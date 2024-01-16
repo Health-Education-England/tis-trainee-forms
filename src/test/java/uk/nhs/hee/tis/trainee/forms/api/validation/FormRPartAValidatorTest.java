@@ -26,21 +26,28 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import javax.validation.ConstraintViolation;
+import javax.validation.ConstraintViolationException;
+import javax.validation.Path;
+import javax.validation.metadata.ConstraintDescriptor;
 import org.assertj.core.util.Lists;
+import org.hibernate.validator.internal.engine.path.PathImpl;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.validation.FieldError;
@@ -49,6 +56,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
+import uk.nhs.hee.tis.trainee.forms.service.FormFieldValidationService;
 
 @ExtendWith(MockitoExtension.class)
 class FormRPartAValidatorTest {
@@ -58,11 +66,13 @@ class FormRPartAValidatorTest {
   private static final String DEFAULT_TRAINEE_TIS_ID = "DEFAULT_TRAINEE_TIS_ID";
   private static final LifecycleState DEFAULT_LIFECYCLESTATE = LifecycleState.DRAFT;
 
-  @InjectMocks
   FormRPartAValidator validator;
 
   @Mock
   private FormRPartARepository formRPartARepositoryMock;
+
+  @Mock
+  private FormFieldValidationService formFieldValidationServiceMock;
 
   private FormRPartADto formRPartADto;
 
@@ -74,6 +84,10 @@ class FormRPartAValidatorTest {
     formRPartADto = new FormRPartADto();
     formRPartADto.setId(DEFAULT_ID.toString());
     formRPartADto.setLifecycleState(DEFAULT_LIFECYCLESTATE);
+
+    formRPartARepositoryMock = mock(FormRPartARepository.class);
+    formFieldValidationServiceMock = mock(FormFieldValidationService.class);
+    validator = new FormRPartAValidator(formRPartARepositoryMock, formFieldValidationServiceMock);
   }
 
   @Test
@@ -203,7 +217,6 @@ class FormRPartAValidatorTest {
     verifyNoInteractions(formRPartARepositoryMock);
   }
 
-  @Disabled
   @ParameterizedTest
   @NullAndEmptySource
   void shouldReturnFieldErrorWhenSubmittedFormWteMissingOrNull(String value) {
@@ -213,7 +226,6 @@ class FormRPartAValidatorTest {
     assertThat("Should return an error", fieldErrors.size(), is(1));
   }
 
-  @Disabled
   @Test
   void shouldNotReturnFieldErrorWhenSubmittedFormWteValid() {
     formRPartADto.setLifecycleState(LifecycleState.SUBMITTED);
@@ -222,7 +234,6 @@ class FormRPartAValidatorTest {
     assertThat("Should not return an error", fieldErrors.size(), is(0));
   }
 
-  @Disabled
   @ParameterizedTest
   @EnumSource(
       value = LifecycleState.class,
@@ -233,5 +244,92 @@ class FormRPartAValidatorTest {
     formRPartADto.setWholeTimeEquivalent(null);
     List<FieldError> fieldErrors = validator.checkSubmittedFormContent(formRPartADto);
     assertThat("Should not return an error", fieldErrors.size(), is(0));
+  }
+
+  @Test
+  void shouldAddSubmittedFormFieldViolationsToErrors() {
+    String violationMessage = "Constraint violation";
+    String dottedPath = "class.instance.field";
+    String invalidValue = "invalid value";
+
+    ConstraintViolation<FormRPartADto> cv
+        = createDummyConstraintViolation(violationMessage, dottedPath, invalidValue);
+
+    formRPartADto.setWholeTimeEquivalent("0.99");
+    ConstraintViolationException e
+        = new ConstraintViolationException("violation message", Set.of(cv));
+    doThrow(e).when(formFieldValidationServiceMock).validateFormRPartA(any());
+
+    formRPartADto.setLifecycleState(LifecycleState.SUBMITTED);
+    List<FieldError> fieldErrors = validator.checkSubmittedFormContent(formRPartADto);
+    assertThat("Should return an error", fieldErrors.size(), is(1));
+    FieldError fieldError = fieldErrors.get(0);
+    assertThat("Should include the violation message", fieldError.getDefaultMessage(),
+        is(violationMessage));
+    assertThat("Should include the final path entry as the field", fieldError.getField(),
+        is("field"));
+    assertThat("Should include the invalid value", fieldError.getRejectedValue(),
+        is("invalid value"));
+  }
+
+  private ConstraintViolation<FormRPartADto> createDummyConstraintViolation(String message,
+      String dottedPath, String invalidValue) {
+    ConstraintViolation<FormRPartADto> cv = new ConstraintViolation<>() {
+      @Override
+      public String getMessage() {
+        return message;
+      }
+
+      @Override
+      public String getMessageTemplate() {
+        return null;
+      }
+
+      @Override
+      public FormRPartADto getRootBean() {
+        return null;
+      }
+
+      @Override
+      public Class<FormRPartADto> getRootBeanClass() {
+        return null;
+      }
+
+      @Override
+      public Object getLeafBean() {
+        return null;
+      }
+
+      @Override
+      public Object[] getExecutableParameters() {
+        return new Object[0];
+      }
+
+      @Override
+      public Object getExecutableReturnValue() {
+        return null;
+      }
+
+      @Override
+      public Path getPropertyPath() {
+        return PathImpl.createPathFromString(dottedPath);
+      }
+
+      @Override
+      public Object getInvalidValue() {
+        return invalidValue;
+      }
+
+      @Override
+      public ConstraintDescriptor<?> getConstraintDescriptor() {
+        return null;
+      }
+
+      @Override
+      public <U> U unwrap(Class<U> type) {
+        return null;
+      }
+    };
+    return cv;
   }
 }

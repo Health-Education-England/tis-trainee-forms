@@ -24,6 +24,14 @@ public class NotEmptyIfAnotherFieldHasValueValidator
     message            = annotation.message();
   }
 
+  /**
+   * Is the value of the dependent field valid, i.e. is it a string of length at least 1 if the
+   * fieldName field has expectedFieldValue value; otherwise it can have any value.
+   * @param value object to validate
+   * @param ctx context in which the constraint is evaluated
+   *
+   * @return true if the dependent field is valid, otherwise false.
+   */
   @Override
   public boolean isValid(Object value, ConstraintValidatorContext ctx) {
 
