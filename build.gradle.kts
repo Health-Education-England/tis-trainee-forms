@@ -53,6 +53,9 @@ dependencies {
 
   // SQS
   implementation("io.awspring.cloud:spring-cloud-starter-aws-messaging:2.4.4")
+
+  //Bean utils
+  implementation("commons-beanutils:commons-beanutils:1.9.4")
 }
 
 checkstyle {

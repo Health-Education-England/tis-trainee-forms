@@ -34,12 +34,18 @@ import lombok.Data;
 import uk.nhs.hee.tis.trainee.forms.annotations.LegalAgeValidation;
 import uk.nhs.hee.tis.trainee.forms.annotations.MaxDateValidation;
 import uk.nhs.hee.tis.trainee.forms.annotations.MinDateValidation;
+import uk.nhs.hee.tis.trainee.forms.annotations.NotEmptyIfAnotherFieldHasValueValidation;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 /**
  * A DTO for FormRPartA entity Holds the fields for the trainee's form R partA.
  */
 @Data
+@NotEmptyIfAnotherFieldHasValueValidation(
+    fieldName = "declarationType",
+    fieldValue = "I have been appointed to a programme leading to award of CCT",
+    dependFieldName = "cctSpecialty1"
+)
 public class FormRPartADto {
 
   private String id;
@@ -123,8 +129,7 @@ public class FormRPartADto {
   @Size(min = 1, max = 100)
   private String programmeSpecialty;
 
-  @NotNull
-  @Size(min = 1, max = 100)
+  @Size(min = 0, max = 100)
   private String cctSpecialty1;
 
   private String cctSpecialty2;

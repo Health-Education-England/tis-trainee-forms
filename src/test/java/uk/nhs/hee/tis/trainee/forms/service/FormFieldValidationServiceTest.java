@@ -240,9 +240,22 @@ class FormFieldValidationServiceTest {
   @ValueSource(strings = {STRING_120_CHARS})
   void whenCctSpecialty1IsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
+    input.setDeclarationType("I have been appointed to a programme leading to award of CCT");
     input.setCctSpecialty1(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  void whenCctSpecialty1IsNotConstrainedThenDoesNotThrowException(String str) {
+    FormRPartADto input = validForm();
+    input.setDeclarationType("another declaration type");
+    input.setCctSpecialty1(str);
+
+    service.validateFormRPartA(input);
+
+    // then no exception
   }
 
   @ParameterizedTest
