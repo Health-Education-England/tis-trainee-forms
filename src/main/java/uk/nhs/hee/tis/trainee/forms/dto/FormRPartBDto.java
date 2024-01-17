@@ -24,8 +24,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import javax.validation.Valid;
+import javax.validation.constraints.AssertTrue;
 import javax.validation.constraints.Email;
 import javax.validation.constraints.FutureOrPresent;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.PastOrPresent;
@@ -40,7 +43,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
  */
 @Data
 @NotEmptyIfAnotherFieldHasValueValidation(
-    fieldName = "haveCurrentDeclarations",
+    fieldName = "haveCurrentUnresolvedDeclarations",
     fieldValue = "true",
     dependFieldName = "currentDeclarationSummary",
     message = "A summary of new unresolved declarations is required"
@@ -50,6 +53,30 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
     fieldValue = "true",
     dependFieldName = "previousDeclarationSummary",
     message = "A summary of previous unresolved declarations is required"
+)
+@NotEmptyIfAnotherFieldHasValueValidation(
+    fieldName = "haveCurrentDeclarations",
+    fieldValue = "true",
+    dependFieldName = "currentDeclarations",
+    message = "At least one declaration is required"
+)
+@NotEmptyIfAnotherFieldHasValueValidation(
+    fieldName = "havePreviousDeclarations",
+    fieldValue = "true",
+    dependFieldName = "previousDeclarations",
+    message = "At least one declaration is required"
+)
+@NotEmptyIfAnotherFieldHasValueValidation(
+    fieldName = "isWarned",
+    fieldValue = "true",
+    dependFieldName = "isComplying",
+    message = "You must indicate compliance with these conditions/undertakings"
+)
+@NotEmptyIfAnotherFieldHasValueValidation(
+    fieldName = "haveCovidDeclarations",
+    fieldValue = "true",
+    dependFieldName = "covidDeclarationDto",
+    message = "Covid declaration details are required"
 )
 public class FormRPartBDto {
 
@@ -96,46 +123,99 @@ public class FormRPartBDto {
   private String dualSpecialty;
 
   @Valid
+  @NotNull
   @Size(min = 1)
   private List<WorkDto> work;
 
+  @NotNull
+  @Min(0)
+  @Max(9999)
   private Integer sicknessAbsence;
+
+  @NotNull
+  @Min(0)
+  @Max(9999)
   private Integer parentalLeave;
+
+  @NotNull
+  @Min(0)
+  @Max(9999)
   private Integer careerBreaks;
+
+  @NotNull
+  @Min(0)
+  @Max(9999)
   private Integer paidLeave;
+
+  @NotNull
+  @Min(0)
+  @Max(9999)
   private Integer unauthorisedLeave;
+
+  @NotNull
+  @Min(0)
+  @Max(9999)
   private Integer otherLeave;
+
+  @NotNull
+  @Min(0)
+  @Max(9999)
   private Integer totalLeave;
+
+  @NotNull
+  @AssertTrue
   private Boolean isHonest;
+
+  @NotNull
+  @AssertTrue
   private Boolean isHealthy;
+
+  @NotNull
   private Boolean isWarned;
+
+  //when isWarned is true then isComplying must be true
+  @AssertTrue
   private Boolean isComplying;
+
   private String healthStatement;
 
   @NotNull
   private Boolean havePreviousDeclarations;
 
   @Valid
+  //when havePreviousDeclarations = true then size must be >= 1
   private List<DeclarationDto> previousDeclarations;
 
-  //when havePreviousDeclarations = true then required
+  @NotNull
+  private Boolean havePreviousUnresolvedDeclarations;
+
+  //when havePreviousUnresolvedDeclarations = true then this is required
   private String previousDeclarationSummary;
 
   @NotNull
   private Boolean haveCurrentDeclarations;
 
   @Valid
+  //when haveCurrentsDeclarations = true then size must be >= 1
   private List<DeclarationDto> currentDeclarations;
 
-  //when haveCurrentDeclarations = true then required
+  @NotNull
+  private Boolean haveCurrentUnresolvedDeclarations;
+
+  //when haveCurrentUnresolvedDeclarations = true then this is required
   private String currentDeclarationSummary;
 
   private String compliments;
+
   private LocalDateTime submissionDate;
+
   private LocalDateTime lastModifiedDate;
+
   private LifecycleState lifecycleState;
+
+  @NotNull
   private Boolean haveCovidDeclarations;
+
+  @Valid
   private CovidDeclarationDto covidDeclarationDto;
-  private Boolean haveCurrentUnresolvedDeclarations;
-  private Boolean havePreviousUnresolvedDeclarations;
 }

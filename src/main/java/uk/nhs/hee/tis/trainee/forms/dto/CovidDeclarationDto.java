@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.dto;
 import lombok.Data;
 
 @Data
+//Note: validation constraints not implemented here as haveCovidDeclarations now always false
 public class CovidDeclarationDto {
 
   private String selfRateForCovid;
