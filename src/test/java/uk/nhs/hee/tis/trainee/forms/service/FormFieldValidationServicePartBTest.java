@@ -32,10 +32,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.mongodb.core.aggregation.ArrayOperators.In;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
@@ -45,11 +47,12 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 @SpringBootTest
 class FormFieldValidationServicePartBTest {
 
-  private static final String STRING_9_CHARS = "012345678";
   private static final String STRING_21_CHARS = "0123456789abcdefghij0";
   private static final String STRING_128_CHARS = "0123456789abcdefghij0123456789abcdefghij"
       + "0123456789abcdefghij0123456789abcdefghij0123456789abcdefghij0123456789abcdefghij01234567";
   private static final String STRING_256_CHARS = STRING_128_CHARS + STRING_128_CHARS;
+  private static final int INT_NEGATIVE = -1;
+  private static final int INT_5_DIGITS = 10000;
 
   @MockBean
   AmazonS3 amazonS3;
@@ -162,6 +165,203 @@ class FormFieldValidationServicePartBTest {
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
 
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(ints = {INT_NEGATIVE, INT_5_DIGITS})
+  void whenSicknessAbsenceIsInvalidThenThrowsException(Integer val) {
+    FormRPartBDto input = validForm();
+    input.setSicknessAbsence(val);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(ints = {INT_NEGATIVE, INT_5_DIGITS})
+  void whenParentalLeaveIsInvalidThenThrowsException(Integer val) {
+    FormRPartBDto input = validForm();
+    input.setParentalLeave(val);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(ints = {INT_NEGATIVE, INT_5_DIGITS})
+  void whenCareerBreaksIsInvalidThenThrowsException(Integer val) {
+    FormRPartBDto input = validForm();
+    input.setCareerBreaks(val);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(ints = {INT_NEGATIVE, INT_5_DIGITS})
+  void whenPaidLeaveIsInvalidThenThrowsException(Integer val) {
+    FormRPartBDto input = validForm();
+    input.setPaidLeave(val);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(ints = {INT_NEGATIVE, INT_5_DIGITS})
+  void whenUnauthorisedLeaveIsInvalidThenThrowsException(Integer val) {
+    FormRPartBDto input = validForm();
+    input.setUnauthorisedLeave(val);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(ints = {INT_NEGATIVE, INT_5_DIGITS})
+  void whenOtherLeaveIsInvalidThenThrowsException(Integer val) {
+    FormRPartBDto input = validForm();
+    input.setOtherLeave(val);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(ints = {INT_NEGATIVE, INT_5_DIGITS})
+  void whenTotalLeaveIsInvalidThenThrowsException(Integer val) {
+    FormRPartBDto input = validForm();
+    input.setTotalLeave(val);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(booleans = {false})
+  void whenIsHonestIsInvalidThenThrowsException(Boolean val) {
+    FormRPartBDto input = validForm();
+    input.setIsHonest(val);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(booleans = {false})
+  void whenIsHealthyIsInvalidThenThrowsException(Boolean val) {
+    FormRPartBDto input = validForm();
+    input.setIsHealthy(val);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @Test
+  void whenIsWarnedIsInvalidThenThrowsException() {
+    FormRPartBDto input = validForm();
+    input.setIsWarned(null);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(booleans = {false})
+  void whenIsComplyingIsInvalidThenThrowsException(Boolean val) {
+    FormRPartBDto input = validForm();
+    input.setIsWarned(true);
+    input.setIsComplying(val);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @Test
+  void whenIsComplyingIsNotRequiredThenDoesNotThrowException() {
+    FormRPartBDto input = validForm();
+    input.setIsWarned(false);
+    input.setIsComplying(null);
+
+    service.validateFormRPartB(input);
+
+    // then no exception
+  }
+
+  @Test
+  void whenHavePreviousDeclarationsIsInvalidThenThrowsException() {
+    FormRPartBDto input = validForm();
+    input.setHavePreviousDeclarations(null);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @Test
+  void whenHavePreviousUnresolvedDeclarationsIsInvalidThenThrowsException() {
+    FormRPartBDto input = validForm();
+    input.setHavePreviousUnresolvedDeclarations(null);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @Test
+  void whenHaveCurrentDeclarationsIsInvalidThenThrowsException() {
+    FormRPartBDto input = validForm();
+    input.setHaveCurrentDeclarations(null);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @Test
+  void whenHaveCurrentUnresolvedDeclarationsIsInvalidThenThrowsException() {
+    FormRPartBDto input = validForm();
+    input.setHaveCurrentUnresolvedDeclarations(null);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @Test
+  void whenPreviousDeclarationsIsInvalidThenThrowsException() {
+    FormRPartBDto input = validForm();
+    input.setHavePreviousDeclarations(true);
+    input.setPreviousDeclarations(null);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+
+    input.setPreviousDeclarations(new ArrayList<>());
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @Test
+  void whenCurrentDeclarationsIsInvalidThenThrowsException() {
+    FormRPartBDto input = validForm();
+    input.setHaveCurrentDeclarations(true);
+    input.setCurrentDeclarations(null);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+
+    input.setCurrentDeclarations(new ArrayList<>());
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  void whenPreviousDeclarationSummaryIsInvalidThenThrowsException(String str) {
+    FormRPartBDto input = validForm();
+    input.setHavePreviousUnresolvedDeclarations(true);
+    input.setPreviousDeclarationSummary(str);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  void whenCurrentDeclarationSummaryIsInvalidThenThrowsException(String str) {
+    FormRPartBDto input = validForm();
+    input.setHaveCurrentUnresolvedDeclarations(true);
+    input.setCurrentDeclarationSummary(str);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
 
   /**
    * Helper function to return a validly completed FormR PartB.

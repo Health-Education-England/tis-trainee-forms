@@ -213,9 +213,9 @@ public class FormRPartBDto {
 
   private LifecycleState lifecycleState;
 
-  @NotNull
   private Boolean haveCovidDeclarations;
 
+  //when haveCovidDeclarations = true then this is required
   @Valid
   private CovidDeclarationDto covidDeclarationDto;
 }
