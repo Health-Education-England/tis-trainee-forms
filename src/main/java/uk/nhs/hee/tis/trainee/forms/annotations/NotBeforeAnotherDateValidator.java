@@ -62,14 +62,19 @@ public class NotBeforeAnotherDateValidator
       boolean isOk = true;
       String fieldValue = BeanUtils.getProperty(value, fieldName);
       String dependFieldValue = BeanUtils.getProperty(value, dependFieldName);
-      if (fieldValue == null) return true;
-      if (dependFieldValue == null) isOk = false;
+      if (fieldValue == null) {
+        return true;
+      }
+      if (dependFieldValue == null) {
+        isOk = false;
+      }
       if (isOk) {
         LocalDate fieldDate = LocalDate.parse(fieldValue);
         LocalDate dependFieldDate = LocalDate.parse(dependFieldValue);
 
-        if (dependFieldDate.isBefore(fieldDate))
+        if (dependFieldDate.isBefore(fieldDate)) {
           isOk = false;
+        }
       }
       if (!isOk) {
         ctx.disableDefaultConstraintViolation();
