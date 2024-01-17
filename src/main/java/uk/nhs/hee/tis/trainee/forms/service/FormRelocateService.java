@@ -148,12 +148,33 @@ public class FormRelocateService {
     String formId = abstractForm.getId().toString();
 
     if (abstractForm instanceof FormRPartA formRPartA) {
+      // set LifecycleState same as S3 form
+      Optional<FormRPartA> s3Form =
+          abstractCloudRepositoryA.findByIdAndTraineeTisId(formId, sourceTrainee);
+      if (!s3Form.isPresent()) {
+        log.error("Fail to get form from S3 with ID " + formId);
+        throw new ApplicationException("Fail to get form from S3  with ID " + formId);
+      }
+      formRPartA.setLifecycleState(s3Form.get().getLifecycleState());
+
+      // Create form under new trainee and delete it from the old trainee
       abstractCloudRepositoryA.save(formRPartA);
       log.info("Form " + formId + " in S3 relocated from "
           + sourceTrainee + " to " + targetTrainee);
       abstractCloudRepositoryA.delete(formId, sourceTrainee);
       log.info("Form " + formId + " in S3 deleted from " + sourceTrainee + ".");
+
     } else if (abstractForm instanceof FormRPartB formRPartB) {
+      // set LifecycleState same as S3 form
+      Optional<FormRPartB> s3Form =
+          abstractCloudRepositoryB.findByIdAndTraineeTisId(formId, sourceTrainee);
+      if (!s3Form.isPresent()) {
+        log.error("Fail to get form from S3 with ID " + formId);
+        throw new ApplicationException("Fail to get form from S3  with ID " + formId);
+      }
+      formRPartB.setLifecycleState(s3Form.get().getLifecycleState());
+
+      // Create form under new trainee and delete it from the old trainee
       abstractCloudRepositoryB.save(formRPartB);
       log.info("Form " + formId + " in S3 relocated from "
           + sourceTrainee + " to " + targetTrainee);
