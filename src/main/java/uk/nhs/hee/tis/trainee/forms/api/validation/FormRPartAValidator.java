@@ -124,9 +124,8 @@ public class FormRPartAValidator {
         log.warn("Form R Part A field validation failed for form {}", formRPartADto.getId());
 
         e.getConstraintViolations().forEach(c -> {
-          String[] propertyPath = c.getPropertyPath().toString().split("\\.");
           FieldError err = new FieldError(FORMR_PARTA_DTO_NAME,
-              propertyPath[propertyPath.length - 1],
+              c.getPropertyPath().toString(),
               c.getInvalidValue(),
               false,
               null,

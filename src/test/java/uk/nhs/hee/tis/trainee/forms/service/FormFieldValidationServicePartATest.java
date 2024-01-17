@@ -21,7 +21,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 @ExtendWith(SpringExtension.class)
 @SpringBootTest
-class FormFieldValidationServiceTest {
+class FormFieldValidationServicePartATest {
 
   private static final String STRING_9_CHARS = "012345678";
   private static final String STRING_21_CHARS = "0123456789abcdefghij0";
@@ -343,11 +343,11 @@ class FormFieldValidationServiceTest {
     input.setSurname("Short");
     input.setGmcNumber("8999999");
     input.setLocalOfficeName("Health Education England South London");
-    input.setDateOfBirth(LocalDate.of(2000, 1, 1));
+    input.setDateOfBirth(LocalDate.now().minusYears(20L));
     input.setGender("Male");
     input.setImmigrationStatus("British National Overseas");
     input.setQualification("Degree");
-    input.setDateAttained(LocalDate.of(1997, 10, 5));
+    input.setDateAttained(LocalDate.now().minusYears(5L));
     input.setMedicalSchool("Sheffield University");
     input.setAddress1("3rd Floor");
     input.setAddress2("3 Piccadilly Place");
@@ -362,13 +362,13 @@ class FormFieldValidationServiceTest {
     input.setCctSpecialty1("GP Returner");
     input.setCctSpecialty2("GP Returner");
     input.setCollege("Faculty of Intensive Care Medicine");
-    input.setCompletionDate(LocalDate.of(2027, 7, 3));
+    input.setCompletionDate(LocalDate.now().plusYears(5));
     input.setTrainingGrade("Core Training Year 3");
-    input.setStartDate(LocalDate.of(2024, 1, 9));
+    input.setStartDate(LocalDate.now());
     input.setProgrammeMembershipType("Military");
     input.setWholeTimeEquivalent("1");
-    input.setSubmissionDate(LocalDateTime.of(2024, 1, 11, 16, 4, 48));
-    input.setLastModifiedDate(LocalDateTime.of(2024, 1, 11, 16, 4, 48));
+    input.setSubmissionDate(LocalDateTime.now());
+    input.setLastModifiedDate(LocalDateTime.now());
     input.setOtherImmigrationStatus("");
     input.setLifecycleState(LifecycleState.SUBMITTED);
 

@@ -266,8 +266,8 @@ class FormRPartAValidatorTest {
     FieldError fieldError = fieldErrors.get(0);
     assertThat("Should include the violation message", fieldError.getDefaultMessage(),
         is(violationMessage));
-    assertThat("Should include the final path entry as the field", fieldError.getField(),
-        is("field"));
+    assertThat("Should include the path as the field", fieldError.getField(),
+        is(dottedPath));
     assertThat("Should include the invalid value", fieldError.getRejectedValue(),
         is("invalid value"));
   }

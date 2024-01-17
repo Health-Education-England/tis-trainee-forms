@@ -22,6 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.api.validation;
 
 import java.lang.reflect.Method;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import javax.validation.ConstraintViolationException;
@@ -31,6 +32,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import uk.nhs.hee.tis.trainee.forms.dto.DeclarationDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
@@ -111,16 +113,14 @@ public class FormRPartBValidator {
     LifecycleState lifecycleState = formRPartBDto.getLifecycleState();
 
     if (lifecycleState.equals(LifecycleState.SUBMITTED)) {
-
       try {
         validatingService.validateFormRPartB(formRPartBDto);
       } catch (ConstraintViolationException e) {
         log.warn("Form R Part B field validation failed for form {}", formRPartBDto.getId());
 
         e.getConstraintViolations().forEach(c -> {
-          String[] propertyPath = c.getPropertyPath().toString().split("\\.");
           FieldError err = new FieldError(FORMR_PARTB_DTO_NAME,
-              propertyPath[propertyPath.length - 1],
+              c.getPropertyPath().toString(),
               c.getInvalidValue(),
               false,
               null,

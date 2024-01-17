@@ -23,19 +23,42 @@ package uk.nhs.hee.tis.trainee.forms.dto;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 import lombok.Data;
+import uk.nhs.hee.tis.trainee.forms.annotations.NotEmptyIfAnotherFieldHasValueValidation;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 /**
  * A DTO for FormRPartB entity Holds the fields for the trainee's form R partB.
  */
 @Data
+@NotEmptyIfAnotherFieldHasValueValidation(
+    fieldName = "haveCurrentDeclarations",
+    fieldValue = "true",
+    dependFieldName = "currentDeclarationSummary",
+    message = "A summary of new unresolved declarations is required"
+)
+@NotEmptyIfAnotherFieldHasValueValidation(
+    fieldName = "havePreviousUnresolvedDeclarations",
+    fieldValue = "true",
+    dependFieldName = "previousDeclarationSummary",
+    message = "A summary of previous unresolved declarations is required"
+)
 public class FormRPartBDto {
 
   private String id;
   private String traineeTisId;
+
+  @NotNull
+  @Size(min = 1, max = 100)
   private String forename;
+
+  @NotNull
+  @Size(min = 1, max = 100)
   private String surname;
+
   private String gmcNumber;
   private String email;
   private String localOfficeName;
@@ -58,12 +81,25 @@ public class FormRPartBDto {
   private Boolean isWarned;
   private Boolean isComplying;
   private String healthStatement;
+
+  @NotNull
   private Boolean havePreviousDeclarations;
+
+  @Valid
   private List<DeclarationDto> previousDeclarations;
+
+  //when havePreviousDeclarations = true then required
   private String previousDeclarationSummary;
+
+  @NotNull
   private Boolean haveCurrentDeclarations;
+
+  @Valid
   private List<DeclarationDto> currentDeclarations;
+
+  //when haveCurrentDeclarations = true then required
   private String currentDeclarationSummary;
+
   private String compliments;
   private LocalDateTime submissionDate;
   private LocalDateTime lastModifiedDate;

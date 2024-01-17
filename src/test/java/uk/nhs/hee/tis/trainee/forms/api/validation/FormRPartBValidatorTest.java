@@ -26,15 +26,27 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import javax.validation.ConstraintViolation;
+import javax.validation.ConstraintViolationException;
+import javax.validation.Path;
+import javax.validation.metadata.ConstraintDescriptor;
 import org.assertj.core.util.Lists;
+import org.hibernate.validator.internal.engine.path.PathImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -44,6 +56,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
+import uk.nhs.hee.tis.trainee.forms.service.FormFieldValidationService;
 
 @ExtendWith(MockitoExtension.class)
 class FormRPartBValidatorTest {
@@ -59,6 +72,9 @@ class FormRPartBValidatorTest {
   @Mock
   private FormRPartBRepository formRPartBRepositoryMock;
 
+  @Mock
+  private FormFieldValidationService formFieldValidationServiceMock;
+
   private FormRPartBDto formRPartBDto;
 
   /**
@@ -69,6 +85,10 @@ class FormRPartBValidatorTest {
     formRPartBDto = new FormRPartBDto();
     formRPartBDto.setId(DEFAULT_ID.toString());
     formRPartBDto.setLifecycleState(DEFAULT_LIFECYCLESTATE);
+
+    formRPartBRepositoryMock = mock(FormRPartBRepository.class);
+    formFieldValidationServiceMock = mock(FormFieldValidationService.class);
+    validator = new FormRPartBValidator(formRPartBRepositoryMock, formFieldValidationServiceMock);
   }
 
   @Test
@@ -196,5 +216,103 @@ class FormRPartBValidatorTest {
 
     assertThat("Unexpected number of errors.", fieldErrors.size(), is(0));
     verifyNoInteractions(formRPartBRepositoryMock);
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = LifecycleState.class,
+      names = {"SUBMITTED"},
+      mode = Mode.EXCLUDE)
+  void shouldNotReturnFieldErrorWhenNotSubmittedForm(LifecycleState state) {
+    formRPartBDto.setLifecycleState(state);
+    formRPartBDto.setSurname(null);
+    List<FieldError> fieldErrors = validator.checkSubmittedFormContent(formRPartBDto);
+    assertThat("Should not return an error", fieldErrors.size(), is(0));
+  }
+
+  @Test
+  void shouldAddSubmittedFormFieldViolationsToErrors() {
+    String violationMessage = "Constraint violation";
+    String dottedPath = "class.instance.field";
+    String invalidValue = "invalid value";
+
+    ConstraintViolation<FormRPartBDto> cv
+        = createDummyConstraintViolation(violationMessage, dottedPath, invalidValue);
+
+    ConstraintViolationException e
+        = new ConstraintViolationException("violation message", Set.of(cv));
+    doThrow(e).when(formFieldValidationServiceMock).validateFormRPartB(any());
+
+    formRPartBDto.setLifecycleState(LifecycleState.SUBMITTED);
+    List<FieldError> fieldErrors = validator.checkSubmittedFormContent(formRPartBDto);
+    assertThat("Should return an error", fieldErrors.size(), is(1));
+    FieldError fieldError = fieldErrors.get(0);
+    assertThat("Should include the violation message", fieldError.getDefaultMessage(),
+        is(violationMessage));
+    assertThat("Should include the path as the field", fieldError.getField(),
+        is(dottedPath));
+    assertThat("Should include the invalid value", fieldError.getRejectedValue(),
+        is("invalid value"));
+  }
+
+  private ConstraintViolation<FormRPartBDto> createDummyConstraintViolation(String message,
+      String dottedPath, String invalidValue) {
+    ConstraintViolation<FormRPartBDto> cv = new ConstraintViolation<>() {
+      @Override
+      public String getMessage() {
+        return message;
+      }
+
+      @Override
+      public String getMessageTemplate() {
+        return null;
+      }
+
+      @Override
+      public FormRPartBDto getRootBean() {
+        return null;
+      }
+
+      @Override
+      public Class<FormRPartBDto> getRootBeanClass() {
+        return null;
+      }
+
+      @Override
+      public Object getLeafBean() {
+        return null;
+      }
+
+      @Override
+      public Object[] getExecutableParameters() {
+        return new Object[0];
+      }
+
+      @Override
+      public Object getExecutableReturnValue() {
+        return null;
+      }
+
+      @Override
+      public Path getPropertyPath() {
+        return PathImpl.createPathFromString(dottedPath);
+      }
+
+      @Override
+      public Object getInvalidValue() {
+        return invalidValue;
+      }
+
+      @Override
+      public ConstraintDescriptor<?> getConstraintDescriptor() {
+        return null;
+      }
+
+      @Override
+      public <U> U unwrap(Class<U> type) {
+        return null;
+      }
+    };
+    return cv;
   }
 }
