@@ -31,13 +31,13 @@ import javax.validation.ValidationException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EmptySource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.data.mongodb.core.aggregation.ArrayOperators.In;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
@@ -362,6 +362,124 @@ class FormFieldValidationServicePartBTest {
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
+
+  //Tests for WorkDto
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {STRING_128_CHARS})
+  void whenWorkTypeOfWorkIsInvalidThenThrowsException(String str) {
+    FormRPartBDto input = validForm();
+
+    List<WorkDto> dtos = input.getWork();
+    WorkDto workDto = dtos.get(0);
+    workDto.setTypeOfWork(str);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {STRING_128_CHARS})
+  void whenWorkTrainingPostIsInvalidThenThrowsException(String str) {
+    FormRPartBDto input = validForm();
+
+    List<WorkDto> dtos = input.getWork();
+    WorkDto workDto = dtos.get(0);
+    workDto.setTrainingPost(str);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {STRING_128_CHARS})
+  void whenWorkSiteIsInvalidThenThrowsException(String str) {
+    FormRPartBDto input = validForm();
+
+    List<WorkDto> dtos = input.getWork();
+    WorkDto workDto = dtos.get(0);
+    workDto.setSite(str);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {STRING_128_CHARS})
+  void whenWorkSiteLocationIsInvalidThenThrowsException(String str) {
+    FormRPartBDto input = validForm();
+
+    List<WorkDto> dtos = input.getWork();
+    WorkDto workDto = dtos.get(0);
+    workDto.setSiteLocation(str);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @ParameterizedTest
+  @EmptySource
+  @ValueSource(strings = {STRING_128_CHARS})
+  void whenWorkSiteKnownAsIsInvalidThenThrowsException(String str) {
+    FormRPartBDto input = validForm();
+
+    List<WorkDto> dtos = input.getWork();
+    WorkDto workDto = dtos.get(0);
+    workDto.setSiteKnownAs(str);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @Test
+  void whenWorkStartDateIsInvalidThenThrowsException() {
+    FormRPartBDto input = validForm();
+
+    List<WorkDto> dtos = input.getWork();
+    WorkDto workDto = dtos.get(0);
+
+    workDto.setStartDate(LocalDate.MIN);
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+
+    workDto.setStartDate(LocalDate.MAX);
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+
+    workDto.setStartDate(null);
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @Test
+  void whenWorkEndDateIsInvalidThenThrowsException() {
+    FormRPartBDto input = validForm();
+
+    List<WorkDto> dtos = input.getWork();
+    WorkDto workDto = dtos.get(0);
+    workDto.setStartDate(LocalDate.MIN);
+
+    workDto.setEndDate(LocalDate.MIN.plusYears(1));
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+
+    workDto.setEndDate(LocalDate.MAX);
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+
+    workDto.setEndDate(null);
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @Test
+  void whenWorkEndDateIsBeforeStartDateOrNullThenThrowsException() {
+    FormRPartBDto input = validForm();
+
+    List<WorkDto> dtos = input.getWork();
+    WorkDto workDto = dtos.get(0);
+    workDto.setStartDate(LocalDate.now());
+    workDto.setEndDate(LocalDate.now().minusYears(1));
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  //Tests for DeclarationDto
+
+  //TODO
 
   /**
    * Helper function to return a validly completed FormR PartB.
