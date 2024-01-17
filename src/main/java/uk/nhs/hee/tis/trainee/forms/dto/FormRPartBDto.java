@@ -24,9 +24,14 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import javax.validation.Valid;
+import javax.validation.constraints.Email;
+import javax.validation.constraints.FutureOrPresent;
+import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
+import javax.validation.constraints.PastOrPresent;
 import javax.validation.constraints.Size;
 import lombok.Data;
+import uk.nhs.hee.tis.trainee.forms.annotations.MaxDateValidation;
 import uk.nhs.hee.tis.trainee.forms.annotations.NotEmptyIfAnotherFieldHasValueValidation;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
@@ -49,6 +54,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 public class FormRPartBDto {
 
   private String id;
+
   private String traineeTisId;
 
   @NotNull
@@ -59,16 +65,40 @@ public class FormRPartBDto {
   @Size(min = 1, max = 100)
   private String surname;
 
+  @NotNull
+  @Size(min = 1, max = 20)
   private String gmcNumber;
+
+  @NotBlank
+  @Email
+  @Size(min = 1, max = 255)
   private String email;
+
+  @NotNull
+  @Size(min = 1, max = 100)
   private String localOfficeName;
+
   private String prevRevalBody;
+
   private String prevRevalBodyOther;
+
+  @FutureOrPresent
+  @MaxDateValidation(maxYearsInFuture = 25)
   private LocalDate currRevalDate;
+
+  @PastOrPresent
   private LocalDate prevRevalDate;
+
+  @NotNull
+  @Size(min = 1, max = 100)
   private String programmeSpecialty;
+
   private String dualSpecialty;
+
+  @Valid
+  @Size(min = 1)
   private List<WorkDto> work;
+
   private Integer sicknessAbsence;
   private Integer parentalLeave;
   private Integer careerBreaks;
