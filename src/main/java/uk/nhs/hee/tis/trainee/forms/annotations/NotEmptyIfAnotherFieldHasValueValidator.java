@@ -33,6 +33,7 @@ public class NotEmptyIfAnotherFieldHasValueValidator
 
   private String fieldName;
   private String expectedFieldValue;
+  private boolean isNotCondition;
   private String dependFieldName;
   private String message;
 
@@ -40,13 +41,15 @@ public class NotEmptyIfAnotherFieldHasValueValidator
   public void initialize(NotEmptyIfAnotherFieldHasValueValidation annotation) {
     fieldName = annotation.fieldName();
     expectedFieldValue = annotation.fieldValue();
+    isNotCondition = annotation.isNotCondition();
     dependFieldName = annotation.dependFieldName();
     message = annotation.message();
   }
 
   /**
-   * Is the value of the dependent field valid, i.e. is it a string of length at least 1 if the
+   * Is the value of the dependent field valid? i.e. is it a string of length at least 1 if the
    * fieldName field has expectedFieldValue value; otherwise it can be null or empty.
+   * If isNotCondition, then this applies if fieldName does NOT have expectedFieldValue value.
    *
    * @param value The object to validate.
    * @param ctx   The context in which the constraint is evaluated.
@@ -57,15 +60,15 @@ public class NotEmptyIfAnotherFieldHasValueValidator
   public boolean isValid(Object value, ConstraintValidatorContext ctx) {
 
     if (value == null) {
-      return true;
+      return !isNotCondition;
     }
 
     try {
       String fieldValue = BeanUtils.getProperty(value, fieldName);
       String dependFieldValue = BeanUtils.getProperty(value, dependFieldName);
 
-      if (expectedFieldValue.equals(fieldValue)
-          && (dependFieldValue == null || dependFieldValue.isEmpty())) {
+      if ((dependFieldValue == null || dependFieldValue.isEmpty()) &&
+        (expectedFieldValue.equals(fieldValue) == !isNotCondition)) {
         ctx.disableDefaultConstraintViolation();
         ctx.buildConstraintViolationWithTemplate(message)
             .addPropertyNode(dependFieldName)

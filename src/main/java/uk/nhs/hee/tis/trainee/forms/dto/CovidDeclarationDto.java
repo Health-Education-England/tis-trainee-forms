@@ -21,21 +21,68 @@
 
 package uk.nhs.hee.tis.trainee.forms.dto;
 
+import javax.validation.constraints.Email;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 import lombok.Data;
+import uk.nhs.hee.tis.trainee.forms.annotations.NotEmptyIfAnotherFieldHasValueValidation;
 
 @Data
-//Note: validation constraints not implemented here as haveCovidDeclarations now always false
+@NotEmptyIfAnotherFieldHasValueValidation(
+    fieldName = "selfRateForCovid",
+    fieldValue = "Satisfactory progress for stage of training and required competencies met",
+    isNotCondition = true,
+    dependFieldName = "reasonOfSelfRate",
+    message = "Reason for self-rate is required"
+)
+@NotEmptyIfAnotherFieldHasValueValidation(
+    fieldName = "haveChangesToPlacement",
+    fieldValue = "true",
+    dependFieldName = "changeCircumstances",
+    message = "Circumstance of change is required"
+)
+@NotEmptyIfAnotherFieldHasValueValidation(
+    fieldName = "haveChangesToPlacement",
+    fieldValue = "true",
+    dependFieldName = "howPlacementAdjusted",
+    message = "How your placement was adjusted is required"
+)
+@NotEmptyIfAnotherFieldHasValueValidation(
+    fieldName = "changeCircumstances",
+    fieldValue = "Other",
+    dependFieldName = "changeCircumstanceOther",
+    message = "Other circumstance is required"
+)
 public class CovidDeclarationDto {
 
+  @NotNull
+  @Size(min = 1, max = 300)
   private String selfRateForCovid;
+
+  //required when selfRateForCovid != satisfactory progress
   private String reasonOfSelfRate;
+
+  @Size(max = 1000)
   private String otherInformationForPanel;
+
   private Boolean discussWithSupervisorChecked;
   private Boolean discussWithSomeoneChecked;
+
+  @NotNull
   private Boolean haveChangesToPlacement;
+
+  //required when haveChangesToPlacement = true
   private String changeCircumstances;
+
+  //required when changeCircumstances = other
   private String changeCircumstanceOther;
+
+  //required when haveChangesToPlacement = true
   private String howPlacementAdjusted;
+
   private String educationSupervisorName;
+
+  @Email
+  @Size(max = 255)
   private String educationSupervisorEmail;
 }

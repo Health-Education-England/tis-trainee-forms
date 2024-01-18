@@ -39,6 +39,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+import uk.nhs.hee.tis.trainee.forms.dto.CovidDeclarationDto;
+import uk.nhs.hee.tis.trainee.forms.dto.DeclarationDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -156,12 +158,11 @@ class FormFieldValidationServicePartBTest {
   @Test
   void whenNoWorkItemsThenThrowsException() {
     FormRPartBDto input = validForm();
-    input.setWork(null);
 
+    input.setWork(null);
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
 
     input.setWork(new ArrayList<>());
-
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
 
@@ -321,12 +322,11 @@ class FormFieldValidationServicePartBTest {
   void whenPreviousDeclarationsIsInvalidThenThrowsException() {
     FormRPartBDto input = validForm();
     input.setHavePreviousDeclarations(true);
-    input.setPreviousDeclarations(null);
 
+    input.setPreviousDeclarations(null);
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
 
     input.setPreviousDeclarations(new ArrayList<>());
-
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
 
@@ -334,12 +334,11 @@ class FormFieldValidationServicePartBTest {
   void whenCurrentDeclarationsIsInvalidThenThrowsException() {
     FormRPartBDto input = validForm();
     input.setHaveCurrentDeclarations(true);
-    input.setCurrentDeclarations(null);
 
+    input.setCurrentDeclarations(null);
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
 
     input.setCurrentDeclarations(new ArrayList<>());
-
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
 
@@ -359,6 +358,15 @@ class FormFieldValidationServicePartBTest {
     FormRPartBDto input = validForm();
     input.setHaveCurrentUnresolvedDeclarations(true);
     input.setCurrentDeclarationSummary(str);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @Test
+  void whenCovidDeclarationsIsInvalidThenThrowsException() {
+    FormRPartBDto input = validForm();
+    input.setHaveCovidDeclarations(true);
+    input.setCovidDeclarationDto(null);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -479,7 +487,142 @@ class FormFieldValidationServicePartBTest {
 
   //Tests for DeclarationDto
 
-  //TODO
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {STRING_128_CHARS})
+  void whenDeclarationTypeIsInvalidThenThrowsException(String str) {
+    FormRPartBDto input = validForm();
+    input.setHaveCurrentUnresolvedDeclarations(true);
+
+    DeclarationDto declarationDto = validDeclaration();
+    declarationDto.setDeclarationType(str);
+    input.setCurrentDeclarations(List.of(declarationDto));
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {STRING_128_CHARS})
+  void whenDeclarationTitleIsInvalidThenThrowsException(String str) {
+    FormRPartBDto input = validForm();
+    input.setHaveCurrentUnresolvedDeclarations(true);
+
+    DeclarationDto declarationDto = validDeclaration();
+    declarationDto.setTitle(str);
+    input.setCurrentDeclarations(List.of(declarationDto));
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {STRING_128_CHARS})
+  void whenDeclarationLocationIsInvalidThenThrowsException(String str) {
+    FormRPartBDto input = validForm();
+    input.setHaveCurrentUnresolvedDeclarations(true);
+
+    DeclarationDto declarationDto = validDeclaration();
+    declarationDto.setLocationOfEntry(str);
+    input.setCurrentDeclarations(List.of(declarationDto));
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @Test
+  void whenDeclarationDateOfEntryIsInvalidThenThrowsException() {
+    FormRPartBDto input = validForm();
+    input.setHaveCurrentUnresolvedDeclarations(true);
+
+    DeclarationDto declarationDto = validDeclaration();
+    input.setCurrentDeclarations(List.of(declarationDto));
+
+    declarationDto.setDateOfEntry(LocalDate.MAX);
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+
+    declarationDto.setDateOfEntry(null);
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  //Tests for CovidDeclarationDto
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {STRING_128_CHARS})
+  void whenCovidDeclarationReasonOfSelfRateIsMissingThenThrowsException(String str) {
+    FormRPartBDto input = validForm();
+    input.setHaveCovidDeclarations(true);
+    CovidDeclarationDto covidDeclarationDto = validCovidDeclaration();
+    covidDeclarationDto.setSelfRateForCovid(str);
+    input.setCovidDeclarationDto(covidDeclarationDto);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @Test
+  void whenCovidDeclarationOtherInformationForPanelIsInvalidThenThrowsException() {
+    FormRPartBDto input = validForm();
+    input.setHaveCovidDeclarations(true);
+    CovidDeclarationDto covidDeclarationDto = validCovidDeclaration();
+    covidDeclarationDto.setOtherInformationForPanel("x".repeat(1001));
+    input.setCovidDeclarationDto(covidDeclarationDto);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @Test
+  void whenCovidDeclarationEducationSupervisorEmailIsInvalidThenThrowsException() {
+    FormRPartBDto input = validForm();
+    input.setHaveCovidDeclarations(true);
+    CovidDeclarationDto covidDeclarationDto = validCovidDeclaration();
+    covidDeclarationDto.setEducationSupervisorEmail(STRING_256_CHARS);
+    input.setCovidDeclarationDto(covidDeclarationDto);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  void whenCovidDeclarationChangeCircumstancesIsMissingThenThrowsException(String str) {
+    FormRPartBDto input = validForm();
+    input.setHaveCovidDeclarations(true);
+    CovidDeclarationDto covidDeclarationDto = validCovidDeclaration();
+    covidDeclarationDto.setHaveChangesToPlacement(true);
+    covidDeclarationDto.setHowPlacementAdjusted("some valid string");
+    covidDeclarationDto.setChangeCircumstances(str);
+    input.setCovidDeclarationDto(covidDeclarationDto);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  void whenCovidDeclarationChangeCircumstancesOtherIsMissingThenThrowsException(String str) {
+    FormRPartBDto input = validForm();
+    input.setHaveCovidDeclarations(true);
+    CovidDeclarationDto covidDeclarationDto = validCovidDeclaration();
+    covidDeclarationDto.setHaveChangesToPlacement(true);
+    covidDeclarationDto.setHowPlacementAdjusted("some valid string");
+    covidDeclarationDto.setChangeCircumstances("Other");
+    covidDeclarationDto.setChangeCircumstanceOther(str);
+    input.setCovidDeclarationDto(covidDeclarationDto);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  void whenCovidDeclarationHowPlacementAdjustedIsMissingThenThrowsException(String str) {
+    FormRPartBDto input = validForm();
+    input.setHaveCovidDeclarations(true);
+    CovidDeclarationDto covidDeclarationDto = validCovidDeclaration();
+    covidDeclarationDto.setHaveChangesToPlacement(true);
+    covidDeclarationDto.setChangeCircumstances("some valid string");
+    covidDeclarationDto.setHowPlacementAdjusted(str);
+    input.setCovidDeclarationDto(covidDeclarationDto);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+  }
 
   /**
    * Helper function to return a validly completed FormR PartB.
@@ -498,15 +641,7 @@ class FormFieldValidationServicePartBTest {
     input.setCurrRevalDate(LocalDate.now().plusYears(1L));
     input.setProgrammeSpecialty("Geriatric Medicine");
 
-    WorkDto workDto = new WorkDto();
-    workDto.setTypeOfWork("some type of work");
-    workDto.setTrainingPost("a training post");
-    workDto.setSite("the site");
-    workDto.setSiteLocation("site location");
-    workDto.setStartDate(LocalDate.now());
-    workDto.setEndDate(LocalDate.now().plusYears(1L));
-
-    input.setWork(List.of(workDto));
+    input.setWork(List.of(validWork()));
 
     input.setSicknessAbsence(1);
     input.setParentalLeave(0);
@@ -533,5 +668,32 @@ class FormFieldValidationServicePartBTest {
     input.setLifecycleState(LifecycleState.SUBMITTED);
 
     return input;
+  }
+
+  WorkDto validWork() {
+    WorkDto workDto = new WorkDto();
+    workDto.setTypeOfWork("some type of work");
+    workDto.setTrainingPost("a training post");
+    workDto.setSite("the site");
+    workDto.setSiteLocation("site location");
+    workDto.setStartDate(LocalDate.now());
+    workDto.setEndDate(LocalDate.now().plusYears(1L));
+    return workDto;
+  }
+
+  DeclarationDto validDeclaration() {
+    DeclarationDto declarationDto = new DeclarationDto();
+    declarationDto.setDeclarationType("a declaration type");
+    declarationDto.setDateOfEntry(LocalDate.now().minusMonths(1));
+    declarationDto.setTitle("some declaration title");
+    declarationDto.setLocationOfEntry("declaration location");
+    return declarationDto;
+  }
+
+  CovidDeclarationDto validCovidDeclaration() {
+    CovidDeclarationDto covidDeclarationDto = new CovidDeclarationDto();
+    covidDeclarationDto.setSelfRateForCovid("Satisfactory progress for stage of training and required competencies met");
+    covidDeclarationDto.setHaveChangesToPlacement(false);
+    return covidDeclarationDto;
   }
 }

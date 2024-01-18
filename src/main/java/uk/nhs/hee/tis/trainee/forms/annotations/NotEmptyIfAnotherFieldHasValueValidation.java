@@ -33,7 +33,8 @@ import javax.validation.Payload;
 
 /**
  * Validates that field {@code dependFieldName} is not null or empty if field {@code fieldName} has
- * value {@code fieldValue}.
+ * value {@code fieldValue}
+ * (or does NOT have value {@code fieldValue} if {@code isNotCondition is true}).
  **/
 @Target({TYPE, ANNOTATION_TYPE})
 @Retention(RUNTIME)
@@ -55,6 +56,13 @@ public @interface NotEmptyIfAnotherFieldHasValueValidation {
    * @return The constraining field value.
    */
   String fieldValue();
+
+  /**
+   * Require the field to NOT have the field value.
+   *
+   * @return true if the field must NOT have the field value.
+   */
+  boolean isNotCondition() default false;
 
   /**
    * The dependent field, that cannot have a null or empty value if the constraining field has the
