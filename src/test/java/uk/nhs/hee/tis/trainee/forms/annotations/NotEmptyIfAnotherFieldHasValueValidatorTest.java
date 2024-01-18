@@ -27,98 +27,140 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import java.time.LocalDate;
 import javax.validation.ConstraintValidatorContext;
 import javax.validation.ConstraintValidatorContext.ConstraintViolationBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.mockito.Mock;
 
-class NotBeforeAnotherDateValidatorTest {
+class NotEmptyIfAnotherFieldHasValueValidatorTest {
 
   public static class SimpleDto {
 
-    private LocalDate startDate;
-    private LocalDate endDate;
+    private String field;
+    private String dependentField;
+
+    public String getField() {
+      return field;
+    }
+
+    public void setField(String field) {
+      this.field = field;
+    }
+
+    public String getDependentField() {
+      return dependentField;
+    }
+
+    public void setDependentField(String dependentField) {
+      this.dependentField = dependentField;
+    }
 
     public SimpleDto() {
-    }
-
-    public LocalDate getStartDate() {
-      return startDate;
-    }
-
-    public void setStartDate(LocalDate startDate) {
-      this.startDate = startDate;
-    }
-
-    public LocalDate getEndDate() {
-      return endDate;
-    }
-
-    public void setEndDate(LocalDate endDate) {
-      this.endDate = endDate;
     }
   }
 
   @Mock
   ConstraintValidatorContext constraintValidatorContext;
 
-  NotBeforeAnotherDateValidator validator;
+  NotEmptyIfAnotherFieldHasValueValidator validator;
 
   @BeforeEach
   void setup() {
     constraintValidatorContext = mock(ConstraintValidatorContext.class);
     when(constraintValidatorContext.buildConstraintViolationWithTemplate(any()))
         .thenReturn(dummyConstraintViolationBuilder());
-    validator = new NotBeforeAnotherDateValidator();
-    validator.initWithValues("startDate", "endDate", "error");
+    validator = new NotEmptyIfAnotherFieldHasValueValidator();
+    validator.initWithValues("field", "value", false,
+        "dependentField", "error");
   }
 
   @Test
-  void isValidIfObjectIsNullTest() {
-    assertThat("Unexpected invalid NotBeforeAnotherDateValidator.",
+  void isValidIfObjectIsNullEqualTest() {
+    validator.initWithValues("field", "value", false,
+        "dependentField", "error");
+    assertThat("Unexpected invalid NotEmptyIfAnotherFieldHasValueValidator.",
         validator.isValid(null, constraintValidatorContext), is(true));
   }
 
   @Test
-  void isValidIfFieldIsNullTest() {
-    SimpleDto twoDates = new SimpleDto();
-    twoDates.setStartDate(null);
-    twoDates.setEndDate(LocalDate.now());
-
-    assertThat("Unexpected invalid NotBeforeAnotherDateValidator.",
-        validator.isValid(twoDates, constraintValidatorContext), is(true));
+  void isNotValidIfObjectIsNullNotEqualTest() {
+    validator.initWithValues("field", "value", true,
+        "dependentField", "error");
+    assertThat("Unexpected valid NotEmptyIfAnotherFieldHasValueValidator.",
+        validator.isValid(null, constraintValidatorContext), is(false));
   }
 
-  @Test
-  void isNotValidIfDependentFieldIsNullTest() {
-    SimpleDto twoDates = new SimpleDto();
-    twoDates.setStartDate(LocalDate.now());
-    twoDates.setEndDate(null);
+  @ParameterizedTest
+  @NullAndEmptySource
+  void isNotValidIfDependentFieldIsEmptyTest(String str) {
+    SimpleDto dto = new SimpleDto();
+    dto.setField("value");
+    dto.setDependentField(str);
 
     assertThat("Unexpected valid NotBeforeAnotherDateValidator.",
-        validator.isValid(twoDates, constraintValidatorContext), is(false));
+        validator.isValid(dto, constraintValidatorContext), is(false));
   }
 
-  @Test
-  void isNotValidIfDependentFieldIsBeforeFieldTest() {
-    SimpleDto twoDates = new SimpleDto();
-    twoDates.setStartDate(LocalDate.now());
-    twoDates.setEndDate(LocalDate.now().minusMonths(1));
+  @ParameterizedTest
+  @NullAndEmptySource
+  void isNotValidIfDependentFieldIsEmptyNotEqualTest(String str) {
+    validator.initWithValues("field", "value", true,
+        "dependentField", "error");
+    SimpleDto dto = new SimpleDto();
+    dto.setField("not value");
+    dto.setDependentField(str);
 
     assertThat("Unexpected valid NotBeforeAnotherDateValidator.",
-        validator.isValid(twoDates, constraintValidatorContext), is(false));
+        validator.isValid(dto, constraintValidatorContext), is(false));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  void isValidIfDependentFieldIsNotConstrainedTest(String str) {
+    SimpleDto dto = new SimpleDto();
+    dto.setField("not value");
+    dto.setDependentField(str);
+
+    assertThat("Unexpected invalid NotBeforeAnotherDateValidator.",
+        validator.isValid(dto, constraintValidatorContext), is(true));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  void isValidIfDependentFieldIsNotConstrainedNotEqualTest(String str) {
+    validator.initWithValues("field", "value", true,
+        "dependentField", "error");
+    SimpleDto dto = new SimpleDto();
+    dto.setField("value");
+    dto.setDependentField(str);
+
+    assertThat("Unexpected invalid NotBeforeAnotherDateValidator.",
+        validator.isValid(dto, constraintValidatorContext), is(true));
   }
 
   @Test
-  void isValidIfDependentFieldIsAfterFieldTest() {
-    SimpleDto twoDates = new SimpleDto();
-    twoDates.setStartDate(LocalDate.now());
-    twoDates.setEndDate(LocalDate.now().plusMonths(1));
+  void isValidIfDependentFieldIsPopulatedTest() {
+    SimpleDto dto = new SimpleDto();
+    dto.setField("value");
+    dto.setDependentField("some value");
 
     assertThat("Unexpected invalid NotBeforeAnotherDateValidator.",
-        validator.isValid(twoDates, constraintValidatorContext), is(true));
+        validator.isValid(dto, constraintValidatorContext), is(true));
+  }
+
+  @Test
+  void isValidIfDependentFieldIsPopulatedNotEqualTest() {
+    validator.initWithValues("field", "value", true,
+        "dependentField", "error");
+    SimpleDto dto = new SimpleDto();
+    dto.setField("not value");
+    dto.setDependentField("some value");
+
+    assertThat("Unexpected invalid NotBeforeAnotherDateValidator.",
+        validator.isValid(dto, constraintValidatorContext), is(true));
   }
 
   /**

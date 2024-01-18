@@ -47,6 +47,24 @@ public class NotEmptyIfAnotherFieldHasValueValidator
   }
 
   /**
+   * Convenience initialisation method for unit testing.
+   *
+   * @param fieldName          The field name.
+   * @param expectedFieldValue The expected field value.
+   * @param isNotCondition     Whether to test for equality or not.
+   * @param dependFieldName    The dependent field name.
+   * @param message            The error message.
+   */
+  protected void initWithValues(String fieldName, String expectedFieldValue,
+      boolean isNotCondition, String dependFieldName, String message) {
+    this.fieldName = fieldName;
+    this.expectedFieldValue = expectedFieldValue;
+    this.isNotCondition = isNotCondition;
+    this.dependFieldName = dependFieldName;
+    this.message = message;
+  }
+
+  /**
    * Is the value of the dependent field valid? i.e. is it a string of length at least 1 if the
    * fieldName field has expectedFieldValue value; otherwise it can be null or empty. If
    * isNotCondition, then this applies if fieldName does NOT have expectedFieldValue value.
