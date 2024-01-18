@@ -692,7 +692,8 @@ class FormFieldValidationServicePartBTest {
 
   CovidDeclarationDto validCovidDeclaration() {
     CovidDeclarationDto covidDeclarationDto = new CovidDeclarationDto();
-    covidDeclarationDto.setSelfRateForCovid("Satisfactory progress for stage of training and required competencies met");
+    covidDeclarationDto.setSelfRateForCovid("Satisfactory progress for stage of training and "
+        + "required competencies met");
     covidDeclarationDto.setHaveChangesToPlacement(false);
     return covidDeclarationDto;
   }

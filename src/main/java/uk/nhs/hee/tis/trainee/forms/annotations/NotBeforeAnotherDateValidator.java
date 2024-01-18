@@ -44,11 +44,23 @@ public class NotBeforeAnotherDateValidator
   }
 
   /**
+   * Convenience initialisation method for unit testing.
+   *
+   * @param fieldName       The field name.
+   * @param dependFieldName The dependent field name.
+   * @param message         The error message if not valid.
+   */
+  protected void initWithValues(String fieldName, String dependFieldName, String message) {
+    this.fieldName = fieldName;
+    this.dependFieldName = dependFieldName;
+    this.message = message;
+  }
+
+  /**
    * Is the value of the dependent field valid, i.e. is it not before fieldName value.
    *
    * @param value The object to validate.
    * @param ctx   The context in which the constraint is evaluated.
-   *
    * @return True if the dependent field is valid, otherwise false.
    */
   @Override
