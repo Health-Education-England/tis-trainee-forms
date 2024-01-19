@@ -62,7 +62,7 @@ public class FormRPartADto {
   private String surname;
 
   @NotNull
-  @Size(min = 1, max = 100)
+  @Size(min = 1, max = 20)
   private String gmcNumber;
 
   @NotNull

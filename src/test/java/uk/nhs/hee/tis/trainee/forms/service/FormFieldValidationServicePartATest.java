@@ -86,7 +86,7 @@ class FormFieldValidationServicePartATest {
 
   @ParameterizedTest
   @NullAndEmptySource
-  @ValueSource(strings = {STRING_120_CHARS})
+  @ValueSource(strings = {STRING_21_CHARS})
   void whenGmcNumberIsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
     input.setGmcNumber(str);
