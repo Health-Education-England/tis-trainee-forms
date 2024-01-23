@@ -4,3 +4,10 @@ mongock:
 spring:
   config:
     import: file:src/main/resources/application.yml
+
+cloud:
+  aws:
+    sqs:
+      enabled: false
+    region:
+      static: eu-west-2

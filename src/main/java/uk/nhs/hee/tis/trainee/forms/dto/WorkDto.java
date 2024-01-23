@@ -21,19 +21,48 @@
 package uk.nhs.hee.tis.trainee.forms.dto;
 
 import java.time.LocalDate;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 import lombok.Data;
+import uk.nhs.hee.tis.trainee.forms.annotations.MaxDateValidation;
+import uk.nhs.hee.tis.trainee.forms.annotations.MinDateValidation;
+import uk.nhs.hee.tis.trainee.forms.annotations.NotBeforeAnotherDateValidation;
 
 /**
  * A DTO for work information.
  */
 @Data
+@NotBeforeAnotherDateValidation(
+    fieldName = "startDate",
+    dependFieldName = "endDate",
+    message = "End date must not be before start date"
+)
 public class WorkDto {
 
+  @NotNull
+  @Size(min = 1, max = 100)
   private String typeOfWork;
+
+  @MaxDateValidation(maxYearsInFuture = 25)
+  @MinDateValidation(maxYearsAgo = 25)
   private LocalDate startDate;
+
+  @MaxDateValidation(maxYearsInFuture = 25)
+  @MinDateValidation(maxYearsAgo = 25)
   private LocalDate endDate;
+
+  @NotNull
+  @Size(min = 1, max = 100)
   private String trainingPost;
+
+  @NotNull
+  @Size(min = 1, max = 100)
   private String site;
+
+  @NotNull
+  @Size(min = 1, max = 100)
   private String siteLocation;
+
+  @Size(min = 1, max = 100)
   private String siteKnownAs;
 }

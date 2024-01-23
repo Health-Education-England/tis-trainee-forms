@@ -23,48 +23,149 @@ package uk.nhs.hee.tis.trainee.forms.dto;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import javax.validation.constraints.Email;
+import javax.validation.constraints.FutureOrPresent;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.PastOrPresent;
+import javax.validation.constraints.Pattern;
+import javax.validation.constraints.Size;
 import lombok.Data;
+import uk.nhs.hee.tis.trainee.forms.annotations.LegalAgeValidation;
+import uk.nhs.hee.tis.trainee.forms.annotations.MaxDateValidation;
+import uk.nhs.hee.tis.trainee.forms.annotations.MinDateValidation;
+import uk.nhs.hee.tis.trainee.forms.annotations.NotEmptyIfAnotherFieldHasValueValidation;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 /**
  * A DTO for FormRPartA entity Holds the fields for the trainee's form R partA.
  */
 @Data
+@NotEmptyIfAnotherFieldHasValueValidation(
+    fieldName = "declarationType",
+    fieldValue = "I have been appointed to a programme leading to award of CCT",
+    dependFieldName = "cctSpecialty1",
+    message = "This declaration type requires a CCT specialty to be selected"
+)
 public class FormRPartADto {
 
   private String id;
+
   private String traineeTisId;
+
+  @NotNull
+  @Size(min = 1, max = 100)
   private String forename;
+
+  @NotNull
+  @Size(min = 1, max = 100)
   private String surname;
+
+  @NotNull
+  @Size(min = 1, max = 20)
   private String gmcNumber;
+
+  @NotNull
+  @Size(min = 1, max = 100)
   private String localOfficeName;
+
+  @LegalAgeValidation
+  @MinDateValidation
   private LocalDate dateOfBirth;
+
+  @NotNull
+  @Size(min = 1, max = 100)
   private String gender;
+
+  @NotNull
+  @Size(min = 1, max = 200)
   private String immigrationStatus;
+
+  @NotNull
+  @Size(min = 1, max = 100)
   private String qualification;
+
+  @PastOrPresent
+  @MinDateValidation
   private LocalDate dateAttained;
+
+  @NotNull
+  @Size(min = 1, max = 100)
   private String medicalSchool;
+
+  @NotNull
+  @Size(min = 1, max = 100)
   private String address1;
+
+  @NotNull
+  @Size(min = 1, max = 100)
   private String address2;
+
   private String address3;
+
   private String address4;
+
+  @NotNull
+  @Size(min = 1, max = 20)
   private String postCode;
+
+  @NotNull
+  @Pattern(regexp = "^\\+?(?:\\d\\s?){10,15}$", message = "Invalid telephone number")
   private String telephoneNumber;
+
+  @NotNull
+  @Pattern(regexp = "^\\+?(?:\\d\\s?){10,15}$", message = "Invalid telephone number")
   private String mobileNumber;
+
+  @NotBlank
+  @Email
   private String email;
+
+  @NotNull
   private String declarationType;
+
   private Boolean isLeadingToCct;
+
+  @NotNull
+  @Size(min = 1, max = 100)
   private String programmeSpecialty;
+
+  @Size(min = 0, max = 100)
   private String cctSpecialty1;
+
   private String cctSpecialty2;
+
+  @NotNull
+  @Size(min = 1, max = 100)
   private String college;
+
+  @FutureOrPresent
+  @MaxDateValidation
   private LocalDate completionDate;
+
+  @NotNull
+  @Size(min = 1, max = 100)
   private String trainingGrade;
+
+  @MaxDateValidation(maxYearsInFuture = 25)
+  @MinDateValidation(maxYearsAgo = 25)
   private LocalDate startDate;
+
+  @NotNull
+  @Size(min = 1, max = 100)
   private String programmeMembershipType;
+
+  @NotBlank
+  @Pattern(regexp = "^((0\\.[1-9])?|(0\\.(\\d[1-9]|[1-9]\\d))|1(\\.0{1,2})?)$",
+      message = "Training hours (Full Time Equivalent) needs to be a number less than or equal to "
+          + "1 and greater than zero (a maximum of 2 decimal places)")
   private String wholeTimeEquivalent;
+
   private LocalDateTime submissionDate;
+
   private LocalDateTime lastModifiedDate;
+
   private String otherImmigrationStatus;
+
   private LifecycleState lifecycleState;
 }

@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.api.validation;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import javax.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.MethodParameter;
 import org.springframework.stereotype.Component;
@@ -34,6 +35,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
+import uk.nhs.hee.tis.trainee.forms.service.FormFieldValidationService;
 
 @Component
 @Slf4j
@@ -43,8 +45,12 @@ public class FormRPartAValidator {
 
   FormRPartARepository formRPartARepository;
 
-  public FormRPartAValidator(FormRPartARepository formRPartARepository) {
+  FormFieldValidationService validatingService;
+
+  public FormRPartAValidator(FormRPartARepository formRPartARepository,
+      FormFieldValidationService validatingService) {
     this.formRPartARepository = formRPartARepository;
+    this.validatingService = validatingService;
   }
 
   /**
@@ -104,11 +110,31 @@ public class FormRPartAValidator {
     List<FieldError> fieldErrors = new ArrayList<>();
     LifecycleState lifecycleState = formRPartADto.getLifecycleState();
 
-    if (lifecycleState.equals(LifecycleState.SUBMITTED)
-        && (formRPartADto.getWholeTimeEquivalent() == null
-        || formRPartADto.getWholeTimeEquivalent().isEmpty())) {
-      fieldErrors.add(new FieldError(FORMR_PARTA_DTO_NAME, "wholeTimeEquivalent",
-          "wholeTimeEquivalent is missing or empty"));
+    if (lifecycleState.equals(LifecycleState.SUBMITTED)) {
+      //temporary - should be replaced by annotation
+      if (formRPartADto.getWholeTimeEquivalent() == null
+          || formRPartADto.getWholeTimeEquivalent().isEmpty()) {
+        fieldErrors.add(new FieldError(FORMR_PARTA_DTO_NAME, "wholeTimeEquivalent",
+            "wholeTimeEquivalent is missing or empty"));
+      }
+
+      try {
+        validatingService.validateFormRPartA(formRPartADto);
+      } catch (ConstraintViolationException e) {
+        log.warn("Form R Part A field validation failed for form {}", formRPartADto.getId());
+
+        e.getConstraintViolations().forEach(c -> {
+          FieldError err = new FieldError(FORMR_PARTA_DTO_NAME,
+              c.getPropertyPath().toString(),
+              c.getInvalidValue(),
+              false,
+              null,
+              null,
+              c.getMessage());
+
+          fieldErrors.add(err);
+        });
+      }
     }
     return fieldErrors;
   }

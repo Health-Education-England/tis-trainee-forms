@@ -23,53 +23,199 @@ package uk.nhs.hee.tis.trainee.forms.dto;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import javax.validation.Valid;
+import javax.validation.constraints.AssertTrue;
+import javax.validation.constraints.Email;
+import javax.validation.constraints.FutureOrPresent;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.PastOrPresent;
+import javax.validation.constraints.Size;
 import lombok.Data;
+import uk.nhs.hee.tis.trainee.forms.annotations.MaxDateValidation;
+import uk.nhs.hee.tis.trainee.forms.annotations.NotEmptyIfAnotherFieldHasValueValidation;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 /**
  * A DTO for FormRPartB entity Holds the fields for the trainee's form R partB.
  */
 @Data
+@NotEmptyIfAnotherFieldHasValueValidation(
+    fieldName = "haveCurrentUnresolvedDeclarations",
+    fieldValue = "true",
+    dependFieldName = "currentDeclarationSummary",
+    message = "A summary of new unresolved declarations is required"
+)
+@NotEmptyIfAnotherFieldHasValueValidation(
+    fieldName = "havePreviousUnresolvedDeclarations",
+    fieldValue = "true",
+    dependFieldName = "previousDeclarationSummary",
+    message = "A summary of previous unresolved declarations is required"
+)
+@NotEmptyIfAnotherFieldHasValueValidation(
+    fieldName = "haveCurrentDeclarations",
+    fieldValue = "true",
+    dependFieldName = "currentDeclarations",
+    message = "At least one declaration is required"
+)
+@NotEmptyIfAnotherFieldHasValueValidation(
+    fieldName = "havePreviousDeclarations",
+    fieldValue = "true",
+    dependFieldName = "previousDeclarations",
+    message = "At least one declaration is required"
+)
+@NotEmptyIfAnotherFieldHasValueValidation(
+    fieldName = "isWarned",
+    fieldValue = "true",
+    dependFieldName = "isComplying",
+    message = "You must indicate compliance with these conditions/undertakings"
+)
+@NotEmptyIfAnotherFieldHasValueValidation(
+    fieldName = "haveCovidDeclarations",
+    fieldValue = "true",
+    dependFieldName = "covidDeclarationDto",
+    message = "Covid declaration details are required"
+)
 public class FormRPartBDto {
 
   private String id;
+
   private String traineeTisId;
+
+  @NotNull
+  @Size(min = 1, max = 100)
   private String forename;
+
+  @NotNull
+  @Size(min = 1, max = 100)
   private String surname;
+
+  @NotNull
+  @Size(min = 1, max = 20)
   private String gmcNumber;
+
+  @NotBlank
+  @Email
+  @Size(min = 1, max = 255)
   private String email;
+
+  @NotNull
+  @Size(min = 1, max = 100)
   private String localOfficeName;
+
   private String prevRevalBody;
+
   private String prevRevalBodyOther;
+
+  @FutureOrPresent
+  @MaxDateValidation(maxYearsInFuture = 25)
   private LocalDate currRevalDate;
+
+  @PastOrPresent
   private LocalDate prevRevalDate;
+
+  @NotNull
+  @Size(min = 1, max = 100)
   private String programmeSpecialty;
+
   private String dualSpecialty;
+
+  @Valid
+  @NotNull
+  @Size(min = 1)
   private List<WorkDto> work;
+
+  @NotNull
+  @Min(0)
+  @Max(9999)
   private Integer sicknessAbsence;
+
+  @NotNull
+  @Min(0)
+  @Max(9999)
   private Integer parentalLeave;
+
+  @NotNull
+  @Min(0)
+  @Max(9999)
   private Integer careerBreaks;
+
+  @NotNull
+  @Min(0)
+  @Max(9999)
   private Integer paidLeave;
+
+  @NotNull
+  @Min(0)
+  @Max(9999)
   private Integer unauthorisedLeave;
+
+  @NotNull
+  @Min(0)
+  @Max(9999)
   private Integer otherLeave;
+
+  @NotNull
+  @Min(0)
+  @Max(9999)
   private Integer totalLeave;
+
+  @NotNull
+  @AssertTrue
   private Boolean isHonest;
+
+  @NotNull
+  @AssertTrue
   private Boolean isHealthy;
+
+  @NotNull
   private Boolean isWarned;
+
+  //when isWarned is true then isComplying must be true
+  @AssertTrue
   private Boolean isComplying;
+
   private String healthStatement;
+
+  @NotNull
   private Boolean havePreviousDeclarations;
+
+  @Valid
+  //when havePreviousDeclarations = true then size must be >= 1
   private List<DeclarationDto> previousDeclarations;
-  private String previousDeclarationSummary;
-  private Boolean haveCurrentDeclarations;
-  private List<DeclarationDto> currentDeclarations;
-  private String currentDeclarationSummary;
-  private String compliments;
-  private LocalDateTime submissionDate;
-  private LocalDateTime lastModifiedDate;
-  private LifecycleState lifecycleState;
-  private Boolean haveCovidDeclarations;
-  private CovidDeclarationDto covidDeclarationDto;
-  private Boolean haveCurrentUnresolvedDeclarations;
+
+  @NotNull
   private Boolean havePreviousUnresolvedDeclarations;
+
+  //when havePreviousUnresolvedDeclarations = true then this is required
+  private String previousDeclarationSummary;
+
+  @NotNull
+  private Boolean haveCurrentDeclarations;
+
+  @Valid
+  //when haveCurrentsDeclarations = true then size must be >= 1
+  private List<DeclarationDto> currentDeclarations;
+
+  @NotNull
+  private Boolean haveCurrentUnresolvedDeclarations;
+
+  //when haveCurrentUnresolvedDeclarations = true then this is required
+  private String currentDeclarationSummary;
+
+  private String compliments;
+
+  private LocalDateTime submissionDate;
+
+  private LocalDateTime lastModifiedDate;
+
+  private LifecycleState lifecycleState;
+
+  private Boolean haveCovidDeclarations;
+
+  //when haveCovidDeclarations = true then this is required
+  @Valid
+  private CovidDeclarationDto covidDeclarationDto;
 }

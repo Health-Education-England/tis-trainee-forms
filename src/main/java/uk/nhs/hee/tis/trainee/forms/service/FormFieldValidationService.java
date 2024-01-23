@@ -1,6 +1,7 @@
 /*
  * The MIT License (MIT)
- * Copyright 2020 Crown Copyright (Health Education England)
+ *
+ * Copyright 2024 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -18,33 +19,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.dto;
+package uk.nhs.hee.tis.trainee.forms.service;
 
-import java.time.LocalDate;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.PastOrPresent;
-import javax.validation.constraints.Size;
-import lombok.Data;
+import javax.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.validation.annotation.Validated;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 
-/**
- * A DTO for declaration information.
- */
-@Data
-public class DeclarationDto {
+@Service
+@Validated
+@Slf4j
+public class FormFieldValidationService {
 
-  @NotNull
-  @Size(min = 1, max = 100)
-  private String declarationType;
+  public void validateFormRPartA(@Valid FormRPartADto formRPartADto) {
+    //do any composite field validation not handled by annotation constraints
+    log.info("Successful field validation on FormR PartA {}", formRPartADto.getId());
+  }
 
-  @NotNull
-  @PastOrPresent
-  private LocalDate dateOfEntry;
+  public void validateFormRPartB(@Valid FormRPartBDto formRPartBDto) {
+    //do any composite field validation not handled by annotation constraints
+    log.info("Successful field validation on FormR PartB {}", formRPartBDto.getId());
+  }
 
-  @NotNull
-  @Size(min = 1, max = 100)
-  private String title;
-
-  @NotNull
-  @Size(min = 1, max = 100)
-  private String locationOfEntry;
 }
