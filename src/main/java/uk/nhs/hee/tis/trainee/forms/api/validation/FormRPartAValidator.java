@@ -69,6 +69,7 @@ public class FormRPartAValidator {
           new BeanPropertyBindingResult(formRPartADto, FORMR_PARTA_DTO_NAME);
       fieldErrors.forEach(bindingResult::addError);
       Method method = this.getClass().getMethods()[0];
+      log.warn("Form R Part A validation failed: {}", bindingResult);
       throw new MethodArgumentNotValidException(new MethodParameter(method, 0), bindingResult);
     }
   }

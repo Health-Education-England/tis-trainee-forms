@@ -50,6 +50,8 @@ import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
@@ -270,6 +272,34 @@ class FormRPartAValidatorTest {
         is(dottedPath));
     assertThat("Should include the invalid value", fieldError.getRejectedValue(),
         is("invalid value"));
+  }
+
+  @ExtendWith(OutputCaptureExtension.class)
+  @Test
+  void validationErrorsAreLogged(CapturedOutput output) {
+    String violationMessage = "Constraint violation";
+    String dottedPath = "class.instance.field";
+    String invalidValue = "invalid value";
+
+    ConstraintViolation<FormRPartADto> cv
+        = createDummyConstraintViolation(violationMessage, dottedPath, invalidValue);
+
+    formRPartADto.setWholeTimeEquivalent("0.99");
+    ConstraintViolationException e
+        = new ConstraintViolationException("violation message", Set.of(cv));
+    doThrow(e).when(formFieldValidationServiceMock).validateFormRPartA(any());
+
+    formRPartADto.setLifecycleState(LifecycleState.SUBMITTED);
+
+    assertThrows(MethodArgumentNotValidException.class,
+        () -> validator.validate(formRPartADto)).getMessage();
+
+    assertThat("Validation errors should be logged",
+        output.getOut().contains("Field error in object 'FormRPartADto' "
+            + "on field 'class.instance.field': "
+            + "rejected value [invalid value]; "
+            + "codes []; arguments []; "
+            + "default message [Constraint violation]"), is(true));
   }
 
   private ConstraintViolation<FormRPartADto> createDummyConstraintViolation(String message,
