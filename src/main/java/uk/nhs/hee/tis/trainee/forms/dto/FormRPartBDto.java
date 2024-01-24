@@ -109,6 +109,7 @@ public class FormRPartBDto {
 
   private String prevRevalBodyOther;
 
+  @NotNull
   @FutureOrPresent
   @MaxDateValidation(maxYearsInFuture = 25)
   private LocalDate currRevalDate;

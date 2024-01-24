@@ -43,10 +43,12 @@ public class WorkDto {
   @Size(min = 1, max = 100)
   private String typeOfWork;
 
+  @NotNull
   @MaxDateValidation(maxYearsInFuture = 25)
   @MinDateValidation(maxYearsAgo = 25)
   private LocalDate startDate;
 
+  @NotNull
   @MaxDateValidation(maxYearsInFuture = 25)
   @MinDateValidation(maxYearsAgo = 25)
   private LocalDate endDate;

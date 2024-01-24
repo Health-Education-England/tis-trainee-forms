@@ -44,6 +44,9 @@ public class MaxDateValidator implements ConstraintValidator<MaxDateValidation, 
    * @return True if the date is not too far in the future, otherwise false.
    */
   public boolean isValid(LocalDate theDate, ConstraintValidatorContext cxt) {
+    if (theDate == null) {
+      return true;
+    }
     LocalDate biggestDate = LocalDate.now().plusYears(this.maxYearsInFuture);
     boolean isValid = !theDate.isAfter(biggestDate);
     if (!isValid) {

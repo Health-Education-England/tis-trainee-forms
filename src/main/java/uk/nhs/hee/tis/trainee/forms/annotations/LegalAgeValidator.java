@@ -44,6 +44,9 @@ public class LegalAgeValidator implements ConstraintValidator<LegalAgeValidation
    * @return True if the person is an adult, otherwise false.
    */
   public boolean isValid(LocalDate theDate, ConstraintValidatorContext cxt) {
+    if (theDate == null) {
+      return true;
+    }
     LocalDate adultBorn = LocalDate.now().minusYears(adultAgeYears);
     boolean isValid = !theDate.isAfter(adultBorn);
     if (!isValid) {

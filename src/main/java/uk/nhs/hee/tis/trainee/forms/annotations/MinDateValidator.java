@@ -44,6 +44,9 @@ public class MinDateValidator implements ConstraintValidator<MinDateValidation, 
    * @return True if the date is not too far in the past, otherwise false.
    */
   public boolean isValid(LocalDate theDate, ConstraintValidatorContext cxt) {
+    if (theDate == null) {
+      return true;
+    }
     LocalDate oldestDate = LocalDate.now().minusYears(this.maxYearsAgo);
     boolean isValid = theDate.isAfter(oldestDate);
     if (!isValid) {

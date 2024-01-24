@@ -69,6 +69,7 @@ public class FormRPartADto {
   @Size(min = 1, max = 100)
   private String localOfficeName;
 
+  @NotNull
   @LegalAgeValidation
   @MinDateValidation
   private LocalDate dateOfBirth;
@@ -85,6 +86,7 @@ public class FormRPartADto {
   @Size(min = 1, max = 100)
   private String qualification;
 
+  @NotNull
   @PastOrPresent
   @MinDateValidation
   private LocalDate dateAttained;
@@ -147,6 +149,7 @@ public class FormRPartADto {
   @Size(min = 1, max = 100)
   private String trainingGrade;
 
+  @NotNull
   @MaxDateValidation(maxYearsInFuture = 25)
   @MinDateValidation(maxYearsAgo = 25)
   private LocalDate startDate;

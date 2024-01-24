@@ -304,6 +304,16 @@ class FormFieldValidationServicePartATest {
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
 
+  @Test
+  void whenCompletionDateIsNullThenDoesNotThrowException() {
+    FormRPartADto input = validForm();
+    input.setCompletionDate(null);
+
+   service.validateFormRPartA(input);
+
+   // then no exception
+  }
+
   @ParameterizedTest
   @NullAndEmptySource
   @ValueSource(strings = {STRING_120_CHARS})
