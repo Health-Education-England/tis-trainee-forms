@@ -36,11 +36,19 @@ public class LegalAgeValidator implements ConstraintValidator<LegalAgeValidation
   }
 
   /**
+   * Convenience initialisation method for unit testing.
+   *
+   * @param adultAgeYears The age required to be classed an adult.
+   */
+  protected void initWithValues(int adultAgeYears) {
+    this.adultAgeYears = adultAgeYears;
+  }
+
+  /**
    * Does the birthdate mean the person is an adult.
    *
    * @param theDate The object to validate.
    * @param cxt     The context in which the constraint is evaluated.
-   *
    * @return True if the person is an adult, otherwise false.
    */
   public boolean isValid(LocalDate theDate, ConstraintValidatorContext cxt) {
