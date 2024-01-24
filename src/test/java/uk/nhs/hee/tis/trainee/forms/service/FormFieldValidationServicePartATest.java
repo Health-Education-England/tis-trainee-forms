@@ -130,6 +130,14 @@ class FormFieldValidationServicePartATest {
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
 
+  @Test
+  void whenDateOfBirthIsNullThenThrowsException() {
+    FormRPartADto input = validForm();
+    input.setDateOfBirth(null);
+
+    assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
+  }
+
   @ParameterizedTest
   @NullAndEmptySource
   @ValueSource(strings = {STRING_240_CHARS})
@@ -302,6 +310,16 @@ class FormFieldValidationServicePartATest {
     input.setCompletionDate(LocalDate.MAX);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
+  }
+
+  @Test
+  void whenCompletionDateIsNullThenDoesNotThrowException() {
+    FormRPartADto input = validForm();
+    input.setCompletionDate(null);
+
+    service.validateFormRPartA(input);
+
+    // then no exception
   }
 
   @ParameterizedTest
