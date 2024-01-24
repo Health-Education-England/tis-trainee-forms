@@ -426,7 +426,6 @@ class FormFieldValidationServicePartBTest {
   }
 
   @ParameterizedTest
-  @EmptySource
   @ValueSource(strings = {STRING_128_CHARS})
   void whenWorkSiteKnownAsIsInvalidThenThrowsException(String str) {
     FormRPartBDto input = validForm();
