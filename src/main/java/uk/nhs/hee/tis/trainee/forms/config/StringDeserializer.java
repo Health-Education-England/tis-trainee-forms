@@ -9,6 +9,6 @@ public class StringDeserializer extends JsonDeserializer<String> {
 
   @Override
   public String deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-    return p.getValueAsString().trim();
+    return p.getValueAsString().strip();
   }
 }
