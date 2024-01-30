@@ -23,14 +23,18 @@ package uk.nhs.hee.tis.trainee.forms.config;
 
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static uk.nhs.hee.tis.trainee.forms.config.Config.CUSTOM_STRING_DESERIALIZER_MODULE_NAME;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 
 class ConfigTest {
 
@@ -56,5 +60,29 @@ class ConfigTest {
 
     SimpleDateFormat dateFormat = (SimpleDateFormat) objectMapper.getDateFormat();
     assertThat("Unexpected date format.", dateFormat.toPattern(), is("yyyy-MM-dd"));
+  }
+
+  @Test
+  void shouldRegisterSimpleModule() {
+    ObjectMapper objectMapper = config.objectMapper();
+    Set<Object> moduleIds = objectMapper.getRegisteredModuleIds();
+
+    assertThat("Expected custom string deserializer module not found.", moduleIds,
+        hasItem(CUSTOM_STRING_DESERIALIZER_MODULE_NAME));
+  }
+
+  @Test
+  void shouldTrimJsonStrings() throws IOException {
+    ObjectMapper objectMapper = config.objectMapper();
+    String json = "{\"gmcNumber\":\"  gmc      \", "
+        + "\"surname\":null, "
+        + "\"work\":[{\"typeOfWork\":\"  type of work  \"}]}";
+
+    FormRPartBDto example = objectMapper.readValue(json, FormRPartBDto.class);
+
+    assertThat("Unexpected string deserialization.", example.getGmcNumber(), is("gmc"));
+    assertThat("Unexpected string deserialization.", example.getSurname(), is(nullValue()));
+    assertThat("Unexpected string deserialization.", example.getWork().get(0).getTypeOfWork(),
+        is("type of work"));
   }
 }

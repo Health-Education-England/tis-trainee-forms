@@ -25,6 +25,7 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
@@ -33,6 +34,8 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class Config {
+
+  public static final String CUSTOM_STRING_DESERIALIZER_MODULE_NAME = "customStringDeserializer";
 
   /**
    * Create a customised object mapper.
@@ -47,6 +50,9 @@ public class Config {
     JavaTimeModule timeModule = new JavaTimeModule();
     timeModule.addDeserializer(LocalDateTime.class, new DateDeserializer());
     objectMapper.registerModule(timeModule);
+    SimpleModule simpleModule = new SimpleModule(CUSTOM_STRING_DESERIALIZER_MODULE_NAME);
+    simpleModule.addDeserializer(String.class, new StringDeserializer());
+    objectMapper.registerModule(simpleModule);
 
     objectMapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd"));
     return objectMapper;
