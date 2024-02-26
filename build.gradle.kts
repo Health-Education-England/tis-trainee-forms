@@ -49,7 +49,7 @@ dependencies {
   implementation("io.mongock:mongodb-springdata-v3-driver:${mongockVersion}")
 
   // Sentry reporting
-  implementation("io.sentry:sentry-spring-boot-starter:7.2.0")
+  implementation("io.sentry:sentry-spring-boot-starter:7.4.0")
 
   // SQS
   implementation("io.awspring.cloud:spring-cloud-starter-aws-messaging:2.4.4")
