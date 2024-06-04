@@ -116,10 +116,26 @@ public class FormRPartAService {
    */
   public FormRPartADto getFormRPartAById(String id, String traineeTisId) {
     log.info("Request to get FormRPartA by id : {}", id);
-    FormRPartA formRPartA = cloudObjectRepository.findByIdAndTraineeTisId(id, traineeTisId)
-        .or(() -> repository.findByIdAndTraineeTisId(UUID.fromString(id), traineeTisId))
-        .orElse(null);
-    return mapper.toDto(formRPartA);
+
+    Optional<FormRPartA> optionalCloudForm = cloudObjectRepository.findByIdAndTraineeTisId(id,
+        traineeTisId);
+    Optional<FormRPartA> optionalDbForm = repository.findByIdAndTraineeTisId(UUID.fromString(id),
+        traineeTisId);
+
+    FormRPartA latestForm = null;
+
+    if (optionalCloudForm.isPresent() && optionalDbForm.isPresent()) {
+      FormRPartA cloudForm = optionalCloudForm.get();
+      FormRPartA dbForm = optionalDbForm.get();
+      latestForm = cloudForm.getLastModifiedDate().isAfter(dbForm.getLastModifiedDate()) ? cloudForm
+          : dbForm;
+    } else if (optionalCloudForm.isPresent()) {
+      latestForm = optionalCloudForm.get();
+    } else if (optionalDbForm.isPresent()) {
+      latestForm = optionalDbForm.get();
+    }
+
+    return mapper.toDto(latestForm);
   }
 
   /**
