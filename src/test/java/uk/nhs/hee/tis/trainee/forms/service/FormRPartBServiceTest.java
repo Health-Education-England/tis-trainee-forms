@@ -481,17 +481,65 @@ class FormRPartBServiceTest {
   }
 
   @Test
-  void shouldGetFormRPartBFromCloudStorageById() {
-    entity.setLifecycleState(LifecycleState.SUBMITTED);
+  void shouldGetFormRPartBFromCloudStorageByIdWhenOnlyCloudFormExists() {
+    entity.setForename("Cloud Only");
+    entity.setLifecycleState(LifecycleState.UNSUBMITTED);
+
     when(s3FormRPartBRepository.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID))
+        .thenReturn(Optional.of(entity));
+
+    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
+        .thenReturn(Optional.empty());
+
+    FormRPartBDto dto = service.getFormRPartBById(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID);
+
+    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
+    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected forename.", dto.getForename(), is("Cloud Only"));
+    assertThat("Unexpected surname.", dto.getSurname(), is(DEFAULT_SURNAME));
+    assertThat("Unexpected work.", dto.getWork(), is(Collections.singletonList(workDto)));
+    assertThat("Unexpected total leave.", dto.getTotalLeave(), is(DEFAULT_TOTAL_LEAVE));
+    assertThat("Unexpected isHonest flag.", dto.getIsHonest(), is(DEFAULT_IS_HONEST));
+    assertThat("Unexpected isHealthy flag.", dto.getIsHealthy(), is(DEFAULT_IS_HEALTHY));
+    assertThat("Unexpected health statement.", dto.getHealthStatement(),
+        is(DEFAULT_HEALTHY_STATEMENT));
+    assertThat("Unexpected havePreviousDeclarations flag.", dto.getHavePreviousDeclarations(),
+        is(DEFAULT_HAVE_PREVIOUS_DECLARATIONS));
+    assertThat("Unexpected previous declarations.", dto.getPreviousDeclarations(),
+        is(Collections.singletonList(previousDeclarationDto)));
+    assertThat("Unexpected previous declaration summary.", dto.getPreviousDeclarationSummary(),
+        is(DEFAULT_PREVIOUS_DECLARATION_SUMMARY));
+    assertThat("Unexpected haveCurrentDeclarations flag.", dto.getHaveCurrentDeclarations(),
+        is(DEFAULT_HAVE_CURRENT_DECLARATIONS));
+    assertThat("Unexpected current declarations.", dto.getCurrentDeclarations(),
+        is(Collections.singletonList(currentDeclarationDto)));
+    assertThat("Unexpected current declaration summary.", dto.getCurrentDeclarationSummary(),
+        is(DEFAULT_CURRENT_DECLARATION_SUMMARY));
+    assertThat("Unexpected haveCurrentUnresolvedDeclarations flag.",
+        dto.getHaveCurrentUnresolvedDeclarations(),
+        is(DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS));
+    assertThat("Unexpected havePreviousUnresolvedDeclarations flag.",
+        dto.getHavePreviousUnresolvedDeclarations(),
+        is(DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS));
+    assertThat("Unexpected status.", dto.getLifecycleState(), is(LifecycleState.UNSUBMITTED));
+  }
+
+  @Test
+  void shouldGetFormRPartBFromDatabaseByIdWhenOnlyDatabaseFormExists() {
+    when(s3FormRPartBRepository.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID))
+        .thenReturn(Optional.empty());
+
+    entity.setForename("Database Only");
+    entity.setLifecycleState(LifecycleState.SUBMITTED);
+
+    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.of(entity));
 
     FormRPartBDto dto = service.getFormRPartBById(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID);
 
-    verifyNoInteractions(repositoryMock);
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
-    assertThat("Unexpected forename.", dto.getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected forename.", dto.getForename(), is("Database Only"));
     assertThat("Unexpected surname.", dto.getSurname(), is(DEFAULT_SURNAME));
     assertThat("Unexpected work.", dto.getWork(), is(Collections.singletonList(workDto)));
     assertThat("Unexpected total leave.", dto.getTotalLeave(), is(DEFAULT_TOTAL_LEAVE));
@@ -521,40 +569,95 @@ class FormRPartBServiceTest {
   }
 
   @Test
-  void shouldGetDraftFormRPartBById() {
+  void shouldGetFormRPartBFromCloudStorageByIdWhenCloudFormIsLatest() {
+    FormRPartB cloudForm = new FormRPartB();
+    cloudForm.setId(DEFAULT_ID);
+    cloudForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    cloudForm.setForename("Cloud Latest");
+    cloudForm.setLifecycleState(LifecycleState.UNSUBMITTED);
+    cloudForm.setLastModifiedDate(LocalDateTime.MAX);
+
+    when(s3FormRPartBRepository.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID))
+        .thenReturn(Optional.of(cloudForm));
+
+    FormRPartB dbForm = new FormRPartB();
+    dbForm.setId(DEFAULT_ID);
+    dbForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    dbForm.setForename("Database Oldest");
+    dbForm.setLifecycleState(LifecycleState.SUBMITTED);
+    dbForm.setLastModifiedDate(LocalDateTime.MIN);
+
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
-        .thenReturn(Optional.of(entity));
+        .thenReturn(Optional.of(dbForm));
 
     FormRPartBDto dto = service.getFormRPartBById(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID);
 
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
-    assertThat("Unexpected forename.", dto.getForename(), is(DEFAULT_FORENAME));
-    assertThat("Unexpected surname.", dto.getSurname(), is(DEFAULT_SURNAME));
-    assertThat("Unexpected work.", dto.getWork(), is(Collections.singletonList(workDto)));
-    assertThat("Unexpected total leave.", dto.getTotalLeave(), is(DEFAULT_TOTAL_LEAVE));
-    assertThat("Unexpected isHonest flag.", dto.getIsHonest(), is(DEFAULT_IS_HONEST));
-    assertThat("Unexpected isHealthy flag.", dto.getIsHealthy(), is(DEFAULT_IS_HEALTHY));
-    assertThat("Unexpected health statement.", dto.getHealthStatement(),
-        is(DEFAULT_HEALTHY_STATEMENT));
-    assertThat("Unexpected havePreviousDeclarations flag.", dto.getHavePreviousDeclarations(),
-        is(DEFAULT_HAVE_PREVIOUS_DECLARATIONS));
-    assertThat("Unexpected previous declarations.", dto.getPreviousDeclarations(),
-        is(Collections.singletonList(previousDeclarationDto)));
-    assertThat("Unexpected previous declaration summary.", dto.getPreviousDeclarationSummary(),
-        is(DEFAULT_PREVIOUS_DECLARATION_SUMMARY));
-    assertThat("Unexpected haveCurrentDeclarations flag.", dto.getHaveCurrentDeclarations(),
-        is(DEFAULT_HAVE_CURRENT_DECLARATIONS));
-    assertThat("Unexpected current declarations.", dto.getCurrentDeclarations(),
-        is(Collections.singletonList(currentDeclarationDto)));
-    assertThat("Unexpected current declaration summary.", dto.getCurrentDeclarationSummary(),
-        is(DEFAULT_CURRENT_DECLARATION_SUMMARY));
-    assertThat("Unexpected haveCurrentUnresolvedDeclarations flag.",
-        dto.getHaveCurrentUnresolvedDeclarations(),
-        is(DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS));
-    assertThat("Unexpected havePreviousUnresolvedDeclarations flag.",
-        dto.getHavePreviousUnresolvedDeclarations(),
-        is(DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS));
+    assertThat("Unexpected forename.", dto.getForename(), is("Cloud Latest"));
+    assertThat("Unexpected status.", dto.getLifecycleState(), is(LifecycleState.UNSUBMITTED));
+  }
+
+  @Test
+  void shouldGetFormRPartBFromDatabaseByIdWhenDatabaseFormIsLatest() {
+    FormRPartB cloudForm = new FormRPartB();
+    cloudForm.setId(DEFAULT_ID);
+    cloudForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    cloudForm.setForename("Cloud Oldest");
+    cloudForm.setLifecycleState(LifecycleState.UNSUBMITTED);
+    cloudForm.setLastModifiedDate(LocalDateTime.MIN);
+
+    when(s3FormRPartBRepository.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID))
+        .thenReturn(Optional.of(cloudForm));
+
+    FormRPartB dbForm = new FormRPartB();
+    dbForm.setId(DEFAULT_ID);
+    dbForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    dbForm.setForename("Database Latest");
+    dbForm.setLifecycleState(LifecycleState.SUBMITTED);
+    dbForm.setLastModifiedDate(LocalDateTime.MAX);
+
+    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
+        .thenReturn(Optional.of(dbForm));
+
+    FormRPartBDto dto = service.getFormRPartBById(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID);
+
+    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
+    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected forename.", dto.getForename(), is("Database Latest"));
+    assertThat("Unexpected status.", dto.getLifecycleState(), is(LifecycleState.SUBMITTED));
+  }
+
+  @Test
+  void shouldGetFormRPartBFromDatabaseByIdWhenCloudAndDatabaseEqualModifiedTime() {
+    LocalDateTime now = LocalDateTime.now();
+
+    FormRPartB cloudForm = new FormRPartB();
+    cloudForm.setId(DEFAULT_ID);
+    cloudForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    cloudForm.setForename("Cloud Equal");
+    cloudForm.setLifecycleState(LifecycleState.UNSUBMITTED);
+    cloudForm.setLastModifiedDate(now);
+
+    when(s3FormRPartBRepository.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID))
+        .thenReturn(Optional.of(cloudForm));
+
+    FormRPartB dbForm = new FormRPartB();
+    dbForm.setId(DEFAULT_ID);
+    dbForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    dbForm.setForename("Database Equal");
+    dbForm.setLifecycleState(LifecycleState.SUBMITTED);
+    dbForm.setLastModifiedDate(now);
+
+    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
+        .thenReturn(Optional.of(dbForm));
+
+    FormRPartBDto dto = service.getFormRPartBById(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID);
+
+    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
+    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected forename.", dto.getForename(), is("Database Equal"));
+    assertThat("Unexpected status.", dto.getLifecycleState(), is(LifecycleState.SUBMITTED));
   }
 
   @Test
