@@ -122,19 +122,31 @@ class FormFieldValidationServicePartBTest {
   }
 
   @Test
-  void whenCurrRevalDateIsPastThenThrowsException() {
+  void whenCurrRevalDateIsNullThenThrowsException() {
     FormRPartBDto input = validForm();
-    input.setCurrRevalDate(LocalDate.MIN);
+    input.setCurrRevalDate(null);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
 
   @Test
-  void whenCurrRevalDateIsTooBigThenThrowsException() {
+  void whenCurrRevalDateIsPastThenDoesNotThrowException() {
+    FormRPartBDto input = validForm();
+    input.setCurrRevalDate(LocalDate.MIN);
+
+    service.validateFormRPartB(input);
+
+    // then no exception
+  }
+
+  @Test
+  void whenCurrRevalDateIsTooBigThenDoesNotThrowException() {
     FormRPartBDto input = validForm();
     input.setCurrRevalDate(LocalDate.MAX);
 
-    assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
+    service.validateFormRPartB(input);
+
+    // then no exception
   }
 
   @Test
