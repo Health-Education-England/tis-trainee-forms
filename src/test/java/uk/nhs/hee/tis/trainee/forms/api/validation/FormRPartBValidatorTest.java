@@ -32,6 +32,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -283,6 +284,18 @@ class FormRPartBValidatorTest {
             + "rejected value [invalid value]; "
             + "codes []; arguments []; "
             + "default message [Constraint violation]"), is(true));
+  }
+
+  @ExtendWith(OutputCaptureExtension.class)
+  @Test
+  void validationCurrentRevalDateWarningIsLogged(CapturedOutput output) {
+    formRPartBDto.setCurrRevalDate(LocalDate.MIN);
+    formRPartBDto.setLifecycleState(LifecycleState.SUBMITTED);
+
+    validator.checkSubmittedFormContent(formRPartBDto);
+
+    assertThat("Current reval date warning should be logged",
+        output.getOut().contains("is not in the future in FormR PartB"), is(true));
   }
 
   private ConstraintViolation<FormRPartBDto> createDummyConstraintViolation(String message,
