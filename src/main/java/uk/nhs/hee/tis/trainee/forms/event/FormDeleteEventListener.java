@@ -22,7 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.event;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.awspring.cloud.messaging.listener.annotation.SqsListener;
+import io.awspring.cloud.sqs.annotation.SqsListener;
 import java.io.IOException;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;

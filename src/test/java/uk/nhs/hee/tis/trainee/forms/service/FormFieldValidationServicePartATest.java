@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import com.amazonaws.services.s3.AmazonS3;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import javax.validation.ValidationException;
+import jakarta.validation.ValidationException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;

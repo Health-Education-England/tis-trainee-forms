@@ -21,8 +21,8 @@
 
 package uk.nhs.hee.tis.trainee.forms.config;
 
-import com.amazonaws.xray.javax.servlet.AWSXRayServletFilter;
-import javax.servlet.Filter;
+import com.amazonaws.xray.jakarta.servlet.AWSXRayServletFilter;
+import jakarta.servlet.Filter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
@@ -34,7 +34,7 @@ import org.springframework.context.annotation.Configuration;
 public class AwsXrayConfiguration {
 
   @Bean
-  public Filter tracingFilter(@Value("${application.environment}") String environment) {
+  public AWSXRayServletFilter tracingFilter(@Value("${application.environment}") String environment) {
     return new AWSXRayServletFilter("tis-trainee-forms-" + environment);
   }
 }

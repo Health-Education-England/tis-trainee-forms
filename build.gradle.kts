@@ -1,6 +1,6 @@
 plugins {
   java
-  id("org.springframework.boot") version "2.7.5"
+  id("org.springframework.boot") version "3.3.0"
   id("io.spring.dependency-management") version "1.1.4"
 
   // Code quality plugins
@@ -22,6 +22,13 @@ repositories {
   mavenCentral()
 }
 
+dependencyManagement {
+  imports {
+    mavenBom("org.springframework.cloud:spring-cloud-dependencies:2023.0.0")
+    mavenBom("io.awspring.cloud:spring-cloud-aws-dependencies:3.1.0")
+  }
+}
+
 dependencies {
   implementation("com.amazonaws:aws-java-sdk-s3:1.12.730")
   // Spring Boot starters
@@ -30,6 +37,8 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-web")
   implementation("org.springframework.boot:spring-boot-starter-validation")
   testImplementation("org.springframework.boot:spring-boot-starter-test")
+
+  implementation("io.awspring.cloud:spring-cloud-aws-starter-sqs")
 
   // AWS-XRay
   implementation("com.amazonaws:aws-xray-recorder-sdk-spring:2.15.1")
@@ -49,10 +58,9 @@ dependencies {
   implementation("io.mongock:mongodb-springdata-v3-driver:${mongockVersion}")
 
   // Sentry reporting
-  implementation("io.sentry:sentry-spring-boot-starter:7.4.0")
-
-  // SQS
-  implementation("io.awspring.cloud:spring-cloud-starter-aws-messaging:2.4.4")
+  val sentryVersion = "7.6.0"
+  implementation("io.sentry:sentry-spring-boot-starter-jakarta:$sentryVersion")
+  implementation("io.sentry:sentry-logback:${sentryVersion}")
 
   //Bean utils
   implementation("commons-beanutils:commons-beanutils:1.9.4")
@@ -60,13 +68,6 @@ dependencies {
 
 checkstyle {
   config = resources.text.fromArchiveEntry(configurations.checkstyle.get().first(), "google_checks.xml")
-}
-
-java {
-  toolchain {
-    languageVersion.set(JavaLanguageVersion.of(17))
-    vendor.set(JvmVendorSpec.ADOPTIUM)
-  }
 }
 
 sonarqube {

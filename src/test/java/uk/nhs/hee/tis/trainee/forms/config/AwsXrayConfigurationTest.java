@@ -26,7 +26,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
-import com.amazonaws.xray.javax.servlet.AWSXRayServletFilter;
+import com.amazonaws.xray.jakarta.servlet.AWSXRayServletFilter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
