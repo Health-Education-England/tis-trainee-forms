@@ -34,7 +34,7 @@ import org.springframework.context.annotation.Configuration;
 public class AwsXrayConfiguration {
 
   @Bean
-  public AWSXRayServletFilter tracingFilter(@Value("${application.environment}") String environment) {
+  public Filter tracingFilter(@Value("${application.environment}") String environment) {
     return new AWSXRayServletFilter("tis-trainee-forms-" + environment);
   }
 }

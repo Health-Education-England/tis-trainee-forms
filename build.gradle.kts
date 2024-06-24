@@ -54,8 +54,8 @@ dependencies {
   testAnnotationProcessor("org.mapstruct:mapstruct-processor:${mapstructVersion}")
 
   val mongockVersion = "5.4.0"
-  implementation("io.mongock:mongock-springboot:${mongockVersion}")
-  implementation("io.mongock:mongodb-springdata-v3-driver:${mongockVersion}")
+  implementation("io.mongock:mongock-springboot-v3:${mongockVersion}")
+  implementation("io.mongock:mongodb-springdata-v4-driver:${mongockVersion}")
 
   // Sentry reporting
   val sentryVersion = "7.6.0"
