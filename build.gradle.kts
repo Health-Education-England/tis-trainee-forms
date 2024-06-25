@@ -70,6 +70,13 @@ checkstyle {
   config = resources.text.fromArchiveEntry(configurations.checkstyle.get().first(), "google_checks.xml")
 }
 
+java {
+  toolchain {
+    languageVersion.set(JavaLanguageVersion.of(17))
+    vendor.set(JvmVendorSpec.ADOPTIUM)
+  }
+}
+
 sonarqube {
   properties {
     property("sonar.host.url", "https://sonarcloud.io")
