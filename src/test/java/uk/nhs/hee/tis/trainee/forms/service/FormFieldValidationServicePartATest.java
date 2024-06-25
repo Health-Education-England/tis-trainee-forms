@@ -41,8 +41,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 @ExtendWith(SpringExtension.class)
-@SpringBootTest
-@ConfigurationPropertiesScan
+@SpringBootTest(properties = { "cloud.aws.region.static=eu-west-2" })
 class FormFieldValidationServicePartATest {
 
   private static final String STRING_9_CHARS = "012345678";
