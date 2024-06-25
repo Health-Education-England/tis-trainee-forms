@@ -33,6 +33,7 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -41,6 +42,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 @ExtendWith(SpringExtension.class)
 @SpringBootTest
+@ConfigurationPropertiesScan
 class FormFieldValidationServicePartATest {
 
   private static final String STRING_9_CHARS = "012345678";
