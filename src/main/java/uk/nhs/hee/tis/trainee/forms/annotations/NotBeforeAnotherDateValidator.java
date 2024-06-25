@@ -22,8 +22,8 @@ package uk.nhs.hee.tis.trainee.forms.annotations;
 
 import java.lang.reflect.InvocationTargetException;
 import java.time.LocalDate;
-import javax.validation.ConstraintValidator;
-import javax.validation.ConstraintValidatorContext;
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
 import org.apache.commons.beanutils.BeanUtils;
 
 /**
