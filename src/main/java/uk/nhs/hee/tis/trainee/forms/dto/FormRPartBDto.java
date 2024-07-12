@@ -215,4 +215,11 @@ public class FormRPartBDto {
   //when haveCovidDeclarations = true then this is required
   @Valid
   private CovidDeclarationDto covidDeclarationDto;
+
+  //variables for storing the ARCP and linked programme membership
+
+  private Boolean isArcp;
+
+  private String linkedProgrammeName;
+
 }

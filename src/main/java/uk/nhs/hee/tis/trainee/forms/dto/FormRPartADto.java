@@ -171,4 +171,10 @@ public class FormRPartADto {
   private String otherImmigrationStatus;
 
   private LifecycleState lifecycleState;
+
+  //variables for storing the ARCP and linked programme membership
+
+  private Boolean isArcp;
+
+  private String linkedProgrammeName;
 }
