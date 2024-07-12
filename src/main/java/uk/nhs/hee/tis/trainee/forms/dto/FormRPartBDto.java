@@ -220,6 +220,6 @@ public class FormRPartBDto {
 
   private Boolean isArcp;
 
-  private String linkedProgrammeName;
+  private String linkedProgrammeUuid;
 
 }
