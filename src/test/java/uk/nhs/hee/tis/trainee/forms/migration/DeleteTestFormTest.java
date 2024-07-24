@@ -21,6 +21,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.migration;
 
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -28,7 +29,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.amazonaws.services.s3.AmazonS3;
+import java.util.function.Consumer;
 import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,9 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.core.env.Environment;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest.Builder;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 
 class DeleteTestFormTest {
@@ -44,12 +48,12 @@ class DeleteTestFormTest {
   private DeleteTestForm migration;
   private MongoTemplate template;
   private ArgumentCaptor<Query> queryCaptor;
-  private AmazonS3 s3;
+  private S3Client s3;
 
   @BeforeEach
   void setUp() {
     template = mock(MongoTemplate.class);
-    s3 = mock(AmazonS3.class);
+    s3 = mock(S3Client.class);
     queryCaptor = ArgumentCaptor.forClass(Query.class);
     Environment env = mock(Environment.class);
     when(env.getProperty("application.file-store.bucket")).thenReturn(BUCKET_NAME);
@@ -80,10 +84,18 @@ class DeleteTestFormTest {
   private void verifyExpectedOperations() {
     Query query = queryCaptor.getValue();
     Document queryObject = query.getQueryObject();
-    assertThat("Unenxpected query \"_id\"",
+    assertThat("Unexpected query \"_id\"",
         queryObject.getString("_id").equals("f874c846-623d-478c-8937-7595afbc969a"));
-    verify(s3).deleteObject(BUCKET_NAME,
-        "256060/forms/formr-b/f874c846-623d-478c-8937-7595afbc969a.json");
+
+    ArgumentCaptor<Consumer<Builder>> consumerCaptor = ArgumentCaptor.captor();
+    verify(s3).deleteObject(consumerCaptor.capture());
+
+    DeleteObjectRequest request1 = DeleteObjectRequest.builder()
+        .applyMutation(consumerCaptor.getValue())
+        .build();
+    assertThat("Unexpected bucket.", request1.bucket(), is(BUCKET_NAME));
+    assertThat("Unexpected key.", request1.key(),
+        is("256060/forms/formr-b/f874c846-623d-478c-8937-7595afbc969a.json"));
   }
 
   @Test

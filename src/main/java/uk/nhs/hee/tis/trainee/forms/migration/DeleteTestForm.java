@@ -21,7 +21,6 @@
 
 package uk.nhs.hee.tis.trainee.forms.migration;
 
-import com.amazonaws.services.s3.AmazonS3;
 import io.mongock.api.annotations.ChangeUnit;
 import io.mongock.api.annotations.Execution;
 import io.mongock.api.annotations.RollbackExecution;
@@ -30,6 +29,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import software.amazon.awssdk.services.s3.S3Client;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 
 /**
@@ -40,19 +40,19 @@ import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 public class DeleteTestForm {
 
   private final MongoTemplate mongoTemplate;
-  private final AmazonS3 amazonS3;
+  private final S3Client s3Client;
   private final String bucketName;
 
   /**
    * Constructs the Mongock change unit.
    *
    * @param mongoTemplate The interface for operations on the DB
-   * @param amazonS3      The interface for interacting with S3
+   * @param s3Client      The interface for interacting with S3
    * @param env           The environment for access to a property with the file-store bucket name
    */
-  public DeleteTestForm(MongoTemplate mongoTemplate, AmazonS3 amazonS3, Environment env) {
+  public DeleteTestForm(MongoTemplate mongoTemplate, S3Client s3Client, Environment env) {
     this.mongoTemplate = mongoTemplate;
-    this.amazonS3 = amazonS3;
+    this.s3Client = s3Client;
     this.bucketName = env.getProperty("application.file-store.bucket");
   }
 
@@ -61,12 +61,11 @@ public class DeleteTestForm {
    */
   @Execution
   public void migrate() {
-
     final var deletedFormRPartB = mongoTemplate.findAndRemove(
         Query.query(Criteria.where("_id").is("f874c846-623d-478c-8937-7595afbc969a")),
         FormRPartB.class, "FormRPartB");
-    amazonS3
-        .deleteObject(bucketName, "256060/forms/formr-b/f874c846-623d-478c-8937-7595afbc969a.json");
+    s3Client.deleteObject(request -> request.bucket(bucketName)
+        .key("256060/forms/formr-b/f874c846-623d-478c-8937-7595afbc969a.json"));
     if (deletedFormRPartB == null) {
       log.info("Changelog did not remove a document");
     } else {

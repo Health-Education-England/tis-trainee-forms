@@ -20,9 +20,9 @@
 
 package uk.nhs.hee.tis.trainee.forms.annotations;
 
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
 import java.time.LocalDate;
-import javax.validation.ConstraintValidator;
-import javax.validation.ConstraintValidatorContext;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -40,7 +40,6 @@ public class MinDateValidator implements ConstraintValidator<MinDateValidation, 
    *
    * @param theDate The object to validate.
    * @param cxt     The context in which the constraint is evaluated.
-   *
    * @return True if the date is not too far in the past, otherwise false.
    */
   public boolean isValid(LocalDate theDate, ConstraintValidatorContext cxt) {

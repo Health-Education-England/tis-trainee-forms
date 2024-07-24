@@ -24,17 +24,17 @@ import static java.lang.annotation.ElementType.ANNOTATION_TYPE;
 import static java.lang.annotation.ElementType.TYPE;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
+import jakarta.validation.Constraint;
+import jakarta.validation.Payload;
 import java.lang.annotation.Documented;
 import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
-import javax.validation.Constraint;
-import javax.validation.Payload;
 
 /**
  * Validates that field {@code dependFieldName} is not null or empty if field {@code fieldName} has
- * value {@code fieldValue}
- * (or does NOT have value {@code fieldValue} if {@code isNotCondition is true}).
+ * value {@code fieldValue} (or does NOT have value {@code fieldValue} if
+ * {@code isNotCondition is true}).
  **/
 @Target({TYPE, ANNOTATION_TYPE})
 @Retention(RUNTIME)

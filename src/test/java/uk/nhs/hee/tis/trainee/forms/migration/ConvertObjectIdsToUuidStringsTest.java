@@ -28,14 +28,15 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.amazonaws.services.s3.AmazonS3;
 import com.mongodb.client.result.DeleteResult;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,6 +49,9 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.test.util.ReflectionTestUtils;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest.Builder;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.mapper.CovidDeclarationMapperImpl;
@@ -70,14 +74,14 @@ class ConvertObjectIdsToUuidStringsTest {
   private static final String PART_B_COLLECTION_NAME = "part-b-collection";
   private ConvertObjectIdsToUuidStrings migration;
   private MongoTemplate template;
-  private AmazonS3 s3;
+  private S3Client s3;
   private FormRPartAService partAService;
   private FormRPartBService partBService;
 
   @BeforeEach
   void setUp() {
     template = mock(MongoTemplate.class);
-    s3 = mock(AmazonS3.class);
+    s3 = mock(S3Client.class);
     Environment env = mock(Environment.class);
     when(env.getProperty("application.file-store.bucket")).thenReturn(BUCKET_NAME);
 
@@ -284,10 +288,25 @@ class ConvertObjectIdsToUuidStringsTest {
     migration.migrateCollections();
 
     String keyTemplate = "%s/forms/%s/%s.json";
-    verify(s3).deleteObject(BUCKET_NAME,
-        String.format(keyTemplate, "trainee1", "formr-a", "not-uuid-1"));
-    verify(s3).deleteObject(BUCKET_NAME,
-        String.format(keyTemplate, "trainee2", "formr-a", "not-uuid-2"));
+
+    ArgumentCaptor<Consumer<Builder>> consumerCaptor = ArgumentCaptor.captor();
+    verify(s3, times(2)).deleteObject(consumerCaptor.capture());
+
+    List<Consumer<Builder>> consumers = consumerCaptor.getAllValues();
+
+    DeleteObjectRequest request1 = DeleteObjectRequest.builder()
+        .applyMutation(consumers.get(0))
+        .build();
+    assertThat("Unexpected bucket.", request1.bucket(), is(BUCKET_NAME));
+    assertThat("Unexpected key.", request1.key(),
+        is(String.format(keyTemplate, "trainee1", "formr-a", "not-uuid-1")));
+
+    DeleteObjectRequest request2 = DeleteObjectRequest.builder()
+        .applyMutation(consumers.get(1))
+        .build();
+    assertThat("Unexpected bucket.", request2.bucket(), is(BUCKET_NAME));
+    assertThat("Unexpected key.", request2.key(),
+        is(String.format(keyTemplate, "trainee2", "formr-a", "not-uuid-2")));
   }
 
   @Test
@@ -310,10 +329,25 @@ class ConvertObjectIdsToUuidStringsTest {
     migration.migrateCollections();
 
     String keyTemplate = "%s/forms/%s/%s.json";
-    verify(s3).deleteObject(BUCKET_NAME,
-        String.format(keyTemplate, "trainee1", "formr-b", "not-uuid-1"));
-    verify(s3).deleteObject(BUCKET_NAME,
-        String.format(keyTemplate, "trainee2", "formr-b", "not-uuid-2"));
+
+    ArgumentCaptor<Consumer<Builder>> consumerCaptor = ArgumentCaptor.captor();
+    verify(s3, times(2)).deleteObject(consumerCaptor.capture());
+
+    List<Consumer<Builder>> consumers = consumerCaptor.getAllValues();
+
+    DeleteObjectRequest request1 = DeleteObjectRequest.builder()
+        .applyMutation(consumers.get(0))
+        .build();
+    assertThat("Unexpected bucket.", request1.bucket(), is(BUCKET_NAME));
+    assertThat("Unexpected key.", request1.key(),
+        is(String.format(keyTemplate, "trainee1", "formr-b", "not-uuid-1")));
+
+    DeleteObjectRequest request2 = DeleteObjectRequest.builder()
+        .applyMutation(consumers.get(1))
+        .build();
+    assertThat("Unexpected bucket.", request2.bucket(), is(BUCKET_NAME));
+    assertThat("Unexpected key.", request2.key(),
+        is(String.format(keyTemplate, "trainee2", "formr-b", "not-uuid-2")));
   }
 
   @Test
@@ -328,10 +362,10 @@ class ConvertObjectIdsToUuidStringsTest {
         List.of(document2));
     when(template.remove(any(), any(Class.class))).thenReturn(DeleteResult.acknowledged(1));
 
-    doThrow(RuntimeException.class).when(s3).deleteObject(any(), any());
+    doThrow(RuntimeException.class).when(s3).deleteObject(any(Consumer.class));
 
     assertDoesNotThrow(() -> migration.migrateCollections());
-    verify(s3, new Times(2)).deleteObject(any(), any());
+    verify(s3, new Times(2)).deleteObject(any(Consumer.class));
   }
 
   @Test

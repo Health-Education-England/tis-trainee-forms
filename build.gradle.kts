@@ -1,16 +1,16 @@
 plugins {
   java
-  id("org.springframework.boot") version "2.7.5"
-  id("io.spring.dependency-management") version "1.1.4"
+  id("org.springframework.boot") version "3.3.2"
+  id("io.spring.dependency-management") version "1.1.6"
 
   // Code quality plugins
   checkstyle
   jacoco
-  id("org.sonarqube") version "4.4.1.3373"
+  id("org.sonarqube") version "5.1.0.4882"
 }
 
 group = "uk.nhs.hee.tis.trainee"
-version = "0.16.2"
+version = "0.17.0"
 
 configurations {
   compileOnly {
@@ -22,8 +22,13 @@ repositories {
   mavenCentral()
 }
 
+dependencyManagement {
+  imports {
+    mavenBom("io.awspring.cloud:spring-cloud-aws-dependencies:3.1.1")
+  }
+}
+
 dependencies {
-  implementation("com.amazonaws:aws-java-sdk-s3:1.12.730")
   // Spring Boot starters
   implementation("org.springframework.boot:spring-boot-starter-actuator")
   implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
@@ -44,15 +49,16 @@ dependencies {
   annotationProcessor("org.mapstruct:mapstruct-processor:${mapstructVersion}")
   testAnnotationProcessor("org.mapstruct:mapstruct-processor:${mapstructVersion}")
 
-  val mongockVersion = "5.4.0"
-  implementation("io.mongock:mongock-springboot:${mongockVersion}")
-  implementation("io.mongock:mongodb-springdata-v3-driver:${mongockVersion}")
+  val mongockVersion = "5.4.4"
+  implementation("io.mongock:mongock-springboot-v3:${mongockVersion}")
+  implementation("io.mongock:mongodb-springdata-v4-driver:${mongockVersion}")
 
   // Sentry reporting
-  implementation("io.sentry:sentry-spring-boot-starter:7.4.0")
+  implementation("io.sentry:sentry-spring-boot-starter-jakarta:7.12.0")
 
   // SQS
-  implementation("io.awspring.cloud:spring-cloud-starter-aws-messaging:2.4.4")
+  implementation("io.awspring.cloud:spring-cloud-aws-starter-s3")
+  implementation("io.awspring.cloud:spring-cloud-aws-starter-sqs")
 
   //Bean utils
   implementation("commons-beanutils:commons-beanutils:1.9.4")

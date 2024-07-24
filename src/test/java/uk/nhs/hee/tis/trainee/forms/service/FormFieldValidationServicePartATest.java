@@ -22,25 +22,25 @@ package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.amazonaws.services.s3.AmazonS3;
+import jakarta.validation.ValidationException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import javax.validation.ValidationException;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.validation.ValidationAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.test.context.ContextConfiguration;
+import software.amazon.awssdk.services.s3.S3Client;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
-@ExtendWith(SpringExtension.class)
-@SpringBootTest
+@ContextConfiguration(classes = ValidationAutoConfiguration.class)
+@SpringBootTest(classes = FormFieldValidationService.class)
 class FormFieldValidationServicePartATest {
 
   private static final String STRING_9_CHARS = "012345678";
@@ -50,7 +50,7 @@ class FormFieldValidationServicePartATest {
   private static final String STRING_240_CHARS = STRING_120_CHARS + STRING_120_CHARS;
 
   @MockBean
-  AmazonS3 amazonS3;
+  S3Client amazonS3;
 
   @Autowired
   private FormFieldValidationService service;

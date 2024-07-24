@@ -20,11 +20,11 @@
 
 package uk.nhs.hee.tis.trainee.forms.repository;
 
-import com.amazonaws.services.s3.AmazonS3;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
+import software.amazon.awssdk.services.s3.S3Client;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 
 @Slf4j
@@ -34,13 +34,13 @@ public class S3FormRPartBRepositoryImpl extends AbstractCloudRepository<FormRPar
   /**
    * Instantiate an object repository.
    *
-   * @param amazonS3     client for S3 service
+   * @param s3Client     client for S3 service
    * @param objectMapper mapper handles Json (de)serialisation
    * @param bucketName   the bucket that this repository provides persistence with
    */
-  public S3FormRPartBRepositoryImpl(AmazonS3 amazonS3,
+  public S3FormRPartBRepositoryImpl(S3Client s3Client,
       ObjectMapper objectMapper, @Value("${application.file-store.bucket}") String bucketName) {
-    super(amazonS3, objectMapper, bucketName);
+    super(s3Client, objectMapper, bucketName);
   }
 
   @Override
