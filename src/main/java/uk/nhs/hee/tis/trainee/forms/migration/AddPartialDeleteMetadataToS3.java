@@ -21,19 +21,24 @@
 
 package uk.nhs.hee.tis.trainee.forms.migration;
 
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.ObjectListing;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.amazonaws.services.s3.model.S3Object;
-import com.amazonaws.services.s3.model.S3ObjectSummary;
 import io.mongock.api.annotations.ChangeUnit;
 import io.mongock.api.annotations.Execution;
 import io.mongock.api.annotations.RollbackExecution;
-import java.util.ArrayList;
+import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.env.Environment;
+import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Object;
+import software.amazon.awssdk.services.s3.paginators.ListObjectsV2Iterable;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.DeleteType;
 
 /**
@@ -43,7 +48,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.DeleteType;
 @ChangeUnit(id = "AddPartialDeleteMetadataToS3", order = "7")
 public class AddPartialDeleteMetadataToS3 {
 
-  private final AmazonS3 amazonS3;
+  private final S3Client s3Client;
   private final String bucketName;
 
   private static final String FIXED_FIELDS =
@@ -52,8 +57,8 @@ public class AddPartialDeleteMetadataToS3 {
   /**
    * Add partial delete related metadata to existing forms on S3.
    */
-  public AddPartialDeleteMetadataToS3(AmazonS3 amazonS3, Environment env) {
-    this.amazonS3 = amazonS3;
+  public AddPartialDeleteMetadataToS3(S3Client s3Client, Environment env) {
+    this.s3Client = s3Client;
     this.bucketName = env.getProperty("application.file-store.bucket");
   }
 
@@ -61,31 +66,39 @@ public class AddPartialDeleteMetadataToS3 {
    * Find all object on S3 and add metadata.
    */
   @Execution
-  public void migrate() {
+  public void migrate() throws IOException {
     log.info("Starting migration to add partial delete related metadata to existing forms on S3.");
 
-    List<S3ObjectSummary> keyList = new ArrayList<>();
-    ObjectListing objects = amazonS3.listObjects(bucketName);
-    keyList.addAll(objects.getObjectSummaries());
+    ListObjectsV2Request listRequest = ListObjectsV2Request.builder()
+        .bucket(bucketName)
+        .build();
+    ListObjectsV2Iterable objectsIterable = s3Client.listObjectsV2Paginator(listRequest);
+    List<S3Object> keyList = objectsIterable.stream()
+        .flatMap(res -> res.contents().stream())
+        .toList();
 
-    while (objects.isTruncated()) {
-      objects = amazonS3.listNextBatchOfObjects(objects);
-      keyList.addAll(objects.getObjectSummaries());
-    }
     log.info("Updating {} objects in the bucket {}", keyList.size(), bucketName);
 
-    for (S3ObjectSummary obj : keyList) {
-      final S3Object object = amazonS3.getObject(bucketName, obj.getKey());
+    for (S3Object obj : keyList) {
+      GetObjectRequest getRequest = GetObjectRequest.builder()
+          .bucket(bucketName)
+          .key(obj.key())
+          .build();
+      final ResponseInputStream<GetObjectResponse> object = s3Client.getObject(getRequest);
 
-      ObjectMetadata metadata = object.getObjectMetadata();
-      if (! (checkExist(metadata, "deletetype", DeleteType.PARTIAL.name())
+      Map<String, String> metadata = object.response().metadata();
+      if (!(checkExist(metadata, "deletetype", DeleteType.PARTIAL.name())
           && checkExist(metadata, "fixedfields", FIXED_FIELDS))) {
-        metadata.addUserMetadata("deletetype", DeleteType.PARTIAL.name());
-        metadata.addUserMetadata("fixedfields", FIXED_FIELDS);
+        Map<String, String> newMetadata = new HashMap<>(metadata);
+        newMetadata.put("deletetype", DeleteType.PARTIAL.name());
+        newMetadata.put("fixedfields", FIXED_FIELDS);
 
-        final PutObjectRequest request = new PutObjectRequest(
-            bucketName, obj.getKey(), object.getObjectContent(), metadata);
-        amazonS3.putObject(request);
+        final PutObjectRequest putRequest = PutObjectRequest.builder()
+            .bucket(bucketName)
+            .key(obj.key())
+            .metadata(newMetadata)
+            .build();
+        s3Client.putObject(putRequest, RequestBody.fromBytes(object.readAllBytes()));
       }
     }
     log.info("Finish migration");
@@ -99,8 +112,7 @@ public class AddPartialDeleteMetadataToS3 {
     log.warn("Rollback requested but not available for 'AddPartialDeleteMetadataToS3' migration.");
   }
 
-  private boolean checkExist(ObjectMetadata metadata, String metaName, String metaValue) {
-    return  (metadata.getUserMetaDataOf(metaName) != null
-        && metadata.getUserMetaDataOf(metaName).equals(metaValue));
+  private boolean checkExist(Map<String, String> metadata, String metaName, String metaValue) {
+    return (metadata.get(metaName) != null && metadata.get(metaName).equals(metaValue));
   }
 }

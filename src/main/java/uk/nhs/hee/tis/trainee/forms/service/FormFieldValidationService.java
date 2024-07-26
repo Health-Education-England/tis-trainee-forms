@@ -21,7 +21,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.service;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
@@ -42,5 +42,4 @@ public class FormFieldValidationService {
     //do any composite field validation not handled by annotation constraints
     log.info("Successful field validation on FormR PartB {}", formRPartBDto.getId());
   }
-
 }

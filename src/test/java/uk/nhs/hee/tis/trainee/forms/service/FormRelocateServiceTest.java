@@ -31,14 +31,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.amazonaws.services.s3.model.S3Object;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -50,6 +43,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import software.amazon.awssdk.services.s3.S3Client;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
@@ -69,11 +63,6 @@ class FormRelocateServiceTest {
   private static final String DEFAULT_FORENAME = "DEFAULT_FORENAME";
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";
   private static final LocalDateTime DEFAULT_SUBMISSION_DATE = LocalDateTime.now();
-  private static final String BUCKET_NAME = "BUCKET_NAME";
-  private static final String SOURCE_KEY =
-      DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b/" + FORM_ID_STRING + ".json";
-  private static final String TARGET_KEY =
-      TARGET_TRAINEE + "/forms/formr-b/" + FORM_ID_STRING + ".json";
 
 
   private FormRelocateService service;
@@ -87,24 +76,17 @@ class FormRelocateServiceTest {
   @Mock
   private S3FormRPartBRepositoryImpl abstractCloudRepositoryBMock;
   @Mock
-  private AmazonS3 amazonS3Mock;
+  private S3Client amazonS3Mock;
 
   @Captor
   private ArgumentCaptor<FormRPartA> formRPartACaptor;
   @Captor
   private ArgumentCaptor<FormRPartB> formRPartBCaptor;
-  @Captor
-  private ArgumentCaptor<PutObjectRequest> putRequestCaptor;
 
   ObjectMapper mapper = new ObjectMapper();
 
   private FormRPartA formRPartA;
   private FormRPartB formRPartB;
-  private S3Object object1;
-  private S3Object movedObject;
-  private InputStream objectContent1;
-  private InputStream movedObjectContent;
-  private ObjectMetadata metadata1;
 
   @BeforeEach
   void setUp() {
@@ -113,7 +95,7 @@ class FormRelocateServiceTest {
         formRPartBRepositoryMock,
         abstractCloudRepositoryAMock,
         abstractCloudRepositoryBMock
-        );
+    );
 
     formRPartA = new FormRPartA();
     formRPartA.setId(FORM_ID);
@@ -130,30 +112,10 @@ class FormRelocateServiceTest {
     formRPartB.setSurname(DEFAULT_SURNAME);
     formRPartB.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
     formRPartB.setLifecycleState(LifecycleState.SUBMITTED);
-
-    objectContent1 = new ByteArrayInputStream("{\"traineeTisId\":\"DEFAULT_TRAINEE\"}".getBytes());
-    movedObjectContent =
-        new ByteArrayInputStream("{\"traineeTisId\":\"DEFAULT_TRAINEE\"}".getBytes());
-
-    metadata1 = new ObjectMetadata();
-    metadata1.addUserMetadata("traineeid", DEFAULT_TRAINEE_TIS_ID);
-    metadata1.addUserMetadata("submissiondate", DEFAULT_SUBMISSION_DATE.toString());
-
-    object1 = new S3Object();
-    object1.setBucketName(BUCKET_NAME);
-    object1.setKey(DEFAULT_TRAINEE_TIS_ID);
-    object1.setObjectContent(objectContent1);
-    object1.setObjectMetadata(metadata1);
-
-    movedObject = new S3Object();
-    movedObject.setBucketName(BUCKET_NAME);
-    movedObject.setKey(TARGET_TRAINEE);
-    movedObject.setObjectContent(movedObjectContent);
-    movedObject.setObjectMetadata(metadata1);
   }
 
   @Test
-  void shouldMoveDraftFormRPartAInDb() throws IOException {
+  void shouldMoveDraftFormRPartAInDb() {
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartA));
 
     service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE);
@@ -174,7 +136,7 @@ class FormRelocateServiceTest {
   }
 
   @Test
-  void shouldThrowExceptionWhenGetMoveFormInfoInDbFailed() throws IOException {
+  void shouldThrowExceptionWhenGetMoveFormInfoInDbFailed() {
     when(formRPartARepositoryMock.findById(FORM_ID))
         .thenThrow(new ApplicationException("Expected Exception"));
 
@@ -186,7 +148,7 @@ class FormRelocateServiceTest {
   }
 
   @Test
-  void shouldNotUpdateDbAndS3WhenGetMoveFormInfoInDbIsNull() throws IOException {
+  void shouldNotUpdateDbAndS3WhenGetMoveFormInfoInDbIsNull() {
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
     when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
 
@@ -199,7 +161,7 @@ class FormRelocateServiceTest {
   }
 
   @Test
-  void shouldNotUpdateDbAndS3WhenSourceTraineeIsSameAsTargetTrainee() throws IOException {
+  void shouldNotUpdateDbAndS3WhenSourceTraineeIsSameAsTargetTrainee() {
     formRPartA.setTraineeTisId(TARGET_TRAINEE);
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartA));
 
@@ -212,7 +174,7 @@ class FormRelocateServiceTest {
   }
 
   @Test
-  void shouldRollBackAndThrowExceptionWhenMoveDraftFormInDbFail() throws IOException {
+  void shouldRollBackAndThrowExceptionWhenMoveDraftFormInDbFail() {
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartA));
     when(formRPartARepositoryMock.save(formRPartA))
         .thenThrow(new ApplicationException("Expected Exception"));
@@ -238,7 +200,7 @@ class FormRelocateServiceTest {
   }
 
   @Test
-  void shouldRollBackAndThrowExceptionWhenMoveSubmittedFormInDbFail() throws IOException {
+  void shouldRollBackAndThrowExceptionWhenMoveSubmittedFormInDbFail() {
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
     when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartB));
     when(formRPartBRepositoryMock.save(formRPartB))
@@ -265,7 +227,7 @@ class FormRelocateServiceTest {
   }
 
   @Test
-  void shouldMoveUnsubmittedFormInDbAndS3() throws IOException {
+  void shouldMoveUnsubmittedFormInDbAndS3() {
     formRPartA.setLifecycleState(LifecycleState.UNSUBMITTED);
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartA));
     when(abstractCloudRepositoryAMock
@@ -305,7 +267,7 @@ class FormRelocateServiceTest {
   }
 
   @Test
-  void shouldMoveSubmittedFormInDbAndS3() throws IOException {
+  void shouldMoveSubmittedFormInDbAndS3() {
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
     when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartB));
     when(abstractCloudRepositoryBMock
@@ -345,7 +307,7 @@ class FormRelocateServiceTest {
   }
 
   @Test
-  void shouldRollBackAndThrowExceptionWhenFormAInS3NotFound() throws IOException {
+  void shouldRollBackAndThrowExceptionWhenFormAInS3NotFound() {
     formRPartA.setLifecycleState(LifecycleState.UNSUBMITTED);
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartA));
     when(abstractCloudRepositoryAMock
@@ -377,7 +339,7 @@ class FormRelocateServiceTest {
   }
 
   @Test
-  void shouldRollBackAndThrowExceptionWhenFormBInS3NotFound() throws IOException {
+  void shouldRollBackAndThrowExceptionWhenFormBInS3NotFound() {
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
     when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartB));
     when(abstractCloudRepositoryBMock
@@ -409,7 +371,7 @@ class FormRelocateServiceTest {
   }
 
   @Test
-  void shouldRollBackAndThrowExceptionWhenMoveSubmittedFormInS3Fail() throws IOException {
+  void shouldRollBackAndThrowExceptionWhenMoveSubmittedFormInS3Fail() {
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
     when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartB));
     when(abstractCloudRepositoryBMock

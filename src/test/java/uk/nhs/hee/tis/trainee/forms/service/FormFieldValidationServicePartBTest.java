@@ -22,31 +22,30 @@ package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.amazonaws.services.s3.AmazonS3;
+import jakarta.validation.ValidationException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import javax.validation.ValidationException;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EmptySource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.validation.ValidationAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.test.context.ContextConfiguration;
+import software.amazon.awssdk.services.s3.S3Client;
 import uk.nhs.hee.tis.trainee.forms.dto.CovidDeclarationDto;
 import uk.nhs.hee.tis.trainee.forms.dto.DeclarationDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
-@ExtendWith(SpringExtension.class)
-@SpringBootTest
+@ContextConfiguration(classes = ValidationAutoConfiguration.class)
+@SpringBootTest(classes = FormFieldValidationService.class)
 class FormFieldValidationServicePartBTest {
 
   private static final String STRING_21_CHARS = "0123456789abcdefghij0";
@@ -57,7 +56,7 @@ class FormFieldValidationServicePartBTest {
   private static final int INT_5_DIGITS = 10000;
 
   @MockBean
-  AmazonS3 amazonS3;
+  S3Client amazonS3;
 
   @Autowired
   private FormFieldValidationService service;

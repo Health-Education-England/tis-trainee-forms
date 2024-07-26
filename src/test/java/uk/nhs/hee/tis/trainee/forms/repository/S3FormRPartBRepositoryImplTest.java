@@ -17,12 +17,6 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMIT
 
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.SdkClientException;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.ObjectListing;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.amazonaws.services.s3.model.S3Object;
-import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.io.InputStream;
@@ -37,6 +31,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,6 +42,18 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Object;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.DeleteType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.Declaration;
@@ -112,9 +119,9 @@ class S3FormRPartBRepositoryImplTest {
   private static ObjectMapper objectMapper;
   private S3FormRPartBRepositoryImpl repo;
   @Mock
-  private AmazonS3 s3Mock;
+  private S3Client s3Mock;
   @Mock
-  private ObjectListing s3ListingMock;
+  private ListObjectsV2Response s3ListingMock;
   @Captor
   private ArgumentCaptor<PutObjectRequest> putRequestCaptor;
   private FormRPartB entity;
@@ -212,10 +219,10 @@ class S3FormRPartBRepositoryImplTest {
 
     FormRPartB actual = repo.save(entity);
     assertThat("Unexpected form ID.", actual.getId(), notNullValue());
-    verify(s3Mock).putObject(putRequestCaptor.capture());
+    verify(s3Mock).putObject(putRequestCaptor.capture(), any(RequestBody.class));
     PutObjectRequest actualRequest = putRequestCaptor.getValue();
-    assertThat("Unexpected Bucket Name.", actualRequest.getBucketName(), is(bucketName));
-    assertThat("Unexpected Object Key.", actualRequest.getKey(),
+    assertThat("Unexpected Bucket Name.", actualRequest.bucket(), is(bucketName));
+    assertThat("Unexpected Object Key.", actualRequest.key(),
         is(String.join("/", DEFAULT_TRAINEE_TIS_ID, "forms", FormRPartBService.FORM_TYPE,
             entity.getId() + ".json")));
     Map<String, String> expectedMetadata = Map
@@ -229,7 +236,7 @@ class S3FormRPartBRepositoryImplTest {
             "deletetype", DeleteType.PARTIAL.name(),
             "fixedfields", FIXED_FIELDS);
 
-    assertThat("Unexpected metadata.", actualRequest.getMetadata().getUserMetadata().entrySet(),
+    assertThat("Unexpected metadata.", actualRequest.metadata().entrySet(),
         containsInAnyOrder(expectedMetadata.entrySet().toArray(new Entry[0])));
   }
 
@@ -237,7 +244,8 @@ class S3FormRPartBRepositoryImplTest {
   void shouldThrowExceptionWhenFormRPartBNotSaved() {
     entity.setLifecycleState(LifecycleState.SUBMITTED);
     entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
-    when(s3Mock.putObject(any())).thenThrow(new AmazonServiceException("Expected Exception"));
+    when(s3Mock.putObject(any(PutObjectRequest.class), any(RequestBody.class))).thenThrow(
+        new AmazonServiceException("Expected Exception"));
 
     Exception actual = assertThrows(RuntimeException.class, () -> repo.save(entity));
     assertThat("Unexpected exception type.", actual instanceof ApplicationException);
@@ -245,19 +253,21 @@ class S3FormRPartBRepositoryImplTest {
 
   @Test
   void shouldGetFormRPartBsByTraineeTisId() {
-    when(s3Mock.listObjects(bucketName, DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b"))
-        .thenReturn(s3ListingMock);
-    S3ObjectSummary s3Summary = new S3ObjectSummary();
-    s3Summary.setKey(KEY);
+    when(s3Mock.listObjectsV2(ListObjectsV2Request.builder().bucket(bucketName)
+        .prefix(DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b").build())).thenReturn(s3ListingMock);
     String otherKey = KEY + "w/error";
-    S3ObjectSummary errorSummary = new S3ObjectSummary();
-    errorSummary.setKey(otherKey);
-    List<S3ObjectSummary> cloudStoredEntities = List.of(s3Summary, errorSummary);
-    when(s3ListingMock.getObjectSummaries()).thenReturn(cloudStoredEntities);
-    ObjectMetadata metadata = new ObjectMetadata();
-    metadata.setUserMetadata(DEFAULT_UNSUBMITTED_METADATA);
-    when(s3Mock.getObjectMetadata(bucketName, KEY)).thenReturn(metadata);
-    when(s3Mock.getObjectMetadata(bucketName, otherKey))
+    List<S3Object> s3Objects = List.of(
+        S3Object.builder().key(KEY).build(),
+        S3Object.builder().key(otherKey).build()
+    );
+    when(s3ListingMock.contents()).thenReturn(s3Objects);
+
+    HeadObjectResponse metadataResponse = HeadObjectResponse.builder()
+        .metadata(DEFAULT_UNSUBMITTED_METADATA).build();
+    when(s3Mock.headObject(
+        HeadObjectRequest.builder().bucket(bucketName).key(KEY).build())).thenReturn(
+        metadataResponse);
+    when(s3Mock.headObject(HeadObjectRequest.builder().bucket(bucketName).key(otherKey).build()))
         .thenThrow(new AmazonServiceException("Expected Exception"));
 
     List<FormRPartB> entities = repo.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
@@ -275,15 +285,16 @@ class S3FormRPartBRepositoryImplTest {
 
   @Test
   void shouldParseSubmissionDateWhenInDateFormat() {
-    when(s3Mock.listObjects(bucketName, DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b"))
-        .thenReturn(s3ListingMock);
-    S3ObjectSummary s3Summary = new S3ObjectSummary();
-    s3Summary.setKey(KEY);
-    List<S3ObjectSummary> cloudStoredEntities = List.of(s3Summary);
-    when(s3ListingMock.getObjectSummaries()).thenReturn(cloudStoredEntities);
-    ObjectMetadata metadata = new ObjectMetadata();
-    metadata.setUserMetadata(UNSUBMITTED_METADATA_DATE_FORMAT_SUBMISSIONDATE);
-    when(s3Mock.getObjectMetadata(bucketName, KEY)).thenReturn(metadata);
+    when(s3Mock.listObjectsV2(ListObjectsV2Request.builder().bucket(bucketName)
+        .prefix(DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b").build())).thenReturn(s3ListingMock);
+    List<S3Object> s3Objects = List.of(S3Object.builder().key(KEY).build());
+    when(s3ListingMock.contents()).thenReturn(s3Objects);
+
+    HeadObjectResponse metadataResponse = HeadObjectResponse.builder()
+        .metadata(UNSUBMITTED_METADATA_DATE_FORMAT_SUBMISSIONDATE).build();
+    when(s3Mock.headObject(
+        HeadObjectRequest.builder().bucket(bucketName).key(KEY).build())).thenReturn(
+        metadataResponse);
 
     List<FormRPartB> entities = repo.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
 
@@ -298,11 +309,11 @@ class S3FormRPartBRepositoryImplTest {
   @Test
   void shouldGetFormRPartBFromCloudStorageById() {
     InputStream jsonFormRPartB = getClass().getResourceAsStream("/forms/testFormRPartB.json");
-    S3Object s3Object = new S3Object();
-    s3Object.setObjectContent(jsonFormRPartB);
-    when(s3Mock.getObject(bucketName,
-        DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b/" + DEFAULT_ID + ".json"))
-        .thenReturn(s3Object);
+    ResponseInputStream<GetObjectResponse> objectResponse = new ResponseInputStream<>(
+        GetObjectResponse.builder().build(), jsonFormRPartB);
+    when(s3Mock.getObject(GetObjectRequest.builder().bucket(bucketName)
+        .key(DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b/" + DEFAULT_ID + ".json")
+        .build())).thenReturn(objectResponse);
 
     Optional<FormRPartB> actual = repo.findByIdAndTraineeTisId(DEFAULT_ID_STRING,
         DEFAULT_TRAINEE_TIS_ID);
@@ -346,7 +357,8 @@ class S3FormRPartBRepositoryImplTest {
   void findByIdAndTraineeIdShouldReturnEmpty() {
     AmazonServiceException awsException = new AmazonServiceException("Expected Exception");
     awsException.setStatusCode(404);
-    when(s3Mock.getObject(bucketName, String.format("1/forms/formr-b/%s.json", DEFAULT_ID)))
+    when(s3Mock.getObject(GetObjectRequest.builder().bucket(bucketName)
+        .key(String.format("1/forms/formr-b/%s.json", DEFAULT_ID)).build()))
         .thenThrow(awsException);
     assertThat("Unexpected Optional content.",
         repo.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID).isEmpty());
@@ -355,7 +367,8 @@ class S3FormRPartBRepositoryImplTest {
   @ParameterizedTest
   @ValueSource(classes = {AmazonServiceException.class, SdkClientException.class})
   void findByIdAndTraineeIdShouldThrowException(Class clazz) throws Exception {
-    when(s3Mock.getObject(bucketName, String.format("1/forms/formr-b/%s.json", DEFAULT_ID)))
+    when(s3Mock.getObject(GetObjectRequest.builder().bucket(bucketName)
+        .key(String.format("1/forms/formr-b/%s.json", DEFAULT_ID)).build()))
         .thenThrow((Exception) clazz.getDeclaredConstructor(String.class).newInstance("Expected"));
     assertThrows(ApplicationException.class,
         () -> repo.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID));
@@ -364,13 +377,14 @@ class S3FormRPartBRepositoryImplTest {
   @Test
   void shouldDeleteFormRPartBFromCloudStorage() {
     repo.delete(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID);
-    verify(s3Mock).deleteObject(bucketName, String.format("1/forms/formr-b/%s.json", DEFAULT_ID));
+    verify(s3Mock).deleteObject(DeleteObjectRequest.builder().bucket(bucketName)
+        .key(String.format("1/forms/formr-b/%s.json", DEFAULT_ID)).build());
   }
 
   @Test
   void shouldThrowExceptionWhenFormRPartBDeleteFailed() {
     doThrow(new ApplicationException("Expected Exception"))
-        .when(s3Mock).deleteObject(any());
+        .when(s3Mock).deleteObject(any(Consumer.class));
 
     assertThrows(ApplicationException.class, () ->
         repo.delete(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID));

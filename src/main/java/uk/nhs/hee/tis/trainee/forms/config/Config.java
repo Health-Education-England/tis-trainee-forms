@@ -21,8 +21,6 @@
 
 package uk.nhs.hee.tis.trainee.forms.config;
 
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
@@ -56,10 +54,5 @@ public class Config {
 
     objectMapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd"));
     return objectMapper;
-  }
-
-  @Bean
-  public AmazonS3 amazonS3() {
-    return AmazonS3ClientBuilder.defaultClient();
   }
 }

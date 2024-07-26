@@ -21,7 +21,6 @@
 
 package uk.nhs.hee.tis.trainee.forms.migration;
 
-import com.amazonaws.services.s3.AmazonS3;
 import com.mongodb.client.result.DeleteResult;
 import io.mongock.api.annotations.ChangeUnit;
 import io.mongock.api.annotations.Execution;
@@ -34,6 +33,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import software.amazon.awssdk.services.s3.S3Client;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapper;
@@ -56,7 +56,7 @@ public class ConvertObjectIdsToUuidStrings {
       "[0-9a-fA-F]{8}\\-[0-9a-fA-F]{4}\\-[0-9a-fA-F]{4}\\-[0-9a-fA-F]{4}\\-[0-9a-fA-F]{12}";
 
   private final MongoTemplate mongoTemplate;
-  private final AmazonS3 amazonS3;
+  private final S3Client s3Client;
   private final String bucketName;
   private final FormRPartAService formAService;
   private final FormRPartAMapper formAMapper;
@@ -66,12 +66,12 @@ public class ConvertObjectIdsToUuidStrings {
   /**
    * Convert existing ObjectID based form IDs to UUID strings.
    */
-  public ConvertObjectIdsToUuidStrings(MongoTemplate mongoTemplate, AmazonS3 amazonS3,
+  public ConvertObjectIdsToUuidStrings(MongoTemplate mongoTemplate, S3Client s3Client,
       Environment env,
       FormRPartAService formAService, FormRPartAMapper formAMapper,
       FormRPartBService formBService, FormRPartBMapper formBMapper) {
     this.mongoTemplate = mongoTemplate;
-    this.amazonS3 = amazonS3;
+    this.s3Client = s3Client;
     this.bucketName = env.getProperty("application.file-store.bucket");
     this.formAService = formAService;
     this.formAMapper = formAMapper;
@@ -163,7 +163,7 @@ public class ConvertObjectIdsToUuidStrings {
     String objectKey = String.format("%s/forms/%s/%s.json", updatedForm.getTraineeTisId(),
         updatedForm.getFormType(), originalId);
     try {
-      amazonS3.deleteObject(bucketName, objectKey);
+      s3Client.deleteObject(request -> request.bucket(bucketName).key(objectKey));
       log.info("Deleted previous form {} from S3.", originalId);
     } catch (Exception e) {
       String message = String.format("Failed to delete form ID %s from S3.", originalId);
