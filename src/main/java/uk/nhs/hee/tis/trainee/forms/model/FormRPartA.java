@@ -22,6 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.model;
 
 import java.time.LocalDate;
+import java.util.UUID;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -32,6 +33,9 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
 public class FormRPartA extends AbstractForm {
+
+  private UUID programmeMembershipId;
+  private Boolean isArcp;
 
   private String forename;
   private String surname;

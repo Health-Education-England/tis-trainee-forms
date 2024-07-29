@@ -32,6 +32,7 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import lombok.Data;
 import uk.nhs.hee.tis.trainee.forms.annotations.NotEmptyIfAnotherFieldHasValueValidation;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -79,8 +80,9 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 public class FormRPartBDto {
 
   private String id;
-
   private String traineeTisId;
+  private UUID programmeMembershipId;
+  private Boolean isArcp;
 
   @NotNull
   @Size(min = 1, max = 100)
