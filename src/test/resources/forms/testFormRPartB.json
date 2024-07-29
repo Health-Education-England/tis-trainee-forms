@@ -1,6 +1,8 @@
 {
   "id": "2552fad7-72ad-4331-aaae-872414db5d27",
   "traineeTisId": "47165",
+  "programmeMembershipId": "155844d3-eb12-4fa2-9833-2401437a4aa0",
+  "isArcp": true,
   "forename": "John",
   "surname": "Roper",
   "gmcNumber": "8999999",

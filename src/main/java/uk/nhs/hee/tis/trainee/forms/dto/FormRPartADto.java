@@ -30,6 +30,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.Data;
 import uk.nhs.hee.tis.trainee.forms.annotations.LegalAgeValidation;
 import uk.nhs.hee.tis.trainee.forms.annotations.MaxDateValidation;
@@ -50,8 +51,9 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 public class FormRPartADto {
 
   private String id;
-
   private String traineeTisId;
+  private UUID programmeMembershipId;
+  private Boolean isArcp;
 
   @NotNull
   @Size(min = 1, max = 100)
