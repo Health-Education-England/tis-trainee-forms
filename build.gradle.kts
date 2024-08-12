@@ -37,7 +37,7 @@ dependencies {
   testImplementation("org.springframework.boot:spring-boot-starter-test")
 
   // AWS-XRay
-  implementation("com.amazonaws:aws-xray-recorder-sdk-spring:2.15.1")
+  implementation("com.amazonaws:aws-xray-recorder-sdk-spring:2.18.1")
 
   // Lombok
   compileOnly("org.projectlombok:lombok")
