@@ -380,7 +380,7 @@ class FormFieldValidationServicePartATest {
     input.setForename("David");
     input.setSurname("Short");
     input.setGmcNumber("8999999");
-    input.setLocalOfficeName("Health Education England South London");
+    input.setLocalOfficeName("South London");
     input.setDateOfBirth(LocalDate.now().minusYears(20L));
     input.setGender("Male");
     input.setImmigrationStatus("British National Overseas");
