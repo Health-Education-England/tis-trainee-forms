@@ -647,7 +647,7 @@ class FormFieldValidationServicePartBTest {
     input.setSurname("Short");
     input.setGmcNumber("8999999");
     input.setEmail("potato@potato.com");
-    input.setLocalOfficeName("Health Education England South London");
+    input.setLocalOfficeName("South London");
     input.setCurrRevalDate(LocalDate.now().plusYears(1L));
     input.setProgrammeSpecialty("Geriatric Medicine");
 
