@@ -101,7 +101,8 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
               entry("programmemembershipid", form.getProgrammeMembershipId().toString()),
               entry("formtype", form.getFormType()),
               entry("lifecyclestate", form.getLifecycleState().name()),
-              entry(SUBMISSION_DATE, form.getSubmissionDate().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)),
+              entry(SUBMISSION_DATE, form.getSubmissionDate()
+                  .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)),
               entry("traineeid", form.getTraineeTisId()),
               entry("deletetype", DeleteType.PARTIAL.name()),
               entry("fixedfields", FIXED_FIELDS)

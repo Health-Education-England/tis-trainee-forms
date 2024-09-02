@@ -60,7 +60,6 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.Declaration;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.model.Work;
-import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
