@@ -1,5 +1,6 @@
 package uk.nhs.hee.tis.trainee.forms.repository;
 
+import static java.util.Map.entry;
 import static org.hamcrest.CoreMatchers.both;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
@@ -59,6 +60,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.Declaration;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.model.Work;
+import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
@@ -84,6 +86,8 @@ class S3FormRPartBRepositoryImplTest {
   private static final String DEFAULT_HEALTHY_STATEMENT = "DEFAULT_HEALTHY_STATEMENT";
   private static final Boolean DEFAULT_HAVE_PREVIOUS_DECLARATIONS = true;
   private static final String DEFAULT_PREVIOUS_DECLARATION_TYPE = "Signification event";
+  private static final Boolean DEFAULT_IS_ARCP = false;
+  private static final String DEFAULT_PROGRAMME_MEMBERSHIP_ID = UUID.randomUUID().toString();
   private static final LocalDate DEFAULT_PREVIOUS_DATE_OF_ENTRY = LocalDate
       .now(ZoneId.systemDefault());
   private static final String DEFAULT_PREVIOUS_DECLARATION_SUMMARY =
@@ -216,6 +220,8 @@ class S3FormRPartBRepositoryImplTest {
     entity.setId(null);
     entity.setLifecycleState(LifecycleState.SUBMITTED);
     entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+    entity.setIsArcp(DEFAULT_IS_ARCP);
+    entity.setProgrammeMembershipId(UUID.fromString(DEFAULT_PROGRAMME_MEMBERSHIP_ID));
 
     FormRPartB actual = repo.save(entity);
     assertThat("Unexpected form ID.", actual.getId(), notNullValue());
@@ -225,16 +231,19 @@ class S3FormRPartBRepositoryImplTest {
     assertThat("Unexpected Object Key.", actualRequest.key(),
         is(String.join("/", DEFAULT_TRAINEE_TIS_ID, "forms", FormRPartBService.FORM_TYPE,
             entity.getId() + ".json")));
-    Map<String, String> expectedMetadata = Map
-        .of("id", entity.getId().toString(),
-            "name", entity.getId() + ".json",
-            "type", "json",
-            "formtype", FormRPartBService.FORM_TYPE,
-            "lifecyclestate", LifecycleState.SUBMITTED.name(),
-            "submissiondate", DEFAULT_SUBMISSION_DATE_STRING,
-            "traineeid", DEFAULT_TRAINEE_TIS_ID,
-            "deletetype", DeleteType.PARTIAL.name(),
-            "fixedfields", FIXED_FIELDS);
+    Map<String, String> expectedMetadata = Map.ofEntries(
+        entry("id", entity.getId().toString()),
+        entry("name", entity.getId() + ".json"),
+        entry("type", "json"),
+        entry("isarcp", DEFAULT_IS_ARCP.toString()),
+        entry("programmemembershipid", DEFAULT_PROGRAMME_MEMBERSHIP_ID.toString()),
+        entry("formtype", FormRPartBService.FORM_TYPE),
+        entry("lifecyclestate", LifecycleState.SUBMITTED.name()),
+        entry("submissiondate", DEFAULT_SUBMISSION_DATE_STRING),
+        entry("traineeid", DEFAULT_TRAINEE_TIS_ID),
+        entry("deletetype", DeleteType.PARTIAL.name()),
+        entry("fixedfields", FIXED_FIELDS)
+    );
 
     assertThat("Unexpected metadata.", actualRequest.metadata().entrySet(),
         containsInAnyOrder(expectedMetadata.entrySet().toArray(new Entry[0])));
@@ -244,6 +253,8 @@ class S3FormRPartBRepositoryImplTest {
   void shouldThrowExceptionWhenFormRPartBNotSaved() {
     entity.setLifecycleState(LifecycleState.SUBMITTED);
     entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+    entity.setIsArcp(DEFAULT_IS_ARCP);
+    entity.setProgrammeMembershipId(UUID.fromString(DEFAULT_PROGRAMME_MEMBERSHIP_ID));
     when(s3Mock.putObject(any(PutObjectRequest.class), any(RequestBody.class))).thenThrow(
         new AmazonServiceException("Expected Exception"));
 

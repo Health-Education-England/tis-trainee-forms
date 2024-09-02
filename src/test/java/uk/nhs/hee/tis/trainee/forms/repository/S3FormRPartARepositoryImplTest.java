@@ -1,5 +1,6 @@
 package uk.nhs.hee.tis.trainee.forms.repository;
 
+import static java.util.Map.entry;
 import static org.hamcrest.CoreMatchers.both;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
@@ -65,6 +66,8 @@ class S3FormRPartARepositoryImplTest {
   private static final String DEFAULT_FORENAME = "DEFAULT_FORENAME";
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";
   private static final LocalDateTime DEFAULT_SUBMISSION_DATE = LocalDateTime.now();
+  private static final Boolean DEFAULT_IS_ARCP = false;
+  private static final String DEFAULT_PROGRAMME_MEMBERSHIP_ID = UUID.randomUUID().toString();
   private static final String DEFAULT_SUBMISSION_DATE_STRING = DEFAULT_SUBMISSION_DATE.format(
       DateTimeFormatter.ISO_LOCAL_DATE_TIME);
   private static final String DEFAULT_FORM_ID = UUID.randomUUID().toString();
@@ -122,6 +125,8 @@ class S3FormRPartARepositoryImplTest {
     entity.setId(null);
     entity.setLifecycleState(LifecycleState.SUBMITTED);
     entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+    entity.setIsArcp(DEFAULT_IS_ARCP);
+    entity.setProgrammeMembershipId(UUID.fromString(DEFAULT_PROGRAMME_MEMBERSHIP_ID));
 
     FormRPartA actual = repo.save(entity);
     assertThat("Unexpected form ID.", actual.getId(), notNullValue());
@@ -131,16 +136,20 @@ class S3FormRPartARepositoryImplTest {
     assertThat("Unexpected Object Key.", actualRequest.key(),
         is(String.join("/", DEFAULT_TRAINEE_TIS_ID, "forms", FormRPartAService.FORM_TYPE,
             entity.getId() + ".json")));
-    Map<String, String> expectedMetadata = Map
-        .of("id", entity.getId().toString(), "name",
-            entity.getId() + ".json",
-            "type", "json",
-            "formtype", FormRPartAService.FORM_TYPE,
-            "lifecyclestate", LifecycleState.SUBMITTED.name(),
-            "submissiondate", DEFAULT_SUBMISSION_DATE_STRING,
-            "traineeid", DEFAULT_TRAINEE_TIS_ID,
-            "deletetype", DeleteType.PARTIAL.name(),
-            "fixedfields", FIXED_FIELDS);
+
+    Map<String, String> expectedMetadata = Map.ofEntries(
+        entry("id", entity.getId().toString()),
+        entry("name", entity.getId() + ".json"),
+        entry("type", "json"),
+        entry("isarcp", DEFAULT_IS_ARCP.toString()),
+        entry("programmemembershipid", DEFAULT_PROGRAMME_MEMBERSHIP_ID.toString()),
+        entry("formtype", FormRPartAService.FORM_TYPE),
+        entry("lifecyclestate", LifecycleState.SUBMITTED.name()),
+        entry("submissiondate", DEFAULT_SUBMISSION_DATE_STRING),
+        entry("traineeid", DEFAULT_TRAINEE_TIS_ID),
+        entry("deletetype", DeleteType.PARTIAL.name()),
+        entry("fixedfields", FIXED_FIELDS)
+    );
 
     assertThat("Unexpected metadata.", actualRequest.metadata().entrySet(),
         containsInAnyOrder(expectedMetadata.entrySet().toArray(new Entry[0])));
@@ -150,6 +159,8 @@ class S3FormRPartARepositoryImplTest {
   void shouldThrowExceptionWhenFormRPartANotSaved() {
     entity.setLifecycleState(LifecycleState.SUBMITTED);
     entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+    entity.setIsArcp(DEFAULT_IS_ARCP);
+    entity.setProgrammeMembershipId(UUID.fromString(DEFAULT_PROGRAMME_MEMBERSHIP_ID));
     when(s3Mock.putObject(any(PutObjectRequest.class), any(RequestBody.class))).thenThrow(
         new AmazonServiceException("Expected Exception"));
 

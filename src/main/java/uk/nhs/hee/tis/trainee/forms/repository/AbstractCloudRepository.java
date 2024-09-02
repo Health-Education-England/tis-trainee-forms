@@ -20,6 +20,8 @@
 
 package uk.nhs.hee.tis.trainee.forms.repository;
 
+import static java.util.Map.entry;
+
 import com.amazonaws.AmazonServiceException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.ParameterizedType;
@@ -91,17 +93,18 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
       PutObjectRequest request = PutObjectRequest.builder()
           .bucket(bucketName)
           .key(key)
-          .metadata(Map.of(
-              "id", form.getId().toString(),
-              "name", fileName,
-              "type", "json",
-              "formtype", form.getFormType(),
-              "lifecyclestate", form.getLifecycleState().name(),
-              SUBMISSION_DATE,
-              form.getSubmissionDate().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
-              "traineeid", form.getTraineeTisId(),
-              "deletetype", DeleteType.PARTIAL.name(),
-              "fixedfields", FIXED_FIELDS
+          .metadata(Map.ofEntries(
+              entry("id", form.getId().toString()),
+              entry("name", fileName),
+              entry("type", "json"),
+              entry("isarcp", form.getIsArcp().toString()),
+              entry("programmemembershipid", form.getProgrammeMembershipId().toString()),
+              entry("formtype", form.getFormType()),
+              entry("lifecyclestate", form.getLifecycleState().name()),
+              entry(SUBMISSION_DATE, form.getSubmissionDate().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)),
+              entry("traineeid", form.getTraineeTisId()),
+              entry("deletetype", DeleteType.PARTIAL.name()),
+              entry("fixedfields", FIXED_FIELDS)
           ))
           .build();
 
