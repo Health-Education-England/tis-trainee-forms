@@ -37,9 +37,7 @@ public abstract class AbstractForm {
   @Indexed
   @Field(value = "traineeTisId")
   private String traineeTisId;
-  private Boolean isArcp;
 
-  private UUID programmeMembershipId;
   private LifecycleState lifecycleState;
   private LocalDateTime submissionDate;
   private LocalDateTime lastModifiedDate;

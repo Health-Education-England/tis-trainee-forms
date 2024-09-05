@@ -52,6 +52,8 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.DeleteType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractForm;
+import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
+import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
 @Slf4j
@@ -90,23 +92,55 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
     try {
       String key = String.format(getObjectKeyTemplate(), form.getTraineeTisId(), form.getId());
 
+      // Base metadata entries
+      Map<String, String> metadata = Map.ofEntries(
+          entry("id", form.getId().toString()),
+          entry("name", fileName),
+          entry("type", "json"),
+          entry("formtype", form.getFormType()),
+          entry("lifecyclestate", form.getLifecycleState().name()),
+          entry(SUBMISSION_DATE, form.getSubmissionDate().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)),
+          entry("traineeid", form.getTraineeTisId()),
+          entry("deletetype", DeleteType.PARTIAL.name()),
+          entry("fixedfields", FIXED_FIELDS)
+      );
+
+      if (form instanceof FormRPartA || form instanceof FormRPartB) {
+
+        UUID programmeMembershipId = null;
+        Boolean isArcp = null;
+
+        if (form instanceof FormRPartA) {
+          FormRPartA formRPartA = (FormRPartA) form;
+          programmeMembershipId = formRPartA.getProgrammeMembershipId();
+          isArcp = formRPartA.getIsArcp();
+        } else if (form instanceof FormRPartB) {
+          FormRPartB formRPartB = (FormRPartB) form;
+          programmeMembershipId = formRPartB.getProgrammeMembershipId();
+          isArcp = formRPartB.getIsArcp();
+        }
+
+        metadata = Map.ofEntries(
+            entry("id", form.getId().toString()),
+            entry("name", fileName),
+            entry("type", "json"),
+            entry("isarcp", isArcp != null ? isArcp.toString() : ""),
+            entry("programmemembershipid", programmeMembershipId != null ? programmeMembershipId.toString() : ""),
+            entry("formtype", form.getFormType()),
+            entry("lifecyclestate", form.getLifecycleState().name()),
+            entry(SUBMISSION_DATE, form.getSubmissionDate().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)),
+            entry("traineeid", form.getTraineeTisId()),
+            entry("deletetype", DeleteType.PARTIAL.name()),
+            entry("fixedfields", FIXED_FIELDS)
+        );
+      } else {
+
+      }
+
       PutObjectRequest request = PutObjectRequest.builder()
           .bucket(bucketName)
           .key(key)
-          .metadata(Map.ofEntries(
-              entry("id", form.getId().toString()),
-              entry("name", fileName),
-              entry("type", "json"),
-              entry("isarcp", form.getIsArcp().toString()),
-              entry("programmemembershipid", form.getProgrammeMembershipId().toString()),
-              entry("formtype", form.getFormType()),
-              entry("lifecyclestate", form.getLifecycleState().name()),
-              entry(SUBMISSION_DATE, form.getSubmissionDate()
-                  .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)),
-              entry("traineeid", form.getTraineeTisId()),
-              entry("deletetype", DeleteType.PARTIAL.name()),
-              entry("fixedfields", FIXED_FIELDS)
-          ))
+          .metadata(metadata)
           .build();
 
       log.info("uploading file: {} to bucket: {} with key: {}", fileName, bucketName, key);
