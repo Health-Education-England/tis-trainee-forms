@@ -66,6 +66,8 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
 
   private LocalDateTime localDateTime;
   private static final String SUBMISSION_DATE = "submissiondate";
+  private static final String LIFECYCLE_STATE = "lifecyclestate";
+  private static final String TRAINEE_ID = "traineeid";
   private static final String FIXED_FIELDS =
       "id,traineeTisId,lifecycleState,submissionDate,lastModifiedDate";
 
@@ -98,9 +100,10 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
           entry("name", fileName),
           entry("type", "json"),
           entry("formtype", form.getFormType()),
-          entry("lifecyclestate", form.getLifecycleState().name()),
-          entry(SUBMISSION_DATE, form.getSubmissionDate().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)),
-          entry("traineeid", form.getTraineeTisId()),
+          entry(LIFECYCLE_STATE, form.getLifecycleState().name()),
+          entry(SUBMISSION_DATE, form.getSubmissionDate()
+              .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)),
+          entry(TRAINEE_ID, form.getTraineeTisId()),
           entry("deletetype", DeleteType.PARTIAL.name()),
           entry("fixedfields", FIXED_FIELDS)
       );
@@ -125,16 +128,16 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
             entry("name", fileName),
             entry("type", "json"),
             entry("isarcp", isArcp != null ? isArcp.toString() : ""),
-            entry("programmemembershipid", programmeMembershipId != null ? programmeMembershipId.toString() : ""),
+            entry("programmemembershipid", programmeMembershipId != null
+                ? programmeMembershipId.toString() : ""),
             entry("formtype", form.getFormType()),
-            entry("lifecyclestate", form.getLifecycleState().name()),
-            entry(SUBMISSION_DATE, form.getSubmissionDate().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)),
-            entry("traineeid", form.getTraineeTisId()),
+            entry(LIFECYCLE_STATE, form.getLifecycleState().name()),
+            entry(SUBMISSION_DATE, form.getSubmissionDate()
+                .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)),
+            entry(TRAINEE_ID, form.getTraineeTisId()),
             entry("deletetype", DeleteType.PARTIAL.name()),
             entry("fixedfields", FIXED_FIELDS)
         );
-      } else {
-
       }
 
       PutObjectRequest request = PutObjectRequest.builder()
@@ -175,7 +178,7 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
         Map<String, String> metadata = headObject.metadata();
         T form = getTypeClass().getConstructor().newInstance();
         form.setId(UUID.fromString(metadata.get("id")));
-        form.setTraineeTisId(metadata.get("traineeid"));
+        form.setTraineeTisId(metadata.get(TRAINEE_ID));
         try {
           form.setSubmissionDate(LocalDateTime.parse(metadata.get(SUBMISSION_DATE)));
         } catch (DateTimeParseException e) {
@@ -186,7 +189,7 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
           form.setSubmissionDate(localDateTime);
         }
         form.setLifecycleState(
-            LifecycleState.valueOf(metadata.get("lifecyclestate")
+            LifecycleState.valueOf(metadata.get(LIFECYCLE_STATE)
                 .toUpperCase()));
         return form;
       } catch (Exception e) {
