@@ -20,6 +20,8 @@
 
 package uk.nhs.hee.tis.trainee.forms.repository;
 
+import static java.util.Map.entry;
+
 import com.amazonaws.AmazonServiceException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.ParameterizedType;
@@ -50,6 +52,8 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.DeleteType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractForm;
+import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
+import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
 @Slf4j
@@ -62,6 +66,8 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
 
   private LocalDateTime localDateTime;
   private static final String SUBMISSION_DATE = "submissiondate";
+  private static final String LIFECYCLE_STATE = "lifecyclestate";
+  private static final String TRAINEE_ID = "traineeid";
   private static final String FIXED_FIELDS =
       "id,traineeTisId,lifecycleState,submissionDate,lastModifiedDate";
 
@@ -88,21 +94,56 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
     try {
       String key = String.format(getObjectKeyTemplate(), form.getTraineeTisId(), form.getId());
 
+      // Base metadata entries
+      Map<String, String> metadata = Map.ofEntries(
+          entry("id", form.getId().toString()),
+          entry("name", fileName),
+          entry("type", "json"),
+          entry("formtype", form.getFormType()),
+          entry(LIFECYCLE_STATE, form.getLifecycleState().name()),
+          entry(SUBMISSION_DATE, form.getSubmissionDate()
+              .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)),
+          entry(TRAINEE_ID, form.getTraineeTisId()),
+          entry("deletetype", DeleteType.PARTIAL.name()),
+          entry("fixedfields", FIXED_FIELDS)
+      );
+
+      if (form instanceof FormRPartA || form instanceof FormRPartB) {
+
+        UUID programmeMembershipId = null;
+        Boolean isArcp = null;
+
+        if (form instanceof FormRPartA) {
+          FormRPartA formRPartA = (FormRPartA) form;
+          programmeMembershipId = formRPartA.getProgrammeMembershipId();
+          isArcp = formRPartA.getIsArcp();
+        } else if (form instanceof FormRPartB) {
+          FormRPartB formRPartB = (FormRPartB) form;
+          programmeMembershipId = formRPartB.getProgrammeMembershipId();
+          isArcp = formRPartB.getIsArcp();
+        }
+
+        metadata = Map.ofEntries(
+            entry("id", form.getId().toString()),
+            entry("name", fileName),
+            entry("type", "json"),
+            entry("isarcp", isArcp != null ? isArcp.toString() : ""),
+            entry("programmemembershipid", programmeMembershipId != null
+                ? programmeMembershipId.toString() : ""),
+            entry("formtype", form.getFormType()),
+            entry(LIFECYCLE_STATE, form.getLifecycleState().name()),
+            entry(SUBMISSION_DATE, form.getSubmissionDate()
+                .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)),
+            entry(TRAINEE_ID, form.getTraineeTisId()),
+            entry("deletetype", DeleteType.PARTIAL.name()),
+            entry("fixedfields", FIXED_FIELDS)
+        );
+      }
+
       PutObjectRequest request = PutObjectRequest.builder()
           .bucket(bucketName)
           .key(key)
-          .metadata(Map.of(
-              "id", form.getId().toString(),
-              "name", fileName,
-              "type", "json",
-              "formtype", form.getFormType(),
-              "lifecyclestate", form.getLifecycleState().name(),
-              SUBMISSION_DATE,
-              form.getSubmissionDate().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
-              "traineeid", form.getTraineeTisId(),
-              "deletetype", DeleteType.PARTIAL.name(),
-              "fixedfields", FIXED_FIELDS
-          ))
+          .metadata(metadata)
           .build();
 
       log.info("uploading file: {} to bucket: {} with key: {}", fileName, bucketName, key);
@@ -137,7 +178,7 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
         Map<String, String> metadata = headObject.metadata();
         T form = getTypeClass().getConstructor().newInstance();
         form.setId(UUID.fromString(metadata.get("id")));
-        form.setTraineeTisId(metadata.get("traineeid"));
+        form.setTraineeTisId(metadata.get(TRAINEE_ID));
         try {
           form.setSubmissionDate(LocalDateTime.parse(metadata.get(SUBMISSION_DATE)));
         } catch (DateTimeParseException e) {
@@ -148,7 +189,7 @@ public abstract class AbstractCloudRepository<T extends AbstractForm> {
           form.setSubmissionDate(localDateTime);
         }
         form.setLifecycleState(
-            LifecycleState.valueOf(metadata.get("lifecyclestate")
+            LifecycleState.valueOf(metadata.get(LIFECYCLE_STATE)
                 .toUpperCase()));
         return form;
       } catch (Exception e) {
