@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.hee.tis.trainee"
-version = "0.19.0"
+version = "0.20.0"
 
 configurations {
   compileOnly {
@@ -32,6 +32,7 @@ dependencies {
   // Spring Boot starters
   implementation("org.springframework.boot:spring-boot-starter-actuator")
   implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
+  implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
   implementation("org.springframework.boot:spring-boot-starter-web")
   implementation("org.springframework.boot:spring-boot-starter-validation")
   testImplementation("org.springframework.boot:spring-boot-starter-test")
@@ -59,9 +60,14 @@ dependencies {
   // SQS
   implementation("io.awspring.cloud:spring-cloud-aws-starter-s3")
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sqs")
+  implementation("io.awspring.cloud:spring-cloud-aws-starter-sns")
 
-  //Bean utils
   implementation("commons-beanutils:commons-beanutils:1.9.4")
+
+  val openHtmlToPdfVersion = "1.0.10"
+  implementation("com.openhtmltopdf:openhtmltopdf-pdfbox:${openHtmlToPdfVersion}")
+  implementation("com.openhtmltopdf:openhtmltopdf-slf4j:${openHtmlToPdfVersion}")
+  implementation("org.jsoup:jsoup:1.17.2")
 }
 
 checkstyle {

@@ -27,35 +27,65 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.GoldGuideVersion.GG9;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoining;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
+import uk.nhs.hee.tis.trainee.forms.service.PdfPublisherService;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
-class FormDeleteEventListenerTest {
+class FormEventListenerTest {
 
-  private FormDeleteEventListener listener;
+  private FormEventListener listener;
   private FormRPartAService formRPartAService;
   private FormRPartBService formRPartBService;
+  private PdfPublisherService pdfPublisherService;
 
   @BeforeEach
   void setUp() {
     formRPartAService = mock(FormRPartAService.class);
     formRPartBService = mock(FormRPartBService.class);
-    listener = new FormDeleteEventListener(
+    pdfPublisherService = mock(PdfPublisherService.class);
+    listener = new FormEventListener(
         formRPartAService,
         formRPartBService,
+        pdfPublisherService,
         new ObjectMapper()
     );
   }
 
   @Test
-  void shouldPartialDeleteFormA() throws IOException {
+  void shouldPublishConditionsOfJoining() throws IOException {
+    ConditionsOfJoining conditionsOfJoining = new ConditionsOfJoining(GG9, Instant.now());
+    ConditionsOfJoiningSignedEvent event = new ConditionsOfJoiningSignedEvent("40",
+        UUID.randomUUID(), "progName", conditionsOfJoining);
+
+    listener.handleCojReceivedEvent(event);
+
+    verify(pdfPublisherService).publishConditionsOfJoining(event);
+  }
+
+  @Test
+  void shouldThrowExceptionPublishingConditionsOfJoiningThrowsException() throws IOException {
+    ConditionsOfJoining conditionsOfJoining = new ConditionsOfJoining(GG9, Instant.now());
+    ConditionsOfJoiningSignedEvent event = new ConditionsOfJoiningSignedEvent("40",
+        UUID.randomUUID(), "progName", conditionsOfJoining);
+
+    doThrow(IOException.class).when(pdfPublisherService).publishConditionsOfJoining(any());
+
+    assertThrows(IOException.class, () -> listener.handleCojReceivedEvent(event));
+  }
+
+  @Test
+  void shouldPartialDeleteFormA() {
     final String message = """
         {
         "deleteType": "PARTIAL",
@@ -72,7 +102,7 @@ class FormDeleteEventListenerTest {
   }
 
   @Test
-  void shouldPartialDeleteFormB() throws IOException {
+  void shouldPartialDeleteFormB() {
     final String message = """
         {
         "deleteType": "PARTIAL",
@@ -89,7 +119,7 @@ class FormDeleteEventListenerTest {
   }
 
   @Test
-  void shouldNotPartialDeleteFormsIfFormNameNotMatch() throws IOException {
+  void shouldNotPartialDeleteFormsIfFormNameNotMatch() {
     final String message = """
         {
         "deleteType": "PARTIAL",
@@ -106,7 +136,7 @@ class FormDeleteEventListenerTest {
   }
 
   @Test
-  void shouldThrowExceptionWhenDeleteTypeNotPartial() throws IOException {
+  void shouldThrowExceptionWhenDeleteTypeNotPartial() {
     final String message = """
         {
         "deleteType": "HARD",
@@ -122,7 +152,7 @@ class FormDeleteEventListenerTest {
   }
 
   @Test
-  void shouldThrowExceptionWhenFailToPartialDeleteForm() throws IOException {
+  void shouldThrowExceptionWhenFailToPartialDeleteForm() {
     final String message = """
         {
         "deleteType": "HARD",
