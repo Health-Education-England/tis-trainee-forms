@@ -32,6 +32,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.PublishedPdf;
 @Value
 public class ConditionsOfJoiningPublishedEvent {
 
+  String traineeId;
   UUID programmeMembershipId;
   ConditionsOfJoining conditionsOfJoining;
   PublishedPdf pdf;
@@ -44,6 +45,7 @@ public class ConditionsOfJoiningPublishedEvent {
    */
   public ConditionsOfJoiningPublishedEvent(ConditionsOfJoiningSignedEvent signedEvent,
       PublishedPdf pdf) {
+    traineeId = signedEvent.traineeId();
     programmeMembershipId = signedEvent.programmeMembershipId();
     conditionsOfJoining = signedEvent.conditionsOfJoining();
     this.pdf = pdf;

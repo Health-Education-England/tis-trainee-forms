@@ -167,6 +167,7 @@ class PdfPublisherServiceTest {
     assertThat("Unexpected header value.", headers.get("form_type"), is("COJ"));
 
     ConditionsOfJoiningPublishedEvent payload = notification.getPayload();
+    assertThat("Unexpected programme membership ID.", payload.getTraineeId(), is(TRAINEE_ID));
     assertThat("Unexpected programme membership ID.", payload.getProgrammeMembershipId(),
         is(PROGRAMME_MEMBERSHIP_ID));
     assertThat("Unexpected conditions of joining.", payload.getConditionsOfJoining(),
