@@ -37,6 +37,8 @@ public record ConditionsOfJoiningSignedEvent(
 
     @JsonAlias("personId")
     String traineeId,
+
+    @JsonAlias("tisId")
     UUID programmeMembershipId,
 
     String programmeName,
