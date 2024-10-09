@@ -38,6 +38,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -65,6 +66,8 @@ class PdfPublisherServiceTest {
   private static final UUID PROGRAMME_MEMBERSHIP_ID = UUID.randomUUID();
   private static final String PROGRAMME_NAME = "Test Programme";
 
+  private static final ZoneId TIMEZONE = ZoneId.of("Europe/London");
+
   private PdfPublisherService service;
 
   private TemplateEngine templateEngine;
@@ -80,7 +83,7 @@ class PdfPublisherServiceTest {
     snsTemplate = mock(SnsTemplate.class);
 
     service = new PdfPublisherService(templateEngine, s3Template, BUCKET_NAME, snsTemplate,
-        TOPIC_ARN);
+        TOPIC_ARN, TIMEZONE);
   }
 
   @ParameterizedTest
@@ -107,11 +110,12 @@ class PdfPublisherServiceTest {
         templateSpec.getTemplateResolutionAttributes(), nullValue());
 
     Context context = contextCaptor.getValue();
-    assertThat("Unexpected locale.", context.getLocale(), is(Locale.getDefault()));
+    assertThat("Unexpected locale.", context.getLocale(), is(Locale.ENGLISH));
 
     Set<String> variableNames = context.getVariableNames();
-    assertThat("Unexpected variable count.", variableNames.size(), is(1));
-    assertThat("Unexpected variable value.", context.getVariable("event"), is(event));
+    assertThat("Unexpected variable count.", variableNames.size(), is(2));
+    assertThat("Unexpected event value.", context.getVariable("event"), is(event));
+    assertThat("Unexpected timezone value.", context.getVariable("timezone"), is(TIMEZONE.getId()));
   }
 
   @ParameterizedTest

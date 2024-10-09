@@ -9,6 +9,7 @@ application:
     sqs:
       coj-received: ${COJ_RECEIVED_QUEUE:}
       delete-event: ${DELETE_EVENT_QUEUE:}
+  timezone: Europe/London
 
 features:
   formr-partb:

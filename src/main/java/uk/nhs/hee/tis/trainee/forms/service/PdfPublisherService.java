@@ -30,6 +30,9 @@ import io.awspring.cloud.sns.core.SnsTemplate;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.ZoneId;
+import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
@@ -66,6 +69,8 @@ public class PdfPublisherService {
   private final SnsTemplate snsTemplate;
   private final String publishTopic;
 
+  private final ZoneId timezone;
+
   /**
    * A service handling PDF generation and publishing via S3 and SNS.
    *
@@ -77,12 +82,14 @@ public class PdfPublisherService {
    */
   public PdfPublisherService(TemplateEngine templateEngine,
       S3Template s3Template, @Value("${application.file-store.bucket}") String publishBucket,
-      SnsTemplate snsTemplate, @Value("${application.aws.sns.pdf-generated}") String publishTopic) {
+      SnsTemplate snsTemplate, @Value("${application.aws.sns.pdf-generated}") String publishTopic,
+      @Value("${application.timezone}") ZoneId timezone) {
     this.templateEngine = templateEngine;
     this.s3Template = s3Template;
     this.publishBucket = publishBucket;
     this.snsTemplate = snsTemplate;
     this.publishTopic = publishTopic;
+    this.timezone = timezone;
 
     XRLog.setLoggerImpl(new Slf4jLogger());
   }
@@ -124,7 +131,12 @@ public class PdfPublisherService {
   private byte[] generatePdf(TemplateSpec templateSpec, Map<String, Object> templateVariables)
       throws IOException {
     log.info("Generating a PDF using template '{}'.", templateSpec.getTemplate());
-    String body = templateEngine.process(templateSpec, new Context(null, templateVariables));
+
+    Map<String, Object> enhancedVariables = new HashMap<>(templateVariables);
+    enhancedVariables.put("timezone", timezone.getId());
+
+    String body = templateEngine.process(templateSpec,
+        new Context(Locale.ENGLISH, enhancedVariables));
     Document parsedBody = Jsoup.parse(body);
 
     ByteArrayOutputStream os = new ByteArrayOutputStream();
