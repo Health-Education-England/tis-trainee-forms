@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Conditions of Joining Agreement</title>
+    <link href="/static/css/nhsuk-9.0.0.min.css" rel="stylesheet" />
+  </head>
+  <body
+    th:with="programmeName=${not #strings.isEmpty(event.programmeName)} ? ${event.programmeName} : _"
+  >
+    <main class="nhsuk-width-container nhsuk-u-margin-top-5">
+      <div class="nhsuk-card nhsuk-card--feature">
+        <div class="nhsuk-card__content nhsuk-card__content--feature">
+          <h2 class="nhsuk-card__heading nhsuk-card__heading--feature">
+            Conditions of Joining Agreement
+          </h2>
+          <h3 class="card-heading-spaced-top">
+            <th:block th:text="${programmeName}">(programme name missing)</th:block>
+            Specialty Training Programme
+          </h3>
+          <dl class="nhsuk-summary-list nhsuk-summary-list--no-border">
+            <div class="nhsuk-summary-list__row">
+              <dd class="nhsuk-summary-list__value">
+                <b>Please note: This is not an offer of employment.</b>
+              </dd>
+            </div>
+            <div class="nhsuk-summary-list__row">
+              <dd class="nhsuk-summary-list__value">Dear Postgraduate Dean,</dd>
+            </div>
+            <div class="nhsuk-summary-list__row">
+              <dd class="nhsuk-summary-list__value">
+                On accepting an offer to join a training programme in
+                <b> <th:block th:text="${programmeName}">(programme name missing)</th:block> </b>, I
+                agree to meet the following requirements throughout the duration of the programme:
+              </dd>
+            </div>
+            <ul>
+              <li>
+                I will always have at the forefront of my clinical and professional practice the
+                principles of Good Medical Practice for the benefit of safe patient care. I am aware
+                that Good Medical Practice requires me to keep my knowledge and skills up to date
+                throughout my working life, and to regularly take part in educational activities
+                that maintain and further develop my capabilities, competence and performance.
+              </li>
+              <li>
+                As a postgraduate doctor in training, I will make myself familiar with my curriculum
+                and meet the requirements set within it. I will use the available training resources
+                optimally to develop my knowledge, skills and attitudes to the standards set by the
+                relevant curriculum. This will include additional requirements as set out by the
+                relevant curriculum.
+              </li>
+              <li>
+                I will ensure that the care I give to patients is responsive to their needs, and
+                that it is equitable, respects human rights, challenges discrimination, promotes
+                equality, and maintains the dignity of patients and carers.
+              </li>
+              <li>
+                I will ensure that I treat my clinical and non-clinical colleagues with respect,
+                promoting a culture of teamworking across all professions working in healthcare.
+              </li>
+              <li>
+                I will maintain my General Medical Council (GMC) registration with a licence to
+                practise (even if temporarily out of programme). For all postgraduate doctors in
+                training, failure to do so may result in a police investigation, immediate
+                suspension from employment and referral to the GMC. Failure to do so may also result
+                in my removal from the training programme.
+              </li>
+              <li>
+                I understand my responsibilities within revalidation, that I must declare my full
+                scope of practice (including locum positions) and that I will provide evidence for
+                all areas of activity using Form R (Part B) to inform the Annual Review of
+                Competence Progression panel and Responsible Officer (RO) of my full scope of
+                practice. I understand that my RO is the Postgraduate Dean (or the Medical Director
+                in Health Education and Improvement Wales (HEIW), and the Northern Ireland Medical
+                and Dental Training Agency (NIMDTA)), and that NHS England Workforce, Training and
+                Education (NHSE WTE), NHS Education for Scotland (NES), HEIW or NIMDTA is my
+                designated body.
+              </li>
+              <li>
+                I agree that I will only assume responsibility for or perform procedures in areas
+                where I have sufficient knowledge, experience and expertise as set out by the GMC,
+                my employers and my clinical supervisors.
+              </li>
+              <li>
+                I will have adequate insurance and indemnity cover, in accordance with GMC guidance.
+                I understand that personal indemnity cover is also strongly recommended.
+              </li>
+              <li>
+                I will inform my RO, NHSE WTE/NES/HEIW/NIMDTA and my employer immediately if I am
+                currently under investigation by the police, the GMC/General Dental Council (GDC),
+                NHS Resolution or other regulatory body, and I will inform my RO and NHSE
+                WTE/NES/HEIW/NIMDTA if I am under investigation by my employer. I also agree to
+                share information on the progress of any investigations.
+              </li>
+              <li>
+                I will inform my RO, NHSE WTE/NES/HEIW/NIMDTA and my employer immediately if the
+                Medical Practitioners Tribunal Service or GMC/GDC place any conditions (interim or
+                otherwise) on my licence, or if I am suspended or erased/removed from the medical or
+                dental register/Performers List, or if NHSE WTE/NES/HEIW/NIMDTA takes action to
+                restrict my ability to work as a doctor or a dentist.
+              </li>
+              <li>
+                I will provide my employer and NHSE WTE/NES/HEIW/NIMDTA with adequate notice as per
+                GMC guidance/contract requirements if I wish to resign from my post/training
+                programme.
+              </li>
+              <li>
+                I will maintain a prescribed connection with NHSE WTE/NES/HEIW/NIMDTA, work in an
+                approved practice setting until my GMC revalidation date (this applies to all
+                doctors granted full registration after 2 June 2014) and comply with all
+                requirements regarding the GMC revalidation process.
+              </li>
+              <li>
+                I will ensure that I comply with the standards required from doctors when engaging
+                with social media, and I will adhere to my employer’s policy on social media and GMC
+                guidance.
+              </li>
+              <li>
+                I acknowledge that as an employee in a healthcare organisation, I accept the
+                responsibility to abide by Good Medical Practice and work effectively as an employee
+                for that organisation; this includes familiarity with policies (including absence
+                policies) as well as participating in pre-employment checks and occupational health
+                assessments, employer/departmental inductions, and workplace-based appraisal and
+                educational appraisal. I acknowledge and agree to the need to share information
+                about my performance as a postgraduate doctor in training with other organisations
+                (e.g. employers, medical schools, the GMC and Colleges/training bodies involved in
+                my training) and with the Postgraduate Dean on a regular basis.
+              </li>
+              <li>
+                I acknowledge that data will be collected to support the following processes, and I
+                will comply with the requirements of the General Data Protection Regulation, the
+                Data Protection Act 2018 and such other data protection as is in force from time to
+                time:
+                <ol type="a">
+                  <li>
+                    Managing the provision of training programmes including inter-deanery transfers
+                  </li>
+                  <li>
+                    Managing processes allied to training programmes, such as certification,
+                    evidence to support revalidation and supporting the requirements of regulators
+                  </li>
+                  <li>Quality assurance of training programmes</li>
+                  <li>Workforce planning</li>
+                  <li>Ensuring and improving patient safety</li>
+                  <li>
+                    Compliance with legal and regulatory responsibilities, including monitoring
+                    under the Equality Act 2010
+                  </li>
+                  <li>Research related to any of the above</li>
+                </ol>
+              </li>
+              <li>
+                I will maintain regular contact with my Training Programme Director, other trainers
+                and NHSE WTE/NES/HEIW/NIMDTA by responding promptly to communications from them.
+              </li>
+              <li>
+                I will participate proactively in the appraisal, assessment and programme planning
+                process, including providing required documentation to the prescribed timescales and
+                progressing my training without unreasonable delay.
+              </li>
+              <li>
+                I will ensure that I develop and keep up to date my learning e-portfolio, which
+                underpins the training process and documents my progress through the programme.
+              </li>
+              <li>I agree to ensure timely registration with the appropriate College/Faculty.</li>
+              <li>
+                I will support the development and evaluation of my training programme by
+                participating actively in the GMC’s annual national training
+                survey/programme-specific surveys as well as in any other activities that contribute
+                to the quality improvement of training.
+              </li>
+              <li>
+                I acknowledge that where programmes are time dependant, failure to complete the
+                required time in programme may result in a developmental outcome.
+              </li>
+            </ul>
+          </dl>
+        </div>
+      </div>
+      <div style="page-break-before: always;"></div>
+      <dl class="nhsuk-summary-list nhsuk-summary-list--no-border">
+        <div class="nhsuk-summary-list__row">
+          <dd class="nhsuk-summary-list__value">
+            In addition, I acknowledge the following specific information requirements:
+          </dd>
+        </div>
+      </dl>
+      <form>
+        <div data-jest="isDeclareProvisional" class="nhsuk-form-group">
+          <label class="nhsuk-label" for="isDeclareProvisional"></label>
+          <div class="nhsuk-form-group">
+            <div class="nhsuk-checkboxes" id="isDeclareProvisional">
+              <div class="nhsuk-checkboxes__item">
+                <input
+                  class="nhsuk-checkboxes__input"
+                  name="isDeclareProvisional"
+                  id="isDeclareProvisional-1"
+                  disabled=""
+                  type="checkbox"
+                  value="true"
+                  checked=""
+                /><label class="nhsuk-label nhsuk-checkboxes__label" for="isDeclareProvisional-1"
+                  >I understand that programme and post allocations are provisional, and are subject
+                  to change until confirmed by NHSE WTE/NES/HEIW/NIMDTA and/or my employing
+                  organisation.</label
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+        <div data-jest="isDeclareSatisfy" class="nhsuk-form-group">
+          <label class="nhsuk-label" for="isDeclareSatisfy"></label>
+          <div class="nhsuk-form-group">
+            <div class="nhsuk-checkboxes" id="isDeclareSatisfy">
+              <div class="nhsuk-checkboxes__item">
+                <input
+                  class="nhsuk-checkboxes__input"
+                  name="isDeclareSatisfy"
+                  id="isDeclareSatisfy-1"
+                  disabled=""
+                  type="checkbox"
+                  value="true"
+                  checked=""
+                /><label class="nhsuk-label nhsuk-checkboxes__label" for="isDeclareSatisfy-1"
+                  >I understand that I will need to satisfy all requirements of the programme and
+                  curriculum to enable satisfactory sign off, and that this may require a specific
+                  time commitment.</label
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+        <div data-jest="isDeclareProvide" class="nhsuk-form-group">
+          <label class="nhsuk-label" for="isDeclareProvide"></label>
+          <div class="nhsuk-form-group">
+            <div class="nhsuk-checkboxes" id="isDeclareProvide">
+              <div class="nhsuk-checkboxes__item">
+                <input
+                  class="nhsuk-checkboxes__input"
+                  name="isDeclareProvide"
+                  id="isDeclareProvide-1"
+                  disabled=""
+                  type="checkbox"
+                  value="true"
+                  checked=""
+                /><label class="nhsuk-label nhsuk-checkboxes__label" for="isDeclareProvide-1"
+                  >I will obtain a professional email address, and will provide this to my training
+                  programme and NHSE WTE/NES/HEIW/NIMDTA.</label
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+        <div data-jest="isDeclareInform" class="nhsuk-form-group">
+          <label class="nhsuk-label" for="isDeclareInform"></label>
+          <div class="nhsuk-form-group">
+            <div class="nhsuk-checkboxes" id="isDeclareInform">
+              <div class="nhsuk-checkboxes__item">
+                <input
+                  class="nhsuk-checkboxes__input"
+                  name="isDeclareInform"
+                  id="isDeclareInform-1"
+                  disabled=""
+                  type="checkbox"
+                  value="true"
+                  checked=""
+                /><label class="nhsuk-label nhsuk-checkboxes__label" for="isDeclareInform-1"
+                  >I will inform my training programme and NHSE WTE/NES/HEIW/NIMDTA of any change to
+                  my personal contact details and/or personal circumstances that may affect my
+                  training programme arrangements.</label
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+        <div data-jest="isDeclareUpToDate" class="nhsuk-form-group">
+          <label class="nhsuk-label" for="isDeclareUpToDate"></label>
+          <div class="nhsuk-form-group">
+            <div class="nhsuk-checkboxes" id="isDeclareUpToDate">
+              <div class="nhsuk-checkboxes__item">
+                <input
+                  class="nhsuk-checkboxes__input"
+                  name="isDeclareUpToDate"
+                  id="isDeclareUpToDate-1"
+                  disabled=""
+                  type="checkbox"
+                  value="true"
+                  checked=""
+                /><label class="nhsuk-label nhsuk-checkboxes__label" for="isDeclareUpToDate-1"
+                  >I will keep myself up to date with the latest information available via NHSE
+                  WTE/NES/HEIW/NIMDTA as well as via the relevant educational and regulatory
+                  websites.</label
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+        <div data-jest="isDeclareAttend" class="nhsuk-form-group">
+          <label class="nhsuk-label" for="isDeclareAttend"></label>
+          <div class="nhsuk-form-group">
+            <div class="nhsuk-checkboxes" id="isDeclareAttend">
+              <div class="nhsuk-checkboxes__item">
+                <input
+                  class="nhsuk-checkboxes__input"
+                  name="isDeclareAttend"
+                  id="isDeclareAttend-1"
+                  disabled=""
+                  type="checkbox"
+                  value="true"
+                  checked=""
+                /><label class="nhsuk-label nhsuk-checkboxes__label" for="isDeclareAttend-1"
+                  >I will attend the minimum number of formal teaching days as required by my
+                  training programme.</label
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+        <div data-jest="isDeclareContacted" class="nhsuk-form-group">
+          <label class="nhsuk-label" for="isDeclareContacted"></label>
+          <div class="nhsuk-form-group">
+            <div class="nhsuk-checkboxes" id="isDeclareContacted">
+              <div class="nhsuk-checkboxes__item">
+                <input
+                  class="nhsuk-checkboxes__input"
+                  name="isDeclareContacted"
+                  id="isDeclareContacted-1"
+                  disabled=""
+                  type="checkbox"
+                  value="true"
+                  checked=""
+                /><label class="nhsuk-label nhsuk-checkboxes__label" for="isDeclareContacted-1"
+                  >I understand that I will be contacted by NHSE WTE/NES/HEIW/NIMDTA about matters
+                  that are relevant to my teaching, training or personal development.</label
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+        <div data-jest="isDeclareEngage" class="nhsuk-form-group">
+          <label class="nhsuk-label" for="isDeclareEngage"></label>
+          <div class="nhsuk-form-group">
+            <div class="nhsuk-checkboxes" id="isDeclareEngage">
+              <div class="nhsuk-checkboxes__item">
+                <input
+                  class="nhsuk-checkboxes__input"
+                  name="isDeclareEngage"
+                  id="isDeclareEngage-1"
+                  disabled=""
+                  type="checkbox"
+                  value="true"
+                  checked=""
+                /><label class="nhsuk-label nhsuk-checkboxes__label" for="isDeclareEngage-1"
+                  >Where applicable, I will fully engage with immigration and employer requirements
+                  relating to skilled worker visas (formerly Tier 2 and Tier 4 UK visas).</label
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
+      <dl class="nhsuk-summary-list nhsuk-summary-list--no-border">
+        <div class="nhsuk-summary-list__row">
+          <dd class="nhsuk-summary-list__value">
+            I acknowledge the importance of these responsibilities and understand that they are
+            requirements for maintaining my registration with the Postgraduate Dean. If I fail to
+            meet them, I understand that my training number/contract may be withdrawn by the
+            Postgraduate Dean.
+          </dd>
+        </div>
+        <div class="nhsuk-summary-list__row">
+          <dd class="nhsuk-summary-list__value">
+            I understand that this document does not constitute an offer of employment.
+          </dd>
+        </div>
+      </dl>
+      <dl class="nhsuk-summary-list nhsuk-summary-list--no-border">
+        <div class="nhsuk-summary-list__row">
+          <dd class="nhsuk-summary-list__value">
+            Signed On:
+            <th:block
+              th:text="${#temporals.format(event.conditionsOfJoining.signedAt, 'dd MMMM yyyy hh:mm (z)')}"
+            >
+              (signed date/time missing)
+            </th:block>
+          </dd>
+        </div>
+      </dl>
+    </main>
+  </body>
+</html>

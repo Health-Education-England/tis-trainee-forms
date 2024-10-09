@@ -23,6 +23,7 @@ package uk.nhs.hee.tis.trainee.forms.event;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.sqs.annotation.SqsListener;
+import java.io.IOException;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -30,25 +31,40 @@ import uk.nhs.hee.tis.trainee.forms.dto.DeleteEventDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.DeleteType;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
+import uk.nhs.hee.tis.trainee.forms.service.PdfPublisherService;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
 /**
- * Listener for receiving form delete event from SQS queue.
+ * Listener for receiving form events from SQS queue.
  */
 @Slf4j
 @Component
-public class FormDeleteEventListener {
+public class FormEventListener {
 
   private final FormRPartAService formRPartAService;
   private final FormRPartBService formRPartBService;
+  private final PdfPublisherService pdfPublisherService;
   private final ObjectMapper objectMapper;
 
-  FormDeleteEventListener(FormRPartAService formRPartAService,
-      FormRPartBService formRPartBService,
+  FormEventListener(FormRPartAService formRPartAService,
+      FormRPartBService formRPartBService, PdfPublisherService pdfPublisherService,
       ObjectMapper objectMapper) {
     this.formRPartAService = formRPartAService;
     this.formRPartBService = formRPartBService;
+    this.pdfPublisherService = pdfPublisherService;
     this.objectMapper = objectMapper;
+  }
+
+  /**
+   * Listener for handling signed Conditions of Joining being received.
+   *
+   * @param event The signing event for the Conditions of Joining form.
+   * @throws IOException If the Conditions of Joining could not be published.
+   */
+  @SqsListener("${application.aws.sqs.coj-received}")
+  public void handleCojReceivedEvent(ConditionsOfJoiningSignedEvent event) throws IOException {
+    log.info("Signed Conditions of Joining received: {}", event);
+    pdfPublisherService.publishConditionsOfJoining(event);
   }
 
   /**

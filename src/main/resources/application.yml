@@ -4,7 +4,10 @@ application:
     always-store: ${APPLICATION_FILESTORE_ALWAYSSTORE:false}
     bucket: ${APPLICATION_FILESTORE_BUCKET:}
   aws:
+    sns:
+      pdf-generated: ${PDF_GENERATED_TOPIC:}
     sqs:
+      coj-received: ${COJ_RECEIVED_QUEUE:}
       delete-event: ${DELETE_EVENT_QUEUE:}
 
 features:
@@ -14,6 +17,7 @@ features:
 logging:
   level:
     root: INFO
+    com.openhtmltopdf.cssparse: ERROR
     org.springframework.data: INFO
     uk.nhs.hee.tis.trainee.forms: INFO
 
