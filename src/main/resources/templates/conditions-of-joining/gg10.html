@@ -379,7 +379,7 @@
           <dd class="nhsuk-summary-list__value">
             Signed On:
             <th:block
-              th:text="${#temporals.format(event.conditionsOfJoining.signedAt, 'dd MMMM yyyy hh:mm (z)')}"
+              th:text="${#temporals.format(event.conditionsOfJoining.signedAt, 'dd MMMM yyyy HH:mm (z)', timezone)}"
             >
               (signed date/time missing)
             </th:block>
