@@ -21,6 +21,8 @@
 
 package uk.nhs.hee.tis.trainee.forms.dto;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
 /**
@@ -30,9 +32,18 @@ import java.util.UUID;
  * @param conditionsOfJoining   The {@link ConditionsOfJoining} details.
  */
 public record ConditionsOfJoiningPdfRequestDto(
+
+    @NotNull
     String traineeId,
+
+    @NotNull
     UUID programmeMembershipId,
+
+    @NotNull
     String programmeName,
+
+    @Valid
+    @NotNull
     ConditionsOfJoining conditionsOfJoining) {
 
 }

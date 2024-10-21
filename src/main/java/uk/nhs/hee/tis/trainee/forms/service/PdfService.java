@@ -104,7 +104,7 @@ public class PdfService {
    * @param key The key for the PDF.
    * @return The found PDF, empty if not found.
    */
-  public Optional<Resource> getPublishedPdf(String key) {
+  public Optional<Resource> getUploadedPdf(String key) {
     S3Resource pdf = s3Template.download(uploadBucket, key);
     return Optional.ofNullable(pdf.exists() ? pdf : null);
   }
