@@ -43,19 +43,23 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import uk.nhs.hee.tis.trainee.forms.SignatureTestUtil;
+import uk.nhs.hee.tis.trainee.forms.config.FilterConfiguration;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoining;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.GoldGuideVersion;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
-@WebMvcTest(controllers = ConditionsOfJoiningResource.class)
-@AutoConfigureMockMvc
+@WebMvcTest(ConditionsOfJoiningResource.class)
+@ComponentScan(basePackageClasses = FilterConfiguration.class)
 class ConditionsOfJoiningResourceTest {
 
   @Autowired
@@ -64,14 +68,19 @@ class ConditionsOfJoiningResourceTest {
   @MockBean
   private PdfService service;
 
+  @MockBean
+  private RestTemplateBuilder restTemplateBuilder;
+
+  @Value("${application.signature.secret-key}")
+  private String secretKey;
+
   @ParameterizedTest
   @EnumSource(GoldGuideVersion.class)
-  void putShouldReturnBadRequestGeneratingCojPdfWhenNoTraineeId(GoldGuideVersion version)
-      throws Exception {
+  void putShouldForbidUnsignedRequests(GoldGuideVersion version) throws Exception {
     UUID programmeMembershipId = UUID.randomUUID();
     Instant signedAt = Instant.now();
 
-    String body = """
+    String unsignedBody = """
         {
           "programmeMembershipId": "%s",
           "programmeName": "Test Programme",
@@ -83,8 +92,39 @@ class ConditionsOfJoiningResourceTest {
         """.formatted(programmeMembershipId, version, signedAt);
 
     mockMvc.perform(put("/api/coj")
-            .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .content(body))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(unsignedBody))
+        .andExpect(status().isForbidden());
+
+    verifyNoInteractions(service);
+  }
+
+  @ParameterizedTest
+  @EnumSource(GoldGuideVersion.class)
+  void putShouldReturnBadRequestGeneratingCojPdfWhenNoTraineeId(GoldGuideVersion version)
+      throws Exception {
+    UUID programmeMembershipId = UUID.randomUUID();
+    Instant signedAt = Instant.now();
+
+    String signedBody = SignatureTestUtil.signData("""
+            {
+              "programmeMembershipId": "%s",
+              "programmeName": "Test Programme",
+              "conditionsOfJoining": {
+                "version": "%s",
+                "signedAt": "%s"
+              },
+              "signature": {
+                "signedAt": "%s",
+                "validUntil": "%s"
+              }
+            }
+            """.formatted(programmeMembershipId, version, signedAt, Instant.MIN, Instant.MAX),
+        secretKey);
+
+    mockMvc.perform(put("/api/coj")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(signedBody))
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
@@ -96,20 +136,24 @@ class ConditionsOfJoiningResourceTest {
       throws Exception {
     Instant signedAt = Instant.now();
 
-    String body = """
+    String signedBody = SignatureTestUtil.signData("""
         {
           "traineeId": "40",
           "programmeName": "Test Programme",
           "conditionsOfJoining": {
             "version": "%s",
             "signedAt": "%s"
+          },
+          "signature": {
+            "signedAt": "%s",
+            "validUntil": "%s"
           }
         }
-        """.formatted(version, signedAt);
+        """.formatted(version, signedAt, Instant.MIN, Instant.MAX), secretKey);
 
     mockMvc.perform(put("/api/coj")
-            .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .content(body))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(signedBody))
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
@@ -122,20 +166,25 @@ class ConditionsOfJoiningResourceTest {
     UUID programmeMembershipId = UUID.randomUUID();
     Instant signedAt = Instant.now();
 
-    String body = """
-        {
-          "traineeId": "40",
-          "programmeMembershipId": "%s",
-          "conditionsOfJoining": {
-            "version": "%s",
-            "signedAt": "%s"
-          }
-        }
-        """.formatted(programmeMembershipId, version, signedAt);
+    String signedBody = SignatureTestUtil.signData("""
+            {
+              "traineeId": "40",
+              "programmeMembershipId": "%s",
+              "conditionsOfJoining": {
+                "version": "%s",
+                "signedAt": "%s"
+              },
+              "signature": {
+                "signedAt": "%s",
+                "validUntil": "%s"
+              }
+            }
+            """.formatted(programmeMembershipId, version, signedAt, Instant.MIN, Instant.MAX),
+        secretKey);
 
     mockMvc.perform(put("/api/coj")
-            .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .content(body))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(signedBody))
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
@@ -145,17 +194,21 @@ class ConditionsOfJoiningResourceTest {
   void putShouldReturnBadRequestGeneratingCojPdfWhenNoCoj() throws Exception {
     UUID programmeMembershipId = UUID.randomUUID();
 
-    String body = """
+    String signedBody = SignatureTestUtil.signData("""
         {
           "traineeId": "40",
           "programmeMembershipId": "%s",
           "programmeName": "Test Programme",
+          "signature": {
+            "signedAt": "%s",
+            "validUntil": "%s"
+          }
         }
-        """.formatted(programmeMembershipId);
+        """.formatted(programmeMembershipId, Instant.MIN, Instant.MAX), secretKey);
 
     mockMvc.perform(put("/api/coj")
-            .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .content(body))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(signedBody))
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
@@ -167,17 +220,22 @@ class ConditionsOfJoiningResourceTest {
     UUID programmeMembershipId = UUID.randomUUID();
     Instant signedAt = Instant.now();
 
-    String body = """
-        {
-          "traineeId": "40",
-          "programmeMembershipId": "%s",
-          "programmeName": "Test Programme",
-          "conditionsOfJoining": {
-            "version": "%s",
-            "signedAt": "%s"
-          }
-        }
-        """.formatted(programmeMembershipId, version, signedAt);
+    String signedBody = SignatureTestUtil.signData("""
+            {
+              "traineeId": "40",
+              "programmeMembershipId": "%s",
+              "programmeName": "Test Programme",
+              "conditionsOfJoining": {
+                "version": "%s",
+                "signedAt": "%s"
+              },
+              "signature": {
+                "signedAt": "%s",
+                "validUntil": "%s"
+              }
+            }
+            """.formatted(programmeMembershipId, version, signedAt, Instant.MIN, Instant.MAX),
+        secretKey);
 
     byte[] response = "response content".getBytes();
     Resource resource = mock(Resource.class);
@@ -186,8 +244,8 @@ class ConditionsOfJoiningResourceTest {
         Optional.of(resource));
 
     mockMvc.perform(put("/api/coj")
-            .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .content(body))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(signedBody))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_PDF))
         .andExpect(content().bytes(response));
@@ -202,17 +260,22 @@ class ConditionsOfJoiningResourceTest {
     UUID programmeMembershipId = UUID.randomUUID();
     Instant signedAt = Instant.now();
 
-    String body = """
-        {
-          "traineeId": "40",
-          "programmeMembershipId": "%s",
-          "programmeName": "Test Programme",
-          "conditionsOfJoining": {
-            "version": "%s",
-            "signedAt": "%s"
-          }
-        }
-        """.formatted(programmeMembershipId, version, signedAt);
+    String signedBody = SignatureTestUtil.signData("""
+            {
+              "traineeId": "40",
+              "programmeMembershipId": "%s",
+              "programmeName": "Test Programme",
+              "conditionsOfJoining": {
+                "version": "%s",
+                "signedAt": "%s"
+              },
+              "signature": {
+                "signedAt": "%s",
+                "validUntil": "%s"
+              }
+            }
+            """.formatted(programmeMembershipId, version, signedAt, Instant.MIN, Instant.MAX),
+        secretKey);
 
     when(service.getUploadedPdf("40/forms/coj/" + programmeMembershipId + ".pdf")).thenReturn(
         Optional.empty());
@@ -223,8 +286,8 @@ class ConditionsOfJoiningResourceTest {
     when(service.generateConditionsOfJoining(any(), anyBoolean())).thenReturn(resource);
 
     mockMvc.perform(put("/api/coj")
-            .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .content(body))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(signedBody))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_PDF))
         .andExpect(content().bytes(response));
@@ -236,17 +299,22 @@ class ConditionsOfJoiningResourceTest {
     UUID programmeMembershipId = UUID.randomUUID();
     Instant signedAt = Instant.now();
 
-    String body = """
-        {
-          "traineeId": "40",
-          "programmeMembershipId": "%s",
-          "programmeName": "Test Programme",
-          "conditionsOfJoining": {
-            "version": "%s",
-            "signedAt": "%s"
-          }
-        }
-        """.formatted(programmeMembershipId, version, signedAt);
+    String signedBody = SignatureTestUtil.signData("""
+            {
+              "traineeId": "40",
+              "programmeMembershipId": "%s",
+              "programmeName": "Test Programme",
+              "conditionsOfJoining": {
+                "version": "%s",
+                "signedAt": "%s"
+              },
+              "signature": {
+                "signedAt": "%s",
+                "validUntil": "%s"
+              }
+            }
+            """.formatted(programmeMembershipId, version, signedAt, Instant.MIN, Instant.MAX),
+        secretKey);
 
     String key = "40/forms/coj/" + programmeMembershipId + ".pdf";
     when(service.getUploadedPdf(key)).thenReturn(Optional.empty());
@@ -259,8 +327,8 @@ class ConditionsOfJoiningResourceTest {
         resource);
 
     mockMvc.perform(put("/api/coj")
-            .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .content(body))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(signedBody))
         .andExpect(status().isOk());
 
     ConditionsOfJoiningPdfRequestDto request = requestCaptor.getValue();
@@ -280,17 +348,22 @@ class ConditionsOfJoiningResourceTest {
     UUID programmeMembershipId = UUID.randomUUID();
     Instant signedAt = Instant.now();
 
-    String body = """
-        {
-          "traineeId": "40",
-          "programmeMembershipId": "%s",
-          "programmeName": "Test Programme",
-          "conditionsOfJoining": {
-            "version": "%s",
-            "signedAt": "%s"
-          }
-        }
-        """.formatted(programmeMembershipId, version, signedAt);
+    String signedBody = SignatureTestUtil.signData("""
+            {
+              "traineeId": "40",
+              "programmeMembershipId": "%s",
+              "programmeName": "Test Programme",
+              "conditionsOfJoining": {
+                "version": "%s",
+                "signedAt": "%s"
+              },
+              "signature": {
+                "signedAt": "%s",
+                "validUntil": "%s"
+              }
+            }
+            """.formatted(programmeMembershipId, version, signedAt, Instant.MIN, Instant.MAX),
+        secretKey);
 
     String key = "40/forms/coj/" + programmeMembershipId + ".pdf";
     when(service.getUploadedPdf(key)).thenReturn(Optional.empty());
@@ -301,8 +374,8 @@ class ConditionsOfJoiningResourceTest {
     when(service.generateConditionsOfJoining(any(), eq(false))).thenReturn(resource);
 
     mockMvc.perform(put("/api/coj")
-            .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .content(body))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(signedBody))
         .andExpect(status().isOk());
   }
 }
