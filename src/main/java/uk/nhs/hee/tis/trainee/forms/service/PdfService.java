@@ -36,6 +36,7 @@ import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.helper.W3CDom;
@@ -46,10 +47,10 @@ import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.TemplateSpec;
 import org.thymeleaf.context.Context;
+import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PublishedPdf;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.GoldGuideVersion;
 import uk.nhs.hee.tis.trainee.forms.event.ConditionsOfJoiningPublishedEvent;
-import uk.nhs.hee.tis.trainee.forms.event.ConditionsOfJoiningSignedEvent;
 
 /**
  * A service handling PDF generation and publishing via S3 and SNS.
@@ -79,7 +80,7 @@ public class PdfService {
    *
    * @param templateEngine The template engine to use for creating an HTML version of the form.
    * @param s3Template     The S3 template to use for uploaded.
-   * @param uploadBucket  The bucket to upload the PDFs to.
+   * @param uploadBucket   The bucket to upload the PDFs to.
    * @param snsTemplate    The SNS template to use for notifying.
    * @param publishTopic   The topic to send PDF publish notifications to.
    */
@@ -98,29 +99,43 @@ public class PdfService {
   }
 
   /**
+   * Get a previously published PDF, if it exists.
+   *
+   * @param key The key for the PDF.
+   * @return The found PDF, empty if not found.
+   */
+  public Optional<Resource> getPublishedPdf(String key) {
+    S3Resource pdf = s3Template.download(uploadBucket, key);
+    return Optional.ofNullable(pdf.exists() ? pdf : null);
+  }
+
+  /**
    * Generate and upload a Conditions of Joining PDF.
-   * @param signedEvent
+   *
+   * @param request The details of the Conditions of Joining to generate a PDF for.
    * @param publish Whether the generated PDF should be published after upload.
    * @return The resource description for the uploaded PDF.
    * @throws IOException If a valid PDF could not be created.
    */
-  public Resource generateConditionsOfJoining(ConditionsOfJoiningSignedEvent signedEvent, boolean publish) throws IOException {
-    GoldGuideVersion version = signedEvent.conditionsOfJoining().version();
-    String traineeId = signedEvent.traineeId();
-    String programmeMembershipId = signedEvent.programmeMembershipId().toString();
+  public Resource generateConditionsOfJoining(ConditionsOfJoiningPdfRequestDto request,
+      boolean publish) throws IOException {
+    GoldGuideVersion version = request.conditionsOfJoining().version();
+    String traineeId = request.traineeId();
+    String programmeMembershipId = request.programmeMembershipId().toString();
 
     log.info("Generating a {} Conditions of Joining for trainee '{}' and programme membership '{}'",
         version, traineeId, programmeMembershipId);
 
     TemplateSpec templateSpec = version.getConditionsOfJoiningTemplate();
-    byte[] pdf = generatePdf(templateSpec, Map.of("event", signedEvent));
+    byte[] pdf = generatePdf(templateSpec, Map.of("var", request));
 
     S3Resource uploaded = upload(traineeId, FORM_TYPE_COJ, programmeMembershipId, pdf);
 
     if (publish) {
       Location location = uploaded.getLocation();
       PublishedPdf pdfRef = new PublishedPdf(location.getBucket(), location.getObject());
-      ConditionsOfJoiningPublishedEvent publishEvent = new ConditionsOfJoiningPublishedEvent(signedEvent, pdfRef);
+      ConditionsOfJoiningPublishedEvent publishEvent = new ConditionsOfJoiningPublishedEvent(
+          request, pdfRef);
       publish(FORM_TYPE_COJ, programmeMembershipId, publishEvent);
     }
 

@@ -19,36 +19,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.event;
+package uk.nhs.hee.tis.trainee.forms.dto;
 
 import java.util.UUID;
-import lombok.Value;
-import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoining;
-import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
-import uk.nhs.hee.tis.trainee.forms.dto.PublishedPdf;
 
 /**
- * An event for when a Conditions of Joining PDF is published.
+ * @param traineeId             The ID of the trainee.
+ * @param programmeMembershipId The programme membership to generate a PDF for.
+ * @param programmeName         The name of the programme the COJ is for.
+ * @param conditionsOfJoining   The {@link ConditionsOfJoining} details.
  */
-@Value
-public class ConditionsOfJoiningPublishedEvent {
+public record ConditionsOfJoiningPdfRequestDto(
+    String traineeId,
+    UUID programmeMembershipId,
+    String programmeName,
+    ConditionsOfJoining conditionsOfJoining) {
 
-  String traineeId;
-  UUID programmeMembershipId;
-  ConditionsOfJoining conditionsOfJoining;
-  PublishedPdf pdf;
-
-  /**
-   * Create an event for when a Conditions of Joining PDF is published.
-   *
-   * @param request The COJ PDF request which triggered this published event.
-   * @param pdf     The reference to the published PDF.
-   */
-  public ConditionsOfJoiningPublishedEvent(ConditionsOfJoiningPdfRequestDto request,
-      PublishedPdf pdf) {
-    traineeId = request.traineeId();
-    programmeMembershipId = request.programmeMembershipId();
-    conditionsOfJoining = request.conditionsOfJoining();
-    this.pdf = pdf;
-  }
 }

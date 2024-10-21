@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.DeleteEventDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.DeleteType;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
@@ -64,7 +65,10 @@ public class FormEventListener {
   @SqsListener("${application.aws.sqs.coj-received}")
   public void handleCojReceivedEvent(ConditionsOfJoiningSignedEvent event) throws IOException {
     log.info("Signed Conditions of Joining received: {}", event);
-    pdfService.generateConditionsOfJoining(event, true);
+    ConditionsOfJoiningPdfRequestDto request = new ConditionsOfJoiningPdfRequestDto(
+        event.traineeId(), event.programmeMembershipId(), event.programmeName(),
+        event.conditionsOfJoining());
+    pdfService.generateConditionsOfJoining(request, true);
   }
 
   /**
