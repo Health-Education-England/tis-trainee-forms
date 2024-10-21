@@ -24,6 +24,8 @@ package uk.nhs.hee.tis.trainee.forms.service;
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
 import com.openhtmltopdf.slf4j.Slf4jLogger;
 import com.openhtmltopdf.util.XRLog;
+import io.awspring.cloud.s3.Location;
+import io.awspring.cloud.s3.S3Resource;
 import io.awspring.cloud.s3.S3Template;
 import io.awspring.cloud.sns.core.SnsNotification;
 import io.awspring.cloud.sns.core.SnsTemplate;
@@ -39,6 +41,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.helper.W3CDom;
 import org.jsoup.nodes.Document;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.TemplateSpec;
@@ -53,7 +56,7 @@ import uk.nhs.hee.tis.trainee.forms.event.ConditionsOfJoiningSignedEvent;
  */
 @Slf4j
 @Service
-public class PdfPublisherService {
+public class PdfService {
 
   private static final String PDF_TYPE = "pdf_type";
   private static final String PDF_TYPE_FORM = "FORM";
@@ -64,7 +67,7 @@ public class PdfPublisherService {
   private final TemplateEngine templateEngine;
 
   private final S3Template s3Template;
-  private final String publishBucket;
+  private final String uploadBucket;
 
   private final SnsTemplate snsTemplate;
   private final String publishTopic;
@@ -76,17 +79,17 @@ public class PdfPublisherService {
    *
    * @param templateEngine The template engine to use for creating an HTML version of the form.
    * @param s3Template     The S3 template to use for uploaded.
-   * @param publishBucket  The bucket to upload the PDFs to.
+   * @param uploadBucket  The bucket to upload the PDFs to.
    * @param snsTemplate    The SNS template to use for notifying.
    * @param publishTopic   The topic to send PDF publish notifications to.
    */
-  public PdfPublisherService(TemplateEngine templateEngine,
-      S3Template s3Template, @Value("${application.file-store.bucket}") String publishBucket,
+  public PdfService(TemplateEngine templateEngine,
+      S3Template s3Template, @Value("${application.file-store.bucket}") String uploadBucket,
       SnsTemplate snsTemplate, @Value("${application.aws.sns.pdf-generated}") String publishTopic,
       @Value("${application.timezone}") ZoneId timezone) {
     this.templateEngine = templateEngine;
     this.s3Template = s3Template;
-    this.publishBucket = publishBucket;
+    this.uploadBucket = uploadBucket;
     this.snsTemplate = snsTemplate;
     this.publishTopic = publishTopic;
     this.timezone = timezone;
@@ -95,29 +98,33 @@ public class PdfPublisherService {
   }
 
   /**
-   * Publish a Conditions of Joining PDF, the PDF will be uploaded to a file store and a
-   * notification sent to inform downstream services where to find it.
-   *
-   * @param signedEvent The COJ signed event to publish a PDF for.
+   * Generate and upload a Conditions of Joining PDF.
+   * @param signedEvent
+   * @param publish Whether the generated PDF should be published after upload.
+   * @return The resource description for the uploaded PDF.
    * @throws IOException If a valid PDF could not be created.
    */
-  public void publishConditionsOfJoining(ConditionsOfJoiningSignedEvent signedEvent)
-      throws IOException {
+  public Resource generateConditionsOfJoining(ConditionsOfJoiningSignedEvent signedEvent, boolean publish) throws IOException {
     GoldGuideVersion version = signedEvent.conditionsOfJoining().version();
     String traineeId = signedEvent.traineeId();
     String programmeMembershipId = signedEvent.programmeMembershipId().toString();
 
-    log.info("Publishing a {} Conditions of Joining for trainee '{}' and programme membership '{}'",
+    log.info("Generating a {} Conditions of Joining for trainee '{}' and programme membership '{}'",
         version, traineeId, programmeMembershipId);
 
     TemplateSpec templateSpec = version.getConditionsOfJoiningTemplate();
     byte[] pdf = generatePdf(templateSpec, Map.of("event", signedEvent));
 
-    PublishedPdf pdfRef = upload(traineeId, FORM_TYPE_COJ, programmeMembershipId, pdf);
+    S3Resource uploaded = upload(traineeId, FORM_TYPE_COJ, programmeMembershipId, pdf);
 
-    ConditionsOfJoiningPublishedEvent publishEvent = new ConditionsOfJoiningPublishedEvent(
-        signedEvent, pdfRef);
-    publish(FORM_TYPE_COJ, programmeMembershipId, publishEvent);
+    if (publish) {
+      Location location = uploaded.getLocation();
+      PublishedPdf pdfRef = new PublishedPdf(location.getBucket(), location.getObject());
+      ConditionsOfJoiningPublishedEvent publishEvent = new ConditionsOfJoiningPublishedEvent(signedEvent, pdfRef);
+      publish(FORM_TYPE_COJ, programmeMembershipId, publishEvent);
+    }
+
+    return uploaded;
   }
 
   /**
@@ -157,12 +164,11 @@ public class PdfPublisherService {
    * @param pdf       The bytes of the PDF file.
    * @return An object referencing the published PDF.
    */
-  private PublishedPdf upload(String traineeId, String formType, String filename, byte[] pdf) {
-    log.info("Uploading generated {} for trainee '{}': {}.pdf", formType, filename, traineeId);
+  private S3Resource upload(String traineeId, String formType, String filename, byte[] pdf) {
+    log.info("Uploading generated {} for trainee '{}': {}.pdf", formType, traineeId, filename);
     String key = String.format("%s/forms/%s/%s.pdf", traineeId, formType.toLowerCase(), filename);
 
-    s3Template.upload(publishBucket, key, new ByteArrayInputStream(pdf));
-    return new PublishedPdf(publishBucket, key);
+    return s3Template.upload(uploadBucket, key, new ByteArrayInputStream(pdf));
   }
 
   /**

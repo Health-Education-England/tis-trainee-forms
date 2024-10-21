@@ -23,6 +23,7 @@ package uk.nhs.hee.tis.trainee.forms.event;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -39,7 +40,7 @@ import org.junit.jupiter.api.Test;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoining;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
-import uk.nhs.hee.tis.trainee.forms.service.PdfPublisherService;
+import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
 class FormEventListenerTest {
@@ -47,17 +48,17 @@ class FormEventListenerTest {
   private FormEventListener listener;
   private FormRPartAService formRPartAService;
   private FormRPartBService formRPartBService;
-  private PdfPublisherService pdfPublisherService;
+  private PdfService pdfService;
 
   @BeforeEach
   void setUp() {
     formRPartAService = mock(FormRPartAService.class);
     formRPartBService = mock(FormRPartBService.class);
-    pdfPublisherService = mock(PdfPublisherService.class);
+    pdfService = mock(PdfService.class);
     listener = new FormEventListener(
         formRPartAService,
         formRPartBService,
-        pdfPublisherService,
+        pdfService,
         new ObjectMapper()
     );
   }
@@ -70,7 +71,7 @@ class FormEventListenerTest {
 
     listener.handleCojReceivedEvent(event);
 
-    verify(pdfPublisherService).publishConditionsOfJoining(event);
+    verify(pdfService).generateConditionsOfJoining(event, true);
   }
 
   @Test
@@ -79,7 +80,7 @@ class FormEventListenerTest {
     ConditionsOfJoiningSignedEvent event = new ConditionsOfJoiningSignedEvent("40",
         UUID.randomUUID(), "progName", conditionsOfJoining);
 
-    doThrow(IOException.class).when(pdfPublisherService).publishConditionsOfJoining(any());
+    doThrow(IOException.class).when(pdfService).generateConditionsOfJoining(any(), eq(true));
 
     assertThrows(IOException.class, () -> listener.handleCojReceivedEvent(event));
   }
