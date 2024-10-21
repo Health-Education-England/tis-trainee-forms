@@ -44,11 +44,13 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
@@ -89,6 +91,32 @@ class PdfServiceTest {
 
     service = new PdfService(templateEngine, s3Template, BUCKET_NAME, snsTemplate, TOPIC_ARN,
         TIMEZONE);
+  }
+
+  @Test
+  void shouldNotGetUploadedPdfWhenNotExists() {
+    S3Resource pdf = mock(S3Resource.class);
+    when(pdf.exists()).thenReturn(false);
+
+    String key = "uploaded-key";
+    when(s3Template.download(BUCKET_NAME, key)).thenReturn(pdf);
+
+    Optional<Resource> uploadedPdf = service.getUploadedPdf(key);
+
+    assertThat("Unexpected uploaded PDF presence.", uploadedPdf.isPresent(), is(false));
+  }
+
+  @Test
+  void shouldGetUploadedPdfWhenExists() {
+    S3Resource pdf = mock(S3Resource.class);
+    when(pdf.exists()).thenReturn(true);
+
+    String key = "uploaded-key";
+    when(s3Template.download(BUCKET_NAME, key)).thenReturn(pdf);
+
+    Optional<Resource> uploadedPdf = service.getUploadedPdf(key);
+
+    assertThat("Unexpected uploaded PDF.", uploadedPdf.get(), is(pdf));
   }
 
   @ParameterizedTest

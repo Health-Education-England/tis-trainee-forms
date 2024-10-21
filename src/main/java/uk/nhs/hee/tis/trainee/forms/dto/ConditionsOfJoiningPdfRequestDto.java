@@ -26,6 +26,8 @@ import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
 /**
+ * A request for a Conditions of Joining PDF.
+ *
  * @param traineeId             The ID of the trainee.
  * @param programmeMembershipId The programme membership to generate a PDF for.
  * @param programmeName         The name of the programme the COJ is for.

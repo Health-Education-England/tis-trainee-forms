@@ -97,17 +97,7 @@ class FilterConfigurationTest {
   }
 
   @Test
-  void shouldRegisterSignedDataFilterOnIssueApiEndpoints() {
-    SignedDataFilter filter = new SignedDataFilter(new ObjectMapper(), SIGNATURE_SECRET_KEY);
-
-    var registrationBean = configuration.registerSignedDataFilter(filter);
-
-    Collection<String> urlPatterns = registrationBean.getUrlPatterns();
-    assertThat("Unexpected filter patterns.", urlPatterns, hasItem("/api/coj"));
-  }
-
-  @Test
-  void shouldRegisterSignedDataFilterOnVerifyApiEndpoints() {
+  void shouldRegisterSignedDataFilterOnCojEndpoints() {
     SignedDataFilter filter = new SignedDataFilter(new ObjectMapper(), SIGNATURE_SECRET_KEY);
 
     var registrationBean = configuration.registerSignedDataFilter(filter);

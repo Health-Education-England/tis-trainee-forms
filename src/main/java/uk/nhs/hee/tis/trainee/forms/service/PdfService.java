@@ -105,6 +105,7 @@ public class PdfService {
    * @return The found PDF, empty if not found.
    */
   public Optional<Resource> getUploadedPdf(String key) {
+    log.info("Retrieving uploaded PDF '{}'.", key);
     S3Resource pdf = s3Template.download(uploadBucket, key);
     return Optional.ofNullable(pdf.exists() ? pdf : null);
   }

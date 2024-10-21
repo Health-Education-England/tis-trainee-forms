@@ -60,15 +60,23 @@ public class ConditionsOfJoiningResource {
   @PutMapping(produces = MediaType.APPLICATION_PDF_VALUE)
   public ResponseEntity<byte[]> generatePdf(
       @Valid @RequestBody ConditionsOfJoiningPdfRequestDto request) throws IOException {
+    log.info("Trainee '{}' requesting Conditions of Joining PDF for PM '{}'.", request.traineeId(),
+        request.programmeMembershipId());
     String key = String.format("%s/forms/coj/%s.pdf", request.traineeId(),
         request.programmeMembershipId());
+
     Resource publishedPdf = pdfService.getUploadedPdf(key).orElseGet(() -> {
       try {
         return pdfService.generateConditionsOfJoining(request, false);
       } catch (IOException e) {
-        throw new RuntimeException(e);
+        return null;
       }
     });
+
+    if (publishedPdf == null) {
+      return ResponseEntity.unprocessableEntity().build();
+    }
+
     return ResponseEntity.ok(publishedPdf.getContentAsByteArray());
   }
 }

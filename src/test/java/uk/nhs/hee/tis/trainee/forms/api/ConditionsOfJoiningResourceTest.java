@@ -35,6 +35,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -77,9 +78,6 @@ class ConditionsOfJoiningResourceTest {
   @ParameterizedTest
   @EnumSource(GoldGuideVersion.class)
   void putShouldForbidUnsignedRequests(GoldGuideVersion version) throws Exception {
-    UUID programmeMembershipId = UUID.randomUUID();
-    Instant signedAt = Instant.now();
-
     String unsignedBody = """
         {
           "programmeMembershipId": "%s",
@@ -89,7 +87,7 @@ class ConditionsOfJoiningResourceTest {
             "signedAt": "%s"
           }
         }
-        """.formatted(programmeMembershipId, version, signedAt);
+        """.formatted(UUID.randomUUID(), version, Instant.now());
 
     mockMvc.perform(put("/api/coj")
             .contentType(MediaType.APPLICATION_JSON)
@@ -103,9 +101,6 @@ class ConditionsOfJoiningResourceTest {
   @EnumSource(GoldGuideVersion.class)
   void putShouldReturnBadRequestGeneratingCojPdfWhenNoTraineeId(GoldGuideVersion version)
       throws Exception {
-    UUID programmeMembershipId = UUID.randomUUID();
-    Instant signedAt = Instant.now();
-
     String signedBody = SignatureTestUtil.signData("""
             {
               "programmeMembershipId": "%s",
@@ -119,7 +114,7 @@ class ConditionsOfJoiningResourceTest {
                 "validUntil": "%s"
               }
             }
-            """.formatted(programmeMembershipId, version, signedAt, Instant.MIN, Instant.MAX),
+            """.formatted(UUID.randomUUID(), version, Instant.now(), Instant.MIN, Instant.MAX),
         secretKey);
 
     mockMvc.perform(put("/api/coj")
@@ -134,8 +129,6 @@ class ConditionsOfJoiningResourceTest {
   @EnumSource(GoldGuideVersion.class)
   void putShouldReturnBadRequestGeneratingCojPdfWhenNoPmId(GoldGuideVersion version)
       throws Exception {
-    Instant signedAt = Instant.now();
-
     String signedBody = SignatureTestUtil.signData("""
         {
           "traineeId": "40",
@@ -149,7 +142,7 @@ class ConditionsOfJoiningResourceTest {
             "validUntil": "%s"
           }
         }
-        """.formatted(version, signedAt, Instant.MIN, Instant.MAX), secretKey);
+        """.formatted(version, Instant.now(), Instant.MIN, Instant.MAX), secretKey);
 
     mockMvc.perform(put("/api/coj")
             .contentType(MediaType.APPLICATION_JSON)
@@ -163,9 +156,6 @@ class ConditionsOfJoiningResourceTest {
   @EnumSource(GoldGuideVersion.class)
   void putShouldReturnBadRequestGeneratingCojPdfWhenNoProgrammeName(GoldGuideVersion version)
       throws Exception {
-    UUID programmeMembershipId = UUID.randomUUID();
-    Instant signedAt = Instant.now();
-
     String signedBody = SignatureTestUtil.signData("""
             {
               "traineeId": "40",
@@ -179,7 +169,7 @@ class ConditionsOfJoiningResourceTest {
                 "validUntil": "%s"
               }
             }
-            """.formatted(programmeMembershipId, version, signedAt, Instant.MIN, Instant.MAX),
+            """.formatted(UUID.randomUUID(), version, Instant.now(), Instant.MIN, Instant.MAX),
         secretKey);
 
     mockMvc.perform(put("/api/coj")
@@ -192,8 +182,6 @@ class ConditionsOfJoiningResourceTest {
 
   @Test
   void putShouldReturnBadRequestGeneratingCojPdfWhenNoCoj() throws Exception {
-    UUID programmeMembershipId = UUID.randomUUID();
-
     String signedBody = SignatureTestUtil.signData("""
         {
           "traineeId": "40",
@@ -204,7 +192,7 @@ class ConditionsOfJoiningResourceTest {
             "validUntil": "%s"
           }
         }
-        """.formatted(programmeMembershipId, Instant.MIN, Instant.MAX), secretKey);
+        """.formatted(UUID.randomUUID(), Instant.MIN, Instant.MAX), secretKey);
 
     mockMvc.perform(put("/api/coj")
             .contentType(MediaType.APPLICATION_JSON)
@@ -218,7 +206,6 @@ class ConditionsOfJoiningResourceTest {
   @EnumSource(GoldGuideVersion.class)
   void putShouldReturnPreviousPdfWhenUploadedPdfExists(GoldGuideVersion version) throws Exception {
     UUID programmeMembershipId = UUID.randomUUID();
-    Instant signedAt = Instant.now();
 
     String signedBody = SignatureTestUtil.signData("""
             {
@@ -234,7 +221,7 @@ class ConditionsOfJoiningResourceTest {
                 "validUntil": "%s"
               }
             }
-            """.formatted(programmeMembershipId, version, signedAt, Instant.MIN, Instant.MAX),
+            """.formatted(programmeMembershipId, version, Instant.now(), Instant.MIN, Instant.MAX),
         secretKey);
 
     byte[] response = "response content".getBytes();
@@ -258,7 +245,6 @@ class ConditionsOfJoiningResourceTest {
   void putShouldReturnGeneratePdfWhenUploadedPdfNotExists(GoldGuideVersion version)
       throws Exception {
     UUID programmeMembershipId = UUID.randomUUID();
-    Instant signedAt = Instant.now();
 
     String signedBody = SignatureTestUtil.signData("""
             {
@@ -274,7 +260,7 @@ class ConditionsOfJoiningResourceTest {
                 "validUntil": "%s"
               }
             }
-            """.formatted(programmeMembershipId, version, signedAt, Instant.MIN, Instant.MAX),
+            """.formatted(programmeMembershipId, version, Instant.now(), Instant.MIN, Instant.MAX),
         secretKey);
 
     when(service.getUploadedPdf("40/forms/coj/" + programmeMembershipId + ".pdf")).thenReturn(
@@ -346,7 +332,6 @@ class ConditionsOfJoiningResourceTest {
   @EnumSource(GoldGuideVersion.class)
   void putShouldNotPublishPdfWhenGeneratingNewPdf(GoldGuideVersion version) throws Exception {
     UUID programmeMembershipId = UUID.randomUUID();
-    Instant signedAt = Instant.now();
 
     String signedBody = SignatureTestUtil.signData("""
             {
@@ -362,7 +347,7 @@ class ConditionsOfJoiningResourceTest {
                 "validUntil": "%s"
               }
             }
-            """.formatted(programmeMembershipId, version, signedAt, Instant.MIN, Instant.MAX),
+            """.formatted(programmeMembershipId, version, Instant.now(), Instant.MIN, Instant.MAX),
         secretKey);
 
     String key = "40/forms/coj/" + programmeMembershipId + ".pdf";
@@ -377,5 +362,38 @@ class ConditionsOfJoiningResourceTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(signedBody))
         .andExpect(status().isOk());
+  }
+
+  @ParameterizedTest
+  @EnumSource(GoldGuideVersion.class)
+  void putShouldReturnBadRequestWhenPdfGenerationFails(GoldGuideVersion version)
+      throws Exception {
+    UUID programmeMembershipId = UUID.randomUUID();
+
+    String signedBody = SignatureTestUtil.signData("""
+            {
+              "traineeId": "40",
+              "programmeMembershipId": "%s",
+              "programmeName": "Test Programme",
+              "conditionsOfJoining": {
+                "version": "%s",
+                "signedAt": "%s"
+              },
+              "signature": {
+                "signedAt": "%s",
+                "validUntil": "%s"
+              }
+            }
+            """.formatted(programmeMembershipId, version, Instant.now(), Instant.MIN, Instant.MAX),
+        secretKey);
+
+    when(service.getUploadedPdf("40/forms/coj/" + programmeMembershipId + ".pdf")).thenReturn(
+        Optional.empty());
+    when(service.generateConditionsOfJoining(any(), anyBoolean())).thenThrow(IOException.class);
+
+    mockMvc.perform(put("/api/coj")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(signedBody))
+        .andExpect(status().isUnprocessableEntity());
   }
 }
