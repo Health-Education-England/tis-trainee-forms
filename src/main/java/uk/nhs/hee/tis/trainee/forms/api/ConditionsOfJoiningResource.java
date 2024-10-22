@@ -26,13 +26,17 @@ import jakarta.validation.Valid;
 import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import uk.nhs.hee.tis.trainee.forms.api.util.AuthTokenUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
+import uk.nhs.hee.tis.trainee.forms.dto.ProgrammeMembershipDto;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
 /**
@@ -53,20 +57,37 @@ public class ConditionsOfJoiningResource {
   /**
    * Generate a Conditions of Joining PDF, unless one already exists.
    *
-   * @param request The data to use for generating the PDF.
+   * @param programmeMembership The programme membership to get/generate the PDF for.
    * @return The downloaded or generated PDF.
    * @throws IOException A new PDF could not be generated.
    */
   @PutMapping(produces = MediaType.APPLICATION_PDF_VALUE)
   public ResponseEntity<byte[]> generatePdf(
-      @Valid @RequestBody ConditionsOfJoiningPdfRequestDto request) throws IOException {
-    log.info("Trainee '{}' requesting Conditions of Joining PDF for PM '{}'.", request.traineeId(),
-        request.programmeMembershipId());
-    String key = String.format("%s/forms/coj/%s.pdf", request.traineeId(),
-        request.programmeMembershipId());
+      @Valid @RequestBody ProgrammeMembershipDto programmeMembership,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) String token) throws IOException {
+    String traineeId;
+
+    try {
+      traineeId = AuthTokenUtil.getTraineeTisId(token);
+    } catch (IOException e) {
+      log.warn("Unable to read tisId from token.", e);
+      return ResponseEntity.badRequest().build();
+    }
+
+    if (traineeId == null) {
+      log.warn("Request made with no trainee ID.");
+      return ResponseEntity.badRequest().build();
+    }
+
+    log.info("Trainee '{}' requesting Conditions of Joining PDF for PM '{}'.", traineeId,
+        programmeMembership.tisId());
+    String key = String.format("%s/forms/coj/%s.pdf", traineeId, programmeMembership.tisId());
 
     Resource publishedPdf = pdfService.getUploadedPdf(key).orElseGet(() -> {
       try {
+        ConditionsOfJoiningPdfRequestDto request = new ConditionsOfJoiningPdfRequestDto(traineeId,
+            programmeMembership.tisId(), programmeMembership.programmeName(),
+            programmeMembership.conditionsOfJoining());
         return pdfService.generateConditionsOfJoining(request, false);
       } catch (IOException e) {
         return null;

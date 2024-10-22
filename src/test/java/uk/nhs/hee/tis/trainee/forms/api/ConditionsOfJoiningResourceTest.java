@@ -50,9 +50,11 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import uk.nhs.hee.tis.trainee.forms.SignatureTestUtil;
+import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.config.FilterConfiguration;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoining;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
@@ -80,7 +82,7 @@ class ConditionsOfJoiningResourceTest {
   void putShouldForbidUnsignedRequests(GoldGuideVersion version) throws Exception {
     String unsignedBody = """
         {
-          "programmeMembershipId": "%s",
+          "tisId": "%s",
           "programmeName": "Test Programme",
           "conditionsOfJoining": {
             "version": "%s",
@@ -91,7 +93,8 @@ class ConditionsOfJoiningResourceTest {
 
     mockMvc.perform(put("/api/coj")
             .contentType(MediaType.APPLICATION_JSON)
-            .content(unsignedBody))
+            .content(unsignedBody)
+            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId("40")))
         .andExpect(status().isForbidden());
 
     verifyNoInteractions(service);
@@ -99,11 +102,10 @@ class ConditionsOfJoiningResourceTest {
 
   @ParameterizedTest
   @EnumSource(GoldGuideVersion.class)
-  void putShouldReturnBadRequestGeneratingCojPdfWhenNoTraineeId(GoldGuideVersion version)
-      throws Exception {
+  void putShouldReturnBadRequestWhenNoToken(GoldGuideVersion version) throws Exception {
     String signedBody = SignatureTestUtil.signData("""
             {
-              "programmeMembershipId": "%s",
+              "tisId": "%s",
               "programmeName": "Test Programme",
               "conditionsOfJoining": {
                 "version": "%s",
@@ -127,39 +129,11 @@ class ConditionsOfJoiningResourceTest {
 
   @ParameterizedTest
   @EnumSource(GoldGuideVersion.class)
-  void putShouldReturnBadRequestGeneratingCojPdfWhenNoPmId(GoldGuideVersion version)
-      throws Exception {
-    String signedBody = SignatureTestUtil.signData("""
-        {
-          "traineeId": "40",
-          "programmeName": "Test Programme",
-          "conditionsOfJoining": {
-            "version": "%s",
-            "signedAt": "%s"
-          },
-          "signature": {
-            "signedAt": "%s",
-            "validUntil": "%s"
-          }
-        }
-        """.formatted(version, Instant.now(), Instant.MIN, Instant.MAX), secretKey);
-
-    mockMvc.perform(put("/api/coj")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(signedBody))
-        .andExpect(status().isBadRequest());
-
-    verifyNoInteractions(service);
-  }
-
-  @ParameterizedTest
-  @EnumSource(GoldGuideVersion.class)
-  void putShouldReturnBadRequestGeneratingCojPdfWhenNoProgrammeName(GoldGuideVersion version)
-      throws Exception {
+  void putShouldReturnBadRequestWhenTokenInvalid(GoldGuideVersion version) throws Exception {
     String signedBody = SignatureTestUtil.signData("""
             {
-              "traineeId": "40",
-              "programmeMembershipId": "%s",
+              "tisId": "%s",
+              "programmeName": "Test Programme",
               "conditionsOfJoining": {
                 "version": "%s",
                 "signedAt": "%s"
@@ -174,7 +148,91 @@ class ConditionsOfJoiningResourceTest {
 
     mockMvc.perform(put("/api/coj")
             .contentType(MediaType.APPLICATION_JSON)
-            .content(signedBody))
+            .content(signedBody)
+            .header(HttpHeaders.AUTHORIZATION, "aa.bb.cc"))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(service);
+  }
+
+  @ParameterizedTest
+  @EnumSource(GoldGuideVersion.class)
+  void putShouldReturnBadRequestWhenTraineeIdNotInToken(GoldGuideVersion version) throws Exception {
+    String signedBody = SignatureTestUtil.signData("""
+            {
+              "tisId": "%s",
+              "programmeName": "Test Programme",
+              "conditionsOfJoining": {
+                "version": "%s",
+                "signedAt": "%s"
+              },
+              "signature": {
+                "signedAt": "%s",
+                "validUntil": "%s"
+              }
+            }
+            """.formatted(UUID.randomUUID(), version, Instant.now(), Instant.MIN, Instant.MAX),
+        secretKey);
+
+    mockMvc.perform(put("/api/coj")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(signedBody)
+            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateToken("{}")))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(service);
+  }
+
+  @ParameterizedTest
+  @EnumSource(GoldGuideVersion.class)
+  void putShouldReturnBadRequestGeneratingCojPdfWhenNoPmId(GoldGuideVersion version)
+      throws Exception {
+    String signedBody = SignatureTestUtil.signData("""
+        {
+          "programmeName": "Test Programme",
+          "conditionsOfJoining": {
+            "version": "%s",
+            "signedAt": "%s"
+          },
+          "signature": {
+            "signedAt": "%s",
+            "validUntil": "%s"
+          }
+        }
+        """.formatted(version, Instant.now(), Instant.MIN, Instant.MAX), secretKey);
+
+    mockMvc.perform(put("/api/coj")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(signedBody)
+            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId("40")))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(service);
+  }
+
+  @ParameterizedTest
+  @EnumSource(GoldGuideVersion.class)
+  void putShouldReturnBadRequestGeneratingCojPdfWhenNoProgrammeName(GoldGuideVersion version)
+      throws Exception {
+    String signedBody = SignatureTestUtil.signData("""
+            {
+              "tisId": "%s",
+              "conditionsOfJoining": {
+                "version": "%s",
+                "signedAt": "%s"
+              },
+              "signature": {
+                "signedAt": "%s",
+                "validUntil": "%s"
+              }
+            }
+            """.formatted(UUID.randomUUID(), version, Instant.now(), Instant.MIN, Instant.MAX),
+        secretKey);
+
+    mockMvc.perform(put("/api/coj")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(signedBody)
+            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId("40")))
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
@@ -184,8 +242,7 @@ class ConditionsOfJoiningResourceTest {
   void putShouldReturnBadRequestGeneratingCojPdfWhenNoCoj() throws Exception {
     String signedBody = SignatureTestUtil.signData("""
         {
-          "traineeId": "40",
-          "programmeMembershipId": "%s",
+          "tisId": "%s",
           "programmeName": "Test Programme",
           "signature": {
             "signedAt": "%s",
@@ -196,7 +253,8 @@ class ConditionsOfJoiningResourceTest {
 
     mockMvc.perform(put("/api/coj")
             .contentType(MediaType.APPLICATION_JSON)
-            .content(signedBody))
+            .content(signedBody)
+            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId("40")))
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
@@ -209,8 +267,7 @@ class ConditionsOfJoiningResourceTest {
 
     String signedBody = SignatureTestUtil.signData("""
             {
-              "traineeId": "40",
-              "programmeMembershipId": "%s",
+              "tisId": "%s",
               "programmeName": "Test Programme",
               "conditionsOfJoining": {
                 "version": "%s",
@@ -232,7 +289,8 @@ class ConditionsOfJoiningResourceTest {
 
     mockMvc.perform(put("/api/coj")
             .contentType(MediaType.APPLICATION_JSON)
-            .content(signedBody))
+            .content(signedBody)
+            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId("40")))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_PDF))
         .andExpect(content().bytes(response));
@@ -248,8 +306,7 @@ class ConditionsOfJoiningResourceTest {
 
     String signedBody = SignatureTestUtil.signData("""
             {
-              "traineeId": "40",
-              "programmeMembershipId": "%s",
+              "tisId": "%s",
               "programmeName": "Test Programme",
               "conditionsOfJoining": {
                 "version": "%s",
@@ -273,7 +330,8 @@ class ConditionsOfJoiningResourceTest {
 
     mockMvc.perform(put("/api/coj")
             .contentType(MediaType.APPLICATION_JSON)
-            .content(signedBody))
+            .content(signedBody)
+            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId("40")))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_PDF))
         .andExpect(content().bytes(response));
@@ -287,8 +345,7 @@ class ConditionsOfJoiningResourceTest {
 
     String signedBody = SignatureTestUtil.signData("""
             {
-              "traineeId": "40",
-              "programmeMembershipId": "%s",
+              "tisId": "%s",
               "programmeName": "Test Programme",
               "conditionsOfJoining": {
                 "version": "%s",
@@ -314,7 +371,8 @@ class ConditionsOfJoiningResourceTest {
 
     mockMvc.perform(put("/api/coj")
             .contentType(MediaType.APPLICATION_JSON)
-            .content(signedBody))
+            .content(signedBody)
+            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId("40")))
         .andExpect(status().isOk());
 
     ConditionsOfJoiningPdfRequestDto request = requestCaptor.getValue();
@@ -335,8 +393,7 @@ class ConditionsOfJoiningResourceTest {
 
     String signedBody = SignatureTestUtil.signData("""
             {
-              "traineeId": "40",
-              "programmeMembershipId": "%s",
+              "tisId": "%s",
               "programmeName": "Test Programme",
               "conditionsOfJoining": {
                 "version": "%s",
@@ -360,7 +417,8 @@ class ConditionsOfJoiningResourceTest {
 
     mockMvc.perform(put("/api/coj")
             .contentType(MediaType.APPLICATION_JSON)
-            .content(signedBody))
+            .content(signedBody)
+            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId("40")))
         .andExpect(status().isOk());
   }
 
@@ -372,8 +430,7 @@ class ConditionsOfJoiningResourceTest {
 
     String signedBody = SignatureTestUtil.signData("""
             {
-              "traineeId": "40",
-              "programmeMembershipId": "%s",
+              "tisId": "%s",
               "programmeName": "Test Programme",
               "conditionsOfJoining": {
                 "version": "%s",
@@ -393,7 +450,8 @@ class ConditionsOfJoiningResourceTest {
 
     mockMvc.perform(put("/api/coj")
             .contentType(MediaType.APPLICATION_JSON)
-            .content(signedBody))
+            .content(signedBody)
+            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId("40")))
         .andExpect(status().isUnprocessableEntity());
   }
 }
