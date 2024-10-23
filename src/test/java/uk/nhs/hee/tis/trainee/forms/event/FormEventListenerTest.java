@@ -21,8 +21,11 @@
 
 package uk.nhs.hee.tis.trainee.forms.event;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -36,10 +39,12 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoining;
+import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
-import uk.nhs.hee.tis.trainee.forms.service.PdfPublisherService;
+import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
 class FormEventListenerTest {
@@ -47,17 +52,17 @@ class FormEventListenerTest {
   private FormEventListener listener;
   private FormRPartAService formRPartAService;
   private FormRPartBService formRPartBService;
-  private PdfPublisherService pdfPublisherService;
+  private PdfService pdfService;
 
   @BeforeEach
   void setUp() {
     formRPartAService = mock(FormRPartAService.class);
     formRPartBService = mock(FormRPartBService.class);
-    pdfPublisherService = mock(PdfPublisherService.class);
+    pdfService = mock(PdfService.class);
     listener = new FormEventListener(
         formRPartAService,
         formRPartBService,
-        pdfPublisherService,
+        pdfService,
         new ObjectMapper()
     );
   }
@@ -65,12 +70,22 @@ class FormEventListenerTest {
   @Test
   void shouldPublishConditionsOfJoining() throws IOException {
     ConditionsOfJoining conditionsOfJoining = new ConditionsOfJoining(GG9, Instant.now());
+    UUID programmeMembershipId = UUID.randomUUID();
     ConditionsOfJoiningSignedEvent event = new ConditionsOfJoiningSignedEvent("40",
-        UUID.randomUUID(), "progName", conditionsOfJoining);
+        programmeMembershipId, "progName", conditionsOfJoining);
 
     listener.handleCojReceivedEvent(event);
 
-    verify(pdfPublisherService).publishConditionsOfJoining(event);
+    ArgumentCaptor<ConditionsOfJoiningPdfRequestDto> requestCaptor = ArgumentCaptor.captor();
+    verify(pdfService).generateConditionsOfJoining(requestCaptor.capture(), eq(true));
+
+    ConditionsOfJoiningPdfRequestDto request = requestCaptor.getValue();
+    assertThat("Unexpected trainee ID.", request.traineeId(), is("40"));
+    assertThat("Unexpected programme membership ID.", request.programmeMembershipId(),
+        is(programmeMembershipId));
+    assertThat("Unexpected programme name.", request.programmeName(), is("progName"));
+    assertThat("Unexpected conditions of joining.", request.conditionsOfJoining(),
+        is(conditionsOfJoining));
   }
 
   @Test
@@ -79,7 +94,7 @@ class FormEventListenerTest {
     ConditionsOfJoiningSignedEvent event = new ConditionsOfJoiningSignedEvent("40",
         UUID.randomUUID(), "progName", conditionsOfJoining);
 
-    doThrow(IOException.class).when(pdfPublisherService).publishConditionsOfJoining(any());
+    doThrow(IOException.class).when(pdfService).generateConditionsOfJoining(any(), eq(true));
 
     assertThrows(IOException.class, () -> listener.handleCojReceivedEvent(event));
   }

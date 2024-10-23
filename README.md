@@ -34,19 +34,20 @@ Error and exception logging is done using Sentry.
 
 #### Environmental Variables
 
-| Name                                  | Description                                                                     | Default   |
-|---------------------------------------|---------------------------------------------------------------------------------|-----------|
-| DB_HOST                               | The MongoDB host to connect to.                                                 | localhost |
-| DB_PORT                               | The port to connect to MongoDB on.                                              | 27017     |
-| DB_USER                               | The username to access the MongoDB instance.                                    | admin     |
-| DB_NAME                               | The name of the MongoDB instance.                                               | forms     |
-| DB_PASSWORD                           | The password to access the MongoDB instance.                                    | pwd       |
-| ENVIRONMENT                           | The environment to log events against.                                          | local     |
-| SENTRY_DSN                            | A Sentry error monitoring Data Source Name.                                     |           |
-| FEATURE_FORMR_PARTB_COVID_DECLARATION | This feature flag controls whether to show this section in FormR PartB          | false     |
-| APPLICATION_FILESTORE_BUCKET          | The S3 bucket the forms are stored in.                                          |           |
-| APPLICATION_FILESTORE_ALWAYSSTORE     | This controls whether forms are stored in the S3 regardless of Lifecycle State  | false     |
-| DELETE_EVENT_QUEUE                    | The URL of the SQS queue to partial delete forms from DB.                       |           |
+| Name                                  | Description                                                                    | Default   |
+|---------------------------------------|--------------------------------------------------------------------------------|-----------|
+| DB_HOST                               | The MongoDB host to connect to.                                                | localhost |
+| DB_PORT                               | The port to connect to MongoDB on.                                             | 27017     |
+| DB_USER                               | The username to access the MongoDB instance.                                   | admin     |
+| DB_NAME                               | The name of the MongoDB instance.                                              | forms     |
+| DB_PASSWORD                           | The password to access the MongoDB instance.                                   | pwd       |
+| ENVIRONMENT                           | The environment to log events against.                                         | local     |
+| SENTRY_DSN                            | A Sentry error monitoring Data Source Name.                                    |           |
+| FEATURE_FORMR_PARTB_COVID_DECLARATION | This feature flag controls whether to show this section in FormR PartB         | false     |
+| APPLICATION_FILESTORE_BUCKET          | The S3 bucket the forms are stored in.                                         |           |
+| APPLICATION_FILESTORE_ALWAYSSTORE     | This controls whether forms are stored in the S3 regardless of Lifecycle State | false     |
+| DELETE_EVENT_QUEUE                    | The URL of the SQS queue to partial delete forms from DB.                      |           |
+| SIGNATURE_SECRET_KEY                  | The secret key used to validate signed data.                                   |           |
 
 ### Saving Forms
 

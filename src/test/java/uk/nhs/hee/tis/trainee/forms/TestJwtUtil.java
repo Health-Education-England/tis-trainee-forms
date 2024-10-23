@@ -19,36 +19,38 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.event;
+package uk.nhs.hee.tis.trainee.forms;
 
-import java.util.UUID;
-import lombok.Value;
-import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoining;
-import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
-import uk.nhs.hee.tis.trainee.forms.dto.PublishedPdf;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 /**
- * An event for when a Conditions of Joining PDF is published.
+ * A utility for generating test JWT tokens.
  */
-@Value
-public class ConditionsOfJoiningPublishedEvent {
+public class TestJwtUtil {
 
-  String traineeId;
-  UUID programmeMembershipId;
-  ConditionsOfJoining conditionsOfJoining;
-  PublishedPdf pdf;
+  public static final String TIS_ID_ATTRIBUTE = "custom:tisId";
 
   /**
-   * Create an event for when a Conditions of Joining PDF is published.
+   * Generate a token with the given payload.
    *
-   * @param request The COJ PDF request which triggered this published event.
-   * @param pdf     The reference to the published PDF.
+   * @param payload The payload to inject in to the token.
+   * @return The generated token.
    */
-  public ConditionsOfJoiningPublishedEvent(ConditionsOfJoiningPdfRequestDto request,
-      PublishedPdf pdf) {
-    traineeId = request.traineeId();
-    programmeMembershipId = request.programmeMembershipId();
-    conditionsOfJoining = request.conditionsOfJoining();
-    this.pdf = pdf;
+  public static String generateToken(String payload) {
+    String encodedPayload = Base64.getUrlEncoder()
+        .encodeToString(payload.getBytes(StandardCharsets.UTF_8));
+    return String.format("aGVhZGVy.%s.c2lnbmF0dXJl", encodedPayload);
+  }
+
+  /**
+   * Generate a token with the TIS ID attribute as the payload.
+   *
+   * @param traineeTisId The TIS ID to inject in to the payload.
+   * @return The generated token.
+   */
+  public static String generateTokenForTisId(String traineeTisId) {
+    String payload = String.format("{\"%s\":\"%s\"}", TIS_ID_ATTRIBUTE, traineeTisId);
+    return generateToken(payload);
   }
 }

@@ -28,9 +28,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.thymeleaf.templatemode.TemplateMode.HTML;
 
+import io.awspring.cloud.s3.S3OutputStreamProvider;
+import io.awspring.cloud.s3.S3Resource;
 import io.awspring.cloud.s3.S3Template;
 import io.awspring.cloud.sns.core.SnsNotification;
 import io.awspring.cloud.sns.core.SnsTemplate;
@@ -41,23 +44,27 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
+import org.springframework.core.io.Resource;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.TemplateSpec;
 import org.thymeleaf.context.Context;
+import software.amazon.awssdk.services.s3.S3Client;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoining;
+import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.GoldGuideVersion;
 import uk.nhs.hee.tis.trainee.forms.event.ConditionsOfJoiningPublishedEvent;
-import uk.nhs.hee.tis.trainee.forms.event.ConditionsOfJoiningSignedEvent;
 
-class PdfPublisherServiceTest {
+class PdfServiceTest {
 
   private static final String BUCKET_NAME = "my-bucket";
   private static final String TOPIC_ARN = "my-topic-arn";
@@ -68,7 +75,7 @@ class PdfPublisherServiceTest {
 
   private static final ZoneId TIMEZONE = ZoneId.of("Europe/London");
 
-  private PdfPublisherService service;
+  private PdfService service;
 
   private TemplateEngine templateEngine;
   private S3Template s3Template;
@@ -82,8 +89,34 @@ class PdfPublisherServiceTest {
     s3Template = mock(S3Template.class);
     snsTemplate = mock(SnsTemplate.class);
 
-    service = new PdfPublisherService(templateEngine, s3Template, BUCKET_NAME, snsTemplate,
-        TOPIC_ARN, TIMEZONE);
+    service = new PdfService(templateEngine, s3Template, BUCKET_NAME, snsTemplate, TOPIC_ARN,
+        TIMEZONE);
+  }
+
+  @Test
+  void shouldNotGetUploadedPdfWhenNotExists() {
+    S3Resource pdf = mock(S3Resource.class);
+    when(pdf.exists()).thenReturn(false);
+
+    String key = "uploaded-key";
+    when(s3Template.download(BUCKET_NAME, key)).thenReturn(pdf);
+
+    Optional<Resource> uploadedPdf = service.getUploadedPdf(key);
+
+    assertThat("Unexpected uploaded PDF presence.", uploadedPdf.isPresent(), is(false));
+  }
+
+  @Test
+  void shouldGetUploadedPdfWhenExists() {
+    S3Resource pdf = mock(S3Resource.class);
+    when(pdf.exists()).thenReturn(true);
+
+    String key = "uploaded-key";
+    when(s3Template.download(BUCKET_NAME, key)).thenReturn(pdf);
+
+    Optional<Resource> uploadedPdf = service.getUploadedPdf(key);
+
+    assertThat("Unexpected uploaded PDF.", uploadedPdf.get(), is(pdf));
   }
 
   @ParameterizedTest
@@ -91,10 +124,10 @@ class PdfPublisherServiceTest {
   void shouldGenerateConditionsOfJoiningFromTemplate(GoldGuideVersion version)
       throws IOException {
     ConditionsOfJoining conditionsOfJoining = new ConditionsOfJoining(version, Instant.now());
-    ConditionsOfJoiningSignedEvent event = new ConditionsOfJoiningSignedEvent(TRAINEE_ID,
+    ConditionsOfJoiningPdfRequestDto request = new ConditionsOfJoiningPdfRequestDto(TRAINEE_ID,
         PROGRAMME_MEMBERSHIP_ID, PROGRAMME_NAME, conditionsOfJoining);
 
-    service.publishConditionsOfJoining(event);
+    service.generateConditionsOfJoining(request, false);
 
     ArgumentCaptor<TemplateSpec> templateCaptor = ArgumentCaptor.captor();
     ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.captor();
@@ -114,7 +147,7 @@ class PdfPublisherServiceTest {
 
     Set<String> variableNames = context.getVariableNames();
     assertThat("Unexpected variable count.", variableNames.size(), is(2));
-    assertThat("Unexpected event value.", context.getVariable("event"), is(event));
+    assertThat("Unexpected event value.", context.getVariable("var"), is(request));
     assertThat("Unexpected timezone value.", context.getVariable("timezone"), is(TIMEZONE.getId()));
   }
 
@@ -123,13 +156,13 @@ class PdfPublisherServiceTest {
   void shouldUploadGeneratedConditionsOfJoining(GoldGuideVersion version)
       throws IOException {
     ConditionsOfJoining conditionsOfJoining = new ConditionsOfJoining(version, Instant.now());
-    ConditionsOfJoiningSignedEvent event = new ConditionsOfJoiningSignedEvent(TRAINEE_ID,
+    ConditionsOfJoiningPdfRequestDto request = new ConditionsOfJoiningPdfRequestDto(TRAINEE_ID,
         PROGRAMME_MEMBERSHIP_ID, PROGRAMME_NAME, conditionsOfJoining);
 
     when(templateEngine.process(any(TemplateSpec.class), any())).thenReturn(
         "<html>test content</html>");
 
-    service.publishConditionsOfJoining(event);
+    service.generateConditionsOfJoining(request, false);
 
     String key = TRAINEE_ID + "/forms/coj/" + PROGRAMME_MEMBERSHIP_ID + ".pdf";
     ArgumentCaptor<ByteArrayInputStream> contentCaptor = ArgumentCaptor.captor();
@@ -144,16 +177,21 @@ class PdfPublisherServiceTest {
 
   @ParameterizedTest
   @EnumSource(GoldGuideVersion.class)
-  void shouldSendNotificationOfGeneratedConditionsOfJoining(GoldGuideVersion version)
+  void shouldSendNotificationOfGeneratedConditionsOfJoiningWhenPublishTrue(GoldGuideVersion version)
       throws IOException {
     ConditionsOfJoining conditionsOfJoining = new ConditionsOfJoining(version, Instant.now());
-    ConditionsOfJoiningSignedEvent event = new ConditionsOfJoiningSignedEvent(TRAINEE_ID,
+    ConditionsOfJoiningPdfRequestDto request = new ConditionsOfJoiningPdfRequestDto(TRAINEE_ID,
         PROGRAMME_MEMBERSHIP_ID, PROGRAMME_NAME, conditionsOfJoining);
 
     when(templateEngine.process(any(TemplateSpec.class), any())).thenReturn(
         "<html>test content</html>");
 
-    service.publishConditionsOfJoining(event);
+    String key = TRAINEE_ID + "/forms/coj/" + PROGRAMME_MEMBERSHIP_ID + ".pdf";
+    S3Resource uploaded = S3Resource.create("s3://my-bucket/" + key, mock(S3Client.class),
+        mock(S3OutputStreamProvider.class));
+    when(s3Template.upload(any(), any(), any())).thenReturn(uploaded);
+
+    service.generateConditionsOfJoining(request, true);
 
     ArgumentCaptor<SnsNotification<ConditionsOfJoiningPublishedEvent>> notificationCaptor =
         ArgumentCaptor.captor();
@@ -178,7 +216,44 @@ class PdfPublisherServiceTest {
         is(conditionsOfJoining));
     assertThat("Unexpected PDF bucket.", payload.getPdf().bucket(), is(BUCKET_NAME));
 
-    String key = TRAINEE_ID + "/forms/coj/" + PROGRAMME_MEMBERSHIP_ID + ".pdf";
     assertThat("Unexpected PDF key.", payload.getPdf().key(), is(key));
+  }
+
+  @ParameterizedTest
+  @EnumSource(GoldGuideVersion.class)
+  void shouldNotSendNotificationOfGeneratedConditionsOfJoiningWhenPublishFalse(
+      GoldGuideVersion version)
+      throws IOException {
+    ConditionsOfJoining conditionsOfJoining = new ConditionsOfJoining(version, Instant.now());
+    ConditionsOfJoiningPdfRequestDto request = new ConditionsOfJoiningPdfRequestDto(TRAINEE_ID,
+        PROGRAMME_MEMBERSHIP_ID, PROGRAMME_NAME, conditionsOfJoining);
+
+    when(templateEngine.process(any(TemplateSpec.class), any())).thenReturn(
+        "<html>test content</html>");
+
+    service.generateConditionsOfJoining(request, false);
+
+    verifyNoInteractions(snsTemplate);
+  }
+
+  @ParameterizedTest
+  @EnumSource(GoldGuideVersion.class)
+  void shouldReturnGeneratedConditionsOfJoining(GoldGuideVersion version) throws IOException {
+    ConditionsOfJoining conditionsOfJoining = new ConditionsOfJoining(version, Instant.now());
+    ConditionsOfJoiningPdfRequestDto request = new ConditionsOfJoiningPdfRequestDto(TRAINEE_ID,
+        PROGRAMME_MEMBERSHIP_ID, PROGRAMME_NAME, conditionsOfJoining);
+
+    String content = "<html>test content</html>";
+    when(templateEngine.process(any(TemplateSpec.class), any())).thenReturn(content);
+
+    S3Resource uploaded = mock(S3Resource.class);
+    when(s3Template.upload(any(), any(), any())).thenReturn(uploaded);
+
+    byte[] contentBytes = content.getBytes();
+    when(uploaded.getContentAsByteArray()).thenReturn(contentBytes);
+
+    Resource resource = service.generateConditionsOfJoining(request, false);
+
+    assertThat("Unexpected content.", resource.getContentAsByteArray(), is(contentBytes));
   }
 }

@@ -6,7 +6,7 @@
     <link href="/static/css/nhsuk-9.0.0.min.css" rel="stylesheet" />
   </head>
   <body
-    th:with="programmeName=${not #strings.isEmpty(event.programmeName)} ? ${event.programmeName} : _"
+    th:with="programmeName=${not #strings.isEmpty(var.programmeName)} ? ${var.programmeName} : _"
   >
     <main class="nhsuk-width-container nhsuk-u-margin-top-5">
       <div class="nhsuk-card nhsuk-card--feature">
@@ -368,7 +368,7 @@
           <dd class="nhsuk-summary-list__value">
             Signed On:
             <th:block
-              th:text="${#temporals.format(event.conditionsOfJoining.signedAt, 'dd MMMM yyyy HH:mm (z)', timezone)}"
+              th:text="${#temporals.format(var.conditionsOfJoining.signedAt, 'dd MMMM yyyy HH:mm (z)', timezone)}"
             >
               (signed date/time missing)
             </th:block>

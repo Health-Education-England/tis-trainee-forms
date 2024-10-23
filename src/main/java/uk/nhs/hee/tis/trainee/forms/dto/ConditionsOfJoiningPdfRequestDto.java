@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2021 Crown Copyright (Health Education England)
+ * Copyright 2024 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -19,22 +19,33 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.config;
+package uk.nhs.hee.tis.trainee.forms.dto;
 
-import com.amazonaws.xray.jakarta.servlet.AWSXRayServletFilter;
-import jakarta.servlet.Filter;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import java.util.UUID;
 
-@Configuration
-@ConditionalOnExpression("!T(org.springframework.util.StringUtils)"
-    + ".isEmpty('${com.amazonaws.xray.emitters.daemon-address}')")
-public class AwsXrayConfiguration {
+/**
+ * A request for a Conditions of Joining PDF.
+ *
+ * @param traineeId             The ID of the trainee.
+ * @param programmeMembershipId The programme membership to generate a PDF for.
+ * @param programmeName         The name of the programme the COJ is for.
+ * @param conditionsOfJoining   The {@link ConditionsOfJoining} details.
+ */
+public record ConditionsOfJoiningPdfRequestDto(
 
-  @Bean
-  public Filter tracingFilter(@Value("${application.environment}") String environment) {
-    return new AWSXRayServletFilter("tis-trainee-forms-" + environment);
-  }
+    @NotNull
+    String traineeId,
+
+    @NotNull
+    UUID programmeMembershipId,
+
+    @NotNull
+    String programmeName,
+
+    @Valid
+    @NotNull
+    ConditionsOfJoining conditionsOfJoining) {
+
 }

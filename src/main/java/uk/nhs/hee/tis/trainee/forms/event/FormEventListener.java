@@ -27,11 +27,12 @@ import java.io.IOException;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.DeleteEventDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.DeleteType;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
-import uk.nhs.hee.tis.trainee.forms.service.PdfPublisherService;
+import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
 /**
@@ -43,15 +44,15 @@ public class FormEventListener {
 
   private final FormRPartAService formRPartAService;
   private final FormRPartBService formRPartBService;
-  private final PdfPublisherService pdfPublisherService;
+  private final PdfService pdfService;
   private final ObjectMapper objectMapper;
 
   FormEventListener(FormRPartAService formRPartAService,
-      FormRPartBService formRPartBService, PdfPublisherService pdfPublisherService,
+      FormRPartBService formRPartBService, PdfService pdfService,
       ObjectMapper objectMapper) {
     this.formRPartAService = formRPartAService;
     this.formRPartBService = formRPartBService;
-    this.pdfPublisherService = pdfPublisherService;
+    this.pdfService = pdfService;
     this.objectMapper = objectMapper;
   }
 
@@ -64,7 +65,10 @@ public class FormEventListener {
   @SqsListener("${application.aws.sqs.coj-received}")
   public void handleCojReceivedEvent(ConditionsOfJoiningSignedEvent event) throws IOException {
     log.info("Signed Conditions of Joining received: {}", event);
-    pdfPublisherService.publishConditionsOfJoining(event);
+    ConditionsOfJoiningPdfRequestDto request = new ConditionsOfJoiningPdfRequestDto(
+        event.traineeId(), event.programmeMembershipId(), event.programmeName(),
+        event.conditionsOfJoining());
+    pdfService.generateConditionsOfJoining(request, true);
   }
 
   /**

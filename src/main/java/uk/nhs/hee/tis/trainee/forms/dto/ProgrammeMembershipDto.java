@@ -19,36 +19,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.event;
+package uk.nhs.hee.tis.trainee.forms.dto;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
-import lombok.Value;
-import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoining;
-import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
-import uk.nhs.hee.tis.trainee.forms.dto.PublishedPdf;
 
 /**
- * An event for when a Conditions of Joining PDF is published.
+ * A Programme Membership.
+ *
+ * @param tisId               The programme membership ID.
+ * @param programmeName       The name of the programme.
+ * @param conditionsOfJoining The {@link ConditionsOfJoining} details.
  */
-@Value
-public class ConditionsOfJoiningPublishedEvent {
+public record ProgrammeMembershipDto(
 
-  String traineeId;
-  UUID programmeMembershipId;
-  ConditionsOfJoining conditionsOfJoining;
-  PublishedPdf pdf;
+    @NotNull
+    UUID tisId,
 
-  /**
-   * Create an event for when a Conditions of Joining PDF is published.
-   *
-   * @param request The COJ PDF request which triggered this published event.
-   * @param pdf     The reference to the published PDF.
-   */
-  public ConditionsOfJoiningPublishedEvent(ConditionsOfJoiningPdfRequestDto request,
-      PublishedPdf pdf) {
-    traineeId = request.traineeId();
-    programmeMembershipId = request.programmeMembershipId();
-    conditionsOfJoining = request.conditionsOfJoining();
-    this.pdf = pdf;
-  }
+    @NotNull
+    String programmeName,
+
+    @Valid
+    @NotNull
+    ConditionsOfJoining conditionsOfJoining) {
+
 }
