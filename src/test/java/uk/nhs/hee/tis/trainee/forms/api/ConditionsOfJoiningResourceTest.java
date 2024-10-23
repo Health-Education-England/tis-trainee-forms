@@ -413,13 +413,15 @@ class ConditionsOfJoiningResourceTest {
     byte[] response = "response content".getBytes();
     Resource resource = mock(Resource.class);
     when(resource.getContentAsByteArray()).thenReturn(response);
-    when(service.generateConditionsOfJoining(any(), eq(false))).thenReturn(resource);
+    when(service.generateConditionsOfJoining(any(), anyBoolean())).thenReturn(resource);
 
     mockMvc.perform(put("/api/coj")
             .contentType(MediaType.APPLICATION_JSON)
             .content(signedBody)
             .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId("40")))
         .andExpect(status().isOk());
+
+    verify(service).generateConditionsOfJoining(any(), eq(false));
   }
 
   @ParameterizedTest
