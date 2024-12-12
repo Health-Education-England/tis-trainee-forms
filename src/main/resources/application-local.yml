@@ -1,0 +1,26 @@
+application:
+  environment: local
+  file-store:
+    bucket: tis-trainee-documents-upload-local
+  aws:
+    sqs:
+      coj-received: ${local.sqs-path}/tis-trainee-local-form-coj-received
+      delete-event: ${local.sqs-path}/tis-trainee-local-form-delete-event
+  signature:
+    secret-key: ${SIGNATURE_SECRET_KEY:not-very-secret-plain-text-value}
+
+local:
+  account-id: "000000000000"
+  sqs-path: ${spring.cloud.aws.endpoint}/${local.account-id}
+
+spring:
+  cloud:
+    aws:
+      credentials:
+        access-key: ${local.account-id}
+        secret-key: ${local.account-id}
+      endpoint: http://${LOCALSTACK_HOST:localhost}:4566
+      region:
+        static: eu-west-2
+      s3:
+        path-style-access-enabled: true
