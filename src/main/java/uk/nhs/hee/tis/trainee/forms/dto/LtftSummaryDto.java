@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2020 Crown Copyright (Health Education England)
+ * Copyright 2025 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -19,19 +19,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms;
+package uk.nhs.hee.tis.trainee.forms.dto;
 
-import io.mongock.runner.springboot.EnableMongock;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
+import java.time.Instant;
+import java.util.UUID;
+import lombok.Builder;
+import org.bson.types.ObjectId;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
-@EnableMongock
-@SpringBootApplication
-@ConfigurationPropertiesScan
-public class TraineeFormsApplication {
+/**
+ * A summary of a LTFT application.
+ */
+@Builder
+public record LtftSummaryDto(
+  @JsonSerialize(using = ToStringSerializer.class)
+  ObjectId id,
 
-  public static void main(String[] args) {
-    SpringApplication.run(TraineeFormsApplication.class);
+  String name,
+  UUID programmeMembershipId,
+  LifecycleState status,  //assumption: same as for FormR forms.
+  Instant created,
+  Instant lastModified) {
+
   }
-}
