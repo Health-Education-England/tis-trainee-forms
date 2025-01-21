@@ -34,13 +34,13 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
  */
 @Builder
 public record LtftSummaryDto(
-  @JsonSerialize(using = ToStringSerializer.class)
-  ObjectId id,
+    @JsonSerialize(using = ToStringSerializer.class)
+    ObjectId id,
 
-  String name,
-  UUID programmeMembershipId,
-  LifecycleState status,  //assumption: same as for FormR forms.
-  Instant created,
-  Instant lastModified) {
+    String name,
+    UUID programmeMembershipId,
+    LifecycleState status,  //assumption: same as for FormR forms.
+    Instant created,
+    Instant lastModified) {
 
-  }
+}

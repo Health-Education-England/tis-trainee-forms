@@ -43,6 +43,13 @@ public class LtftService {
   private final LtftFormRepository ltftFormRepository;
   private final LtftMapper mapper;
 
+  /**
+   * Instantiate the LTFT form service.
+   *
+   * @param traineeIdentity    The logged-in trainee.
+   * @param ltftFormRepository The LTFT repository.
+   * @param mapper             The LTFT mapper.
+   */
   public LtftService(TraineeIdentity traineeIdentity, LtftFormRepository ltftFormRepository,
       LtftMapper mapper) {
     this.traineeIdentity = traineeIdentity;

@@ -10,13 +10,13 @@
  * furnished to do so, subject to the following conditions:
  *
  * The above copyright notice and this permission notice shall be included in all copies or
- *  substantial portions of the Software.
+ * substantial portions of the Software.
  *
- *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
- *  NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- *  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
- *  DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+ * NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+ * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 package uk.nhs.hee.tis.trainee.forms.model;
@@ -34,23 +34,34 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
+/**
+ * A LTFT form entity.
+ *
+ * @param id                  The form ID.
+ * @param traineeId           The trainee ID.
+ * @param name                The form name.
+ * @param programmeMembership The form programme membership.
+ * @param status              The form status.
+ * @param created             When the form was created.
+ * @param lastModified        When the form was last updated.
+ */
 @Document("LtftForm")
 @Builder
 public record LtftForm(
-  @Id
-  ObjectId id,
-  @Indexed
-  String traineeId,
+    @Id
+    ObjectId id,
+    @Indexed
+    String traineeId,
 
-  String name,
-  LtftProgrammeMembership programmeMembership,
-  LifecycleState status,
+    String name,
+    LtftProgrammeMembership programmeMembership,
+    LifecycleState status,
 
-  @CreatedDate
-  Instant created,
+    @CreatedDate
+    Instant created,
 
-  @LastModifiedDate
-  Instant lastModified
+    @LastModifiedDate
+    Instant lastModified
 ) {
 
   /**

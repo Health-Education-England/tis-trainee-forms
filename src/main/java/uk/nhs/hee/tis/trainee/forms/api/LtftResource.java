@@ -43,14 +43,19 @@ public class LtftResource {
   private final LtftService service;
 
   /**
-   * Construct a REST controller for CCT related endpoints.
+   * Construct a REST controller for LTFT related endpoints.
    *
-   * @param service A service providing CCT functionality.
+   * @param service A service providing LTFT functionality.
    */
   public LtftResource(LtftService service) {
     this.service = service;
   }
 
+  /**
+   * Retrieve a list of LTFT summaries for the logged-in user.
+   *
+   * @return The list of LTFT summaries, or an empty list if none found.
+   */
   @GetMapping("/ltft")
   public ResponseEntity<List<LtftSummaryDto>> getLtftSummaryList() {
     log.info("Request to get summary list of LTFT records.");
