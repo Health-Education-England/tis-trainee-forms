@@ -57,7 +57,7 @@ public class LtftResource {
    * @return The list of LTFT summaries, or an empty list if none found.
    */
   @GetMapping("/ltft")
-  public ResponseEntity<List<LtftSummaryDto>> getLtftSummaryList() {
+  public ResponseEntity<List<LtftSummaryDto>> getLtftSummaries() {
     log.info("Request to get summary list of LTFT records.");
     List<LtftSummaryDto> ltfts = service.getLtftSummaries();
     return ResponseEntity.ok(ltfts);
