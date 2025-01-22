@@ -24,9 +24,12 @@ package uk.nhs.hee.tis.trainee.forms.interceptor;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.HandlerInterceptor;
 import uk.nhs.hee.tis.trainee.forms.api.util.AuthTokenUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.TraineeIdentity;
@@ -36,6 +39,11 @@ import uk.nhs.hee.tis.trainee.forms.dto.TraineeIdentity;
  */
 @Slf4j
 public class TraineeIdentityInterceptor implements HandlerInterceptor {
+
+  // Endpoints are a mix of authenticated (public) and unauthenticated (internal), limit
+  // trainee ID verification to LTFT, COJ and FormR endpoints for now.
+  public static final List<String> INTERCEPTOR_API_REGEXPS
+      = List.of("^/api/ltft(/.+)?$", "^/api/formr-part[a|b](s|/.+)?$", "/api/coj");
 
   private final TraineeIdentity traineeIdentity;
 
@@ -57,14 +65,25 @@ public class TraineeIdentityInterceptor implements HandlerInterceptor {
       }
     }
 
-    // Non-LTFT endpoints are a mix of authenticated (public) and unauthenticated (internal), limit
-    // trainee ID verification to LTFT endpoints for now.
-    if (traineeIdentity.getTraineeId() == null
-        && request.getRequestURI().matches("^/api/ltft(/.+)?$")) {
+    if (traineeIdentity.getTraineeId() == null && apiRequiresTraineeId(request.getRequestURI())) {
       response.setStatus(HttpStatus.FORBIDDEN.value());
       return false;
     }
-
     return true;
+  }
+
+  /**
+   * Determine if a request URI matches any of the APIs that require a trainee ID.
+   *
+   * @param requestUri The request API to assess.
+   * @return True if it matches any API requiring a trainee ID, otherwise false.
+   */
+  private boolean apiRequiresTraineeId(String requestUri) {
+    for (String regexp : INTERCEPTOR_API_REGEXPS) {
+      if (requestUri.matches(regexp)) {
+        return true;
+      }
+    }
+    return false;
   }
 }

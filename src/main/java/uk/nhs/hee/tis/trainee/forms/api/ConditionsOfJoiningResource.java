@@ -37,6 +37,7 @@ import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.api.util.AuthTokenUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.ProgrammeMembershipDto;
+import uk.nhs.hee.tis.trainee.forms.dto.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
 /**
@@ -49,9 +50,11 @@ import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 public class ConditionsOfJoiningResource {
 
   private final PdfService pdfService;
+  private final TraineeIdentity traineeIdentity;
 
-  public ConditionsOfJoiningResource(PdfService pdfService) {
+  public ConditionsOfJoiningResource(PdfService pdfService, TraineeIdentity traineeIdentity) {
     this.pdfService = pdfService;
+    this.traineeIdentity = traineeIdentity;
   }
 
   /**
@@ -63,21 +66,9 @@ public class ConditionsOfJoiningResource {
    */
   @PutMapping(produces = MediaType.APPLICATION_PDF_VALUE)
   public ResponseEntity<byte[]> generatePdf(
-      @Valid @RequestBody ProgrammeMembershipDto programmeMembership,
-      @RequestHeader(HttpHeaders.AUTHORIZATION) String token) throws IOException {
-    String traineeId;
+      @Valid @RequestBody ProgrammeMembershipDto programmeMembership) throws IOException {
 
-    try {
-      traineeId = AuthTokenUtil.getTraineeTisId(token);
-    } catch (IOException e) {
-      log.warn("Unable to read tisId from token.", e);
-      return ResponseEntity.badRequest().build();
-    }
-
-    if (traineeId == null) {
-      log.warn("Request made with no trainee ID.");
-      return ResponseEntity.badRequest().build();
-    }
+    String traineeId = traineeIdentity.getTraineeId();
 
     log.info("Trainee '{}' requesting Conditions of Joining PDF for PM '{}'.", traineeId,
         programmeMembership.tisId());
