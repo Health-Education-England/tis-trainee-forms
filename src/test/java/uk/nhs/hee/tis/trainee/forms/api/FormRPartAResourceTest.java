@@ -23,7 +23,9 @@ package uk.nhs.hee.tis.trainee.forms.api;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -57,7 +59,9 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.api.validation.FormRPartAValidator;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
+import uk.nhs.hee.tis.trainee.forms.dto.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.interceptor.TraineeIdentityInterceptor;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 
 @ExtendWith(SpringExtension.class)
@@ -103,6 +107,7 @@ class FormRPartAResourceTest {
     FormRPartAResource formRPartAResource = new FormRPartAResource(service, validator);
     mockMvc = MockMvcBuilders.standaloneSetup(formRPartAResource)
         .setMessageConverters(jacksonMessageConverter)
+        .addInterceptors(new TraineeIdentityInterceptor(new TraineeIdentity()))
         .build();
   }
 
@@ -130,7 +135,7 @@ class FormRPartAResourceTest {
     mockMvc.perform(post("/api/formr-parta")
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
             .content(TestUtil.convertObjectToJsonBytes(dto)))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isForbidden());
 
     verifyNoInteractions(service);
   }
@@ -142,7 +147,7 @@ class FormRPartAResourceTest {
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
             .content(TestUtil.convertObjectToJsonBytes(dto))
             .header(HttpHeaders.AUTHORIZATION, "aa.bb.cc"))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isForbidden());
 
     verifyNoInteractions(service);
   }
@@ -169,6 +174,7 @@ class FormRPartAResourceTest {
     Exception exception = new MethodArgumentNotValidException(new MethodParameter(method, 0),
         bindingResult);
     doThrow(exception).when(validator).validate(dto);
+    when(service.getLoggedInTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
 
     mockMvc.perform(post("/api/formr-parta")
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
@@ -176,7 +182,8 @@ class FormRPartAResourceTest {
             .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
         .andExpect(status().isBadRequest());
 
-    verifyNoInteractions(service);
+    verify(service).getLoggedInTraineeId();
+    verifyNoMoreInteractions(service);
   }
 
   @Test
@@ -187,6 +194,7 @@ class FormRPartAResourceTest {
     createdDto.setLifecycleState(LifecycleState.DRAFT);
 
     when(service.save(dto)).thenReturn(createdDto);
+    when(service.getLoggedInTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
 
     mockMvc.perform(put("/api/formr-parta")
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
@@ -204,7 +212,7 @@ class FormRPartAResourceTest {
     mockMvc.perform(put("/api/formr-parta")
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
             .content(TestUtil.convertObjectToJsonBytes(dto)))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isForbidden());
 
     verifyNoInteractions(service);
   }
@@ -215,7 +223,7 @@ class FormRPartAResourceTest {
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
             .content(TestUtil.convertObjectToJsonBytes(dto))
             .header(HttpHeaders.AUTHORIZATION, "aa.bb.cc"))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isForbidden());
 
     verifyNoInteractions(service);
   }
@@ -229,6 +237,7 @@ class FormRPartAResourceTest {
     Exception exception = new MethodArgumentNotValidException(new MethodParameter(method, 0),
         bindingResult);
     doThrow(exception).when(validator).validate(dto);
+    when(service.getLoggedInTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
 
     mockMvc.perform(put("/api/formr-parta")
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
@@ -236,7 +245,8 @@ class FormRPartAResourceTest {
             .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
         .andExpect(status().isBadRequest());
 
-    verifyNoInteractions(service);
+    verify(service).getLoggedInTraineeId();
+    verifyNoMoreInteractions(service);
   }
 
   @Test
@@ -246,6 +256,7 @@ class FormRPartAResourceTest {
     savedDto.setLifecycleState(LifecycleState.SUBMITTED);
 
     when(service.save(dto)).thenReturn(savedDto);
+    when(service.getLoggedInTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
 
     mockMvc.perform(put("/api/formr-parta")
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
@@ -265,6 +276,7 @@ class FormRPartAResourceTest {
     createdDto.setLifecycleState(LifecycleState.DRAFT);
 
     when(service.save(dto)).thenReturn(createdDto);
+    when(service.getLoggedInTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
 
     mockMvc.perform(put("/api/formr-parta")
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
@@ -281,7 +293,7 @@ class FormRPartAResourceTest {
   void getShouldNotReturnTraineesFormsWhenNoToken() throws Exception {
     mockMvc.perform(get("/api/formr-partas")
             .contentType(TestUtil.APPLICATION_JSON_UTF8))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isForbidden());
 
     verifyNoInteractions(service);
   }
@@ -291,7 +303,7 @@ class FormRPartAResourceTest {
     mockMvc.perform(get("/api/formr-partas")
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
             .header(HttpHeaders.AUTHORIZATION, "aa.bb.cc"))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isForbidden());
 
     verifyNoInteractions(service);
   }
@@ -315,7 +327,7 @@ class FormRPartAResourceTest {
   void getByIdShouldNotReturnFormWhenNoToken() throws Exception {
     mockMvc.perform(get("/api/formr-parta/" + DEFAULT_ID)
             .contentType(TestUtil.APPLICATION_JSON_UTF8))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isForbidden());
 
     verifyNoInteractions(service);
   }
@@ -325,7 +337,7 @@ class FormRPartAResourceTest {
     mockMvc.perform(get("/api/formr-parta/" + DEFAULT_ID)
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
             .header(HttpHeaders.AUTHORIZATION, "aa.bb.cc"))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isForbidden());
 
     verifyNoInteractions(service);
   }
@@ -358,7 +370,7 @@ class FormRPartAResourceTest {
   void deleteByIdShouldNotDeleteFormWhenNoToken() throws Exception {
     mockMvc.perform(delete("/api/formr-parta/" + DEFAULT_ID)
             .contentType(TestUtil.APPLICATION_JSON_UTF8))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isForbidden());
 
     verifyNoInteractions(service);
   }
@@ -368,7 +380,7 @@ class FormRPartAResourceTest {
     mockMvc.perform(delete("/api/formr-parta/" + DEFAULT_ID)
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
             .header(HttpHeaders.AUTHORIZATION, "aa.bb.cc"))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isForbidden());
 
     verifyNoInteractions(service);
   }
