@@ -187,6 +187,21 @@ class FormRPartBResourceTest {
   }
 
   @Test
+  void postShouldNotCreateFormWhenNotForLoggedInTrainee() throws Exception {
+    dto.setId(null);
+    when(service.getLoggedInTraineeId()).thenReturn("another trainee id");
+
+    mockMvc.perform(post("/api/formr-partb")
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(TestUtil.convertObjectToJsonBytes(dto))
+            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
+        .andExpect(status().isForbidden());
+
+    verify(service).getLoggedInTraineeId();
+    verifyNoMoreInteractions(service);
+  }
+
+  @Test
   void postShouldCreateFormWhenDtoValidationPasses() throws Exception {
     dto.setId(null);
     FormRPartBDto createdDto = new FormRPartBDto();
@@ -244,6 +259,20 @@ class FormRPartBResourceTest {
             .content(TestUtil.convertObjectToJsonBytes(dto))
             .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
         .andExpect(status().isBadRequest());
+
+    verify(service).getLoggedInTraineeId();
+    verifyNoMoreInteractions(service);
+  }
+
+  @Test
+  void putShouldNotUpdateFormWhenNotForLoggedInTrainee() throws Exception {
+    when(service.getLoggedInTraineeId()).thenReturn("another trainee id");
+
+    mockMvc.perform(put("/api/formr-partb")
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(TestUtil.convertObjectToJsonBytes(dto))
+            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
+        .andExpect(status().isForbidden());
 
     verify(service).getLoggedInTraineeId();
     verifyNoMoreInteractions(service);
