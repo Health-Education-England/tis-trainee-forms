@@ -35,39 +35,34 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.lang.reflect.Method;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.Collections;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.api.validation.FormRPartAValidator;
+import uk.nhs.hee.tis.trainee.forms.config.InterceptorConfiguration;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
-import uk.nhs.hee.tis.trainee.forms.interceptor.TraineeIdentityInterceptor;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 
-@ExtendWith(SpringExtension.class)
-@WebMvcTest(controllers = FormRPartAResource.class)
+@Import(FormRPartAResource.class)
+@ContextConfiguration(classes = InterceptorConfiguration.class)
+@WebMvcTest(FormRPartAResource.class)
 class FormRPartAResourceTest {
-
-  private static final String TIS_ID_ATTRIBUTE = "custom:tisId";
 
   private static final String DEFAULT_ID = "DEFAULT_ID";
   private static final String DEFAULT_TRAINEE_TIS_ID = "1";
@@ -75,18 +70,9 @@ class FormRPartAResourceTest {
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";
   private static final LifecycleState DEFAULT_LIFECYCLESTATE = LifecycleState.DRAFT;
 
-  private static final String AUTH_TOKEN;
-
-  static {
-    String payload = String.format("{\"%s\":\"%s\"}", TIS_ID_ATTRIBUTE, DEFAULT_TRAINEE_TIS_ID);
-    String encodedPayload = Base64.getEncoder()
-        .encodeToString(payload.getBytes(StandardCharsets.UTF_8));
-    AUTH_TOKEN = String.format("aGVhZGVy.%s.c2lnbmF0dXJl", encodedPayload);
-  }
+  private static final String AUTH_TOKEN = TestJwtUtil.generateTokenForTisId(DEFAULT_TRAINEE_TIS_ID);
 
   @Autowired
-  private MappingJackson2HttpMessageConverter jacksonMessageConverter;
-
   private MockMvc mockMvc;
 
   @MockBean
@@ -95,24 +81,11 @@ class FormRPartAResourceTest {
   @MockBean
   private FormRPartAValidator validator;
 
-  @Mock
+  @MockBean
   TraineeIdentity traineeIdentity;
 
   private FormRPartADto dto;
   private FormRPartSimpleDto simpleDto;
-
-  /**
-   * setup the Mvc test environment.
-   */
-  @BeforeEach
-  void setup() {
-    FormRPartAResource formRPartAResource = new FormRPartAResource(service, validator,
-        traineeIdentity);
-    mockMvc = MockMvcBuilders.standaloneSetup(formRPartAResource)
-        .setMessageConverters(jacksonMessageConverter)
-        .addInterceptors(new TraineeIdentityInterceptor(new TraineeIdentity()))
-        .build();
-  }
 
   /**
    * init test data.
@@ -362,6 +335,7 @@ class FormRPartAResourceTest {
 
   @Test
   void getByIdShouldNotReturnFormWhenTokenHasNoTraineeId() throws Exception {
+    when(traineeIdentity.getTraineeId()).thenReturn(null);
     mockMvc.perform(get("/api/formr-parta/" + DEFAULT_ID)
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
             .header(HttpHeaders.AUTHORIZATION, "aa.bb.cc"))
