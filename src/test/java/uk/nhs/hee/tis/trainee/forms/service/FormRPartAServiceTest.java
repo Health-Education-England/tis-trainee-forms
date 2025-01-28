@@ -113,12 +113,6 @@ class FormRPartAServiceTest {
     return entity;
   }
 
-  @Test
-  void shouldGetLoggedInTraineeId() {
-    assertThat("Unexpected logged-in trainee ID.", service.getLoggedInTraineeId(),
-        is(DEFAULT_TRAINEE_TIS_ID));
-  }
-
   @ParameterizedTest(name = "Should save to db and cloud when always store files "
       + "and form state is {0}.")
   @EnumSource(value = LifecycleState.class, names = {"DRAFT", "UNSUBMITTED"})

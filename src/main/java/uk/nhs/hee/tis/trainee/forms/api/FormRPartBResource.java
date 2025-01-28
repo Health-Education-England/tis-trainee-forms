@@ -58,10 +58,13 @@ public class FormRPartBResource {
 
   private final FormRPartBService service;
   private final FormRPartBValidator validator;
+  private final TraineeIdentity loggedInTraineeIdentity;
 
-  public FormRPartBResource(FormRPartBService service, FormRPartBValidator validator) {
+  public FormRPartBResource(FormRPartBService service, FormRPartBValidator validator,
+      TraineeIdentity traineeIdentity) {
     this.service = service;
     this.validator = validator;
+    this.loggedInTraineeIdentity = traineeIdentity;
   }
 
   /**
@@ -82,7 +85,7 @@ public class FormRPartBResource {
               "A new formRpartB cannot already have an ID")).body(null);
     }
 
-    if (!dto.getTraineeTisId().equals(service.getLoggedInTraineeId())) {
+    if (!dto.getTraineeTisId().equals(loggedInTraineeIdentity.getTraineeId())) {
       log.warn("The form's trainee TIS ID did not match authenticated user.");
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
@@ -109,7 +112,7 @@ public class FormRPartBResource {
       return createFormRPartB(dto);
     }
 
-    if (!dto.getTraineeTisId().equals(service.getLoggedInTraineeId())) {
+    if (!dto.getTraineeTisId().equals(loggedInTraineeIdentity.getTraineeId())) {
       log.warn("The form's trainee TIS ID did not match authenticated user.");
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }

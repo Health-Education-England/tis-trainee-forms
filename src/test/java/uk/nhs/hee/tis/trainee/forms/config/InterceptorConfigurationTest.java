@@ -21,48 +21,47 @@
 
 package uk.nhs.hee.tis.trainee.forms.config;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static uk.nhs.hee.tis.trainee.forms.interceptor.TraineeIdentityInterceptor.TRAINEE_ID_APIS;
 
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.web.context.annotation.RequestScope;
+import java.util.Arrays;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.handler.MappedInterceptor;
-import uk.nhs.hee.tis.trainee.forms.dto.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.interceptor.TraineeIdentityInterceptor;
 
-/**
- * Configuration for interceptors.
- */
-@Configuration
-public class InterceptorConfiguration implements WebMvcConfigurer {
+public class InterceptorConfigurationTest {
 
-  @Override
-  public void addInterceptors(InterceptorRegistry registry) {
-    MappedInterceptor mappedInterceptor
-        = new MappedInterceptor(TRAINEE_ID_APIS, traineeIdentityInterceptor());
-    registry.addInterceptor(mappedInterceptor);
+  InterceptorConfiguration configuration;
+
+  @BeforeEach
+  void setUp() {
+    configuration = new InterceptorConfiguration();
   }
 
-  /**
-   * Create an interceptor for creating a {@link TraineeIdentity} from a request.
-   *
-   * @return The trainee identity inteceptor.
-   */
-  @Bean
-  public TraineeIdentityInterceptor traineeIdentityInterceptor() {
-    return new TraineeIdentityInterceptor(traineeIdentity());
-  }
+  @Test
+  void shouldAddTraineeIdentityInterceptorToRegistry() {
+    InterceptorRegistry registry = mock(InterceptorRegistry.class);
+    configuration.addInterceptors(registry);
 
-  /**
-   * Create a {@link TraineeIdentity} for each request.
-   *
-   * @return The created trainee identity.
-   */
-  @Bean
-  @RequestScope
-  public TraineeIdentity traineeIdentity() {
-    return new TraineeIdentity();
+    ArgumentCaptor<MappedInterceptor> mappedInterceptorCaptor
+        = ArgumentCaptor.forClass(MappedInterceptor.class);
+    verify(registry).addInterceptor(mappedInterceptorCaptor.capture());
+
+    MappedInterceptor actualMappedInterceptor = mappedInterceptorCaptor.getValue();
+    String[] pathPatterns = actualMappedInterceptor.getIncludePathPatterns();
+    assert pathPatterns != null;
+    assertThat("Unexpected included path patterns.",
+        pathPatterns.length, is(TRAINEE_ID_APIS.length));
+    assertThat("Unexpected included path patterns.",
+        Arrays.equals(pathPatterns, TRAINEE_ID_APIS), is(true));
+
+    assertThat("Unexpected interceptor class.",
+        actualMappedInterceptor.getInterceptor().getClass(), is(TraineeIdentityInterceptor.class));
   }
 }

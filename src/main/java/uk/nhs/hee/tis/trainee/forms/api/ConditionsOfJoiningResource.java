@@ -53,6 +53,7 @@ public class ConditionsOfJoiningResource {
   private final TraineeIdentity traineeIdentity;
 
   public ConditionsOfJoiningResource(PdfService pdfService, TraineeIdentity traineeIdentity) {
+    //TODO: refactor to rather inject TraineeIdentity into (some new) CoJ service to make consistent.
     this.pdfService = pdfService;
     this.traineeIdentity = traineeIdentity;
   }

@@ -53,7 +53,7 @@ import uk.nhs.hee.tis.trainee.forms.interceptor.TraineeIdentityInterceptorIntegr
 @Import(InterceptorConfiguration.class)
 class TraineeIdentityInterceptorIntegrationTest {
 
-  private static final String API_PATH = "/test/interceptor";
+  private static final String API_PATH = "/api/coj"; // included api path
   private static final String ID_1 = "40";
   private static final String ID_2 = "41";
 

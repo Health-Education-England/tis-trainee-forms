@@ -27,8 +27,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -46,81 +44,9 @@ class TraineeIdentityInterceptorTest {
     interceptor = new TraineeIdentityInterceptor(traineeIdentity);
   }
 
-  @ParameterizedTest
-  @ValueSource(strings = {"/api/feature-flags", "/api/form-relocate/id"})
-  void shouldReturnTrueAndNotSetTraineeIdWhenNoAuthTokenAndNonTraineeIdEndpoint(String uri) {
+  @Test
+  void shouldReturnFalseAndNotSetTraineeIdWhenNoAuthToken() {
     MockHttpServletRequest request = new MockHttpServletRequest();
-    request.setRequestURI(uri);
-
-    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
-
-    assertThat("Unexpected result.", result, is(true));
-    assertThat("Unexpected trainee ID.", traineeIdentity.getTraineeId(), nullValue());
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = {"/api/coj", "/api/formr-parta", "/api/formr-partas",
-      "/api/formr-parta/id", "/api/formr-partb", "/api/formr-partbs", "/api/formr-partb/id",
-      "/api/ltft"})
-  void shouldReturnFalseAndNotSetTraineeIdWhenNoAuthTokenAndTraineeIdEndpoint(String uri) {
-    MockHttpServletRequest request = new MockHttpServletRequest();
-    request.setRequestURI(uri);
-
-    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
-
-    assertThat("Unexpected result.", result, is(false));
-    assertThat("Unexpected trainee ID.", traineeIdentity.getTraineeId(), nullValue());
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = {"/api/feature-flags", "/api/form-relocate/id"})
-  void shouldReturnTrueAndNotSetTraineeIdWhenTokenNotMapAndNonTraineeIdEndpoint(String uri) {
-    MockHttpServletRequest request = new MockHttpServletRequest();
-    request.addHeader(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateToken("[]"));
-    request.setRequestURI(uri);
-
-    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
-
-    assertThat("Unexpected result.", result, is(true));
-    assertThat("Unexpected trainee ID.", traineeIdentity.getTraineeId(), nullValue());
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = {"/api/coj", "/api/formr-parta", "/api/formr-partas",
-      "/api/formr-parta/id", "/api/formr-partb", "/api/formr-partbs", "/api/formr-partb/id",
-      "/api/ltft"})
-  void shouldReturnFalseAndNotSetTraineeIdWhenTokenNotMapAndTraineeIdEndpoint(String uri) {
-    MockHttpServletRequest request = new MockHttpServletRequest();
-    request.addHeader(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateToken("[]"));
-    request.setRequestURI(uri);
-
-    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
-
-    assertThat("Unexpected result.", result, is(false));
-    assertThat("Unexpected trainee ID.", traineeIdentity.getTraineeId(), nullValue());
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = {"/api/feature-flags", "/api/form-relocate/id"})
-  void shouldReturnTrueAndNotSetTraineeIdWhenNoTisIdInAuthTokenAndNonTraineeIdEndpoint(String uri) {
-    MockHttpServletRequest request = new MockHttpServletRequest();
-    request.addHeader(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateToken("{}"));
-    request.setRequestURI(uri);
-
-    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
-
-    assertThat("Unexpected result.", result, is(true));
-    assertThat("Unexpected trainee ID.", traineeIdentity.getTraineeId(), nullValue());
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = {"/api/coj", "/api/formr-parta", "/api/formr-partas",
-      "/api/formr-parta/id", "/api/formr-partb", "/api/formr-partbs", "/api/formr-partb/id",
-      "/api/ltft"})
-  void shouldReturnFalseAndNotSetTraineeIdWhenNoTisIdInAuthTokenAndTraineeIdEndpoint(String uri) {
-    MockHttpServletRequest request = new MockHttpServletRequest();
-    request.addHeader(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateToken("{}"));
-    request.setRequestURI(uri);
 
     boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
 
@@ -129,7 +55,29 @@ class TraineeIdentityInterceptorTest {
   }
 
   @Test
-  void shouldReturnTrueAndSetTraineeIdWhenTisIdInAuthTokenAndTraineeIdEndpoint() {
+  void shouldReturnFalseAndNotSetTraineeIdWhenTokenNotMap() {
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.addHeader(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateToken("[]"));
+
+    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+
+    assertThat("Unexpected result.", result, is(false));
+    assertThat("Unexpected trainee ID.", traineeIdentity.getTraineeId(), nullValue());
+  }
+
+  @Test
+  void shouldReturnFalseAndNotSetTraineeIdWhenNoTisIdInAuthToken() {
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.addHeader(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateToken("{}"));
+
+    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+
+    assertThat("Unexpected result.", result, is(false));
+    assertThat("Unexpected trainee ID.", traineeIdentity.getTraineeId(), nullValue());
+  }
+
+  @Test
+  void shouldReturnTrueAndSetTraineeIdWhenTisIdInAuthToken() {
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.addHeader(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId("40"));
 

@@ -42,6 +42,7 @@ import uk.nhs.hee.tis.trainee.forms.api.util.HeaderUtil;
 import uk.nhs.hee.tis.trainee.forms.api.validation.FormRPartAValidator;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
+import uk.nhs.hee.tis.trainee.forms.dto.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 
 @Slf4j
@@ -54,10 +55,13 @@ public class FormRPartAResource {
 
   private final FormRPartAService service;
   private final FormRPartAValidator validator;
+  private final TraineeIdentity loggedInTraineeIdentity;
 
-  public FormRPartAResource(FormRPartAService service, FormRPartAValidator validator) {
+  public FormRPartAResource(FormRPartAService service, FormRPartAValidator validator,
+      TraineeIdentity traineeIdentity) {
     this.service = service;
     this.validator = validator;
+    this.loggedInTraineeIdentity = traineeIdentity;
   }
 
   /**
@@ -78,7 +82,7 @@ public class FormRPartAResource {
               "A new formRpartA cannot already have an ID")).body(null);
     }
 
-    if (!dto.getTraineeTisId().equals(service.getLoggedInTraineeId())) {
+    if (!dto.getTraineeTisId().equals(loggedInTraineeIdentity.getTraineeId())) {
       log.warn("The form's trainee TIS ID did not match authenticated user.");
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
@@ -105,7 +109,7 @@ public class FormRPartAResource {
       return createFormRPartA(dto);
     }
 
-    if (!dto.getTraineeTisId().equals(service.getLoggedInTraineeId())) {
+    if (!dto.getTraineeTisId().equals(loggedInTraineeIdentity.getTraineeId())) {
       log.warn("The form's trainee TIS ID did not match authenticated user.");
       return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }

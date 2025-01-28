@@ -87,15 +87,6 @@ public class FormRPartBService {
   }
 
   /**
-   * Get the logged-in trainee's ID.
-   *
-   * @return The trainee TIS ID.
-   */
-  public String getLoggedInTraineeId() {
-    return traineeIdentity.getTraineeId();
-  }
-
-  /**
    * save FormRPartB.
    */
   public FormRPartBDto save(FormRPartBDto formRPartBDto) {

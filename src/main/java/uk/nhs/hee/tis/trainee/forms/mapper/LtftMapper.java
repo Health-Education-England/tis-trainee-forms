@@ -50,6 +50,5 @@ public interface LtftMapper {
    * @param entities The entities to convert to DTOs.
    * @return The equivalent summary DTOs.
    */
-  @Mapping(target = "programmeMembershipId", source = "programmeMembership.id")
   List<LtftSummaryDto> toSummaryDtos(List<LtftForm> entities);
 }

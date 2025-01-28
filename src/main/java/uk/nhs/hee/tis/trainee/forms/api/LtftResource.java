@@ -36,7 +36,7 @@ import uk.nhs.hee.tis.trainee.forms.service.LtftService;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/ltft")
 @XRayEnabled
 public class LtftResource {
 
@@ -56,7 +56,7 @@ public class LtftResource {
    *
    * @return The list of LTFT summaries, or an empty list if none found.
    */
-  @GetMapping("/ltft")
+  @GetMapping
   public ResponseEntity<List<LtftSummaryDto>> getLtftSummaries() {
     log.info("Request to get summary list of LTFT records.");
     List<LtftSummaryDto> ltfts = service.getLtftSummaries();
