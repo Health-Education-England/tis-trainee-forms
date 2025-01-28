@@ -27,6 +27,7 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.beans.HasPropertyWithValue.hasProperty;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -34,6 +35,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.aop.scope.ScopedProxyUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -53,7 +56,7 @@ import uk.nhs.hee.tis.trainee.forms.interceptor.TraineeIdentityInterceptorIntegr
 @Import(InterceptorConfiguration.class)
 class TraineeIdentityInterceptorIntegrationTest {
 
-  private static final String API_PATH = "/api/coj"; // included api path
+  private static final String API_PATH = "/api/formr-partas";
   private static final String ID_1 = "40";
   private static final String ID_2 = "41";
 
@@ -67,9 +70,12 @@ class TraineeIdentityInterceptorIntegrationTest {
   @SpyBean
   private TraineeIdentityInterceptor interceptor;
 
-  @Test
-  void shouldAddTraineeIdToRequest() throws Exception {
-    mockMvc.perform(get(API_PATH)
+  @ParameterizedTest
+  @ValueSource(strings = {"/api/coj", "/api/formr-partas", "/api/formr-partbs",
+      "/api/formr-parta/xxx", "/api/formr-parta/xxx/yyy", "/api/formr-partb/xxx",
+      "/api/formr-partb/xxx/yyy", "/api/ltft", "/api/ltft/xxx", "/api/ltft/xxx/yyy"})
+  void shouldAddTraineeIdToRequest(String apiPath) throws Exception {
+    mockMvc.perform(get(apiPath)
             .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(ID_1)))
         .andExpect(request().attribute(BEAN_NAME, nullValue()))
         .andExpect(request().attribute(TARGET_BEAN_NAME, hasProperty(TRAINEE_ID, is(ID_1))));
@@ -77,9 +83,12 @@ class TraineeIdentityInterceptorIntegrationTest {
     verify(interceptor).preHandle(any(), any(), any());
   }
 
-  @Test
-  void shouldAddNewTraineeIdOnEachRequest() throws Exception {
-    mockMvc.perform(get(API_PATH)
+  @ParameterizedTest
+  @ValueSource(strings = {"/api/coj", "/api/formr-partas", "/api/formr-partbs",
+      "/api/formr-parta/xxx", "/api/formr-parta/xxx/yyy", "/api/formr-partb/xxx",
+      "/api/formr-partb/xxx/yyy", "/api/ltft", "/api/ltft/xxx", "/api/ltft/xxx/yyy"})
+  void shouldAddNewTraineeIdOnEachRequest(String apiPath) throws Exception {
+    mockMvc.perform(get(apiPath)
             .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(ID_1)))
         .andExpect(request().attribute(BEAN_NAME, nullValue()))
         .andExpect(request().attribute(TARGET_BEAN_NAME, hasProperty(TRAINEE_ID, is(ID_1))));
@@ -90,6 +99,17 @@ class TraineeIdentityInterceptorIntegrationTest {
         .andExpect(request().attribute(TARGET_BEAN_NAME, hasProperty(TRAINEE_ID, is(ID_2))));
 
     verify(interceptor, times(2)).preHandle(any(), any(), any());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"/api", "/api/xxx", "/api/xxx/yyy"})
+  void shouldNotAddTraineeIdToNonInterceptedRequests(String apiPath) throws Exception {
+    mockMvc.perform(get(apiPath)
+            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(ID_1)))
+        .andExpect(request().attribute(BEAN_NAME, nullValue()))
+        .andExpect(request().attribute(TARGET_BEAN_NAME, nullValue()));
+
+    verify(interceptor, never()).preHandle(any(), any(), any());
   }
 
   @Test
@@ -118,5 +138,6 @@ class TraineeIdentityInterceptorIntegrationTest {
       assertThat("Unexpected trainee identity.", traineeIdentity, notNullValue());
       return traineeIdentity.getTraineeId();
     }
+
   }
 }

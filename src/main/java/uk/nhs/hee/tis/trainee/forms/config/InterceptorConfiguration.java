@@ -39,7 +39,9 @@ public class InterceptorConfiguration implements WebMvcConfigurer {
   // Endpoints are a mix of authenticated (public) and unauthenticated (internal), limit
   // trainee ID verification to LTFT, COJ and FormR endpoints for now.
   protected static final String[] TRAINEE_ID_APIS
-      = {"^/api/ltft(/.+)?$", "^/api/formr-part[a|b](s|/.+)?$", "/api/coj"};
+      = { "/api/coj",
+      "/api/formr-partas", "/api/formr-partbs", "/api/formr-parta/**", "/api/formr-partb/**",
+      "/api/ltft", "/api/ltft/**" };
 
   @Override
   public void addInterceptors(InterceptorRegistry registry) {
