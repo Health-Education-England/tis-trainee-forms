@@ -52,8 +52,13 @@ public class ConditionsOfJoiningResource {
   private final PdfService pdfService;
   private final TraineeIdentity traineeIdentity;
 
+  /**
+   * Initialise the Conditions of Joining resource.
+   *
+   * @param pdfService      The PDF service to use.
+   * @param traineeIdentity The authenticated trainee user.
+   */
   public ConditionsOfJoiningResource(PdfService pdfService, TraineeIdentity traineeIdentity) {
-    //TODO: refactor to rather inject TraineeIdentity into (some new) CoJ service to make consistent.
     this.pdfService = pdfService;
     this.traineeIdentity = traineeIdentity;
   }

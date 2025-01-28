@@ -21,8 +21,6 @@
 
 package uk.nhs.hee.tis.trainee.forms.config;
 
-import static uk.nhs.hee.tis.trainee.forms.interceptor.TraineeIdentityInterceptor.TRAINEE_ID_APIS;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.context.annotation.RequestScope;
@@ -37,6 +35,11 @@ import uk.nhs.hee.tis.trainee.forms.interceptor.TraineeIdentityInterceptor;
  */
 @Configuration
 public class InterceptorConfiguration implements WebMvcConfigurer {
+
+  // Endpoints are a mix of authenticated (public) and unauthenticated (internal), limit
+  // trainee ID verification to LTFT, COJ and FormR endpoints for now.
+  protected static final String[] TRAINEE_ID_APIS
+      = {"^/api/ltft(/.+)?$", "^/api/formr-part[a|b](s|/.+)?$", "/api/coj"};
 
   @Override
   public void addInterceptors(InterceptorRegistry registry) {

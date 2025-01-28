@@ -57,6 +57,13 @@ public class FormRPartAResource {
   private final FormRPartAValidator validator;
   private final TraineeIdentity loggedInTraineeIdentity;
 
+  /**
+   * Initialise the FormR PartA resource.
+   *
+   * @param service         The service to use.
+   * @param validator       The form validator to use.
+   * @param traineeIdentity The authenticated trainee identity.
+   */
   public FormRPartAResource(FormRPartAService service, FormRPartAValidator validator,
       TraineeIdentity traineeIdentity) {
     this.service = service;

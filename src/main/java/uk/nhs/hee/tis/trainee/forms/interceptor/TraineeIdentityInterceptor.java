@@ -37,11 +37,6 @@ import uk.nhs.hee.tis.trainee.forms.dto.TraineeIdentity;
 @Slf4j
 public class TraineeIdentityInterceptor implements HandlerInterceptor {
 
-  // Endpoints are a mix of authenticated (public) and unauthenticated (internal), limit
-  // trainee ID verification to LTFT, COJ and FormR endpoints for now.
-  public static final String[] TRAINEE_ID_APIS
-      = {"^/api/ltft(/.+)?$", "^/api/formr-part[a|b](s|/.+)?$", "/api/coj"};
-
   private final TraineeIdentity traineeIdentity;
 
   public TraineeIdentityInterceptor(TraineeIdentity traineeIdentity) {

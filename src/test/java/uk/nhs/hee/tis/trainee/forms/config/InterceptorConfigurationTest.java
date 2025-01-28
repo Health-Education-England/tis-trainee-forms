@@ -25,7 +25,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static uk.nhs.hee.tis.trainee.forms.interceptor.TraineeIdentityInterceptor.TRAINEE_ID_APIS;
+import static uk.nhs.hee.tis.trainee.forms.config.InterceptorConfiguration.TRAINEE_ID_APIS;
 
 import java.util.Arrays;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,7 +35,10 @@ import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.handler.MappedInterceptor;
 import uk.nhs.hee.tis.trainee.forms.interceptor.TraineeIdentityInterceptor;
 
-public class InterceptorConfigurationTest {
+/**
+ * A test class for the Interceptor configuration.
+ */
+class InterceptorConfigurationTest {
 
   InterceptorConfiguration configuration;
 
