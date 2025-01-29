@@ -40,7 +40,8 @@ public class InterceptorConfiguration implements WebMvcConfigurer {
   // trainee ID verification to LTFT, COJ and FormR endpoints for now.
   protected static final String[] TRAINEE_ID_APIS
       = { "/api/coj",
-      "/api/formr-partas", "/api/formr-partbs", "/api/formr-parta/**", "/api/formr-partb/**",
+      "/api/formr-parta", "/api/formr-partas", "/api/formr-parta/**",
+      "/api/formr-partb", "/api/formr-partbs", "/api/formr-partb/**",
       "/api/ltft", "/api/ltft/**" };
 
   @Override

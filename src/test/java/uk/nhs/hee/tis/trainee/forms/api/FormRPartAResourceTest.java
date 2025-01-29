@@ -130,6 +130,8 @@ class FormRPartAResourceTest {
 
   @Test
   void postShouldNotCreateFormWhenFormExists() throws Exception {
+    when(traineeIdentity.getTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
+
     mockMvc.perform(post("/api/formr-parta")
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
             .content(TestUtil.convertObjectToJsonBytes(dto))
@@ -312,6 +314,7 @@ class FormRPartAResourceTest {
   @Test
   void getShouldReturnTraineesFormsWhenTokenHasTraineeId() throws Exception {
     when(service.getFormRPartAs()).thenReturn(Collections.singletonList(simpleDto));
+    when(traineeIdentity.getTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
 
     mockMvc.perform(get("/api/formr-partas")
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
@@ -347,6 +350,8 @@ class FormRPartAResourceTest {
   @Test
   void getByIdShouldNotReturnFormWhenFormIsNotTrainees() throws Exception {
     when(service.getFormRPartAById(DEFAULT_ID)).thenReturn(null);
+    when(traineeIdentity.getTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
+
     mockMvc.perform(get("/api/formr-parta/" + DEFAULT_ID)
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
             .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
@@ -356,6 +361,8 @@ class FormRPartAResourceTest {
   @Test
   void getByIdShouldReturnFormWhenFormIsTrainees() throws Exception {
     when(service.getFormRPartAById(DEFAULT_ID)).thenReturn(dto);
+    when(traineeIdentity.getTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
+
     mockMvc.perform(get("/api/formr-parta/" + DEFAULT_ID)
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
             .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
@@ -390,6 +397,8 @@ class FormRPartAResourceTest {
   @Test
   void deleteByIdShouldReturnNotFoundWhenFormIsNotDeleted() throws Exception {
     when(service.deleteFormRPartAById(DEFAULT_ID)).thenReturn(false);
+    when(traineeIdentity.getTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
+
     mockMvc.perform(delete("/api/formr-parta/" + DEFAULT_ID)
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
             .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
@@ -399,6 +408,8 @@ class FormRPartAResourceTest {
   @Test
   void deleteByIdShouldReturnNoContentWhenFormIsDeleted() throws Exception {
     when(service.deleteFormRPartAById(DEFAULT_ID)).thenReturn(true);
+    when(traineeIdentity.getTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
+
     mockMvc.perform(delete("/api/formr-parta/" + DEFAULT_ID)
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
             .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))

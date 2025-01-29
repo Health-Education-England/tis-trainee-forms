@@ -71,9 +71,10 @@ class TraineeIdentityInterceptorIntegrationTest {
   private TraineeIdentityInterceptor interceptor;
 
   @ParameterizedTest
-  @ValueSource(strings = {"/api/coj", "/api/formr-partas", "/api/formr-partbs",
-      "/api/formr-parta/xxx", "/api/formr-parta/xxx/yyy", "/api/formr-partb/xxx",
-      "/api/formr-partb/xxx/yyy", "/api/ltft", "/api/ltft/xxx", "/api/ltft/xxx/yyy"})
+  @ValueSource(strings = {"/api/coj",
+      "/api/formr-parta","/api/formr-partas", "/api/formr-parta/xxx", "/api/formr-parta/xxx/yyy",
+      "/api/formr-partb", "/api/formr-partbs", "/api/formr-partb/xxx", "/api/formr-partb/xxx/yyy",
+      "/api/ltft", "/api/ltft/xxx", "/api/ltft/xxx/yyy"})
   void shouldAddTraineeIdToRequest(String apiPath) throws Exception {
     mockMvc.perform(get(apiPath)
             .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(ID_1)))
@@ -84,9 +85,10 @@ class TraineeIdentityInterceptorIntegrationTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"/api/coj", "/api/formr-partas", "/api/formr-partbs",
-      "/api/formr-parta/xxx", "/api/formr-parta/xxx/yyy", "/api/formr-partb/xxx",
-      "/api/formr-partb/xxx/yyy", "/api/ltft", "/api/ltft/xxx", "/api/ltft/xxx/yyy"})
+  @ValueSource(strings = {"/api/coj",
+      "/api/formr-parta","/api/formr-partas", "/api/formr-parta/xxx", "/api/formr-parta/xxx/yyy",
+      "/api/formr-partb", "/api/formr-partbs", "/api/formr-partb/xxx", "/api/formr-partb/xxx/yyy",
+      "/api/ltft", "/api/ltft/xxx", "/api/ltft/xxx/yyy"})
   void shouldAddNewTraineeIdOnEachRequest(String apiPath) throws Exception {
     mockMvc.perform(get(apiPath)
             .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(ID_1)))
@@ -102,7 +104,8 @@ class TraineeIdentityInterceptorIntegrationTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"/api", "/api/xxx", "/api/xxx/yyy"})
+  @ValueSource(strings = {"/api", "/api/xxx", "/api/xxx/yyy", "/api/feature-flags",
+      "/api/form-relocate/xxx"})
   void shouldNotAddTraineeIdToNonInterceptedRequests(String apiPath) throws Exception {
     mockMvc.perform(get(apiPath)
             .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(ID_1)))
