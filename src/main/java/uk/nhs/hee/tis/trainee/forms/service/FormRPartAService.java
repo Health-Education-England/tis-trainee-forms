@@ -36,6 +36,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
+import uk.nhs.hee.tis.trainee.forms.dto.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
@@ -61,6 +62,8 @@ public class FormRPartAService {
 
   private final ObjectMapper objectMapper;
 
+  private final TraineeIdentity traineeIdentity;
+
   @Value("${application.file-store.always-store}")
   private boolean alwaysStoreFiles;
 
@@ -73,15 +76,18 @@ public class FormRPartAService {
    * @param repository            spring data repository
    * @param cloudObjectRepository repository to storage form in the cloud
    * @param mapper                maps between the form entity and dto
+   * @param objectMapper          The object mapper.
+   * @param traineeIdentity       The trainee identity.
    */
   public FormRPartAService(FormRPartARepository repository,
       S3FormRPartARepositoryImpl cloudObjectRepository,
       FormRPartAMapper mapper,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper, TraineeIdentity traineeIdentity) {
     this.repository = repository;
     this.cloudObjectRepository = cloudObjectRepository;
     this.mapper = mapper;
     this.objectMapper = objectMapper;
+    this.traineeIdentity = traineeIdentity;
   }
 
   /**
@@ -100,9 +106,10 @@ public class FormRPartAService {
   }
 
   /**
-   * get FormRPartAs by traineeTisId.
+   * get FormRPartAs for logged-in trainee.
    */
-  public List<FormRPartSimpleDto> getFormRPartAsByTraineeTisId(String traineeTisId) {
+  public List<FormRPartSimpleDto> getFormRPartAs() {
+    String traineeTisId = traineeIdentity.getTraineeId();
     log.info("Request to get FormRPartA list by trainee profileId : {}", traineeTisId);
     List<FormRPartA> storedFormRPartAs = cloudObjectRepository.findByTraineeTisId(traineeTisId);
     List<FormRPartA> formRPartAList = repository
@@ -114,9 +121,10 @@ public class FormRPartAService {
   /**
    * get FormRPartA by id.
    */
-  public FormRPartADto getFormRPartAById(String id, String traineeTisId) {
+  public FormRPartADto getFormRPartAById(String id) {
     log.info("Request to get FormRPartA by id : {}", id);
 
+    String traineeTisId = traineeIdentity.getTraineeId();
     Optional<FormRPartA> optionalCloudForm = cloudObjectRepository.findByIdAndTraineeTisId(id,
         traineeTisId);
     Optional<FormRPartA> optionalDbForm = repository.findByIdAndTraineeTisId(UUID.fromString(id),
@@ -139,14 +147,14 @@ public class FormRPartAService {
   }
 
   /**
-   * Delete the form for the given ID and trainee ID, only DRAFT forms are supported.
+   * Delete the form for the given ID, only DRAFT forms are supported.
    *
    * @param id           The ID of the form to delete.
-   * @param traineeTisId The ID of the trainee to delete the form for.
    * @return true if the form was found and deleted, false if not found.
    */
-  public boolean deleteFormRPartAById(String id, String traineeTisId) {
+  public boolean deleteFormRPartAById(String id) {
     log.info("Request to delete FormRPartA by id : {}", id);
+    String traineeTisId = traineeIdentity.getTraineeId();
     Optional<FormRPartA> optionalForm = repository.findByIdAndTraineeTisId(UUID.fromString(id),
         traineeTisId);
 

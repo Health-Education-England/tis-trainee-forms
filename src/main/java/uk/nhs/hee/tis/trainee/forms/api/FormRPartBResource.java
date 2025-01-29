@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -44,6 +45,7 @@ import uk.nhs.hee.tis.trainee.forms.api.util.HeaderUtil;
 import uk.nhs.hee.tis.trainee.forms.api.validation.FormRPartBValidator;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
+import uk.nhs.hee.tis.trainee.forms.dto.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 
 @Slf4j
@@ -56,24 +58,32 @@ public class FormRPartBResource {
 
   private final FormRPartBService service;
   private final FormRPartBValidator validator;
+  private final TraineeIdentity loggedInTraineeIdentity;
 
-  public FormRPartBResource(FormRPartBService service, FormRPartBValidator validator) {
+  /**
+   * Initialise the FormR PartB resource.
+   *
+   * @param service         The service to use.
+   * @param validator       The form validator to use.
+   * @param traineeIdentity The authenticated trainee identity.
+   */
+  public FormRPartBResource(FormRPartBService service, FormRPartBValidator validator,
+      TraineeIdentity traineeIdentity) {
     this.service = service;
     this.validator = validator;
+    this.loggedInTraineeIdentity = traineeIdentity;
   }
 
   /**
    * POST  /formr-partb : Create a new FormRPartB.
    *
    * @param dto   the dto to create
-   * @param token The authorization token from the request header.
    * @return the ResponseEntity with status 201 (Created) and with body the new dto, or with status
    * 400 (Bad Request) if the formRPartB has already an ID
    * @throws URISyntaxException if the Location URI syntax is incorrect
    */
   @PostMapping("/formr-partb")
-  public ResponseEntity<FormRPartBDto> createFormRPartB(@RequestBody FormRPartBDto dto,
-      @RequestHeader(HttpHeaders.AUTHORIZATION) String token)
+  public ResponseEntity<FormRPartBDto> createFormRPartB(@RequestBody FormRPartBDto dto)
       throws URISyntaxException, MethodArgumentNotValidException {
     log.debug("REST request to save FormRPartB : {}", dto);
     if (dto.getId() != null) {
@@ -82,41 +92,36 @@ public class FormRPartBResource {
               "A new formRpartB cannot already have an ID")).body(null);
     }
 
-    Optional<ResponseEntity<FormRPartBDto>> responseEntity = AuthTokenUtil
-        .verifyTraineeTisId(dto.getTraineeTisId(), token);
-    if (responseEntity.isPresent()) {
-      return responseEntity.get();
+    if (!dto.getTraineeTisId().equals(loggedInTraineeIdentity.getTraineeId())) {
+      log.warn("The form's trainee TIS ID did not match authenticated user.");
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
     validator.validate(dto);
     FormRPartBDto result = service.save(dto);
-    return ResponseEntity.created(new URI("/api/formr-partb/" + result.getId()))
-        .body(result);
+    return ResponseEntity.created(new URI("/api/formr-partb/" + result.getId())).body(result);
   }
 
   /**
    * PUT /formr-partb : Update a FormRPartB.
    *
    * @param dto   the dto to update
-   * @param token The authorization token from the request header.
    * @return the ResponseEntity with status 200 and with body the new dto, or with status 500
    * (Internal Server Error) if the dto couldn't be updated. If the id is not provided, will create
    * a new FormRPartB
    * @throws URISyntaxException if the Location URI syntax is incorrect
    */
   @PutMapping("/formr-partb")
-  public ResponseEntity<FormRPartBDto> updateFormRPartB(@RequestBody FormRPartBDto dto,
-      @RequestHeader(HttpHeaders.AUTHORIZATION) String token)
+  public ResponseEntity<FormRPartBDto> updateFormRPartB(@RequestBody FormRPartBDto dto)
       throws URISyntaxException, MethodArgumentNotValidException {
     log.debug("REST request to update FormRPartB : {}", dto);
     if (dto.getId() == null) {
-      return createFormRPartB(dto, token);
+      return createFormRPartB(dto);
     }
 
-    Optional<ResponseEntity<FormRPartBDto>> responseEntity = AuthTokenUtil
-        .verifyTraineeTisId(dto.getTraineeTisId(), token);
-    if (responseEntity.isPresent()) {
-      return responseEntity.get();
+    if (!dto.getTraineeTisId().equals(loggedInTraineeIdentity.getTraineeId())) {
+      log.warn("The form's trainee TIS ID did not match authenticated user.");
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
     validator.validate(dto);
@@ -127,24 +132,13 @@ public class FormRPartBResource {
   /**
    * GET /formr-partbs.
    *
-   * @param token The authorization token from the request header.
    * @return list of the trainee's formR partB forms.
    */
   @GetMapping("/formr-partbs")
-  public ResponseEntity<List<FormRPartSimpleDto>> getTraineeFormRPartBs(
-      @RequestHeader(HttpHeaders.AUTHORIZATION) String token) {
+  public ResponseEntity<List<FormRPartSimpleDto>> getTraineeFormRPartBs() {
     log.trace("FormR-PartAs of authenticated user.");
-    String traineeTisId;
 
-    try {
-      traineeTisId = AuthTokenUtil.getTraineeTisId(token);
-    } catch (IOException e) {
-      log.warn("Unable to read tisId from token.", e);
-      return ResponseEntity.badRequest().build();
-    }
-
-    List<FormRPartSimpleDto> formRPartSimpleDtos = service
-        .getFormRPartBsByTraineeTisId(traineeTisId);
+    List<FormRPartSimpleDto> formRPartSimpleDtos = service.getFormRPartBs();
     return ResponseEntity.ok(formRPartSimpleDtos);
   }
 
@@ -152,23 +146,13 @@ public class FormRPartBResource {
    * GET /formr-partb/:id.
    *
    * @param id    The ID of the form
-   * @param token The authorization token from the request header.
    * @return the formR partB based on the id
    */
   @GetMapping("/formr-partb/{id}")
-  public ResponseEntity<FormRPartBDto> getFormRPartBsById(@PathVariable String id,
-      @RequestHeader(HttpHeaders.AUTHORIZATION) String token) {
+  public ResponseEntity<FormRPartBDto> getFormRPartBsById(@PathVariable String id) {
     log.debug("FormR-PartB by id {}", id);
 
-    String traineeTisId;
-    try {
-      traineeTisId = AuthTokenUtil.getTraineeTisId(token);
-    } catch (IOException e) {
-      log.warn("Unable to read tisId from token.", e);
-      return ResponseEntity.badRequest().build();
-    }
-
-    FormRPartBDto formRPartBDto = service.getFormRPartBById(id, traineeTisId);
+    FormRPartBDto formRPartBDto = service.getFormRPartBById(id);
     return ResponseEntity.of(Optional.ofNullable(formRPartBDto));
   }
 
@@ -176,26 +160,16 @@ public class FormRPartBResource {
    * DELETE: /formr-partb/:id.
    *
    * @param id    The ID of the form
-   * @param token The authorization token from the request header.
    * @return the status of the deletion.
    */
   @DeleteMapping("/formr-partb/{id}")
-  public ResponseEntity<Void> deleteFormRPartBById(@PathVariable String id,
-      @RequestHeader(HttpHeaders.AUTHORIZATION) String token) {
+  public ResponseEntity<Void> deleteFormRPartBById(@PathVariable String id) {
     log.info("Delete FormR-PartB by id {}", id);
-
-    String traineeTisId;
-    try {
-      traineeTisId = AuthTokenUtil.getTraineeTisId(token);
-    } catch (IOException e) {
-      log.warn("Unable to read tisId from token.", e);
-      return ResponseEntity.badRequest().build();
-    }
 
     boolean deleted;
 
     try {
-      deleted = service.deleteFormRPartBById(id, traineeTisId);
+      deleted = service.deleteFormRPartBById(id);
     } catch (IllegalArgumentException e) {
       log.error(e.getMessage());
       return ResponseEntity.badRequest().build();

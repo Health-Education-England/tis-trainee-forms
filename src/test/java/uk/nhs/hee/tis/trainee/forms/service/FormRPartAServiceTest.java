@@ -52,6 +52,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
+import uk.nhs.hee.tis.trainee.forms.dto.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
@@ -81,17 +82,21 @@ class FormRPartAServiceTest {
 
   private FormRPartA entity;
 
+  private TraineeIdentity traineeIdentity;
+
   @Captor
   private ArgumentCaptor<FormRPartA> formRPartACaptor;
 
 
   @BeforeEach
   void setUp() {
+    traineeIdentity = new TraineeIdentity();
+    traineeIdentity.setTraineeId(DEFAULT_TRAINEE_TIS_ID);
     service = new FormRPartAService(
         repositoryMock,
         cloudObjectRepository,
         new FormRPartAMapperImpl(),
-        new ObjectMapper().findAndRegisterModules());
+        new ObjectMapper().findAndRegisterModules(), traineeIdentity);
     entity = createEntity();
   }
 
@@ -230,7 +235,7 @@ class FormRPartAServiceTest {
   }
 
   @Test
-  void shouldGetFormRPartAsByTraineeTisId() {
+  void shouldGetFormRPartAs() {
     List<FormRPartA> entities = Collections.singletonList(entity);
     when(repositoryMock
         .findByTraineeTisIdAndLifecycleState(DEFAULT_TRAINEE_TIS_ID, LifecycleState.DRAFT))
@@ -238,7 +243,7 @@ class FormRPartAServiceTest {
     when(cloudObjectRepository.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(new ArrayList<>());
 
-    List<FormRPartSimpleDto> dtos = service.getFormRPartAsByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    List<FormRPartSimpleDto> dtos = service.getFormRPartAs();
 
     assertThat("Unexpected numbers of forms.", dtos.size(), is(entities.size()));
 
@@ -262,7 +267,7 @@ class FormRPartAServiceTest {
     when(cloudObjectRepository.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(cloudStoredEntities);
 
-    List<FormRPartSimpleDto> dtos = service.getFormRPartAsByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    List<FormRPartSimpleDto> dtos = service.getFormRPartAs();
 
     assertThat("Unexpected numbers of forms.", dtos.size(), is(2));
 
@@ -293,7 +298,7 @@ class FormRPartAServiceTest {
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.empty());
 
-    FormRPartADto dto = service.getFormRPartAById(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID);
+    FormRPartADto dto = service.getFormRPartAById(DEFAULT_ID_STRING);
 
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
@@ -315,7 +320,7 @@ class FormRPartAServiceTest {
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.of(dbForm));
 
-    FormRPartADto dto = service.getFormRPartAById(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID);
+    FormRPartADto dto = service.getFormRPartAById(DEFAULT_ID_STRING);
 
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
@@ -345,7 +350,7 @@ class FormRPartAServiceTest {
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.of(dbForm));
 
-    FormRPartADto dto = service.getFormRPartAById(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID);
+    FormRPartADto dto = service.getFormRPartAById(DEFAULT_ID_STRING);
 
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
@@ -375,7 +380,7 @@ class FormRPartAServiceTest {
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.of(dbForm));
 
-    FormRPartADto dto = service.getFormRPartAById(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID);
+    FormRPartADto dto = service.getFormRPartAById(DEFAULT_ID_STRING);
 
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
@@ -407,7 +412,7 @@ class FormRPartAServiceTest {
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.of(dbForm));
 
-    FormRPartADto dto = service.getFormRPartAById(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID);
+    FormRPartADto dto = service.getFormRPartAById(DEFAULT_ID_STRING);
 
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
@@ -422,7 +427,7 @@ class FormRPartAServiceTest {
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.of(entity));
 
-    boolean deleted = service.deleteFormRPartAById(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID);
+    boolean deleted = service.deleteFormRPartAById(DEFAULT_ID_STRING);
 
     assertThat("Unexpected delete result.", deleted, is(true));
   }
@@ -434,7 +439,7 @@ class FormRPartAServiceTest {
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.empty());
 
-    boolean deleted = service.deleteFormRPartAById(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID);
+    boolean deleted = service.deleteFormRPartAById(DEFAULT_ID_STRING);
 
     assertThat("Unexpected delete result.", deleted, is(false));
   }
@@ -448,7 +453,7 @@ class FormRPartAServiceTest {
         .thenReturn(Optional.of(entity));
 
     assertThrows(IllegalArgumentException.class,
-        () -> service.deleteFormRPartAById(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID));
+        () -> service.deleteFormRPartAById(DEFAULT_ID_STRING));
   }
 
   @Test

@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2020 Crown Copyright (Health Education England)
+ * Copyright 2025 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -30,10 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 
 class AuthTokenUtilTest {
 
@@ -79,44 +76,5 @@ class AuthTokenUtilTest {
     String tisId = AuthTokenUtil.getTraineeTisId(token);
 
     assertThat("Unexpected trainee TIS ID", tisId, is("40"));
-  }
-
-  @Test
-  void verifyTraineeTisIdShouldReturnBadRequestWhenTokenIdNotReadable() {
-    String encodedPayload = Base64.getEncoder()
-        .encodeToString("[]".getBytes(StandardCharsets.UTF_8));
-    String token = String.format("aa.%s.cc", encodedPayload);
-
-    Optional<ResponseEntity<Object>> response = AuthTokenUtil.verifyTraineeTisId("1", token);
-
-    assertThat("Unexpected response isPresent.", response.isPresent(), is(true));
-    assertThat("Unexpected response status.", response.get().getStatusCode(),
-        is(HttpStatus.BAD_REQUEST));
-  }
-
-  @Test
-  void verifyTraineeTisIdShouldReturnForbiddenWhenTokenIdNotMatching() {
-    String payload = String.format("{\"%s\":\"%s\"}", TIS_ID_ATTRIBUTE, "40");
-    String encodedPayload = Base64.getEncoder()
-        .encodeToString(payload.getBytes(StandardCharsets.UTF_8));
-    String token = String.format("aa.%s.cc", encodedPayload);
-
-    Optional<ResponseEntity<Object>> response = AuthTokenUtil.verifyTraineeTisId("1", token);
-
-    assertThat("Unexpected response isPresent.", response.isPresent(), is(true));
-    assertThat("Unexpected response status.", response.get().getStatusCode(),
-        is(HttpStatus.FORBIDDEN));
-  }
-
-  @Test
-  void verifyTraineeTisIdShouldReturnEmptyWhenTokenIdMatching() {
-    String payload = String.format("{\"%s\":\"%s\"}", TIS_ID_ATTRIBUTE, "40");
-    String encodedPayload = Base64.getEncoder()
-        .encodeToString(payload.getBytes(StandardCharsets.UTF_8));
-    String token = String.format("aa.%s.cc", encodedPayload);
-
-    Optional<ResponseEntity<Object>> response = AuthTokenUtil.verifyTraineeTisId("40", token);
-
-    assertThat("Unexpected response isPresent.", response.isPresent(), is(false));
   }
 }

@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2020 Crown Copyright (Health Education England)
+ * Copyright 2025 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -19,19 +19,25 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms;
+package uk.nhs.hee.tis.trainee.forms.repository;
 
-import io.mongock.runner.springboot.EnableMongock;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import java.util.List;
+import org.bson.types.ObjectId;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.stereotype.Repository;
+import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 
-@EnableMongock
-@SpringBootApplication
-@ConfigurationPropertiesScan
-public class TraineeFormsApplication {
+/**
+ * A repository for LTFT forms.
+ */
+@Repository
+public interface LtftFormRepository extends MongoRepository<LtftForm, ObjectId> {
 
-  public static void main(String[] args) {
-    SpringApplication.run(TraineeFormsApplication.class);
-  }
+  /**
+   * Find all LTFT forms belonging to the given trainee, ordered by last modified.
+   *
+   * @param traineeId The ID of the trainee.
+   * @return A list of found LTFT forms.
+   */
+  List<LtftForm> findByTraineeIdOrderByLastModified(String traineeId);
 }

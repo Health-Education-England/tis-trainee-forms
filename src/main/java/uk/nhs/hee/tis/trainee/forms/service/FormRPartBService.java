@@ -36,6 +36,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
+import uk.nhs.hee.tis.trainee.forms.dto.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
@@ -61,6 +62,8 @@ public class FormRPartBService {
 
   private final ObjectMapper objectMapper;
 
+  private final TraineeIdentity traineeIdentity;
+
   @Value("${application.file-store.always-store}")
   private boolean alwaysStoreFiles;
 
@@ -75,11 +78,12 @@ public class FormRPartBService {
   public FormRPartBService(FormRPartBRepository formRPartBRepository,
       S3FormRPartBRepositoryImpl s3ObjectRepository,
       FormRPartBMapper formRPartBMapper,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper, TraineeIdentity traineeIdentity) {
     this.formRPartBRepository = formRPartBRepository;
     this.formRPartBMapper = formRPartBMapper;
     this.s3ObjectRepository = s3ObjectRepository;
     this.objectMapper = objectMapper;
+    this.traineeIdentity = traineeIdentity;
   }
 
   /**
@@ -98,9 +102,10 @@ public class FormRPartBService {
   }
 
   /**
-   * get FormRPartBs by traineeTisId.
+   * get FormRPartBs for logged-in trainee.
    */
-  public List<FormRPartSimpleDto> getFormRPartBsByTraineeTisId(String traineeTisId) {
+  public List<FormRPartSimpleDto> getFormRPartBs() {
+    String traineeTisId = traineeIdentity.getTraineeId();
     log.info("Request to get FormRPartB list by trainee profileId : {}", traineeTisId);
     List<FormRPartB> storedFormRPartBs = s3ObjectRepository.findByTraineeTisId(traineeTisId);
     List<FormRPartB> formRPartBList = formRPartBRepository
@@ -112,9 +117,10 @@ public class FormRPartBService {
   /**
    * get FormRPartB by id.
    */
-  public FormRPartBDto getFormRPartBById(String id, String traineeTisId) {
+  public FormRPartBDto getFormRPartBById(String id) {
     log.info("Request to get FormRPartB by id : {}", id);
 
+    String traineeTisId = traineeIdentity.getTraineeId();
     Optional<FormRPartB> optionalS3Form = s3ObjectRepository.findByIdAndTraineeTisId(id,
         traineeTisId);
     Optional<FormRPartB> optionalDbForm = formRPartBRepository.findByIdAndTraineeTisId(
@@ -137,14 +143,14 @@ public class FormRPartBService {
   }
 
   /**
-   * Delete the form for the given ID and trainee ID, only DRAFT forms are supported.
+   * Delete the form for the given ID, only DRAFT forms are supported.
    *
    * @param id           The ID of the form to delete.
-   * @param traineeTisId The ID of the trainee to delete the form for.
    * @return true if the form was found and deleted, false if not found.
    */
-  public boolean deleteFormRPartBById(String id, String traineeTisId) {
+  public boolean deleteFormRPartBById(String id) {
     log.info("Request to delete FormRPartB by id : {}", id);
+    String traineeTisId = traineeIdentity.getTraineeId();
     Optional<FormRPartB> optionalForm = formRPartBRepository.findByIdAndTraineeTisId(
         UUID.fromString(id), traineeTisId);
 

@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2020 Crown Copyright (Health Education England)
+ * Copyright 2025 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -26,10 +26,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Map;
-import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 
 @Slf4j
 public class AuthTokenUtil {
@@ -56,33 +53,5 @@ public class AuthTokenUtil {
 
     Map<?, ?> payload = mapper.readValue(payloadBytes, Map.class);
     return (String) payload.get(TIS_ID_ATTRIBUTE);
-  }
-
-  /**
-   * Verify that the token contains a valid trainee TIS ID and that it matches the expected ID.
-   *
-   * @param requestedTraineeTisId The ID to validate against.
-   * @param token                 The token to use.
-   * @param <T>                   The type of the response body.
-   * @return A ResponseEntity with a suitable error status, or empty if valid.
-   */
-  public static <T> Optional<ResponseEntity<T>> verifyTraineeTisId(String requestedTraineeTisId,
-      String token) {
-    ResponseEntity<T> responseEntity = null;
-
-    String tokenTraineeTisId;
-    try {
-      tokenTraineeTisId = getTraineeTisId(token);
-
-      if (!requestedTraineeTisId.equals(tokenTraineeTisId)) {
-        log.warn("The form's trainee TIS ID did not match authenticated user.");
-        responseEntity = ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-      }
-    } catch (IOException e) {
-      log.warn("Unable to read tisId from token.", e);
-      responseEntity = ResponseEntity.badRequest().build();
-    }
-
-    return Optional.ofNullable(responseEntity);
   }
 }

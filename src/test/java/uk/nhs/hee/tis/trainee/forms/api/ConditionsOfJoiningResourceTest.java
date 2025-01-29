@@ -102,7 +102,7 @@ class ConditionsOfJoiningResourceTest {
 
   @ParameterizedTest
   @EnumSource(GoldGuideVersion.class)
-  void putShouldReturnBadRequestWhenNoToken(GoldGuideVersion version) throws Exception {
+  void putShouldReturnForbiddenWhenNoToken(GoldGuideVersion version) throws Exception {
     String signedBody = SignatureTestUtil.signData("""
             {
               "tisId": "%s",
@@ -122,14 +122,14 @@ class ConditionsOfJoiningResourceTest {
     mockMvc.perform(put("/api/coj")
             .contentType(MediaType.APPLICATION_JSON)
             .content(signedBody))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isForbidden());
 
     verifyNoInteractions(service);
   }
 
   @ParameterizedTest
   @EnumSource(GoldGuideVersion.class)
-  void putShouldReturnBadRequestWhenTokenInvalid(GoldGuideVersion version) throws Exception {
+  void putShouldReturnForbiddenWhenTokenInvalid(GoldGuideVersion version) throws Exception {
     String signedBody = SignatureTestUtil.signData("""
             {
               "tisId": "%s",
@@ -150,14 +150,14 @@ class ConditionsOfJoiningResourceTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(signedBody)
             .header(HttpHeaders.AUTHORIZATION, "aa.bb.cc"))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isForbidden());
 
     verifyNoInteractions(service);
   }
 
   @ParameterizedTest
   @EnumSource(GoldGuideVersion.class)
-  void putShouldReturnBadRequestWhenTraineeIdNotInToken(GoldGuideVersion version) throws Exception {
+  void putShouldReturnForbiddenWhenTraineeIdNotInToken(GoldGuideVersion version) throws Exception {
     String signedBody = SignatureTestUtil.signData("""
             {
               "tisId": "%s",
@@ -178,7 +178,7 @@ class ConditionsOfJoiningResourceTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(signedBody)
             .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateToken("{}")))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isForbidden());
 
     verifyNoInteractions(service);
   }

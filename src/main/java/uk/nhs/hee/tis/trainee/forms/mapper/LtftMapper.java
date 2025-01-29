@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2020 Crown Copyright (Health Education England)
+ * Copyright 2025 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -19,19 +19,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms;
+package uk.nhs.hee.tis.trainee.forms.mapper;
 
-import io.mongock.runner.springboot.EnableMongock;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
 
-@EnableMongock
-@SpringBootApplication
-@ConfigurationPropertiesScan
-public class TraineeFormsApplication {
+import java.util.List;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
+import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 
-  public static void main(String[] args) {
-    SpringApplication.run(TraineeFormsApplication.class);
-  }
+/**
+ * A mapper to convert between LTFT related entities and DTOs.
+ */
+@Mapper(componentModel = SPRING)
+public interface LtftMapper {
+
+  /**
+   * Convert a {@link LtftForm} entity to a {@link LtftSummaryDto} DTO.
+   *
+   * @param entity The entity to convert to a DTO.
+   * @return The equivalent summary DTO.
+   */
+  @Mapping(target = "programmeMembershipId", source = "programmeMembership.id")
+  LtftSummaryDto toSummaryDto(LtftForm entity);
+
+  /**
+   * Convert a list of {@link LtftForm} to {@link LtftSummaryDto} DTOs.
+   *
+   * @param entities The entities to convert to DTOs.
+   * @return The equivalent summary DTOs.
+   */
+  List<LtftSummaryDto> toSummaryDtos(List<LtftForm> entities);
 }
