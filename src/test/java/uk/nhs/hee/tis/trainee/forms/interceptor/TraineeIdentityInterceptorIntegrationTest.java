@@ -72,7 +72,7 @@ class TraineeIdentityInterceptorIntegrationTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"/api/coj",
-      "/api/formr-parta","/api/formr-partas", "/api/formr-parta/xxx", "/api/formr-parta/xxx/yyy",
+      "/api/formr-parta", "/api/formr-partas", "/api/formr-parta/xxx", "/api/formr-parta/xxx/yyy",
       "/api/formr-partb", "/api/formr-partbs", "/api/formr-partb/xxx", "/api/formr-partb/xxx/yyy",
       "/api/ltft", "/api/ltft/xxx", "/api/ltft/xxx/yyy"})
   void shouldAddTraineeIdToRequest(String apiPath) throws Exception {
@@ -86,7 +86,7 @@ class TraineeIdentityInterceptorIntegrationTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"/api/coj",
-      "/api/formr-parta","/api/formr-partas", "/api/formr-parta/xxx", "/api/formr-parta/xxx/yyy",
+      "/api/formr-parta", "/api/formr-partas", "/api/formr-parta/xxx", "/api/formr-parta/xxx/yyy",
       "/api/formr-partb", "/api/formr-partbs", "/api/formr-partb/xxx", "/api/formr-partb/xxx/yyy",
       "/api/ltft", "/api/ltft/xxx", "/api/ltft/xxx/yyy"})
   void shouldAddNewTraineeIdOnEachRequest(String apiPath) throws Exception {

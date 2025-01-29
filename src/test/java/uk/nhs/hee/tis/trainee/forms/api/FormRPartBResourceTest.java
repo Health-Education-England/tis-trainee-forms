@@ -70,7 +70,8 @@ class FormRPartBResourceTest {
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";
   private static final LifecycleState DEFAULT_LIFECYCLESTATE = LifecycleState.DRAFT;
 
-  private static final String AUTH_TOKEN = TestJwtUtil.generateTokenForTisId(DEFAULT_TRAINEE_TIS_ID);
+  private static final String AUTH_TOKEN
+      = TestJwtUtil.generateTokenForTisId(DEFAULT_TRAINEE_TIS_ID);
 
   @Autowired
   private MockMvc mockMvc;
