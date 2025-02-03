@@ -56,6 +56,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import uk.nhs.hee.tis.trainee.forms.SignatureTestUtil;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.config.FilterConfiguration;
+import uk.nhs.hee.tis.trainee.forms.config.MongoConfiguration;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoining;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.GoldGuideVersion;
@@ -64,6 +65,9 @@ import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 @WebMvcTest(ConditionsOfJoiningResource.class)
 @ComponentScan(basePackageClasses = FilterConfiguration.class)
 class ConditionsOfJoiningResourceTest {
+
+  @MockBean
+  private MongoConfiguration mongoConfiguration;
 
   @Autowired
   private MockMvc mockMvc;
