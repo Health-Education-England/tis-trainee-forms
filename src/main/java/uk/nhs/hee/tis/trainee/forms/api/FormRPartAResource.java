@@ -86,7 +86,7 @@ public class FormRPartAResource {
     if (dto.getId() != null) {
       return ResponseEntity.badRequest().headers(HeaderUtil
           .createFailureAlert(ENTITY_NAME, "idexists",
-              "A new formRpartA cannot already have an ID")).body(null);
+              "A new FormRPartA cannot already have an ID")).body(null);
     }
 
     if (!dto.getTraineeTisId().equals(loggedInTraineeIdentity.getTraineeId())) {
@@ -133,7 +133,7 @@ public class FormRPartAResource {
    */
   @GetMapping("/formr-partas")
   public ResponseEntity<List<FormRPartSimpleDto>> getTraineeFormRPartAs() {
-    log.trace("FormR-PartAs of authenticated user.");
+    log.trace("FormRPartAs of authenticated user.");
 
     List<FormRPartSimpleDto> formRPartSimpleDtos = service.getFormRPartAs();
     return ResponseEntity.ok(formRPartSimpleDtos);
@@ -147,9 +147,13 @@ public class FormRPartAResource {
    */
   @GetMapping("/formr-parta/{id}")
   public ResponseEntity<FormRPartADto> getFormRPartAsById(@PathVariable String id) {
-    log.debug("FormR-PartA by id {}", id);
+    log.debug("FormRPartA by id {}", id);
 
     FormRPartADto formRPartADto = service.getFormRPartAById(id);
+    if (formRPartADto != null) {
+      log.debug("Retrieved FormRPartA id {} for trainee {} programme membership {}",
+          id, formRPartADto.getTraineeTisId(), formRPartADto.getProgrammeMembershipId());
+    }
     return ResponseEntity.of(Optional.ofNullable(formRPartADto));
   }
 
@@ -161,7 +165,7 @@ public class FormRPartAResource {
    */
   @DeleteMapping("/formr-parta/{id}")
   public ResponseEntity<Void> deleteFormRPartAById(@PathVariable String id) {
-    log.info("Delete FormR-PartA by id {}", id);
+    log.info("Delete FormRPartA by id {}", id);
 
     boolean deleted;
 

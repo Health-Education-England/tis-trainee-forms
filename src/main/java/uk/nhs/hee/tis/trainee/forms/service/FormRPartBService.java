@@ -169,7 +169,7 @@ public class FormRPartBService {
     }
 
     formRPartBRepository.delete(form);
-    log.info("Deleted FormRPartB {}", id);
+    log.info("Deleted FormRPartB {} for trainee {}", id, form.getTraineeTisId());
 
     return true;
   }
@@ -204,14 +204,14 @@ public class FormRPartBService {
         log.info("Partial delete successfully for trainee {} with form Id {} (FormRPartB)",
             traineeTisId, id);
       } else {
-        log.error("FormR PartB with ID '{}' not found", id);
+        log.error("FormRPartB with ID '{}' not found", id);
       }
 
       return formRPartBMapper.toDto(formRPartB);
 
     } catch (Exception e) {
-      log.error("Fail to partial delete FormR PartB: {}", e);
-      throw new ApplicationException("Fail to partial delete FormR PartB:", e);
+      log.error("Fail to partial delete FormRPartB: {}", e);
+      throw new ApplicationException("Fail to partial delete FormRPartB:", e);
     }
   }
 }
