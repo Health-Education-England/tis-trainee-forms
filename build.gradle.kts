@@ -50,7 +50,7 @@ dependencies {
   annotationProcessor("org.mapstruct:mapstruct-processor:${mapstructVersion}")
   testAnnotationProcessor("org.mapstruct:mapstruct-processor:${mapstructVersion}")
 
-  val mongockVersion = "5.4.4"
+  val mongockVersion = "5.5.0"
   implementation("io.mongock:mongock-springboot-v3:${mongockVersion}")
   implementation("io.mongock:mongodb-springdata-v4-driver:${mongockVersion}")
 
