@@ -85,7 +85,7 @@ public class FormRPartBResource {
   @PostMapping("/formr-partb")
   public ResponseEntity<FormRPartBDto> createFormRPartB(@RequestBody FormRPartBDto dto)
       throws URISyntaxException, MethodArgumentNotValidException {
-    log.debug("REST request to save FormRPartB : {}", dto);
+    log.info("REST request to save FormRPartB : {}", dto);
     if (dto.getId() != null) {
       return ResponseEntity.badRequest().headers(HeaderUtil
           .createFailureAlert(ENTITY_NAME, "idexists",
@@ -114,7 +114,7 @@ public class FormRPartBResource {
   @PutMapping("/formr-partb")
   public ResponseEntity<FormRPartBDto> updateFormRPartB(@RequestBody FormRPartBDto dto)
       throws URISyntaxException, MethodArgumentNotValidException {
-    log.debug("REST request to update FormRPartB : {}", dto);
+    log.info("REST request to update FormRPartB : {}", dto);
     if (dto.getId() == null) {
       return createFormRPartB(dto);
     }
@@ -150,11 +150,11 @@ public class FormRPartBResource {
    */
   @GetMapping("/formr-partb/{id}")
   public ResponseEntity<FormRPartBDto> getFormRPartBsById(@PathVariable String id) {
-    log.debug("FormRPartB by id {}", id);
+    log.info("FormRPartB by id {}", id);
 
     FormRPartBDto formRPartBDto = service.getFormRPartBById(id);
     if (formRPartBDto != null) {
-      log.debug("Retrieved FormRPartB id {} for trainee {} programme membership {}",
+      log.info("Retrieved FormRPartB id {} for trainee {} programme membership {}",
           id, formRPartBDto.getTraineeTisId(), formRPartBDto.getProgrammeMembershipId());
     }
     return ResponseEntity.of(Optional.ofNullable(formRPartBDto));
