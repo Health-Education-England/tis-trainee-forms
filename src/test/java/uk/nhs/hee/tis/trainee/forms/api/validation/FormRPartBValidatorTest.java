@@ -295,7 +295,7 @@ class FormRPartBValidatorTest {
     validator.checkSubmittedFormContent(formRPartBDto);
 
     assertThat("Current reval date warning should be logged",
-        output.getOut().contains("is not in the future in FormR PartB"), is(true));
+        output.getOut().contains("is not in the future in FormRPartB"), is(true));
   }
 
   @ExtendWith(OutputCaptureExtension.class)
@@ -307,7 +307,7 @@ class FormRPartBValidatorTest {
     validator.checkSubmittedFormContent(formRPartBDto);
 
     assertThat("Current reval date warning should be logged",
-        output.getOut().contains("is not in the future in FormR PartB"), is(false));
+        output.getOut().contains("is not in the future in FormRPartB"), is(false));
   }
 
   private ConstraintViolation<FormRPartBDto> createDummyConstraintViolation(String message,

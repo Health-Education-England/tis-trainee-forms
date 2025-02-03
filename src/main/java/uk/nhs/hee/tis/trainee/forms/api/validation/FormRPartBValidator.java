@@ -133,7 +133,7 @@ public class FormRPartBValidator {
       //temporary check:
       if (formRPartBDto.getCurrRevalDate() != null
           && formRPartBDto.getCurrRevalDate().isBefore(LocalDate.now())) {
-        log.warn("Current revalidation date {} is not in the future in FormR PartB {}",
+        log.warn("Current revalidation date {} is not in the future in FormRPartB {}",
             formRPartBDto.getCurrRevalDate(), formRPartBDto.getId());
       }
     }
