@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.NotImplementedException;
 import org.springframework.stereotype.Service;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
@@ -118,7 +117,7 @@ public class LtftService {
    * @param dto The LTFT DTO to save.
    * @return The saved form DTO.
    */
-  public Optional<LtftFormDto> saveLtft(LtftFormDto dto) {
+  public Optional<LtftFormDto> saveLtftForm(LtftFormDto dto) {
     String traineeId = traineeIdentity.getTraineeId();
     log.info("Saving LTFT form for trainee [{}]: {}", traineeId, dto);
     LtftForm form = mapper.toEntity(dto);
@@ -132,13 +131,13 @@ public class LtftService {
   }
 
   /**
-   * Save the updated LTFT form.
+   * Update the existing LTFT form.
    *
    * @param formId The id of the LTFT form to update.
-   * @param dto    The LTFT DTO to save.
-   * @return The saved form DTO.
+   * @param dto    The updated LTFT DTO to save.
+   * @return The updated form DTO.
    */
-  public Optional<LtftFormDto> updateLtft(String formId, LtftFormDto dto) {
+  public Optional<LtftFormDto> updateLtftForm(String formId, LtftFormDto dto) {
     String traineeId = traineeIdentity.getTraineeId();
     log.info("Updating LTFT form {} for trainee [{}]: {}", formId, traineeId, dto);
     LtftForm form = mapper.toEntity(dto);
