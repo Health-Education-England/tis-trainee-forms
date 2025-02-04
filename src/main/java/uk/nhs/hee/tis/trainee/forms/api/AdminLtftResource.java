@@ -19,35 +19,45 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.repository;
+package uk.nhs.hee.tis.trainee.forms.api;
 
-import java.util.List;
+import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.util.Set;
-import org.bson.types.ObjectId;
-import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.stereotype.Repository;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
-import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
+import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 
 /**
- * A repository for LTFT forms.
+ * A controller for admin facing Less Than Full-time (LTFT) endpoints.
  */
-@Repository
-public interface LtftFormRepository extends MongoRepository<LtftForm, ObjectId> {
+@Slf4j
+@RestController
+@RequestMapping("/api/admin/ltft")
+@XRayEnabled
+public class AdminLtftResource {
+
+  private final LtftService service;
+
+  public AdminLtftResource(LtftService service) {
+    this.service = service;
+  }
 
   /**
-   * Find all LTFT forms belonging to the given trainee, ordered by last modified.
-   *
-   * @param traineeId The ID of the trainee.
-   * @return A list of found LTFT forms.
-   */
-  List<LtftForm> findByTraineeIdOrderByLastModified(String traineeId);
-
-  /**
-   * Count all LTFT forms with one of the given states.
+   * Get a count of LTFT applications associated with the admin's local office.
    *
    * @param states The states to include in the count.
-   * @return The number of found LTFT forms.
+   * @return The number of LTFT applications found meeting the criteria.
    */
-  long countByStatusIn(Set<LifecycleState> states);
+  @GetMapping("/count")
+  public ResponseEntity<String> getAdminLtftCount(
+      @RequestParam(value = "status", required = false) Set<LifecycleState> states) {
+    long count = service.getAdminLtftCount(states);
+    return ResponseEntity.ok().contentType(MediaType.TEXT_PLAIN).body(String.valueOf(count));
+  }
 }

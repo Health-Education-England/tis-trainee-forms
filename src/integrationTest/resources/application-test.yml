@@ -1,0 +1,14 @@
+application:
+  signature:
+    secret-key: test-secret-key
+
+mongock:
+  enabled: false
+
+spring:
+  cloud:
+    aws:
+      region:
+        static: eu-west-2
+      sqs:
+        enabled: false

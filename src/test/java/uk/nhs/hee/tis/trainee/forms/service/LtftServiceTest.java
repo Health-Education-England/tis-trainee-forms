@@ -23,18 +23,25 @@ package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.TraineeIdentity;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm.LtftProgrammeMembership;
@@ -121,5 +128,27 @@ class LtftServiceTest {
     assertThat("Unexpected PM ID.", dto2.programmeMembershipId(), is(pmId2));
     assertThat("Unexpected created timestamp.", dto2.created(), is(created2));
     assertThat("Unexpected last modified timestamp.", dto2.lastModified(), is(lastModified2));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  void shouldCountAllLtftWhenFiltersEmpty(Set<LifecycleState> states) {
+    when(ltftRepository.count()).thenReturn(40L);
+
+    long count = service.getAdminLtftCount(states);
+
+    assertThat("Unexpected count.", count, is(40L));
+    verify(ltftRepository, never()).countByStatusIn(any());
+  }
+
+  @Test
+  void shouldCountFilteredLtftWhenFiltersNotEmpty() {
+    Set<LifecycleState> states = Set.of(LifecycleState.SUBMITTED);
+    when(ltftRepository.countByStatusIn(states)).thenReturn(40L);
+
+    long count = service.getAdminLtftCount(Set.of(LifecycleState.SUBMITTED));
+
+    assertThat("Unexpected count.", count, is(40L));
+    verify(ltftRepository, never()).count();
   }
 }
