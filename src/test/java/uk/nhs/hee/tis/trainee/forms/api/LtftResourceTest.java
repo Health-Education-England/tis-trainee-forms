@@ -148,7 +148,7 @@ class LtftResourceTest {
     LtftFormDto existingForm = new LtftFormDto();
     existingForm.setId(id);
     existingForm.setTraineeId("some trainee");
-    ResponseEntity<LtftFormDto> response = controller.updateLtft(String.valueOf(id), existingForm);
+    ResponseEntity<LtftFormDto> response = controller.updateLtft(id.toString(), existingForm);
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     LtftFormDto responseDto = response.getBody();
@@ -164,7 +164,7 @@ class LtftResourceTest {
     existingForm.setTraineeId("some trainee");
     when(service.getLtftForm(String.valueOf(id))).thenReturn(Optional.of(existingForm));
 
-    ResponseEntity<LtftFormDto> response = controller.getLtft(String.valueOf(id));
+    ResponseEntity<LtftFormDto> response = controller.getLtft(id.toString());
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     LtftFormDto responseDto = response.getBody();

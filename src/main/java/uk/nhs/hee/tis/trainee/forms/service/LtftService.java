@@ -141,7 +141,7 @@ public class LtftService {
     String traineeId = traineeIdentity.getTraineeId();
     log.info("Updating LTFT form {} for trainee [{}]: {}", formId, traineeId, dto);
     LtftForm form = mapper.toEntity(dto);
-    if (!form.id().toString().equals(formId)) {
+    if (form.id() == null || !form.id().toString().equals(formId)) {
       log.warn("Could not update form since its id {} does not equal provided form id {}",
           form.id(), formId);
       return Optional.empty();
