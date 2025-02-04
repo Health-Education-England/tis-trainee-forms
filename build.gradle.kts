@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.hee.tis.trainee"
-version = "0.22.2"
+version = "0.23.0"
 
 configurations {
   compileOnly {
@@ -28,6 +28,10 @@ dependencyManagement {
   }
 }
 
+val mapstructVersion = "1.5.5.Final"
+val mongockVersion = "5.4.4"
+val openHtmlToPdfVersion = "1.0.10"
+
 dependencies {
   // Spring Boot starters
   implementation("org.springframework.boot:spring-boot-starter-actuator")
@@ -35,7 +39,6 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
   implementation("org.springframework.boot:spring-boot-starter-web")
   implementation("org.springframework.boot:spring-boot-starter-validation")
-  testImplementation("org.springframework.boot:spring-boot-starter-test")
 
   // AWS-XRay
   implementation("com.amazonaws:aws-xray-recorder-sdk-spring:2.15.1")
@@ -45,12 +48,9 @@ dependencies {
   annotationProcessor("org.projectlombok:lombok")
 
   // MapStruct
-  val mapstructVersion = "1.5.5.Final"
   implementation("org.mapstruct:mapstruct:${mapstructVersion}")
   annotationProcessor("org.mapstruct:mapstruct-processor:${mapstructVersion}")
-  testAnnotationProcessor("org.mapstruct:mapstruct-processor:${mapstructVersion}")
 
-  val mongockVersion = "5.4.4"
   implementation("io.mongock:mongock-springboot-v3:${mongockVersion}")
   implementation("io.mongock:mongodb-springdata-v4-driver:${mongockVersion}")
 
@@ -64,7 +64,6 @@ dependencies {
 
   implementation("commons-beanutils:commons-beanutils:1.9.4")
 
-  val openHtmlToPdfVersion = "1.0.10"
   implementation("com.openhtmltopdf:openhtmltopdf-pdfbox:${openHtmlToPdfVersion}")
   implementation("com.openhtmltopdf:openhtmltopdf-slf4j:${openHtmlToPdfVersion}")
   implementation("org.jsoup:jsoup:1.17.2")
@@ -92,6 +91,52 @@ sonarqube {
   }
 }
 
+testing {
+  suites {
+    configureEach {
+      if (this is JvmTestSuite) {
+        useJUnitJupiter()
+        dependencies {
+          implementation(project())
+          implementation("org.springframework.boot:spring-boot-starter-test")
+        }
+      }
+    }
+
+    val test by getting(JvmTestSuite::class) {
+      dependencies {
+        annotationProcessor("org.mapstruct:mapstruct-processor:${mapstructVersion}")
+      }
+    }
+
+    register<JvmTestSuite>("integrationTest") {
+      dependencies {
+        implementation("org.springframework.boot:spring-boot-testcontainers")
+        implementation("org.testcontainers:junit-jupiter")
+        implementation("org.testcontainers:mongodb")
+      }
+
+      targets {
+        all {
+          testTask.configure {
+            shouldRunAfter(test)
+            systemProperty("spring.profiles.active", "test")
+          }
+        }
+      }
+    }
+
+    // Include implementation dependencies.
+    val integrationTestImplementation by configurations.getting {
+      extendsFrom(configurations.implementation.get())
+    }
+  }
+}
+
+tasks.named("check") {
+  dependsOn(testing.suites.named("integrationTest"))
+}
+
 tasks.jacocoTestReport {
   reports {
     html.required.set(true)
@@ -101,5 +146,4 @@ tasks.jacocoTestReport {
 
 tasks.test {
   finalizedBy(tasks.jacocoTestReport)
-  useJUnitPlatform()
 }

@@ -23,10 +23,12 @@ package uk.nhs.hee.tis.trainee.forms.service;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.util.List;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.TraineeIdentity;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
@@ -71,5 +73,20 @@ public class LtftService {
     log.info("Found {} LTFT forms for trainee [{}]", entities.size(), traineeId);
 
     return mapper.toSummaryDtos(entities);
+  }
+
+  /**
+   * Count all LTFT forms associated with the admin's local office.
+   *
+   * @param states The states to include in the count.
+   * @return The number of found LTFT forms.
+   */
+  public long getAdminLtftCount(Set<LifecycleState> states) {
+    if (states == null || states.isEmpty()) {
+      log.debug("No status filter provided, counting all LTFTs.");
+      return ltftFormRepository.count();
+    }
+
+    return ltftFormRepository.countByStatusIn(states);
   }
 }

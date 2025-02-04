@@ -19,35 +19,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.repository;
+package uk.nhs.hee.tis.trainee.forms;
 
-import java.util.List;
-import java.util.Set;
-import org.bson.types.ObjectId;
-import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.stereotype.Repository;
-import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
-import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
+import org.testcontainers.utility.DockerImageName;
 
 /**
- * A repository for LTFT forms.
+ * Constants for {@link DockerImageName} values used in tests to ensure consistency.
  */
-@Repository
-public interface LtftFormRepository extends MongoRepository<LtftForm, ObjectId> {
+public class DockerImageNames {
 
-  /**
-   * Find all LTFT forms belonging to the given trainee, ordered by last modified.
-   *
-   * @param traineeId The ID of the trainee.
-   * @return A list of found LTFT forms.
-   */
-  List<LtftForm> findByTraineeIdOrderByLastModified(String traineeId);
-
-  /**
-   * Count all LTFT forms with one of the given states.
-   *
-   * @param states The states to include in the count.
-   * @return The number of found LTFT forms.
-   */
-  long countByStatusIn(Set<LifecycleState> states);
+  public static final DockerImageName MONGO = DockerImageName.parse("mongo:5");
 }
