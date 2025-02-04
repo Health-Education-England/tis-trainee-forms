@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.MediaType.TEXT_PLAIN;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
@@ -72,7 +73,7 @@ class AdminLtftResourceTest {
 
     ResponseEntity<String> response = controller.getAdminLtftCount(Set.of());
 
-    assertThat("Unexpected response code.", response.getStatusCode().value(), is(200));
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), is("40"));
     assertThat("Unexpected response type.", response.getHeaders().getContentType(), is(TEXT_PLAIN));
   }
