@@ -42,6 +42,7 @@ public class LtftFormDto {
   private LtftProgrammeMembershipDto programmeMembership;
 
   private LtftStatusDto status;
+  private LtftDiscussionDto discussions;
 
   private Instant created;
   private Instant lastModified;
@@ -62,7 +63,7 @@ public class LtftFormDto {
    * A DTO for LTFT form lifecycle state.
    */
   @Data
-  public static class LtftStatusDto {
+  public static class LifecycleStateDto {
     private LifecycleState current;
     private List<LtftStatusInfoDto> history;
   }
@@ -76,5 +77,19 @@ public class LtftFormDto {
     private String detail;
     private Instant timestamp;
     private Integer revision;
+    }
+
+    @Data
+  public static class LtftDiscussionDto {
+    private String tpdName;
+    private String tpdEmail;
+    private List<LtftPersonRole> other;
   }
+
+  @Data
+    public static class LtftPersonRole {
+      private String name;
+      private String email;
+      private String role; //enum?
+    }
 }

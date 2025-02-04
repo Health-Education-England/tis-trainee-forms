@@ -22,6 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.repository.MongoRepository;
@@ -50,4 +51,14 @@ public interface LtftFormRepository extends MongoRepository<LtftForm, ObjectId> 
    * @return The number of found LTFT forms.
    */
   long countByStatus_CurrentIn(Set<LifecycleState> states);
+
+  /**
+   * Find the LTFT form with the given id that belongs to the given trainee.
+   *
+   * @param traineeId The ID of the trainee.
+   * @param id        The ID of the form.
+   * @return The LTFT form, or optional empty if not found (or does not belong to trainee).
+   */
+  Optional<LtftForm> findByTraineeTisIdAndId(String traineeId, String id);
+
 }

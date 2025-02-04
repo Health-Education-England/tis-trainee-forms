@@ -51,6 +51,8 @@ public class LtftForm extends AbstractAuditedForm {
   public String getFormType() {
     return "ltft";
   }
+    LtftDiscussions discussions;
+
 
   /**
    * Get the current (most recent) lifecycle state.
@@ -112,6 +114,22 @@ public class LtftForm extends AbstractAuditedForm {
       String detail,
       Instant timestamp,
       Integer revision) {
+
+  }
+
+  @Builder
+  public record LtftDiscussions(
+      String tpdName,
+      String tpdEmail,
+      List<LtftPersonRole> other) {
+
+  }
+
+  @Builder
+  public record LtftPersonRole(
+      String name,
+      String email,
+      String role) {
 
   }
 }
