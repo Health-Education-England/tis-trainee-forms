@@ -23,6 +23,7 @@ package uk.nhs.hee.tis.trainee.forms.model;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
 import org.bson.types.ObjectId;
@@ -57,6 +58,8 @@ public record LtftForm(
     LtftProgrammeMembership programmeMembership,
     LifecycleState status,
 
+    LtftDiscussions discussions,
+
     @CreatedDate
     Instant created,
 
@@ -82,6 +85,22 @@ public record LtftForm(
       LocalDate startDate,
       LocalDate endDate,
       double wte) {
+
+  }
+
+  @Builder
+  public record LtftDiscussions(
+      String tpdName,
+      String tpdEmail,
+      List<LtftPersonRole> other) {
+
+  }
+
+  @Builder
+  public record LtftPersonRole(
+      String name,
+      String email,
+      String role) {
 
   }
 }

@@ -19,46 +19,58 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.repository;
+package uk.nhs.hee.tis.trainee.forms.dto;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
+import jakarta.validation.constraints.Null;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import lombok.Data;
 import org.bson.types.ObjectId;
-import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.stereotype.Repository;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
-import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
+import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
 
-/**
- * A repository for LTFT forms.
- */
-@Repository
-public interface LtftFormRepository extends MongoRepository<LtftForm, ObjectId> {
+@Data
+public class LtftFormDto {
+  @JsonSerialize(using = ToStringSerializer.class)
+  @Null(groups = Create.class)
+  private ObjectId id;
 
-  /**
-   * Find all LTFT forms belonging to the given trainee, ordered by last modified.
-   *
-   * @param traineeId The ID of the trainee.
-   * @return A list of found LTFT forms.
-   */
-  List<LtftForm> findByTraineeIdOrderByLastModified(String traineeId);
+  private String traineeId;
 
-  /**
-   * Count all LTFT forms with one of the given states.
-   *
-   * @param states The states to include in the count.
-   * @return The number of found LTFT forms.
-   */
-  long countByStatusIn(Set<LifecycleState> states);
+  private String name;
 
-  /**
-   * Find the LTFT form with the given id that belongs to the given trainee.
-   *
-   * @param traineeId The ID of the trainee.
-   * @param id        The ID of the form.
-   * @return The LTFT form, or optional empty if not found (or does not belong to trainee).
-   */
-  Optional<LtftForm> findByTraineeIdAndId(String traineeId, String id);
+  private LtftProgrammeMembershipDto programmeMembership;
 
+  private LtftDiscussionDto discussions;
+
+  private LifecycleState status;
+
+  private Instant created;
+  private Instant lastModified;
+
+  @Data
+  public static class LtftProgrammeMembershipDto {
+      private String id;
+      private String name;
+      private LocalDate startDate;
+      private LocalDate endDate;
+      private double wte;
+  }
+
+  @Data
+  public static class LtftDiscussionDto {
+    private String tpdName;
+    private String tpdEmail;
+    private List<LtftPersonRole> other;
+  }
+
+  @Data
+  public static class LtftPersonRole {
+    private String name;
+    private String email;
+    private String role; //enum?
+  }
 }
