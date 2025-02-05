@@ -53,11 +53,11 @@ public class LtftFormDto {
 
   @Data
   public static class LtftProgrammeMembershipDto {
-      private String id;
-      private String name;
-      private LocalDate startDate;
-      private LocalDate endDate;
-      private double wte;
+    private String id;
+    private String name;
+    private LocalDate startDate;
+    private LocalDate endDate;
+    private double wte;
   }
 
   @Data
@@ -71,6 +71,6 @@ public class LtftFormDto {
   public static class LtftPersonRole {
     private String name;
     private String email;
-    private String role; //enum?
+    private String role;
   }
 }

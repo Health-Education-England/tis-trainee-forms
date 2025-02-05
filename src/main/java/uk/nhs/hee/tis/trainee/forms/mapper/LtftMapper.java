@@ -63,6 +63,7 @@ public interface LtftMapper {
 
   /**
    * Convert a {@link LtftFormDto} DTO to a {@link LtftForm}.
+   *
    * @param dto The DTO to convert.
    * @return The equivalent LTFT Form.
    */
