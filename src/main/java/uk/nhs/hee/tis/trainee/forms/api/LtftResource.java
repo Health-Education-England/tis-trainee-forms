@@ -36,6 +36,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
+import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 
 /**
@@ -78,7 +79,8 @@ public class LtftResource {
    * @return The DTO of the saved form (with an id).
    */
   @PostMapping
-  public ResponseEntity<LtftFormDto> createLtft(@RequestBody @Validated LtftFormDto dto) {
+  public ResponseEntity<LtftFormDto> createLtft(
+      @RequestBody @Validated(Create.class) LtftFormDto dto) {
     log.info("Request to save new LTFT form: {}", dto);
     Optional<LtftFormDto> savedLtft = service.saveLtftForm(dto);
     return savedLtft.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.badRequest().build());

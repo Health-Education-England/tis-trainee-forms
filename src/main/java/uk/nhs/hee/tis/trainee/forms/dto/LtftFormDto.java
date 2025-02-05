@@ -32,6 +32,9 @@ import org.bson.types.ObjectId;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
 
+/**
+ * A DTO for transferring LTFT forms.
+ */
 @Data
 public class LtftFormDto {
   @JsonSerialize(using = ToStringSerializer.class)
@@ -51,6 +54,9 @@ public class LtftFormDto {
   private Instant created;
   private Instant lastModified;
 
+  /**
+   * A DTO for LTFT programme membership details.
+   */
   @Data
   public static class LtftProgrammeMembershipDto {
     private String id;
@@ -60,6 +66,9 @@ public class LtftFormDto {
     private double wte;
   }
 
+  /**
+   * A DTO for LTFT form discussion details.
+   */
   @Data
   public static class LtftDiscussionDto {
     private String tpdName;
@@ -67,6 +76,9 @@ public class LtftFormDto {
     private List<LtftPersonRole> other;
   }
 
+  /**
+   * A DTO for LTFT form discussion non-TPD people.
+   */
   @Data
   public static class LtftPersonRole {
     private String name;

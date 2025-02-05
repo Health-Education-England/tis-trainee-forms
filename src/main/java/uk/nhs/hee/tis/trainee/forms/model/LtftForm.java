@@ -21,6 +21,8 @@
 
 package uk.nhs.hee.tis.trainee.forms.model;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -68,7 +70,7 @@ public record LtftForm(
 ) {
 
   /**
-   * Programme membership data for a calculation.
+   * Programme membership data for a LTFT calculation.
    *
    * @param id        The ID of the programme membership.
    * @param name      The name of the programme.
@@ -88,6 +90,13 @@ public record LtftForm(
 
   }
 
+  /**
+   * Details of the people who have been approached to discuss a LTFT application, including TPD.
+   *
+   * @param tpdName  The Training Programme Director.
+   * @param tpdEmail The email for the TPD.
+   * @param other    The list of other people who have been contacted.
+   */
   @Builder
   public record LtftDiscussions(
       String tpdName,
@@ -96,6 +105,13 @@ public record LtftForm(
 
   }
 
+  /**
+   * Details of other people involved in the discussion.
+   *
+   * @param name  Person name.
+   * @param email Person email.
+   * @param role  Their role.
+   */
   @Builder
   public record LtftPersonRole(
       String name,

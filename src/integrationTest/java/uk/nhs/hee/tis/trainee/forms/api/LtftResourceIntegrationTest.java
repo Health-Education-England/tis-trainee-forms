@@ -21,12 +21,18 @@
 
 package uk.nhs.hee.tis.trainee.forms.api;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.UUID;
 import org.bson.types.ObjectId;
@@ -46,6 +52,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 
 @SpringBootTest
@@ -53,6 +60,9 @@ import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 @AutoConfigureMockMvc
 class LtftResourceIntegrationTest {
   private static final String TRAINEE_ID = UUID.randomUUID().toString();
+
+  @Autowired
+  private ObjectMapper mapper;
 
   @Container
   @ServiceConnection
@@ -87,7 +97,47 @@ class LtftResourceIntegrationTest {
   }
 
   @Test
-  void shoulNotFindLtftFormWhenNoneExist() throws Exception {
+  void shouldBeForbiddenFromCreatingLtftFormWhenNoToken() throws Exception {
+    mockMvc.perform(post("/api/ltft")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @Test
+  void shouldBeForbiddenFromCreatingLtftFormWhenTokenLacksTraineeId() throws Exception {
+    String token = TestJwtUtil.generateToken("{}");
+    mockMvc.perform(post("/api/ltft")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @Test
+  void shouldBeForbiddenFromUpdatingLtftFormWhenNoToken() throws Exception {
+    mockMvc.perform(put("/api/ltft/someId")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @Test
+  void shouldBeForbiddenFromUpdatingLtftFormWhenTokenLacksTraineeId() throws Exception {
+    String token = TestJwtUtil.generateToken("{}");
+    mockMvc.perform(put("/api/ltft/someId")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @Test
+  void shouldNotFindLtftFormWhenNoneExist() throws Exception {
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
     mockMvc.perform(get("/api/ltft/formX")
             .header(HttpHeaders.AUTHORIZATION, token))
@@ -141,4 +191,149 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.discussions.other[0].name").value("other person"));
   }
 
+  @Test
+  void shouldBeBadRequestWhenCreatingLtftFormForDifferentTrainee() throws Exception {
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+      mockMvc.perform(post("/api/ltft")
+              .header(HttpHeaders.AUTHORIZATION, token)
+              .contentType(MediaType.APPLICATION_JSON)
+              .content("{\"traineeId\": \"another id\"}"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @Test
+  void shouldBeBadRequestWhenCreatingLtftFormWithId() throws Exception {
+    LtftFormDto formToSave = new LtftFormDto();
+    formToSave.setId(ObjectId.get());
+    formToSave.setTraineeId(TRAINEE_ID);
+    String formToSaveJson = mapper.writeValueAsString(formToSave);
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(post("/api/ltft")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToSaveJson))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.fieldErrors", hasSize(1)))
+        .andExpect(jsonPath("$.fieldErrors[0].field").value("id"))
+        .andExpect(jsonPath("$.fieldErrors[0].message").value("must be null"));
+  }
+
+  @Test
+  void shouldCreateLtftFormForTrainee() throws Exception {
+    LtftFormDto formToSave = new LtftFormDto();
+    formToSave.setTraineeId(TRAINEE_ID);
+    formToSave.setName("test");
+    String formToSaveJson = mapper.writeValueAsString(formToSave);
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(post("/api/ltft")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToSaveJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.name").value("test"))
+        .andExpect(jsonPath("$.traineeId").value(TRAINEE_ID));
+
+    assertThat("Unexpected saved record count.", template.count(new Query(), LtftForm.class),
+        is(1L));
+    List<LtftForm> savedRecords = template.find(new Query(), LtftForm.class);
+    assertThat("Unexpected saved record name.", savedRecords.get(0).name(), is("test"));
+    assertThat("Unexpected saved record trainee id.", savedRecords.get(0).traineeId(),
+        is(TRAINEE_ID));
+    assertThat("Unexpected saved record id.", savedRecords.get(0).id(), is(notNullValue()));
+  }
+
+  @Test
+  void shouldBeBadRequestWhenUpdatingLtftFormForDifferentTrainee() throws Exception {
+    ObjectId id = ObjectId.get();
+    LtftFormDto formToUpdate = new LtftFormDto();
+    formToUpdate.setTraineeId("another trainee");
+    formToUpdate.setId(id);
+    String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(put("/api/ltft/" + id)
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToUpdateJson))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @Test
+  void shouldBeBadRequestWhenUpdatingLtftFormWithoutId() throws Exception {
+    LtftFormDto formToUpdate = new LtftFormDto();
+    formToUpdate.setTraineeId(TRAINEE_ID);
+    String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(put("/api/ltft/someId")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToUpdateJson))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @Test
+  void shouldBeBadRequestWhenUpdatingLtftFormWithInconsistentIds() throws Exception {
+    ObjectId id = ObjectId.get();
+    LtftFormDto formToUpdate = new LtftFormDto();
+    formToUpdate.setTraineeId(TRAINEE_ID);
+    formToUpdate.setId(id);
+    String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(put("/api/ltft/" + ObjectId.get())
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToUpdateJson))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @Test
+  void shouldBeBadRequestWhenUpdatingLtftFormNotAlreadyExistingForTrainee() throws Exception {
+    ObjectId id = ObjectId.get();
+    LtftFormDto formToUpdate = new LtftFormDto();
+    formToUpdate.setTraineeId(TRAINEE_ID);
+    formToUpdate.setId(id);
+    String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(put("/api/ltft/" + id)
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToUpdateJson))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @Test
+  void shouldUpdateLtftFormForTrainee() throws Exception {
+    LtftForm form = new LtftForm(null, TRAINEE_ID, null, null, null, null, null, null);
+    LtftForm formSaved = template.save(form);
+    assert formSaved.id() != null;
+
+    LtftFormDto formToUpdate = new LtftFormDto();
+    formToUpdate.setTraineeId(TRAINEE_ID);
+    formToUpdate.setId(formSaved.id());
+    formToUpdate.setName("updated");
+
+    String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(put("/api/ltft/" + formSaved.id())
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToUpdateJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(formSaved.id().toString()))
+        .andExpect(jsonPath("$.traineeId").value(TRAINEE_ID))
+        .andExpect(jsonPath("$.name").value("updated"));
+
+    assertThat("Unexpected saved record count.", template.count(new Query(), LtftForm.class),
+        is(1L));
+    List<LtftForm> savedRecords = template.find(new Query(), LtftForm.class);
+    assertThat("Unexpected saved record name.", savedRecords.get(0).name(), is("updated"));
+    assertThat("Unexpected saved record trainee id.", savedRecords.get(0).traineeId(),
+        is(TRAINEE_ID));
+    assertThat("Unexpected saved record id.", savedRecords.get(0).id(), is(formSaved.id()));
+  }
 }
