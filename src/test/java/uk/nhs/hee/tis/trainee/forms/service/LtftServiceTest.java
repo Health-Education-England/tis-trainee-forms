@@ -95,6 +95,12 @@ class LtftServiceTest {
         .programmeMembership(LtftProgrammeMembership.builder()
             .id(pmId1)
             .build())
+        .discussions(LtftForm.LtftDiscussions.builder()
+            .tpdName("tpd")
+            .other(List.of(LtftForm.LtftPersonRole.builder()
+                    .name("other")
+                .build()))
+            .build())
         .created(created1)
         .lastModified(lastModified1)
         .build();
@@ -184,7 +190,11 @@ class LtftServiceTest {
   @Test
   void shouldReturnDtoIfLtftFormForTraineeFound() {
     ObjectId id = ObjectId.get();
-    LtftForm form = new LtftForm(id, TRAINEE_ID, "test", null, null, null, null, null);
+    LtftForm form = LtftForm.builder()
+        .id(id)
+        .traineeId(TRAINEE_ID)
+        .name("test")
+        .build();
     when(ltftRepository.findByTraineeIdAndId(TRAINEE_ID, id.toString()))
         .thenReturn(Optional.of(form));
 
@@ -213,8 +223,11 @@ class LtftServiceTest {
     LtftFormDto dtoToSave = new LtftFormDto();
     dtoToSave.setTraineeId(TRAINEE_ID);
 
-    LtftForm existingForm
-        = new LtftForm(ObjectId.get(), TRAINEE_ID, "test", null, null, null, null, null);
+    LtftForm existingForm = LtftForm.builder()
+        .id(ObjectId.get())
+        .traineeId(TRAINEE_ID)
+        .name("test")
+        .build();
     when(ltftRepository.save(any())).thenReturn(existingForm);
 
     Optional<LtftFormDto> formDtoOptional = service.saveLtftForm(dtoToSave);
@@ -286,7 +299,11 @@ class LtftServiceTest {
     dtoToSave.setTraineeId(TRAINEE_ID);
     dtoToSave.setId(id);
 
-    LtftForm existingForm = new LtftForm(id, TRAINEE_ID, "test", null, null, null, null, null);
+    LtftForm existingForm = LtftForm.builder()
+        .id(id)
+        .traineeId(TRAINEE_ID)
+        .name("test")
+        .build();
     when(ltftRepository.findByTraineeIdAndId(TRAINEE_ID, id.toString()))
         .thenReturn(Optional.of(existingForm));
     when(ltftRepository.save(any())).thenReturn(existingForm);

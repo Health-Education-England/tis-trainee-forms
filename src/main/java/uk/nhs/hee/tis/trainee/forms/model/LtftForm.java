@@ -21,8 +21,6 @@
 
 package uk.nhs.hee.tis.trainee.forms.model;
 
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;

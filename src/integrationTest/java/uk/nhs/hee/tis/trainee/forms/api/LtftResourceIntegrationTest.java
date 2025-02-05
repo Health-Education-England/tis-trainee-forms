@@ -308,7 +308,9 @@ class LtftResourceIntegrationTest {
 
   @Test
   void shouldUpdateLtftFormForTrainee() throws Exception {
-    LtftForm form = new LtftForm(null, TRAINEE_ID, null, null, null, null, null, null);
+    LtftForm form = LtftForm.builder()
+        .traineeId(TRAINEE_ID)
+        .build();
     LtftForm formSaved = template.save(form);
     assert formSaved.id() != null;
 
