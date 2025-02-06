@@ -21,53 +21,22 @@
 
 package uk.nhs.hee.tis.trainee.forms.model;
 
-import java.time.Instant;
-import java.time.LocalDate;
 import java.util.UUID;
-import lombok.Builder;
-import lombok.Data;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import org.springframework.data.mongodb.core.mapping.event.AbstractMongoEventListener;
+import org.springframework.data.mongodb.core.mapping.event.BeforeConvertEvent;
+import org.springframework.stereotype.Component;
 
-/**
- * A LTFT form entity.
- */
-@Document("LtftForm")
-@Data
-@Builder
-public class LtftForm {
-  @Id
-  private UUID id;
-  @Indexed
-  private String traineeId;
+@Component
+public class LtftFormMongoEventListener extends AbstractMongoEventListener<LtftForm> {
 
-  private String name;
-  private LtftProgrammeMembership programmeMembership;
-  private LifecycleState status;
+  @Override
+  public void onBeforeConvert(BeforeConvertEvent<LtftForm> event) {
+    LtftForm source = event.getSource();
 
-  @CreatedDate
-  private Instant created;
+    if (source.getId() == null) {
+      source.setId(UUID.randomUUID());
+    }
 
-  @LastModifiedDate
-  private Instant lastModified;
-
-  /**
-   * Programme membership data for a LTFT calculation.
-   */
-  @Data
-  @Builder
-  public static class LtftProgrammeMembership {
-    @Indexed
-    @Field("id")
-    private UUID id;
-    private String name;
-    private LocalDate startDate;
-    private LocalDate endDate;
-    private double wte;
+    super.onBeforeConvert(event);
   }
 }
