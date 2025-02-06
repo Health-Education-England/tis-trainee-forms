@@ -360,7 +360,7 @@ class S3FormRPartBRepositoryImplTest {
         entity.getHaveCurrentUnresolvedDeclarations(), is(false));
     assertThat("Unexpected havePreviousUnresolvedDeclarations flag.",
         entity.getHavePreviousUnresolvedDeclarations(), is(false));
-    assertThat("Unexpected lifecycleState.", entity.getLifecycleState(), is(SUBMITTED));
+    assertThat("Unexpected status.", entity.getLifecycleState(), is(SUBMITTED));
   }
 
   @Test

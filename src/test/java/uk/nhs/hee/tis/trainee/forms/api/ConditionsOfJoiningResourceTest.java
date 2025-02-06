@@ -52,7 +52,6 @@ import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.core.io.Resource;
-import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
 import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -67,7 +66,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.GoldGuideVersion;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
 @WebMvcTest(ConditionsOfJoiningResource.class)
-@ComponentScan(basePackageClasses = { FilterConfiguration.class, MongoConfiguration.class })
+@ComponentScan(basePackageClasses = FilterConfiguration.class)
 class ConditionsOfJoiningResourceTest {
 
   @TestConfiguration

@@ -160,7 +160,7 @@ public class LtftService {
       return Optional.empty();
     }
     form.setCreated(existingForm.get().getCreated());
-    LtftForm savedForm = ltftFormRepository.save(form); //losing created set to null
+    LtftForm savedForm = ltftFormRepository.save(form);
     return Optional.of(mapper.toDto(savedForm));
   }
 }
