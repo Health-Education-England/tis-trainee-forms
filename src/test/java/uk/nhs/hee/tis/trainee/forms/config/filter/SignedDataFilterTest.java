@@ -83,7 +83,7 @@ class SignedDataFilterTest {
 
     filter.doFilterInternal(request, response, filterChain);
 
-    assertThat("Unexpected response lifecycleState.", response.getStatus(), is(403));
+    assertThat("Unexpected response status.", response.getStatus(), is(403));
     verifyNoInteractions(filterChain);
   }
 
@@ -97,7 +97,7 @@ class SignedDataFilterTest {
 
     filter.doFilterInternal(request, response, filterChain);
 
-    assertThat("Unexpected response lifecycleState.", response.getStatus(), is(403));
+    assertThat("Unexpected response status.", response.getStatus(), is(403));
     verifyNoInteractions(filterChain);
   }
 
@@ -117,7 +117,7 @@ class SignedDataFilterTest {
 
     filter.doFilterInternal(request, response, filterChain);
 
-    assertThat("Unexpected response lifecycleState.", response.getStatus(), is(403));
+    assertThat("Unexpected response status.", response.getStatus(), is(403));
     verifyNoInteractions(filterChain);
   }
 
@@ -141,7 +141,7 @@ class SignedDataFilterTest {
 
     filter.doFilterInternal(request, response, filterChain);
 
-    assertThat("Unexpected response lifecycleState.", response.getStatus(), is(403));
+    assertThat("Unexpected response status.", response.getStatus(), is(403));
     verifyNoInteractions(filterChain);
   }
 
@@ -164,7 +164,7 @@ class SignedDataFilterTest {
 
     filter.doFilterInternal(request, response, filterChain);
 
-    assertThat("Unexpected response lifecycleState.", response.getStatus(), is(403));
+    assertThat("Unexpected response status.", response.getStatus(), is(403));
     verifyNoInteractions(filterChain);
   }
 
@@ -183,7 +183,7 @@ class SignedDataFilterTest {
 
     filter.doFilterInternal(request, response, filterChain);
 
-    assertThat("Unexpected response lifecycleState.", response.getStatus(), is(403));
+    assertThat("Unexpected response status.", response.getStatus(), is(403));
     verifyNoInteractions(filterChain);
   }
 
@@ -200,7 +200,7 @@ class SignedDataFilterTest {
 
     filter.doFilterInternal(request, response, filterChain);
 
-    assertThat("Unexpected response lifecycleState.", response.getStatus(), is(403));
+    assertThat("Unexpected response status.", response.getStatus(), is(403));
     verifyNoInteractions(filterChain);
   }
 
@@ -223,7 +223,7 @@ class SignedDataFilterTest {
 
     filter.doFilterInternal(request, response, filterChain);
 
-    assertThat("Unexpected response lifecycleState.", response.getStatus(), is(403));
+    assertThat("Unexpected response status.", response.getStatus(), is(403));
     verifyNoInteractions(filterChain);
   }
 
@@ -242,7 +242,7 @@ class SignedDataFilterTest {
 
     filter.doFilterInternal(request, response, filterChain);
 
-    assertThat("Unexpected response lifecycleState.", response.getStatus(), is(403));
+    assertThat("Unexpected response status.", response.getStatus(), is(403));
     verifyNoInteractions(filterChain);
   }
 
@@ -259,7 +259,7 @@ class SignedDataFilterTest {
 
     filter.doFilterInternal(request, response, filterChain);
 
-    assertThat("Unexpected response lifecycleState.", response.getStatus(), is(403));
+    assertThat("Unexpected response status.", response.getStatus(), is(403));
     verifyNoInteractions(filterChain);
   }
 
@@ -277,7 +277,7 @@ class SignedDataFilterTest {
 
     filter.doFilterInternal(request, response, filterChain);
 
-    assertThat("Unexpected response lifecycleState.", response.getStatus(), is(200));
+    assertThat("Unexpected response status.", response.getStatus(), is(200));
   }
 
   @Test
@@ -294,7 +294,7 @@ class SignedDataFilterTest {
 
     filter.doFilterInternal(request, response, filterChain);
 
-    assertThat("Unexpected response lifecycleState.", response.getStatus(), is(200));
+    assertThat("Unexpected response status.", response.getStatus(), is(200));
     verify(filterChain).doFilter(any(HttpServletRequest.class), eq(response));
   }
 
@@ -317,8 +317,8 @@ class SignedDataFilterTest {
     verify(filterChain).doFilter(requestCaptor.capture(), any());
 
     ServletInputStream inputStream = requestCaptor.getValue().getInputStream();
-    assertThat("Unexpected stream ready lifecycleState.", inputStream.isReady(), is(true));
-    assertThat("Unexpected stream finished lifecycleState.", inputStream.isFinished(), is(false));
+    assertThat("Unexpected stream ready status.", inputStream.isReady(), is(true));
+    assertThat("Unexpected stream finished status.", inputStream.isFinished(), is(false));
     assertThat("Unexpected stream contents.", inputStream.readAllBytes(),
         is(signedData.getBytes(UTF_8)));
   }

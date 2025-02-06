@@ -51,7 +51,7 @@ public class FormRelocateResource {
    *
    * @param formId  The ID of the form that need to relocate
    * @param targetTrainee  The TraineeTisId of the target trainee
-   * @return the lifecycleState of relocation
+   * @return the status of relocation
    */
   @PatchMapping("/form-relocate/{formId}")
   public ResponseEntity<Void> relocateForm(@PathVariable String formId,

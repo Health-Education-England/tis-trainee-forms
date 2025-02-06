@@ -39,6 +39,7 @@ import org.springframework.data.mongodb.core.index.IndexDefinition;
 import org.springframework.data.mongodb.core.index.IndexOperations;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
+import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 
 class MongoConfigurationTest {
   private MongoConfiguration configuration;
@@ -99,4 +100,23 @@ class MongoConfigurationTest {
         hasItems("traineeTisId", "lifecycleState"));
   }
 
+  @Test
+  void shouldInitIndexesForLtftFormCollection() {
+    IndexOperations indexOperations = mock(IndexOperations.class);
+    when(template.indexOps(LtftForm.class)).thenReturn(indexOperations);
+
+    configuration.initIndexes();
+
+    ArgumentCaptor<IndexDefinition> indexCaptor = ArgumentCaptor.forClass(IndexDefinition.class);
+    verify(indexOperations, times(1)).ensureIndex(indexCaptor.capture());
+
+    List<IndexDefinition> indexes = indexCaptor.getAllValues();
+    assertThat("Unexpected number of indexes.", indexes.size(), is(1));
+
+    List<String> indexKeys = indexes.stream()
+        .flatMap(i -> i.getIndexKeys().keySet().stream())
+        .toList();
+    assertThat("Unexpected LTFT Form index.", indexKeys,
+        hasItems("traineeId"));
+  }
 }

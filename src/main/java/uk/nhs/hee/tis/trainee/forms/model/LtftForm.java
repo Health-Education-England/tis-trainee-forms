@@ -43,7 +43,6 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 @Document("LtftForm")
 @Data
 @Builder
-@ToString
 public class LtftForm implements Persistable<UUID> {
   @Id
   private UUID id;

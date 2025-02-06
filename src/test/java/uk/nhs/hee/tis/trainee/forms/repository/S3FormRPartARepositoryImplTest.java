@@ -223,7 +223,7 @@ class S3FormRPartARepositoryImplTest {
         both(not(DEFAULT_FORENAME)).and(notNullValue()));
     assertThat("Unexpected surname.", entity.getSurname(),
         both(not(DEFAULT_SURNAME)).and(notNullValue()));
-    assertThat("Unexpected lifecycleState.", entity.getLifecycleState(), is(SUBMITTED));
+    assertThat("Unexpected status.", entity.getLifecycleState(), is(SUBMITTED));
   }
 
   @Test

@@ -303,7 +303,7 @@ class FormRPartAServiceTest {
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", dto.getForename(), is("Cloud Only"));
-    assertThat("Unexpected lifecycleState.", dto.getLifecycleState(), is(LifecycleState.UNSUBMITTED));
+    assertThat("Unexpected status.", dto.getLifecycleState(), is(LifecycleState.UNSUBMITTED));
   }
 
   @Test
@@ -325,7 +325,7 @@ class FormRPartAServiceTest {
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", dto.getForename(), is("Database Only"));
-    assertThat("Unexpected lifecycleState.", dto.getLifecycleState(), is(LifecycleState.SUBMITTED));
+    assertThat("Unexpected status.", dto.getLifecycleState(), is(LifecycleState.SUBMITTED));
   }
 
   @Test
@@ -355,7 +355,7 @@ class FormRPartAServiceTest {
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", dto.getForename(), is("Cloud Latest"));
-    assertThat("Unexpected lifecycleState.", dto.getLifecycleState(), is(LifecycleState.UNSUBMITTED));
+    assertThat("Unexpected status.", dto.getLifecycleState(), is(LifecycleState.UNSUBMITTED));
   }
 
   @Test
@@ -385,7 +385,7 @@ class FormRPartAServiceTest {
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", dto.getForename(), is("Database Latest"));
-    assertThat("Unexpected lifecycleState.", dto.getLifecycleState(), is(LifecycleState.SUBMITTED));
+    assertThat("Unexpected status.", dto.getLifecycleState(), is(LifecycleState.SUBMITTED));
   }
 
   @Test
@@ -417,7 +417,7 @@ class FormRPartAServiceTest {
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", dto.getForename(), is("Database Equal"));
-    assertThat("Unexpected lifecycleState.", dto.getLifecycleState(), is(LifecycleState.SUBMITTED));
+    assertThat("Unexpected status.", dto.getLifecycleState(), is(LifecycleState.SUBMITTED));
   }
 
   @Test

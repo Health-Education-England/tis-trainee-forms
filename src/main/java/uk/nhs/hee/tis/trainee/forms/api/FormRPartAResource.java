@@ -75,7 +75,7 @@ public class FormRPartAResource {
    * POST  /formr-parta : Create a new FormRPartA.
    *
    * @param dto   the dto to create
-   * @return the ResponseEntity with lifecycleState 201 (Created) and with body the new dto, or with lifecycleState
+   * @return the ResponseEntity with status 201 (Created) and with body the new dto, or with status
    * 400 (Bad Request) if the formRPartA has already an ID
    * @throws URISyntaxException if the Location URI syntax is incorrect
    */
@@ -103,7 +103,7 @@ public class FormRPartAResource {
    * PUT  /formr-parta : Update a FormRPartA.
    *
    * @param dto   the dto to update
-   * @return the ResponseEntity with lifecycleState 200 and with body the new dto, or with lifecycleState 500
+   * @return the ResponseEntity with status 200 and with body the new dto, or with status 500
    * (Internal Server Error) if the formRPartBDto couldn't be updated. If the id is not provided,
    * will create a new FormRPartA
    * @throws URISyntaxException if the Location URI syntax is incorrect
@@ -161,7 +161,7 @@ public class FormRPartAResource {
    * DELETE: /formr-parta/:id.
    *
    * @param id    The ID of the form
-   * @return the lifecycleState of the deletion.
+   * @return the status of the deletion.
    */
   @DeleteMapping("/formr-parta/{id}")
   public ResponseEntity<Void> deleteFormRPartAById(@PathVariable String id) {
