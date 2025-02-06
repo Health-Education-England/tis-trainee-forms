@@ -27,7 +27,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
-public class LtftFormTest {
+class LtftFormTest {
 
   @Test
   void ltftFormWithoutCreatedDateShouldBeNew() {
@@ -39,7 +39,7 @@ public class LtftFormTest {
   void ltftFormWithCreatedDateShouldNotBeNew() {
     LtftForm form = LtftForm.builder()
         .created(Instant.now())
-    .build();
+        .build();
     assertThat("unexpected form isNew.", form.isNew(), is(false));
   }
 }

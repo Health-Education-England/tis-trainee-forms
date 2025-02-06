@@ -49,7 +49,6 @@ import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 class LtftServiceTest {
 
   private static final String TRAINEE_ID = "40";
-  private static final UUID ID = UUID.randomUUID();
 
   private LtftService service;
   private LtftFormRepository ltftRepository;
