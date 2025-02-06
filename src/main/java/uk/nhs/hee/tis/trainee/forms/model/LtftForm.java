@@ -26,7 +26,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
-import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -42,15 +41,15 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
  * @param traineeId           The trainee ID.
  * @param name                The form name.
  * @param programmeMembership The form programme membership.
- * @param status              The form status.
- * @param created             When the form was created.
- * @param lastModified        When the form was last updated.
+ * @param status              The form lifecycleState.
+ * @param created             When the form was created (auto-generated).
+ * @param lastModified        When the form was last updated (auto-generated).
  */
-@Document("LtftForm")
+@Document
 @Builder
 public record LtftForm(
     @Id
-    ObjectId id,
+    UUID id,
     @Indexed
     String traineeId,
 

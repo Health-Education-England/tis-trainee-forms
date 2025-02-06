@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.api;
 import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -95,7 +96,7 @@ public class LtftResource {
    * @return The DTO of the saved form.
    */
   @PutMapping("/{formId}")
-  public ResponseEntity<LtftFormDto> updateLtft(@PathVariable String formId,
+  public ResponseEntity<LtftFormDto> updateLtft(@PathVariable UUID formId,
       @RequestBody @Validated LtftFormDto dto) {
     log.info("Request to update LTFT form {}: {}", formId, dto);
     Optional<LtftFormDto> savedLtft = service.updateLtftForm(formId, dto);
@@ -110,7 +111,7 @@ public class LtftResource {
    * @return The DTO of the saved form.
    */
   @GetMapping("/{formId}")
-  public ResponseEntity<LtftFormDto> getLtft(@PathVariable String formId) {
+  public ResponseEntity<LtftFormDto> getLtft(@PathVariable UUID formId) {
     log.info("Request to retrieve LTFT form {}.", formId);
     Optional<LtftFormDto> ltft = service.getLtftForm(formId);
     return ltft.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());

@@ -22,6 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
@@ -35,7 +36,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.UUID;
-import org.bson.types.ObjectId;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,7 +59,8 @@ import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 @Testcontainers
 @AutoConfigureMockMvc
 class LtftResourceIntegrationTest {
-  private static final String TRAINEE_ID = UUID.randomUUID().toString();
+  private static final String TRAINEE_ID = "40";
+  private static final UUID ID = UUID.randomUUID();
 
   @Autowired
   private ObjectMapper mapper;
@@ -147,15 +148,14 @@ class LtftResourceIntegrationTest {
 
   @Test
   void shouldNotFindLtftFormNotOwnedByUser() throws Exception {
-    ObjectId id = ObjectId.get();
     LtftForm ltft = LtftForm.builder()
-        .id(id)
+        .id(ID)
         .traineeId(UUID.randomUUID().toString())
         .build();
     template.insert(ltft);
 
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
-    mockMvc.perform(get("/api/ltft/" + id)
+    mockMvc.perform(get("/api/ltft/" + ID)
             .header(HttpHeaders.AUTHORIZATION, token))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$").doesNotExist());
@@ -163,9 +163,8 @@ class LtftResourceIntegrationTest {
 
   @Test
   void shouldFindLtftFormOwnedByUser() throws Exception {
-    ObjectId id = ObjectId.get();
     LtftForm ltft = LtftForm.builder()
-        .id(id)
+        .id(ID)
         .traineeId(TRAINEE_ID)
         .name("name")
         .discussions(LtftForm.LtftDiscussions.builder()
@@ -179,11 +178,11 @@ class LtftResourceIntegrationTest {
     template.insert(ltft);
 
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
-    mockMvc.perform(get("/api/ltft/" + id)
+    mockMvc.perform(get("/api/ltft/" + ID)
             .header(HttpHeaders.AUTHORIZATION, token))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$.id").value(id.toString()))
+        .andExpect(jsonPath("$.id").value(ID.toString()))
         .andExpect(jsonPath("$.traineeId").value(TRAINEE_ID))
         .andExpect(jsonPath("$.name").value("name"))
         .andExpect(jsonPath("$.discussions.tpdName").value("tpd"))
@@ -197,7 +196,7 @@ class LtftResourceIntegrationTest {
       mockMvc.perform(post("/api/ltft")
               .header(HttpHeaders.AUTHORIZATION, token)
               .contentType(MediaType.APPLICATION_JSON)
-              .content("{\"traineeId\": \"another id\"}"))
+              .content("{\"traineeTisId\": \"another id\"}"))
           .andExpect(status().isBadRequest())
           .andExpect(jsonPath("$").doesNotExist());
   }
@@ -205,7 +204,7 @@ class LtftResourceIntegrationTest {
   @Test
   void shouldBeBadRequestWhenCreatingLtftFormWithId() throws Exception {
     LtftFormDto formToSave = new LtftFormDto();
-    formToSave.setId(ObjectId.get());
+    formToSave.setId(ID);
     formToSave.setTraineeId(TRAINEE_ID);
     String formToSaveJson = mapper.writeValueAsString(formToSave);
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
@@ -233,7 +232,9 @@ class LtftResourceIntegrationTest {
             .content(formToSaveJson))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.name").value("test"))
-        .andExpect(jsonPath("$.traineeId").value(TRAINEE_ID));
+        .andExpect(jsonPath("$.traineeId").value(TRAINEE_ID))
+        .andExpect(jsonPath("$.created").exists())
+        .andExpect(jsonPath("$.lastModified").exists());
 
     assertThat("Unexpected saved record count.", template.count(new Query(), LtftForm.class),
         is(1L));
@@ -246,13 +247,12 @@ class LtftResourceIntegrationTest {
 
   @Test
   void shouldBeBadRequestWhenUpdatingLtftFormForDifferentTrainee() throws Exception {
-    ObjectId id = ObjectId.get();
     LtftFormDto formToUpdate = new LtftFormDto();
     formToUpdate.setTraineeId("another trainee");
-    formToUpdate.setId(id);
+    formToUpdate.setId(ID);
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
-    mockMvc.perform(put("/api/ltft/" + id)
+    mockMvc.perform(put("/api/ltft/" + ID)
             .header(HttpHeaders.AUTHORIZATION, token)
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToUpdateJson))
@@ -276,13 +276,12 @@ class LtftResourceIntegrationTest {
 
   @Test
   void shouldBeBadRequestWhenUpdatingLtftFormWithInconsistentIds() throws Exception {
-    ObjectId id = ObjectId.get();
     LtftFormDto formToUpdate = new LtftFormDto();
     formToUpdate.setTraineeId(TRAINEE_ID);
-    formToUpdate.setId(id);
+    formToUpdate.setId(ID);
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
-    mockMvc.perform(put("/api/ltft/" + ObjectId.get())
+    mockMvc.perform(put("/api/ltft/" + UUID.randomUUID())
             .header(HttpHeaders.AUTHORIZATION, token)
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToUpdateJson))
@@ -292,13 +291,12 @@ class LtftResourceIntegrationTest {
 
   @Test
   void shouldBeBadRequestWhenUpdatingLtftFormNotAlreadyExistingForTrainee() throws Exception {
-    ObjectId id = ObjectId.get();
     LtftFormDto formToUpdate = new LtftFormDto();
     formToUpdate.setTraineeId(TRAINEE_ID);
-    formToUpdate.setId(id);
+    formToUpdate.setId(ID);
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
-    mockMvc.perform(put("/api/ltft/" + id)
+    mockMvc.perform(put("/api/ltft/" + ID)
             .header(HttpHeaders.AUTHORIZATION, token)
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToUpdateJson))
@@ -328,7 +326,12 @@ class LtftResourceIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(formSaved.id().toString()))
         .andExpect(jsonPath("$.traineeId").value(TRAINEE_ID))
-        .andExpect(jsonPath("$.name").value("updated"));
+        .andExpect(jsonPath("$.name").value("updated"))
+        //FIXME
+//        .andExpect(jsonPath("$.created").value(
+//            formSaved.created().toString()))
+        .andExpect(jsonPath("$.lastModified",
+            greaterThan(formSaved.lastModified().toString())));
 
     assertThat("Unexpected saved record count.", template.count(new Query(), LtftForm.class),
         is(1L));

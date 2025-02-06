@@ -24,16 +24,19 @@ package uk.nhs.hee.tis.trainee.forms.config;
 import jakarta.annotation.PostConstruct;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.config.EnableMongoAuditing;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.index.Index;
 import org.springframework.data.mongodb.core.index.IndexOperations;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
+import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 
 /**
  * Configuration for the Mongo database.
  */
 @Configuration
+@EnableMongoAuditing
 public class MongoConfiguration {
 
   private final MongoTemplate template;
@@ -54,5 +57,8 @@ public class MongoConfiguration {
     IndexOperations formRpartBindexOps = template.indexOps(FormRPartB.class);
     formRpartBindexOps.ensureIndex(new Index().on("traineeTisId", Sort.Direction.ASC));
     formRpartBindexOps.ensureIndex(new Index().on("lifecycleState", Sort.Direction.ASC));
+
+    IndexOperations ltftFormIndexOps = template.indexOps(LtftForm.class);
+    ltftFormIndexOps.ensureIndex(new Index().on("traineeId", Sort.Direction.ASC));
   }
 }

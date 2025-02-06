@@ -51,26 +51,26 @@ class CachedBodyRequestWrapperTest {
   @Test
   void shouldGetInputStreamsWithCachedBody() throws IOException {
     ServletInputStream inputStream1 = requestWrapper.getInputStream();
-    assertThat("Unexpected stream ready status.", inputStream1.isReady(), is(true));
-    assertThat("Unexpected stream finished status.", inputStream1.isFinished(), is(false));
+    assertThat("Unexpected stream ready lifecycleState.", inputStream1.isReady(), is(true));
+    assertThat("Unexpected stream finished lifecycleState.", inputStream1.isFinished(), is(false));
     assertThat("Unexpected stream contents.", inputStream1.readAllBytes(), is(REQUEST_BYTES));
-    assertThat("Unexpected stream finished status.", inputStream1.isFinished(), is(true));
+    assertThat("Unexpected stream finished lifecycleState.", inputStream1.isFinished(), is(true));
 
     ServletInputStream inputStream2 = requestWrapper.getInputStream();
-    assertThat("Unexpected stream ready status.", inputStream2.isReady(), is(true));
-    assertThat("Unexpected stream finished status.", inputStream2.isFinished(), is(false));
+    assertThat("Unexpected stream ready lifecycleState.", inputStream2.isReady(), is(true));
+    assertThat("Unexpected stream finished lifecycleState.", inputStream2.isFinished(), is(false));
     assertThat("Unexpected stream contents.", inputStream2.readAllBytes(), is(REQUEST_BYTES));
-    assertThat("Unexpected stream finished status.", inputStream2.isFinished(), is(true));
+    assertThat("Unexpected stream finished lifecycleState.", inputStream2.isFinished(), is(true));
   }
 
   @Test
   void shouldGetReadersWithCachedBody() throws IOException {
     BufferedReader reader1 = requestWrapper.getReader();
-    assertThat("Unexpected ready status.", reader1.ready(), is(true));
+    assertThat("Unexpected ready lifecycleState.", reader1.ready(), is(true));
     assertThat("Unexpected request body.", reader1.readLine(), is(REQUEST_STRING));
 
     BufferedReader reader2 = requestWrapper.getReader();
-    assertThat("Unexpected ready status.", reader2.ready(), is(true));
+    assertThat("Unexpected ready lifecycleState.", reader2.ready(), is(true));
     assertThat("Unexpected request body.", reader2.readLine(), is(REQUEST_STRING));
   }
 

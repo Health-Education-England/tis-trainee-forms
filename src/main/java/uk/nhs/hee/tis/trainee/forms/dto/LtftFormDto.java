@@ -21,14 +21,12 @@
 
 package uk.nhs.hee.tis.trainee.forms.dto;
 
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import jakarta.validation.constraints.Null;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 import lombok.Data;
-import org.bson.types.ObjectId;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
 
@@ -37,9 +35,8 @@ import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
  */
 @Data
 public class LtftFormDto {
-  @JsonSerialize(using = ToStringSerializer.class)
   @Null(groups = Create.class)
-  private ObjectId id;
+  private UUID id;
 
   private String traineeId;
 
@@ -59,7 +56,7 @@ public class LtftFormDto {
    */
   @Data
   public static class LtftProgrammeMembershipDto {
-    private String id;
+    private UUID id;
     private String name;
     private LocalDate startDate;
     private LocalDate endDate;

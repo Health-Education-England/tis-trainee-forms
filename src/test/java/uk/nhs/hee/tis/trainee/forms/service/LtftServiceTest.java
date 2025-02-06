@@ -38,7 +38,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -55,7 +54,8 @@ import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 
 class LtftServiceTest {
 
-  private static final String TRAINEE_ID = UUID.randomUUID().toString();
+  private static final String TRAINEE_ID = "40";
+  private static final UUID ID = UUID.randomUUID();
 
   private LtftService service;
   private LtftFormRepository ltftRepository;
@@ -83,7 +83,7 @@ class LtftServiceTest {
 
   @Test
   void shouldGetLtftFormSummariesWhenFound() {
-    ObjectId ltftId1 = ObjectId.get();
+    UUID ltftId1 = UUID.randomUUID();
     UUID pmId1 = UUID.randomUUID();
     Instant created1 = Instant.now().minus(Duration.ofDays(1));
     Instant lastModified1 = Instant.now().plus(Duration.ofDays(1));
@@ -105,7 +105,7 @@ class LtftServiceTest {
         .lastModified(lastModified1)
         .build();
 
-    ObjectId ltftId2 = ObjectId.get();
+    UUID ltftId2 = UUID.randomUUID();
     UUID pmId2 = UUID.randomUUID();
     Instant created2 = Instant.now().minus(Duration.ofDays(2));
     Instant lastModified2 = Instant.now().plus(Duration.ofDays(2));
@@ -169,39 +169,38 @@ class LtftServiceTest {
   void shouldReturnEmptyIfLtftFormNotFound() {
     when(ltftRepository.findByTraineeIdAndId(any(), any())).thenReturn(Optional.empty());
 
-    Optional<LtftFormDto> formDtoOptional = service.getLtftForm("formId");
+    Optional<LtftFormDto> formDtoOptional = service.getLtftForm(ID);
 
     assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
-    verify(ltftRepository).findByTraineeIdAndId(any(), eq("formId"));
+    verify(ltftRepository).findByTraineeIdAndId(any(), eq(ID));
     verifyNoMoreInteractions(ltftRepository);
   }
 
   @Test
   void shouldReturnEmptyIfLtftFormForTraineeNotFound() {
-    when(ltftRepository.findByTraineeIdAndId(TRAINEE_ID, "formId")).thenReturn(Optional.empty());
+    when(ltftRepository.findByTraineeIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
 
-    Optional<LtftFormDto> formDtoOptional = service.getLtftForm("formId");
+    Optional<LtftFormDto> formDtoOptional = service.getLtftForm(ID);
 
     assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
-    verify(ltftRepository).findByTraineeIdAndId(TRAINEE_ID, "formId");
+    verify(ltftRepository).findByTraineeIdAndId(TRAINEE_ID, ID);
     verifyNoMoreInteractions(ltftRepository);
   }
 
   @Test
   void shouldReturnDtoIfLtftFormForTraineeFound() {
-    ObjectId id = ObjectId.get();
     LtftForm form = LtftForm.builder()
-        .id(id)
+        .id(ID)
         .traineeId(TRAINEE_ID)
         .name("test")
         .build();
-    when(ltftRepository.findByTraineeIdAndId(TRAINEE_ID, id.toString()))
+    when(ltftRepository.findByTraineeIdAndId(TRAINEE_ID, ID))
         .thenReturn(Optional.of(form));
 
-    Optional<LtftFormDto> formDtoOptional = service.getLtftForm(id.toString());
+    Optional<LtftFormDto> formDtoOptional = service.getLtftForm(ID);
 
     assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(false));
-    verify(ltftRepository).findByTraineeIdAndId(TRAINEE_ID, id.toString());
+    verify(ltftRepository).findByTraineeIdAndId(TRAINEE_ID, ID);
     LtftFormDto returnedFormDto = formDtoOptional.get();
     assertThat("Unexpected returned LTFT form.", returnedFormDto.equals(mapper.toDto(form)),
         is(true));
@@ -224,7 +223,7 @@ class LtftServiceTest {
     dtoToSave.setTraineeId(TRAINEE_ID);
 
     LtftForm existingForm = LtftForm.builder()
-        .id(ObjectId.get())
+        .id(ID)
         .traineeId(TRAINEE_ID)
         .name("test")
         .build();
@@ -239,11 +238,10 @@ class LtftServiceTest {
 
   @Test
   void shouldNotUpdateFormIfWithoutId() {
-    ObjectId id = ObjectId.get();
     LtftFormDto dtoToSave = new LtftFormDto();
     dtoToSave.setTraineeId(TRAINEE_ID);
 
-    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(id.toString(), dtoToSave);
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
 
     assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
     verifyNoInteractions(ltftRepository);
@@ -251,12 +249,12 @@ class LtftServiceTest {
 
   @Test
   void shouldNotUpdateFormIfIdDoesNotMatchPathParameter() {
-    ObjectId id = ObjectId.get();
     LtftFormDto dtoToSave = new LtftFormDto();
     dtoToSave.setTraineeId(TRAINEE_ID);
-    dtoToSave.setId(id);
+    dtoToSave.setId(ID);
 
-    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm("another id", dtoToSave);
+    Optional<LtftFormDto> formDtoOptional
+        = service.updateLtftForm(UUID.randomUUID(), dtoToSave);
 
     assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
     verifyNoInteractions(ltftRepository);
@@ -264,12 +262,11 @@ class LtftServiceTest {
 
   @Test
   void shouldNotUpdateFormIfTraineeDoesNotMatchLoggedInUser() {
-    ObjectId id = ObjectId.get();
     LtftFormDto dtoToSave = new LtftFormDto();
     dtoToSave.setTraineeId("another trainee");
-    dtoToSave.setId(id);
+    dtoToSave.setId(ID);
 
-    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(id.toString(), dtoToSave);
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
 
     assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
     verifyNoInteractions(ltftRepository);
@@ -277,38 +274,36 @@ class LtftServiceTest {
 
   @Test
   void shouldNotUpdateFormIfExistingFormNotFound() {
-    ObjectId id = ObjectId.get();
     LtftFormDto dtoToSave = new LtftFormDto();
     dtoToSave.setTraineeId(TRAINEE_ID);
-    dtoToSave.setId(id);
+    dtoToSave.setId(ID);
 
-    when(ltftRepository.findByTraineeIdAndId(TRAINEE_ID, id.toString()))
+    when(ltftRepository.findByTraineeIdAndId(TRAINEE_ID, ID))
         .thenReturn(Optional.empty());
 
-    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(id.toString(), dtoToSave);
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
 
     assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
-    verify(ltftRepository).findByTraineeIdAndId(TRAINEE_ID, id.toString());
+    verify(ltftRepository).findByTraineeIdAndId(TRAINEE_ID, ID);
     verifyNoMoreInteractions(ltftRepository);
   }
 
   @Test
   void shouldSaveIfUpdatingLtftFormForTrainee() {
-    ObjectId id = ObjectId.get();
     LtftFormDto dtoToSave = new LtftFormDto();
     dtoToSave.setTraineeId(TRAINEE_ID);
-    dtoToSave.setId(id);
+    dtoToSave.setId(ID);
 
     LtftForm existingForm = LtftForm.builder()
-        .id(id)
+        .id(ID)
         .traineeId(TRAINEE_ID)
         .name("test")
         .build();
-    when(ltftRepository.findByTraineeIdAndId(TRAINEE_ID, id.toString()))
+    when(ltftRepository.findByTraineeIdAndId(TRAINEE_ID, ID))
         .thenReturn(Optional.of(existingForm));
     when(ltftRepository.save(any())).thenReturn(existingForm);
 
-    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(id.toString(), dtoToSave);
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
 
     LtftForm formToSave = mapper.toEntity(dtoToSave);
     verify(ltftRepository).save(formToSave);

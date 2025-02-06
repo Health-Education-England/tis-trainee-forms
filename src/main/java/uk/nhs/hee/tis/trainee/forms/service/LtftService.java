@@ -25,6 +25,7 @@ import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
@@ -97,7 +98,7 @@ public class LtftService {
    *
    * @return The LTFT form, or optional empty if not found or does not belong to user.
    */
-  public Optional<LtftFormDto> getLtftForm(String formId) {
+  public Optional<LtftFormDto> getLtftForm(UUID formId) {
     String traineeId = traineeIdentity.getTraineeId();
     log.info("Getting LTFT form {} for trainee [{}]", formId, traineeId);
 
@@ -137,11 +138,11 @@ public class LtftService {
    * @param dto    The updated LTFT DTO to save.
    * @return The updated form DTO.
    */
-  public Optional<LtftFormDto> updateLtftForm(String formId, LtftFormDto dto) {
+  public Optional<LtftFormDto> updateLtftForm(UUID formId, LtftFormDto dto) {
     String traineeId = traineeIdentity.getTraineeId();
     log.info("Updating LTFT form {} for trainee [{}]: {}", formId, traineeId, dto);
     LtftForm form = mapper.toEntity(dto);
-    if (form.id() == null || !form.id().toString().equals(formId)) {
+    if (form.id() == null || form.id() != formId) {
       log.warn("Could not update form since its id {} does not equal provided form id {}",
           form.id(), formId);
       return Optional.empty();
@@ -157,7 +158,7 @@ public class LtftService {
           formId, traineeId);
       return Optional.empty();
     }
-    LtftForm savedForm = ltftFormRepository.save(form);
+    LtftForm savedForm = ltftFormRepository.save(form); //losing created set to null
     return Optional.of(mapper.toDto(savedForm));
   }
 }
