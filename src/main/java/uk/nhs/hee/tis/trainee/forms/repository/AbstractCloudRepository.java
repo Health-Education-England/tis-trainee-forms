@@ -51,14 +51,14 @@ import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.DeleteType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
-import uk.nhs.hee.tis.trainee.forms.model.AbstractForm;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractFormR;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
 @Slf4j
 @Transactional
-public abstract class AbstractCloudRepository<T extends AbstractForm> {
+public abstract class AbstractCloudRepository<T extends AbstractFormR> {
 
   protected final S3Client s3Client;
 

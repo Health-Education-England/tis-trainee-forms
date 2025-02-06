@@ -97,13 +97,14 @@ class RecalculateTotalLeaveTest {
 
   @Test
   void shouldSumAllLeaveFields() {
-    FormRPartB form = new FormRPartB();
-    form.setSicknessAbsence(1);
-    form.setParentalLeave(10);
-    form.setCareerBreaks(100);
-    form.setPaidLeave(1000);
-    form.setUnauthorisedLeave(10000);
-    form.setOtherLeave(100000);
+    FormRPartB form = FormRPartB.builder()
+        .sicknessAbsence(1)
+        .parentalLeave(10)
+        .careerBreaks(100)
+        .paidLeave(1000)
+        .unauthorisedLeave(10000)
+        .otherLeave(100000)
+        .build();
     when(template.find(any(), eq(FormRPartB.class))).thenReturn(Collections.singletonList(form));
 
     migration.migrate();

@@ -175,26 +175,26 @@ class FormRPartBServiceTest {
    * @return form with all default values
    */
   FormRPartB createEntity() {
-    FormRPartB entity = new FormRPartB();
-    entity.setId(DEFAULT_ID);
-    entity.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    entity.setForename(DEFAULT_FORENAME);
-    entity.setSurname(DEFAULT_SURNAME);
-    entity.setWork(Collections.singletonList(work));
-    entity.setTotalLeave(DEFAULT_TOTAL_LEAVE);
-    entity.setIsHonest(DEFAULT_IS_HONEST);
-    entity.setIsHealthy(DEFAULT_IS_HEALTHY);
-    entity.setHealthStatement(DEFAULT_HEALTHY_STATEMENT);
-    entity.setHavePreviousDeclarations(DEFAULT_HAVE_PREVIOUS_DECLARATIONS);
-    entity.setPreviousDeclarations(Collections.singletonList(previousDeclaration));
-    entity.setPreviousDeclarationSummary(DEFAULT_PREVIOUS_DECLARATION_SUMMARY);
-    entity.setHaveCurrentDeclarations(DEFAULT_HAVE_CURRENT_DECLARATIONS);
-    entity.setCurrentDeclarations(Collections.singletonList(currentDeclaration));
-    entity.setCurrentDeclarationSummary(DEFAULT_CURRENT_DECLARATION_SUMMARY);
-    entity.setLifecycleState(LifecycleState.DRAFT);
-    entity.setHaveCurrentUnresolvedDeclarations(DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS);
-    entity.setHavePreviousUnresolvedDeclarations(DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS);
-    return entity;
+    return FormRPartB.builder()
+        .id(DEFAULT_ID)
+        .traineeTisId(DEFAULT_TRAINEE_TIS_ID)
+        .forename(DEFAULT_FORENAME)
+        .surname(DEFAULT_SURNAME)
+        .work(Collections.singletonList(work))
+        .totalLeave(DEFAULT_TOTAL_LEAVE)
+        .isHonest(DEFAULT_IS_HONEST)
+        .isHealthy(DEFAULT_IS_HEALTHY)
+        .healthStatement(DEFAULT_HEALTHY_STATEMENT)
+        .havePreviousDeclarations(DEFAULT_HAVE_PREVIOUS_DECLARATIONS)
+        .previousDeclarations(Collections.singletonList(previousDeclaration))
+        .previousDeclarationSummary(DEFAULT_PREVIOUS_DECLARATION_SUMMARY)
+        .haveCurrentDeclarations(DEFAULT_HAVE_CURRENT_DECLARATIONS)
+        .currentDeclarations(Collections.singletonList(currentDeclaration))
+        .currentDeclarationSummary(DEFAULT_CURRENT_DECLARATION_SUMMARY)
+        .lifecycleState(LifecycleState.DRAFT)
+        .haveCurrentUnresolvedDeclarations(DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS)
+        .havePreviousUnresolvedDeclarations(DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS)
+        .build();
   }
 
   /**
@@ -278,7 +278,7 @@ class FormRPartBServiceTest {
     when(repositoryMock.save(entity)).thenAnswer(invocation -> {
       FormRPartB entity = invocation.getArgument(0);
 
-      FormRPartB savedEntity = new FormRPartB();
+      FormRPartB savedEntity = FormRPartB.builder().build();
       BeanUtils.copyProperties(entity, savedEntity);
       savedEntity.setId(DEFAULT_ID);
       return savedEntity;
@@ -332,7 +332,7 @@ class FormRPartBServiceTest {
     when(repositoryMock.save(entity)).thenAnswer(invocation -> {
       FormRPartB entity = invocation.getArgument(0);
 
-      FormRPartB savedEntity = new FormRPartB();
+      FormRPartB savedEntity = FormRPartB.builder().build();
       BeanUtils.copyProperties(entity, savedEntity);
       savedEntity.setId(DEFAULT_ID);
       return savedEntity;
@@ -384,7 +384,7 @@ class FormRPartBServiceTest {
     when(repositoryMock.save(entity)).thenAnswer(invocation -> {
       FormRPartB entity = invocation.getArgument(0);
 
-      FormRPartB savedEntity = new FormRPartB();
+      FormRPartB savedEntity = FormRPartB.builder().build();
       BeanUtils.copyProperties(entity, savedEntity);
       savedEntity.setId(DEFAULT_ID);
       return savedEntity;
@@ -575,22 +575,24 @@ class FormRPartBServiceTest {
 
   @Test
   void shouldGetFormRPartBFromCloudStorageByIdWhenCloudFormIsLatest() {
-    FormRPartB cloudForm = new FormRPartB();
-    cloudForm.setId(DEFAULT_ID);
-    cloudForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    cloudForm.setForename("Cloud Latest");
-    cloudForm.setLifecycleState(LifecycleState.UNSUBMITTED);
-    cloudForm.setLastModifiedDate(LocalDateTime.MAX);
+    FormRPartB cloudForm = FormRPartB.builder()
+        .id(DEFAULT_ID)
+        .traineeTisId(DEFAULT_TRAINEE_TIS_ID)
+        .forename("Cloud Latest")
+        .lifecycleState(LifecycleState.UNSUBMITTED)
+        .lastModifiedDate(LocalDateTime.MAX)
+        .build();
 
     when(s3FormRPartBRepository.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.of(cloudForm));
 
-    FormRPartB dbForm = new FormRPartB();
-    dbForm.setId(DEFAULT_ID);
-    dbForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    dbForm.setForename("Database Oldest");
-    dbForm.setLifecycleState(LifecycleState.SUBMITTED);
-    dbForm.setLastModifiedDate(LocalDateTime.MIN);
+    FormRPartB dbForm = FormRPartB.builder()
+        .id(DEFAULT_ID)
+        .traineeTisId(DEFAULT_TRAINEE_TIS_ID)
+        .forename("Database Oldest")
+        .lifecycleState(LifecycleState.SUBMITTED)
+        .lastModifiedDate(LocalDateTime.MIN)
+        .build();
 
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.of(dbForm));
@@ -605,22 +607,24 @@ class FormRPartBServiceTest {
 
   @Test
   void shouldGetFormRPartBFromDatabaseByIdWhenDatabaseFormIsLatest() {
-    FormRPartB cloudForm = new FormRPartB();
-    cloudForm.setId(DEFAULT_ID);
-    cloudForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    cloudForm.setForename("Cloud Oldest");
-    cloudForm.setLifecycleState(LifecycleState.UNSUBMITTED);
-    cloudForm.setLastModifiedDate(LocalDateTime.MIN);
+    FormRPartB cloudForm = FormRPartB.builder()
+        .id(DEFAULT_ID)
+        .traineeTisId(DEFAULT_TRAINEE_TIS_ID)
+        .forename("Cloud Oldest")
+        .lifecycleState(LifecycleState.UNSUBMITTED)
+        .lastModifiedDate(LocalDateTime.MIN)
+        .build();
 
     when(s3FormRPartBRepository.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.of(cloudForm));
 
-    FormRPartB dbForm = new FormRPartB();
-    dbForm.setId(DEFAULT_ID);
-    dbForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    dbForm.setForename("Database Latest");
-    dbForm.setLifecycleState(LifecycleState.SUBMITTED);
-    dbForm.setLastModifiedDate(LocalDateTime.MAX);
+    FormRPartB dbForm = FormRPartB.builder()
+        .id(DEFAULT_ID)
+        .traineeTisId(DEFAULT_TRAINEE_TIS_ID)
+        .forename("Database Latest")
+        .lifecycleState(LifecycleState.SUBMITTED)
+        .lastModifiedDate(LocalDateTime.MAX)
+        .build();
 
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.of(dbForm));
@@ -637,22 +641,24 @@ class FormRPartBServiceTest {
   void shouldGetFormRPartBFromDatabaseByIdWhenCloudAndDatabaseEqualModifiedTime() {
     LocalDateTime now = LocalDateTime.now();
 
-    FormRPartB cloudForm = new FormRPartB();
-    cloudForm.setId(DEFAULT_ID);
-    cloudForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    cloudForm.setForename("Cloud Equal");
-    cloudForm.setLifecycleState(LifecycleState.UNSUBMITTED);
-    cloudForm.setLastModifiedDate(now);
+    FormRPartB cloudForm = FormRPartB.builder()
+        .id(DEFAULT_ID)
+        .traineeTisId(DEFAULT_TRAINEE_TIS_ID)
+        .forename("Cloud Equal")
+        .lifecycleState(LifecycleState.UNSUBMITTED)
+        .lastModifiedDate(now)
+        .build();
 
     when(s3FormRPartBRepository.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.of(cloudForm));
 
-    FormRPartB dbForm = new FormRPartB();
-    dbForm.setId(DEFAULT_ID);
-    dbForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    dbForm.setForename("Database Equal");
-    dbForm.setLifecycleState(LifecycleState.SUBMITTED);
-    dbForm.setLastModifiedDate(now);
+    FormRPartB dbForm = FormRPartB.builder()
+        .id(DEFAULT_ID)
+        .traineeTisId(DEFAULT_TRAINEE_TIS_ID)
+        .forename("Database Equal")
+        .lifecycleState(LifecycleState.SUBMITTED)
+        .lastModifiedDate(now)
+        .build();
 
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.of(dbForm));
@@ -709,10 +715,11 @@ class FormRPartBServiceTest {
     FormRPartBDto resultDto = service.partialDeleteFormRPartBById(
         DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID, FIXED_FIELDS);
 
-    FormRPartB expectedForm = new FormRPartB();
-    expectedForm.setId(DEFAULT_ID);
-    expectedForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    expectedForm.setLifecycleState(LifecycleState.DELETED);
+    FormRPartB expectedForm = FormRPartB.builder()
+        .id(DEFAULT_ID)
+        .traineeTisId(DEFAULT_TRAINEE_TIS_ID)
+        .lifecycleState(LifecycleState.DELETED)
+        .build();
 
     verify(repositoryMock).save(any());
     assertThat("Unexpected DTO.", resultDto, is(mapper.toDto(expectedForm)));

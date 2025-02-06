@@ -97,21 +97,23 @@ class FormRelocateServiceTest {
         abstractCloudRepositoryBMock
     );
 
-    formRPartA = new FormRPartA();
-    formRPartA.setId(FORM_ID);
-    formRPartA.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    formRPartA.setForename(DEFAULT_FORENAME);
-    formRPartA.setSurname(DEFAULT_SURNAME);
-    formRPartA.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
-    formRPartA.setLifecycleState(LifecycleState.DRAFT);
+    formRPartA = FormRPartA.builder()
+        .id(FORM_ID)
+        .traineeTisId(DEFAULT_TRAINEE_TIS_ID)
+        .forename(DEFAULT_FORENAME)
+        .surname(DEFAULT_SURNAME)
+        .submissionDate(DEFAULT_SUBMISSION_DATE)
+        .lifecycleState(LifecycleState.DRAFT)
+        .build();
 
-    formRPartB = new FormRPartB();
-    formRPartB.setId(FORM_ID);
-    formRPartB.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    formRPartB.setForename(DEFAULT_FORENAME);
-    formRPartB.setSurname(DEFAULT_SURNAME);
-    formRPartB.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
-    formRPartB.setLifecycleState(LifecycleState.SUBMITTED);
+    formRPartB = FormRPartB.builder()
+        .id(FORM_ID)
+        .traineeTisId(DEFAULT_TRAINEE_TIS_ID)
+        .forename(DEFAULT_FORENAME)
+        .surname(DEFAULT_SURNAME)
+        .submissionDate(DEFAULT_SUBMISSION_DATE)
+        .lifecycleState(LifecycleState.SUBMITTED)
+        .build();
   }
 
   @Test

@@ -46,6 +46,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.LifecycleStateHistory;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 
 @SpringBootTest
@@ -90,10 +91,15 @@ class AdminLtftResourceIntegrationTest {
   @NullAndEmptySource
   void shouldCountAllLtftsWhenNoStatusFilter(String statusFilter) throws Exception {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
-        .map(s -> LtftForm.builder().id(UUID.randomUUID()).status(s).build())
+        .map(s -> (LtftForm) LtftForm.builder()
+            .id(UUID.randomUUID())
+            .status(List.of(LifecycleStateHistory.builder().state(s).build()))
+            .build())
         .toList();
     template.insertAll(ltfts);
-    template.insert(LtftForm.builder().id(UUID.randomUUID()).status(LifecycleState.SUBMITTED)
+    template.insert(LtftForm.builder()
+        .id(UUID.randomUUID())
+        .status(List.of(LifecycleStateHistory.builder().state(LifecycleState.SUBMITTED).build()))
         .build());
 
     mockMvc.perform(get("/api/admin/ltft/count")
@@ -107,7 +113,10 @@ class AdminLtftResourceIntegrationTest {
   @EnumSource(LifecycleState.class)
   void shouldCountMatchingLtftsWhenHasStatusFilter(LifecycleState status) throws Exception {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
-        .map(s -> LtftForm.builder().id(UUID.randomUUID()).status(s).build())
+        .map(s -> (LtftForm) LtftForm.builder()
+            .id(UUID.randomUUID())
+            .status(List.of(LifecycleStateHistory.builder().state(s).build()))
+            .build())
         .toList();
     template.insertAll(ltfts);
 
@@ -121,10 +130,15 @@ class AdminLtftResourceIntegrationTest {
   @Test
   void shouldCountMatchingLtftsWhenMultipleStatusFilters() throws Exception {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
-        .map(s -> LtftForm.builder().id(UUID.randomUUID()).status(s).build())
+        .map(s -> (LtftForm) LtftForm.builder()
+            .id(UUID.randomUUID())
+            .status(List.of(LifecycleStateHistory.builder().state(s).build()))
+            .build())
         .toList();
     template.insertAll(ltfts);
-    template.insert(LtftForm.builder().id(UUID.randomUUID()).status(LifecycleState.SUBMITTED)
+    template.insert(LtftForm.builder()
+        .id(UUID.randomUUID())
+        .status(List.of(LifecycleStateHistory.builder().state(LifecycleState.SUBMITTED).build()))
         .build());
 
     String statusFilter = "%s,%s".formatted(LifecycleState.SUBMITTED, LifecycleState.UNSUBMITTED);

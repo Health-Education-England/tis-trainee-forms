@@ -26,9 +26,11 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.UUID;
+import lombok.experimental.SuperBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.mongodb.core.mapping.event.BeforeConvertEvent;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 class AbstractFormMongoEventListenerTest {
 
@@ -41,7 +43,7 @@ class AbstractFormMongoEventListenerTest {
 
   @Test
   void shouldPopulateIdBeforeConvertWhenIdNull() {
-    StubForm form = new StubForm();
+    StubForm form = StubForm.builder().build();
 
     BeforeConvertEvent<AbstractForm> event = new BeforeConvertEvent<>(form, "StubForm");
     listener.onBeforeConvert(event);
@@ -52,7 +54,7 @@ class AbstractFormMongoEventListenerTest {
 
   @Test
   void shouldNotModifyIdBeforeConvertWhenIdPopulated() {
-    StubForm form = new StubForm();
+    StubForm form = StubForm.builder().build();
     UUID uuid = UUID.randomUUID();
     form.setId(uuid);
 
@@ -65,11 +67,17 @@ class AbstractFormMongoEventListenerTest {
   /**
    * A stub for testing the behaviour of the AbstractForm event listener.
    */
+  @SuperBuilder
   private static class StubForm extends AbstractForm {
 
     @Override
     public String getFormType() {
       return "test-form";
+    }
+
+    @Override
+    public LifecycleState getLifecycleState() {
+      return null;
     }
   }
 }

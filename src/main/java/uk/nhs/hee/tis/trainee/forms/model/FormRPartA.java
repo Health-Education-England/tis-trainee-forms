@@ -26,13 +26,15 @@ import java.util.UUID;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
+import lombok.experimental.SuperBuilder;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document(collection = "FormRPartA")
 @Data
+@SuperBuilder
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
-public class FormRPartA extends AbstractForm {
+public class FormRPartA extends AbstractFormR {
 
   private UUID programmeMembershipId;
   private Boolean isArcp;

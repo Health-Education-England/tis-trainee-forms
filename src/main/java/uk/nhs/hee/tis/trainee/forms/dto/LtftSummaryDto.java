@@ -22,8 +22,10 @@
 package uk.nhs.hee.tis.trainee.forms.dto;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.LifecycleStateHistoryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 /**
@@ -35,7 +37,7 @@ public record LtftSummaryDto(
 
     String name,
     UUID programmeMembershipId,
-    LifecycleState status,  //assumption: same as for FormR forms.
+    List<LifecycleStateHistoryDto> status,  //assumption: same as for FormR forms.
     Instant created,
     Instant lastModified) {
 

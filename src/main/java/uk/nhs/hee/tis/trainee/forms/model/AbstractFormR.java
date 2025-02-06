@@ -21,9 +21,10 @@
 package uk.nhs.hee.tis.trainee.forms.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.time.LocalDateTime;
 import java.util.UUID;
-import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
@@ -32,17 +33,10 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 @Data
 @SuperBuilder
-public abstract class AbstractForm {
+@EqualsAndHashCode(callSuper = true)
+public abstract class AbstractFormR extends AbstractForm {
 
-  @Id
-  private UUID id;
-  @Indexed
-  @Field(value = "traineeTisId")
-  private String traineeTisId;
-
-  @JsonIgnore
-  public abstract String getFormType();
-
-  @JsonIgnore
-  public abstract LifecycleState getLifecycleState();
+  private LifecycleState lifecycleState;
+  private LocalDateTime submissionDate;
+  private LocalDateTime lastModifiedDate;
 }

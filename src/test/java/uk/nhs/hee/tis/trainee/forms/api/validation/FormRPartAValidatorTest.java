@@ -106,15 +106,17 @@ class FormRPartAValidatorTest {
 
   @Test
   void validateDraftIfMultipleDraftsFound() {
-    FormRPartA formRPartA1 = new FormRPartA();
-    formRPartA1.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    formRPartA1.setId(ANOTHER_ID);
-    formRPartA1.setLifecycleState(LifecycleState.DRAFT);
+    FormRPartA formRPartA1 = FormRPartA.builder()
+        .traineeTisId(DEFAULT_TRAINEE_TIS_ID)
+        .id(ANOTHER_ID)
+        .lifecycleState(LifecycleState.DRAFT)
+        .build();
 
-    FormRPartA formRPartA2 = new FormRPartA();
-    formRPartA2.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    formRPartA2.setId(UUID.randomUUID());
-    formRPartA2.setLifecycleState(LifecycleState.DRAFT);
+    FormRPartA formRPartA2 = FormRPartA.builder()
+        .traineeTisId(DEFAULT_TRAINEE_TIS_ID)
+        .id(UUID.randomUUID())
+        .lifecycleState(LifecycleState.DRAFT)
+        .build();
 
     when(formRPartARepositoryMock
         .findByTraineeTisIdAndLifecycleState(formRPartADto.getTraineeTisId(),
@@ -129,10 +131,11 @@ class FormRPartAValidatorTest {
 
   @Test
   void validateUpdateDraftIfOneDraftWithSameIdFound() {
-    FormRPartA formRPartA = new FormRPartA();
-    formRPartA.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    formRPartA.setId(DEFAULT_ID);
-    formRPartA.setLifecycleState(LifecycleState.DRAFT);
+    FormRPartA formRPartA = FormRPartA.builder()
+        .traineeTisId(DEFAULT_TRAINEE_TIS_ID)
+        .id(DEFAULT_ID)
+        .lifecycleState(LifecycleState.DRAFT)
+        .build();
 
     when(formRPartARepositoryMock
         .findByTraineeTisIdAndLifecycleState(formRPartADto.getTraineeTisId(),
@@ -145,10 +148,11 @@ class FormRPartAValidatorTest {
 
   @Test
   void validateUpdateDraftIfOneDraftWithDifferentIdFound() {
-    FormRPartA formRPartA = new FormRPartA();
-    formRPartA.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    formRPartA.setId(ANOTHER_ID);
-    formRPartA.setLifecycleState(LifecycleState.DRAFT);
+    FormRPartA formRPartA = FormRPartA.builder()
+        .traineeTisId(DEFAULT_TRAINEE_TIS_ID)
+        .id(ANOTHER_ID)
+        .lifecycleState(LifecycleState.DRAFT)
+        .build();
 
     when(formRPartARepositoryMock
         .findByTraineeTisIdAndLifecycleState(formRPartADto.getTraineeTisId(),
@@ -165,10 +169,11 @@ class FormRPartAValidatorTest {
   void validateCreateDraftIfOneDraftFound() {
     formRPartADto.setId(null);
 
-    FormRPartA formRPartA = new FormRPartA();
-    formRPartA.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    formRPartA.setId(ANOTHER_ID);
-    formRPartA.setLifecycleState(LifecycleState.DRAFT);
+    FormRPartA formRPartA = FormRPartA.builder()
+        .traineeTisId(DEFAULT_TRAINEE_TIS_ID)
+        .id(ANOTHER_ID)
+        .lifecycleState(LifecycleState.DRAFT)
+        .build();
 
     when(formRPartARepositoryMock
         .findByTraineeTisIdAndLifecycleState(formRPartADto.getTraineeTisId(),
@@ -183,10 +188,11 @@ class FormRPartAValidatorTest {
 
   @Test
   void validateShouldThrowExceptionWhenValidationFails() {
-    FormRPartA formRPartA = new FormRPartA();
-    formRPartA.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    formRPartA.setId(ANOTHER_ID);
-    formRPartA.setLifecycleState(LifecycleState.DRAFT);
+    FormRPartA formRPartA = FormRPartA.builder()
+        .traineeTisId(DEFAULT_TRAINEE_TIS_ID)
+        .id(ANOTHER_ID)
+        .lifecycleState(LifecycleState.DRAFT)
+        .build();
 
     when(formRPartARepositoryMock
         .findByTraineeTisIdAndLifecycleState(formRPartADto.getTraineeTisId(),

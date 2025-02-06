@@ -60,6 +60,7 @@ import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 @Testcontainers
 @AutoConfigureMockMvc
 class LtftResourceIntegrationTest {
+
   private static final String TRAINEE_ID = "40";
   private static final UUID ID = UUID.randomUUID();
 
@@ -151,7 +152,7 @@ class LtftResourceIntegrationTest {
   void shouldNotFindLtftFormNotOwnedByUser() throws Exception {
     LtftForm ltft = LtftForm.builder()
         .id(ID)
-        .traineeId(UUID.randomUUID().toString())
+        .traineeTisId(UUID.randomUUID().toString())
         .build();
     template.insert(ltft);
 
@@ -166,7 +167,7 @@ class LtftResourceIntegrationTest {
   void shouldFindLtftFormOwnedByUser() throws Exception {
     LtftForm ltft = LtftForm.builder()
         .id(ID)
-        .traineeId(TRAINEE_ID)
+        .traineeTisId(TRAINEE_ID)
         .name("name")
         .discussions(LtftForm.LtftDiscussions.builder()
             .tpdName("tpd")
@@ -194,12 +195,12 @@ class LtftResourceIntegrationTest {
   @Test
   void shouldBeBadRequestWhenCreatingLtftFormForDifferentTrainee() throws Exception {
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
-      mockMvc.perform(post("/api/ltft")
-              .header(HttpHeaders.AUTHORIZATION, token)
-              .contentType(MediaType.APPLICATION_JSON)
-              .content("{\"traineeId\": \"another id\"}"))
-          .andExpect(status().isBadRequest())
-          .andExpect(jsonPath("$").doesNotExist());
+    mockMvc.perform(post("/api/ltft")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"traineeId\": \"another id\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$").doesNotExist());
   }
 
   @Test
@@ -241,7 +242,7 @@ class LtftResourceIntegrationTest {
         is(1L));
     List<LtftForm> savedRecords = template.find(new Query(), LtftForm.class);
     assertThat("Unexpected saved record name.", savedRecords.get(0).getName(), is("test"));
-    assertThat("Unexpected saved record trainee id.", savedRecords.get(0).getTraineeId(),
+    assertThat("Unexpected saved record trainee id.", savedRecords.get(0).getTraineeTisId(),
         is(TRAINEE_ID));
     assertThat("Unexpected saved record id.", savedRecords.get(0).getId(), is(notNullValue()));
   }
@@ -309,7 +310,7 @@ class LtftResourceIntegrationTest {
   void shouldUpdateLtftFormForTrainee() throws Exception {
     LtftForm form = LtftForm.builder()
         .id(ID)
-        .traineeId(TRAINEE_ID)
+        .traineeTisId(TRAINEE_ID)
         .build();
     LtftForm formSaved = template.save(form);
 
@@ -337,7 +338,7 @@ class LtftResourceIntegrationTest {
         is(1L));
     List<LtftForm> savedRecords = template.find(new Query(), LtftForm.class);
     assertThat("Unexpected saved record name.", savedRecords.get(0).getName(), is("updated"));
-    assertThat("Unexpected saved record trainee id.", savedRecords.get(0).getTraineeId(),
+    assertThat("Unexpected saved record trainee id.", savedRecords.get(0).getTraineeTisId(),
         is(TRAINEE_ID));
     assertThat("Unexpected saved record id.", savedRecords.get(0).getId(),
         is(formSaved.getId()));

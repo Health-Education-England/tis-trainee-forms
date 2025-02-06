@@ -90,7 +90,7 @@ class LtftServiceTest {
 
     LtftForm entity1 = LtftForm.builder()
         .id(ltftId1)
-        .traineeId(TRAINEE_ID)
+        .traineeTisId(TRAINEE_ID)
         .name("Test LTFT form 1")
         .programmeMembership(LtftProgrammeMembership.builder()
             .id(pmId1)
@@ -112,7 +112,7 @@ class LtftServiceTest {
 
     LtftForm entity2 = LtftForm.builder()
         .id(ltftId2)
-        .traineeId(TRAINEE_ID)
+        .traineeTisId(TRAINEE_ID)
         .name("Test LTFT form 2")
         .programmeMembership(LtftProgrammeMembership.builder()
             .id(pmId2)
@@ -191,7 +191,7 @@ class LtftServiceTest {
   void shouldReturnDtoIfLtftFormForTraineeFound() {
     LtftForm form = LtftForm.builder()
         .id(ID)
-        .traineeId(TRAINEE_ID)
+        .traineeTisId(TRAINEE_ID)
         .name("test")
         .build();
     when(ltftRepository.findByTraineeIdAndId(TRAINEE_ID, ID))
@@ -224,7 +224,7 @@ class LtftServiceTest {
 
     LtftForm existingForm = LtftForm.builder()
         .id(ID)
-        .traineeId(TRAINEE_ID)
+        .traineeTisId(TRAINEE_ID)
         .name("test")
         .build();
     when(ltftRepository.save(any())).thenReturn(existingForm);
@@ -295,7 +295,7 @@ class LtftServiceTest {
 
     LtftForm existingForm = LtftForm.builder()
         .id(ID)
-        .traineeId(TRAINEE_ID)
+        .traineeTisId(TRAINEE_ID)
         .name("test")
         .build();
     when(ltftRepository.findByTraineeIdAndId(TRAINEE_ID, ID))

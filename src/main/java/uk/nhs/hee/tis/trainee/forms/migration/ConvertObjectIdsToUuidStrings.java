@@ -39,6 +39,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractForm;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractFormR;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
@@ -88,7 +89,7 @@ public class ConvertObjectIdsToUuidStrings {
     migrateCollection(FormRPartB.class);
   }
 
-  private void migrateCollection(Class<? extends AbstractForm> formClass) {
+  private void migrateCollection(Class<? extends AbstractFormR> formClass) {
     String collectionName = mongoTemplate.getCollectionName(formClass);
     log.info("Generating UUID strings for forms in collection {}.", collectionName);
 

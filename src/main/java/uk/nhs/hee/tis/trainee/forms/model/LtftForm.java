@@ -27,7 +27,8 @@ import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
 import lombok.Data;
-import lombok.ToString;
+import lombok.EqualsAndHashCode;
+import lombok.experimental.SuperBuilder;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -42,16 +43,13 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
  */
 @Document("LtftForm")
 @Data
-@Builder
-public class LtftForm implements Persistable<UUID> {
-  @Id
-  private UUID id;
-  @Indexed
-  private String traineeId;
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
+public class LtftForm extends AbstractAuditedForm implements Persistable<UUID> {
+
 
   private String name;
   private LtftProgrammeMembership programmeMembership;
-  private LifecycleState status;
 
   private LtftDiscussions discussions;
 
@@ -66,41 +64,45 @@ public class LtftForm implements Persistable<UUID> {
     return created == null;
   }
 
+  @Override
+  public String getFormType() {
+    return "ltft";
+  }
 
   /**
    * Programme membership data for a LTFT calculation.
    */
-  @Data
   @Builder
-  public static class LtftProgrammeMembership {
-    @Indexed
-    @Field("id")
-    private UUID id;
-    private String name;
-    private LocalDate startDate;
-    private LocalDate endDate;
-    private double wte;
+  public record LtftProgrammeMembership(
+      @Indexed
+      @Field("id")
+      UUID id,
+      String name,
+      LocalDate startDate,
+      LocalDate endDate,
+      double wte) {
+
   }
 
   /**
    * Details of the people who have been approached to discuss a LTFT application, including TPD.
    */
-  @Data
   @Builder
-  public static class LtftDiscussions {
-    private String tpdName;
-    private String tpdEmail;
-    private List<LtftPersonRole> other;
+  public record LtftDiscussions(
+      String tpdName,
+      String tpdEmail,
+      List<LtftPersonRole> other) {
+
   }
 
   /**
    * Details of other people involved in the discussion.
    */
-  @Data
   @Builder
-  public static class LtftPersonRole {
-    private String name;
-    private String email;
-    private String role;
+  public record LtftPersonRole(
+      String name,
+      String email,
+      String role) {
+
   }
 }

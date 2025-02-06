@@ -105,6 +105,8 @@ testing {
 
     val test by getting(JvmTestSuite::class) {
       dependencies {
+        compileOnly("org.projectlombok:lombok")
+        annotationProcessor("org.projectlombok:lombok")
         annotationProcessor("org.mapstruct:mapstruct-processor:${mapstructVersion}")
       }
     }

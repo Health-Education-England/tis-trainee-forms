@@ -111,13 +111,13 @@ class S3FormRPartARepositoryImplTest {
    * @return form with all default values
    */
   FormRPartA createEntity() {
-    FormRPartA entity = new FormRPartA();
-    entity.setId(DEFAULT_ID);
-    entity.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    entity.setForename(DEFAULT_FORENAME);
-    entity.setSurname(DEFAULT_SURNAME);
-    entity.setLifecycleState(LifecycleState.DRAFT);
-    return entity;
+    return FormRPartA.builder()
+        .id(DEFAULT_ID)
+        .traineeTisId(DEFAULT_TRAINEE_TIS_ID)
+        .forename(DEFAULT_FORENAME)
+        .surname(DEFAULT_SURNAME)
+        .lifecycleState(LifecycleState.DRAFT)
+        .build();
   }
 
   @Test

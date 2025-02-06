@@ -52,6 +52,7 @@ import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 
 @ExtendWith(MockitoExtension.class)
 class SortWorkPlacementsTest {
+
   private static final LocalDate OLDEST_WORK = LocalDate.of(2000, 1, 1);
   private static final LocalDate MIDDLE_WORK = LocalDate.of(2010, 10, 10);
   private static final LocalDate NEWEST_WORK = LocalDate.of(2020, 2, 5);
@@ -94,8 +95,9 @@ class SortWorkPlacementsTest {
     workInOrder.add(workMiddle);
     workInOrder.add(workOldest);
 
-    FormRPartB form = new FormRPartB();
-    form.setWork(workInOrder);
+    FormRPartB form = FormRPartB.builder()
+        .work(workInOrder)
+        .build();
 
     when(template.findAll(FormRPartB.class)).thenReturn(Collections.singletonList(form));
 
@@ -114,8 +116,9 @@ class SortWorkPlacementsTest {
     workInOrder.add(new Work());
     workInOrder.add(workOldest);
 
-    FormRPartB form = new FormRPartB();
-    form.setWork(workInOrder);
+    FormRPartB form = FormRPartB.builder()
+        .work(workInOrder)
+        .build();
 
     when(covidDeclarationMapper.toDto(any())).thenReturn(null);
     when(template.findAll(FormRPartB.class)).thenReturn(Collections.singletonList(form));
@@ -143,8 +146,9 @@ class SortWorkPlacementsTest {
     workInOrder.add(workOldest);
     workInOrder.add(workNewest);
 
-    FormRPartB form = new FormRPartB();
-    form.setWork(workInOrder);
+    FormRPartB form = FormRPartB.builder()
+        .work(workInOrder)
+        .build();
 
     when(template.findAll(FormRPartB.class)).thenReturn(Collections.singletonList(form));
 

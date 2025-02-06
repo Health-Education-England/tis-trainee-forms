@@ -29,6 +29,7 @@ import java.util.UUID;
 import lombok.Data;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.LifecycleStateHistory;
 
 /**
  * A DTO for transferring LTFT forms.
@@ -46,7 +47,7 @@ public class LtftFormDto {
 
   private LtftDiscussionDto discussions;
 
-  private LifecycleState status;
+  private List<LifecycleStateHistory> status;
 
   private Instant created;
   private Instant lastModified;
@@ -81,5 +82,13 @@ public class LtftFormDto {
     private String name;
     private String email;
     private String role;
+  }
+
+  public record LifecycleStateHistoryDto (
+      LifecycleState state,
+      String detail,
+      Instant timestamp
+  ){
+
   }
 }
