@@ -23,7 +23,6 @@ package uk.nhs.hee.tis.trainee.forms.model;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
 import lombok.Data;
@@ -52,8 +51,6 @@ public class LtftForm implements Persistable<UUID> {
   private LtftProgrammeMembership programmeMembership;
   private LifecycleState status;
 
-  private LtftDiscussions discussions;
-
   @CreatedDate
   private Instant created;
 
@@ -78,27 +75,5 @@ public class LtftForm implements Persistable<UUID> {
     private LocalDate startDate;
     private LocalDate endDate;
     private double wte;
-  }
-
-  /**
-   * Details of the people who have been approached to discuss a LTFT application, including TPD.
-   */
-  @Data
-  @Builder
-  public static class LtftDiscussions {
-    private String tpdName;
-    private String tpdEmail;
-    private List<LtftPersonRole> other;
-  }
-
-  /**
-   * Details of other people involved in the discussion.
-   */
-  @Data
-  @Builder
-  public static class LtftPersonRole {
-    private String name;
-    private String email;
-    private String role;
   }
 }
