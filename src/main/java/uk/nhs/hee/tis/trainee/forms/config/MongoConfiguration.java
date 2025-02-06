@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.config;
 import jakarta.annotation.PostConstruct;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.config.EnableMongoAuditing;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.index.Index;
 import org.springframework.data.mongodb.core.index.IndexOperations;
@@ -34,6 +35,7 @@ import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
  * Configuration for the Mongo database.
  */
 @Configuration
+@EnableMongoAuditing
 public class MongoConfiguration {
 
   private final MongoTemplate template;

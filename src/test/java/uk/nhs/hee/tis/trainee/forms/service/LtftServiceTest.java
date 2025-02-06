@@ -34,7 +34,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -49,7 +48,8 @@ import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 
 class LtftServiceTest {
 
-  private static final String TRAINEE_ID = UUID.randomUUID().toString();
+  private static final String TRAINEE_ID = "40";
+  private static final UUID ID = UUID.randomUUID();
 
   private LtftService service;
   private LtftFormRepository ltftRepository;
@@ -65,7 +65,7 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldReturnEmptyGettingLtftFormsWhenNotFound() {
+  void shouldReturnEmptyGettingLtftFormSummariesWhenNotFound() {
     when(ltftRepository.findByTraineeIdOrderByLastModified(TRAINEE_ID)).thenReturn(
         List.of());
 
@@ -75,8 +75,8 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldGetLtftFormsWhenFound() {
-    ObjectId ltftId1 = ObjectId.get();
+  void shouldGetLtftFormSummariesWhenFound() {
+    UUID ltftId1 = UUID.randomUUID();
     UUID pmId1 = UUID.randomUUID();
     Instant created1 = Instant.now().minus(Duration.ofDays(1));
     Instant lastModified1 = Instant.now().plus(Duration.ofDays(1));
@@ -92,7 +92,7 @@ class LtftServiceTest {
         .lastModified(lastModified1)
         .build();
 
-    ObjectId ltftId2 = ObjectId.get();
+    UUID ltftId2 = UUID.randomUUID();
     UUID pmId2 = UUID.randomUUID();
     Instant created2 = Instant.now().minus(Duration.ofDays(2));
     Instant lastModified2 = Instant.now().plus(Duration.ofDays(2));
