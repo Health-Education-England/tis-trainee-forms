@@ -26,9 +26,12 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
+import lombok.Data;
+import lombok.ToString;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.domain.Persistable;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
@@ -36,84 +39,69 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 /**
  * A LTFT form entity.
- *
- * @param id                  The form ID.
- * @param traineeId           The trainee ID.
- * @param name                The form name.
- * @param programmeMembership The form programme membership.
- * @param status              The form lifecycleState.
- * @param created             When the form was created (auto-generated).
- * @param lastModified        When the form was last updated (auto-generated).
  */
-@Document
+@Document("LtftForm")
+@Data
 @Builder
-public record LtftForm(
-    @Id
-    UUID id,
-    @Indexed
-    String traineeId,
+@ToString
+public class LtftForm implements Persistable<UUID> {
+  @Id
+  private UUID id;
+  @Indexed
+  private String traineeId;
 
-    String name,
-    LtftProgrammeMembership programmeMembership,
-    LifecycleState status,
+  private String name;
+  private LtftProgrammeMembership programmeMembership;
+  private LifecycleState status;
 
-    LtftDiscussions discussions,
+  private LtftDiscussions discussions;
 
-    @CreatedDate
-    Instant created,
+  @CreatedDate
+  private Instant created;
 
-    @LastModifiedDate
-    Instant lastModified
-) {
+  @LastModifiedDate
+  private Instant lastModified;
+
+  @Override
+  public boolean isNew() {
+    return created == null;
+  }
+
 
   /**
    * Programme membership data for a LTFT calculation.
-   *
-   * @param id        The ID of the programme membership.
-   * @param name      The name of the programme.
-   * @param startDate The start date of the programme.
-   * @param endDate   The end date of the programme.
-   * @param wte       The whole time equivalent of the programme membership.
    */
+  @Data
   @Builder
-  public record LtftProgrammeMembership(
-      @Indexed
-      @Field("id")
-      UUID id,
-      String name,
-      LocalDate startDate,
-      LocalDate endDate,
-      double wte) {
-
+  public static class LtftProgrammeMembership {
+    @Indexed
+    @Field("id")
+    private UUID id;
+    private String name;
+    private LocalDate startDate;
+    private LocalDate endDate;
+    private double wte;
   }
 
   /**
    * Details of the people who have been approached to discuss a LTFT application, including TPD.
-   *
-   * @param tpdName  The Training Programme Director.
-   * @param tpdEmail The email for the TPD.
-   * @param other    The list of other people who have been contacted.
    */
+  @Data
   @Builder
-  public record LtftDiscussions(
-      String tpdName,
-      String tpdEmail,
-      List<LtftPersonRole> other) {
-
+  public static class LtftDiscussions {
+    private String tpdName;
+    private String tpdEmail;
+    private List<LtftPersonRole> other;
   }
 
   /**
    * Details of other people involved in the discussion.
-   *
-   * @param name  Person name.
-   * @param email Person email.
-   * @param role  Their role.
    */
+  @Data
   @Builder
-  public record LtftPersonRole(
-      String name,
-      String email,
-      String role) {
-
+  public static class LtftPersonRole {
+    private String name;
+    private String email;
+    private String role;
   }
 }

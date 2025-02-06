@@ -122,11 +122,12 @@ public class LtftService {
     String traineeId = traineeIdentity.getTraineeId();
     log.info("Saving LTFT form for trainee [{}]: {}", traineeId, dto);
     LtftForm form = mapper.toEntity(dto);
-    if (!form.traineeId().equals(traineeId)) {
+    if (!form.getTraineeId().equals(traineeId)) {
       log.warn("Could not save form since it does belong to the logged-in trainee {}: {}",
           traineeId, dto);
       return Optional.empty();
     }
+    form.setId(UUID.randomUUID());
     LtftForm savedForm = ltftFormRepository.save(form);
     return Optional.of(mapper.toDto(savedForm));
   }
@@ -142,12 +143,12 @@ public class LtftService {
     String traineeId = traineeIdentity.getTraineeId();
     log.info("Updating LTFT form {} for trainee [{}]: {}", formId, traineeId, dto);
     LtftForm form = mapper.toEntity(dto);
-    if (form.id() == null || form.id() != formId) {
+    if (form.getId() == null || !form.getId().equals(formId)) {
       log.warn("Could not update form since its id {} does not equal provided form id {}",
-          form.id(), formId);
+          form.getId(), formId);
       return Optional.empty();
     }
-    if (!form.traineeId().equals(traineeId)) {
+    if (!form.getTraineeId().equals(traineeId)) {
       log.warn("Could not update form since it does belong to the logged-in trainee {}: {}",
           traineeId, dto);
       return Optional.empty();
@@ -158,6 +159,7 @@ public class LtftService {
           formId, traineeId);
       return Optional.empty();
     }
+    form.setCreated(existingForm.get().getCreated());
     LtftForm savedForm = ltftFormRepository.save(form); //losing created set to null
     return Optional.of(mapper.toDto(savedForm));
   }

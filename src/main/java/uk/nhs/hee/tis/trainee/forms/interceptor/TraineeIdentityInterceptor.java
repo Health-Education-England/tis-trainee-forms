@@ -50,8 +50,8 @@ public class TraineeIdentityInterceptor implements HandlerInterceptor {
 
     if (authToken != null) {
       try {
-        String traineeId = AuthTokenUtil.getTraineeTisId(authToken);
-        traineeIdentity.setTraineeId(traineeId);
+        String traineeTisId = AuthTokenUtil.getTraineeTisId(authToken);
+        traineeIdentity.setTraineeId(traineeTisId);
       } catch (IOException e) {
         log.warn("Unable to extract trainee ID from authorization token.", e);
       }

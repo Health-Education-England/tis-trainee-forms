@@ -231,8 +231,7 @@ class LtftServiceTest {
 
     Optional<LtftFormDto> formDtoOptional = service.saveLtftForm(dtoToSave);
 
-    LtftForm formToSave = mapper.toEntity(dtoToSave);
-    verify(ltftRepository).save(formToSave);
+    verify(ltftRepository).save(any());
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
   }
 

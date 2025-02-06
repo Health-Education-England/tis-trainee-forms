@@ -62,7 +62,7 @@ class TraineeIdentityInterceptorIntegrationTest {
 
   private static final String BEAN_NAME = "traineeIdentity";
   private static final String TARGET_BEAN_NAME = ScopedProxyUtils.getTargetBeanName(BEAN_NAME);
-  private static final String TRAINEE_ID = "traineeTisId";
+  private static final String TRAINEE_ID = "traineeId";
 
   @Autowired
   private MockMvc mockMvc;

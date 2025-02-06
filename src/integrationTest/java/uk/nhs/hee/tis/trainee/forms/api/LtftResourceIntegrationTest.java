@@ -34,6 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -140,7 +141,7 @@ class LtftResourceIntegrationTest {
   @Test
   void shouldNotFindLtftFormWhenNoneExist() throws Exception {
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
-    mockMvc.perform(get("/api/ltft/formX")
+    mockMvc.perform(get("/api/ltft/" + UUID.randomUUID())
             .header(HttpHeaders.AUTHORIZATION, token))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$").doesNotExist());
@@ -196,7 +197,7 @@ class LtftResourceIntegrationTest {
       mockMvc.perform(post("/api/ltft")
               .header(HttpHeaders.AUTHORIZATION, token)
               .contentType(MediaType.APPLICATION_JSON)
-              .content("{\"traineeTisId\": \"another id\"}"))
+              .content("{\"traineeId\": \"another id\"}"))
           .andExpect(status().isBadRequest())
           .andExpect(jsonPath("$").doesNotExist());
   }
@@ -239,10 +240,10 @@ class LtftResourceIntegrationTest {
     assertThat("Unexpected saved record count.", template.count(new Query(), LtftForm.class),
         is(1L));
     List<LtftForm> savedRecords = template.find(new Query(), LtftForm.class);
-    assertThat("Unexpected saved record name.", savedRecords.get(0).name(), is("test"));
-    assertThat("Unexpected saved record trainee id.", savedRecords.get(0).traineeId(),
+    assertThat("Unexpected saved record name.", savedRecords.get(0).getName(), is("test"));
+    assertThat("Unexpected saved record trainee id.", savedRecords.get(0).getTraineeId(),
         is(TRAINEE_ID));
-    assertThat("Unexpected saved record id.", savedRecords.get(0).id(), is(notNullValue()));
+    assertThat("Unexpected saved record id.", savedRecords.get(0).getId(), is(notNullValue()));
   }
 
   @Test
@@ -307,38 +308,38 @@ class LtftResourceIntegrationTest {
   @Test
   void shouldUpdateLtftFormForTrainee() throws Exception {
     LtftForm form = LtftForm.builder()
+        .id(ID)
         .traineeId(TRAINEE_ID)
         .build();
     LtftForm formSaved = template.save(form);
-    assert formSaved.id() != null;
 
     LtftFormDto formToUpdate = new LtftFormDto();
     formToUpdate.setTraineeId(TRAINEE_ID);
-    formToUpdate.setId(formSaved.id());
+    formToUpdate.setId(ID);
     formToUpdate.setName("updated");
 
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
-    mockMvc.perform(put("/api/ltft/" + formSaved.id())
+    mockMvc.perform(put("/api/ltft/" + ID)
             .header(HttpHeaders.AUTHORIZATION, token)
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToUpdateJson))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.id").value(formSaved.id().toString()))
+        .andExpect(jsonPath("$.id").value(ID.toString()))
         .andExpect(jsonPath("$.traineeId").value(TRAINEE_ID))
         .andExpect(jsonPath("$.name").value("updated"))
-        //FIXME
-//        .andExpect(jsonPath("$.created").value(
-//            formSaved.created().toString()))
+        .andExpect(jsonPath("$.created").value(
+            formSaved.getCreated().truncatedTo(ChronoUnit.MILLIS).toString()))
         .andExpect(jsonPath("$.lastModified",
-            greaterThan(formSaved.lastModified().toString())));
+            greaterThan(formSaved.getLastModified().truncatedTo(ChronoUnit.MILLIS).toString())));
 
     assertThat("Unexpected saved record count.", template.count(new Query(), LtftForm.class),
         is(1L));
     List<LtftForm> savedRecords = template.find(new Query(), LtftForm.class);
-    assertThat("Unexpected saved record name.", savedRecords.get(0).name(), is("updated"));
-    assertThat("Unexpected saved record trainee id.", savedRecords.get(0).traineeId(),
+    assertThat("Unexpected saved record name.", savedRecords.get(0).getName(), is("updated"));
+    assertThat("Unexpected saved record trainee id.", savedRecords.get(0).getTraineeId(),
         is(TRAINEE_ID));
-    assertThat("Unexpected saved record id.", savedRecords.get(0).id(), is(formSaved.id()));
+    assertThat("Unexpected saved record id.", savedRecords.get(0).getId(),
+        is(formSaved.getId()));
   }
 }
