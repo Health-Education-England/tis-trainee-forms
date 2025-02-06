@@ -89,10 +89,17 @@ class AdminLtftResourceIntegrationTest {
   @NullAndEmptySource
   void shouldCountAllLtftsWhenNoStatusFilter(String statusFilter) throws Exception {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
-        .map(s -> LtftForm.builder().status(s).build())
+        .map(s -> {
+          LtftForm ltft = new LtftForm();
+          ltft.setStatus(s);
+          return ltft;
+        })
         .toList();
     template.insertAll(ltfts);
-    template.insert(LtftForm.builder().status(LifecycleState.SUBMITTED).build());
+
+    LtftForm ltft = new LtftForm();
+    ltft.setStatus(LifecycleState.SUBMITTED);
+    template.insert(ltft);
 
     mockMvc.perform(get("/api/admin/ltft/count")
             .param("status", statusFilter))
@@ -105,7 +112,11 @@ class AdminLtftResourceIntegrationTest {
   @EnumSource(LifecycleState.class)
   void shouldCountMatchingLtftsWhenHasStatusFilter(LifecycleState status) throws Exception {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
-        .map(s -> LtftForm.builder().status(s).build())
+        .map(s -> {
+          LtftForm ltft = new LtftForm();
+          ltft.setStatus(s);
+          return ltft;
+        })
         .toList();
     template.insertAll(ltfts);
 
@@ -119,10 +130,17 @@ class AdminLtftResourceIntegrationTest {
   @Test
   void shouldCountMatchingLtftsWhenMultipleStatusFilters() throws Exception {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
-        .map(s -> LtftForm.builder().status(s).build())
+        .map(s -> {
+          LtftForm ltft = new LtftForm();
+          ltft.setStatus(s);
+          return ltft;
+        })
         .toList();
     template.insertAll(ltfts);
-    template.insert(LtftForm.builder().status(LifecycleState.SUBMITTED).build());
+
+    LtftForm ltft = new LtftForm();
+    ltft.setStatus(LifecycleState.SUBMITTED);
+    template.insert(ltft);
 
     String statusFilter = "%s,%s".formatted(LifecycleState.SUBMITTED, LifecycleState.UNSUBMITTED);
     mockMvc.perform(get("/api/admin/ltft/count")

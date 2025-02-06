@@ -21,12 +21,9 @@
 
 package uk.nhs.hee.tis.trainee.forms.dto;
 
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.Builder;
-import org.bson.types.ObjectId;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 /**
@@ -34,8 +31,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
  */
 @Builder
 public record LtftSummaryDto(
-    @JsonSerialize(using = ToStringSerializer.class)
-    ObjectId id,
+    UUID id,
 
     String name,
     UUID programmeMembershipId,

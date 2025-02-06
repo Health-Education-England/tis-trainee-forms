@@ -68,7 +68,7 @@ public class LtftService {
     String traineeId = traineeIdentity.getTraineeId();
     log.info("Getting LTFT forms for trainee [{}]", traineeId);
 
-    List<LtftForm> entities = ltftFormRepository.findByTraineeIdOrderByLastModified(
+    List<LtftForm> entities = ltftFormRepository.findByTraineeTisIdOrderByLastModified(
         traineeId);
     log.info("Found {} LTFT forms for trainee [{}]", entities.size(), traineeId);
 

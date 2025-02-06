@@ -29,7 +29,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.OK;
 
 import java.util.List;
-import org.bson.types.ObjectId;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
@@ -59,12 +59,12 @@ class LtftResourceTest {
 
   @Test
   void shouldGetLtftSummariesWhenLtftFormsExist() {
-    ObjectId id1 = ObjectId.get();
+    UUID id1 = UUID.randomUUID();
     LtftSummaryDto dto1 = LtftSummaryDto.builder()
         .id(id1)
         .name("Test LTFT 1")
         .build();
-    ObjectId id2 = ObjectId.get();
+    UUID id2 = UUID.randomUUID();
     LtftSummaryDto dto2 = LtftSummaryDto.builder()
         .id(id2)
         .name("Test LTFT 2")

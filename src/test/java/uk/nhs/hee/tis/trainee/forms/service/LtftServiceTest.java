@@ -34,7 +34,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -66,7 +65,7 @@ class LtftServiceTest {
 
   @Test
   void shouldReturnEmptyGettingLtftFormsWhenNotFound() {
-    when(ltftRepository.findByTraineeIdOrderByLastModified(TRAINEE_ID)).thenReturn(
+    when(ltftRepository.findByTraineeTisIdOrderByLastModified(TRAINEE_ID)).thenReturn(
         List.of());
 
     List<LtftSummaryDto> result = service.getLtftSummaries();
@@ -76,39 +75,37 @@ class LtftServiceTest {
 
   @Test
   void shouldGetLtftFormsWhenFound() {
-    ObjectId ltftId1 = ObjectId.get();
+    UUID ltftId1 = UUID.randomUUID();
     UUID pmId1 = UUID.randomUUID();
     Instant created1 = Instant.now().minus(Duration.ofDays(1));
     Instant lastModified1 = Instant.now().plus(Duration.ofDays(1));
 
-    LtftForm entity1 = LtftForm.builder()
-        .id(ltftId1)
-        .traineeId(TRAINEE_ID)
-        .name("Test LTFT form 1")
-        .programmeMembership(LtftProgrammeMembership.builder()
-            .id(pmId1)
-            .build())
-        .created(created1)
-        .lastModified(lastModified1)
-        .build();
+    LtftForm entity1 = new LtftForm();
+    entity1.setId(ltftId1);
+    entity1.setTraineeTisId(TRAINEE_ID);
+    entity1.setName("Test LTFT form 1");
+    entity1.setProgrammeMembership(LtftProgrammeMembership.builder()
+        .id(pmId1)
+        .build());
+    entity1.setCreated(created1);
+    entity1.setLastModified(lastModified1);
 
-    ObjectId ltftId2 = ObjectId.get();
+    UUID ltftId2 = UUID.randomUUID();
     UUID pmId2 = UUID.randomUUID();
     Instant created2 = Instant.now().minus(Duration.ofDays(2));
     Instant lastModified2 = Instant.now().plus(Duration.ofDays(2));
 
-    LtftForm entity2 = LtftForm.builder()
-        .id(ltftId2)
-        .traineeId(TRAINEE_ID)
-        .name("Test LTFT form 2")
-        .programmeMembership(LtftProgrammeMembership.builder()
-            .id(pmId2)
-            .build())
-        .created(created2)
-        .lastModified(lastModified2)
-        .build();
+    LtftForm entity2 = new LtftForm();
+    entity2.setId(ltftId2);
+    entity2.setTraineeTisId(TRAINEE_ID);
+    entity2.setName("Test LTFT form 2");
+    entity2.setProgrammeMembership(LtftProgrammeMembership.builder()
+        .id(pmId2)
+        .build());
+    entity2.setCreated(created2);
+    entity2.setLastModified(lastModified2);
 
-    when(ltftRepository.findByTraineeIdOrderByLastModified(TRAINEE_ID)).thenReturn(
+    when(ltftRepository.findByTraineeTisIdOrderByLastModified(TRAINEE_ID)).thenReturn(
         List.of(entity1, entity2));
 
     List<LtftSummaryDto> result = service.getLtftSummaries();
