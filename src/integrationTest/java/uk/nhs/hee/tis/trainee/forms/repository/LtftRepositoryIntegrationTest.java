@@ -19,7 +19,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.api;
+package uk.nhs.hee.tis.trainee.forms.repository;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -31,12 +31,10 @@ import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -45,17 +43,13 @@ import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 
 @SpringBootTest
 @Testcontainers
-@AutoConfigureMockMvc
-class LtftResourceIntegrationTest {
+class LtftRepositoryIntegrationTest {
   private static final String TRAINEE_ID = "40";
 
   @Container
   @ServiceConnection
   private static final MongoDBContainer mongoContainer = new MongoDBContainer(
       DockerImageNames.MONGO);
-
-  @Autowired
-  private MockMvc mockMvc;
 
   @Autowired
   private MongoTemplate template;
