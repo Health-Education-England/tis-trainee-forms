@@ -44,10 +44,10 @@ public interface LtftFormRepository extends MongoRepository<LtftForm, ObjectId> 
   List<LtftForm> findByTraineeTisIdOrderByLastModified(String traineeId);
 
   /**
-   * Count all LTFT forms with one of the given states.
+   * Count all LTFT forms with one of the given current states.
    *
    * @param states The states to include in the count.
    * @return The number of found LTFT forms.
    */
-  long countByStatusIn(Set<LifecycleState> states);
+  long countByStatus_CurrentIn(Set<LifecycleState> states);
 }

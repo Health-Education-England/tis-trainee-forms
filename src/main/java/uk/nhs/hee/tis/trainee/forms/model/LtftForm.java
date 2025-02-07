@@ -46,7 +46,7 @@ public class LtftForm extends AbstractAuditedForm {
 
   String name;
   LtftProgrammeMembership programmeMembership;
-  List<LtftLifecycleStateHistory> status;
+  LtftLifecycleState status;
 
   @Override
   public String getFormType() {
@@ -59,12 +59,10 @@ public class LtftForm extends AbstractAuditedForm {
    */
   @Override
   public LifecycleState getLifecycleState() {
-    if (status == null || status.isEmpty()) {
-      return null; //DRAFT?
+    if (status == null) {
+      return null;
     }
-    return status.stream()
-        .max(Comparator.comparing(LtftLifecycleStateHistory::timestamp))
-        .get().state();
+    return status.current();
   }
 
   /**
@@ -85,6 +83,19 @@ public class LtftForm extends AbstractAuditedForm {
       LocalDate startDate,
       LocalDate endDate,
       double wte) {
+
+  }
+
+  /**
+   * LTFT form lifecycle state.
+   *
+   * @param current The current state.
+   * @param history The list of all states, past and current.
+   */
+  @Builder
+  public record LtftLifecycleState(
+      LifecycleState current,
+      List<LtftLifecycleStateHistory> history) {
 
   }
 
