@@ -26,7 +26,6 @@ import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
 import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 
@@ -52,21 +51,4 @@ public interface LtftMapper {
    * @return The equivalent summary DTOs.
    */
   List<LtftSummaryDto> toSummaryDtos(List<LtftForm> entities);
-
-
-  /**
-   * Convert a {@link LtftForm} to {@link LtftFormDto} DTO.
-   *
-   * @param entity The form to convert.
-   * @return The equivalent DTO.
-   */
-  LtftFormDto toDto(LtftForm entity);
-
-  /**
-   * Convert a {@link LtftFormDto} DTO to a {@link LtftForm}.
-   *
-   * @param dto The DTO to convert.
-   * @return The equivalent LTFT Form.
-   */
-  LtftForm toEntity(LtftFormDto dto);
 }
