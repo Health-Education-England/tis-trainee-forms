@@ -54,6 +54,7 @@ public class LtftForm extends AbstractAuditedForm {
 
   /**
    * Get the current (most recent) lifecycle state.
+   *
    * @return The lifecycle state, or null if no lifecycle states exist.
    */
   @Override

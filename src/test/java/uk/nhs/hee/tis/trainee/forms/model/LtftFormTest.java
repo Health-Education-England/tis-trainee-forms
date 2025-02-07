@@ -25,6 +25,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -47,7 +48,9 @@ class LtftFormTest {
   @EnumSource(LifecycleState.class)
   void shouldGetLifecycleState(LifecycleState s) {
     LtftForm form = new LtftForm();
-    form.setStatus(new LtftForm.LtftLifecycleState(s, List.of()));
-    assertThat("Unexpected lifecycle state.",form.getLifecycleState(), is(s));
+    List<LtftForm.LtftLifecycleStateHistory> history = List.of(
+        new LtftForm.LtftLifecycleStateHistory(LifecycleState.SUBMITTED, "test", Instant.now()));
+    form.setStatus(new LtftForm.LtftLifecycleState(s, history));
+    assertThat("Unexpected lifecycle state.", form.getLifecycleState(), is(s));
   }
 }
