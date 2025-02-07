@@ -1,6 +1,7 @@
 /*
  * The MIT License (MIT)
- * Copyright 2020 Crown Copyright (Health Education England)
+ *
+ * Copyright 2025 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -20,26 +21,6 @@
 
 package uk.nhs.hee.tis.trainee.forms.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import java.time.LocalDateTime;
-import java.util.UUID;
-import lombok.Data;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Field;
-import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+public abstract class AbstractAuditedForm extends AbstractForm {
 
-@Data
-public abstract class AbstractForm {
-
-  @Id
-  private UUID id;
-  @Indexed
-  @Field(value = "traineeTisId")
-  private String traineeTisId;
-
-
-
-  @JsonIgnore
-  public abstract String getFormType();
 }
