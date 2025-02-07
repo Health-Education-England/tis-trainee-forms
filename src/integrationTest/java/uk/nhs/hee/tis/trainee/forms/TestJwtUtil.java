@@ -19,30 +19,38 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.model;
+package uk.nhs.hee.tis.trainee.forms;
 
-import java.time.Instant;
-import java.util.UUID;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.domain.Persistable;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
-@Data
-@ToString(callSuper = true)
-@EqualsAndHashCode(callSuper = true)
-public abstract class AbstractAuditedForm extends AbstractForm implements Persistable<UUID> {
+/**
+ * A utility for generating test JWT tokens.
+ */
+public class TestJwtUtil {
 
-  @CreatedDate
-  Instant created;
+  public static final String TIS_ID_ATTRIBUTE = "custom:tisId";
 
-  @LastModifiedDate
-  Instant lastModified;
+  /**
+   * Generate a token with the given payload.
+   *
+   * @param payload The payload to inject in to the token.
+   * @return The generated token.
+   */
+  public static String generateToken(String payload) {
+    String encodedPayload = Base64.getUrlEncoder()
+        .encodeToString(payload.getBytes(StandardCharsets.UTF_8));
+    return String.format("aGVhZGVy.%s.c2lnbmF0dXJl", encodedPayload);
+  }
 
-  @Override
-  public boolean isNew() {
-    return created == null;
+  /**
+   * Generate a token with the TIS ID attribute as the payload.
+   *
+   * @param traineeTisId The TIS ID to inject in to the payload.
+   * @return The generated token.
+   */
+  public static String generateTokenForTisId(String traineeTisId) {
+    String payload = String.format("{\"%s\":\"%s\"}", TIS_ID_ATTRIBUTE, traineeTisId);
+    return generateToken(payload);
   }
 }

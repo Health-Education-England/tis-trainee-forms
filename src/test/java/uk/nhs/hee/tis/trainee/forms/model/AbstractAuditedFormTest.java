@@ -21,28 +21,42 @@
 
 package uk.nhs.hee.tis.trainee.forms.model;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+
 import java.time.Instant;
-import java.util.UUID;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.domain.Persistable;
+import org.junit.jupiter.api.Test;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
-@Data
-@ToString(callSuper = true)
-@EqualsAndHashCode(callSuper = true)
-public abstract class AbstractAuditedForm extends AbstractForm implements Persistable<UUID> {
+class AbstractAuditedFormTest {
 
-  @CreatedDate
-  Instant created;
+  @Test
+  void shouldConsiderFormWithoutCreatedAsNew() {
+    StubForm stubForm = new StubForm();
+    assertThat("Unexpected isNew.", stubForm.isNew(), is(true));
+  }
 
-  @LastModifiedDate
-  Instant lastModified;
+  @Test
+  void shouldNotConsiderFormWithCreatedAsNew() {
+    StubForm stubForm = new StubForm();
+    stubForm.setCreated(Instant.now());
+    assertThat("Unexpected isNew.", stubForm.isNew(), is(false));
+  }
 
-  @Override
-  public boolean isNew() {
-    return created == null;
+  /**
+   * A stub for testing the behaviour of the AbstractForm event listener.
+   */
+  private static class StubForm extends AbstractAuditedForm {
+
+    @Override
+    public String getFormType() {
+      return "test-auditedform";
+    }
+
+    @Override
+    public LifecycleState getLifecycleState() {
+      return null;
+    }
+
   }
 }

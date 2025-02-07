@@ -21,15 +21,13 @@
 
 package uk.nhs.hee.tis.trainee.forms.model;
 
-import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
@@ -46,6 +44,8 @@ public class LtftForm extends AbstractAuditedForm {
 
   String name;
   LtftProgrammeMembership programmeMembership;
+  LtftDiscussions discussions;
+
   LifecycleState status;
 
   @Override
@@ -76,6 +76,36 @@ public class LtftForm extends AbstractAuditedForm {
       LocalDate startDate,
       LocalDate endDate,
       double wte) {
+
+  }
+
+  /**
+   * Details of the people who have been approached to discuss a LTFT application, including TPD.
+   *
+   * @param tpdName  The Training Programme Director.
+   * @param tpdEmail The email for the TPD.
+   * @param other    The list of other people who have been contacted.
+   */
+  @Builder
+  public record LtftDiscussions(
+      String tpdName,
+      String tpdEmail,
+      List<LtftPersonRole> other) {
+
+  }
+
+  /**
+   * Details of other people involved in the discussion.
+   *
+   * @param name  Person name.
+   * @param email Person email.
+   * @param role  Their role.
+   */
+  @Builder
+  public record LtftPersonRole(
+      String name,
+      String email,
+      String role) {
 
   }
 }

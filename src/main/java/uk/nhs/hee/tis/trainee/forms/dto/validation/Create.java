@@ -19,30 +19,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.model;
+package uk.nhs.hee.tis.trainee.forms.dto.validation;
 
-import java.time.Instant;
-import java.util.UUID;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.domain.Persistable;
+import jakarta.validation.groups.Default;
 
-@Data
-@ToString(callSuper = true)
-@EqualsAndHashCode(callSuper = true)
-public abstract class AbstractAuditedForm extends AbstractForm implements Persistable<UUID> {
+/**
+ * A validation group used when a resource is being created.
+ */
+public interface Create extends Default {
 
-  @CreatedDate
-  Instant created;
-
-  @LastModifiedDate
-  Instant lastModified;
-
-  @Override
-  public boolean isNew() {
-    return created == null;
-  }
 }
