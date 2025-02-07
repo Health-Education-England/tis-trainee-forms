@@ -65,7 +65,7 @@ class AbstractFormMongoEventListenerTest {
   /**
    * A stub for testing the behaviour of the AbstractForm event listener.
    */
-  private static class StubForm extends AbstractForm {
+  private static class StubForm extends AbstractFormR {
 
     @Override
     public String getFormType() {

@@ -41,7 +41,7 @@ public interface LtftFormRepository extends MongoRepository<LtftForm, ObjectId> 
    * @param traineeId The ID of the trainee.
    * @return A list of found LTFT forms.
    */
-  List<LtftForm> findByTraineeIdOrderByLastModified(String traineeId);
+  List<LtftForm> findByTraineeTisIdOrderByLastModified(String traineeId);
 
   /**
    * Count all LTFT forms with one of the given states.

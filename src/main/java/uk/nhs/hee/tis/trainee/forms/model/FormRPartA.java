@@ -32,7 +32,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Data
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
-public class FormRPartA extends AbstractForm {
+public class FormRPartA extends AbstractFormR {
 
   private UUID programmeMembershipId;
   private Boolean isArcp;

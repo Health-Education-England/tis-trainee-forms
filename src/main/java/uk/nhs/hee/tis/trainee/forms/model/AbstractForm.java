@@ -21,7 +21,6 @@
 package uk.nhs.hee.tis.trainee.forms.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
@@ -38,10 +37,8 @@ public abstract class AbstractForm {
   @Field(value = "traineeTisId")
   private String traineeTisId;
 
-  private LifecycleState lifecycleState;
-  private LocalDateTime submissionDate;
-  private LocalDateTime lastModifiedDate;
-
   @JsonIgnore
   public abstract String getFormType();
+
+  public abstract LifecycleState getLifecycleState();
 }

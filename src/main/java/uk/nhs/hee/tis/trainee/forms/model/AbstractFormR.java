@@ -21,61 +21,21 @@
 
 package uk.nhs.hee.tis.trainee.forms.model;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.util.UUID;
-import lombok.Builder;
+import java.time.LocalDateTime;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Setter;
 import lombok.ToString;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
-/**
- * A LTFT form entity.
- */
-@Document("LtftForm")
 @Data
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
-public class LtftForm extends AbstractAuditedForm {
+public abstract class AbstractFormR extends AbstractForm {
 
-  String name;
-  LtftProgrammeMembership programmeMembership;
-  LifecycleState status;
+  @Setter
+  private LifecycleState lifecycleState;
+  private LocalDateTime submissionDate;
+  private LocalDateTime lastModifiedDate;
 
-  @Override
-  public String getFormType() {
-    return "ltft";
-  }
-
-  @Override
-  public LifecycleState getLifecycleState() {
-    return status;
-  }
-
-  /**
-   * Programme membership data for a calculation.
-   *
-   * @param id        The ID of the programme membership.
-   * @param name      The name of the programme.
-   * @param startDate The start date of the programme.
-   * @param endDate   The end date of the programme.
-   * @param wte       The whole time equivalent of the programme membership.
-   */
-  @Builder
-  public record LtftProgrammeMembership(
-      @Indexed
-      @Field("id")
-      UUID id,
-      String name,
-      LocalDate startDate,
-      LocalDate endDate,
-      double wte) {
-
-  }
 }
