@@ -25,6 +25,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -90,15 +91,17 @@ class AdminLtftResourceIntegrationTest {
   void shouldCountAllLtftsWhenNoStatusFilter(String statusFilter) throws Exception {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
         .map(s -> {
-          LtftForm ltft = new LtftForm();
-          ltft.setStatus(s);
-          return ltft;
+          LtftForm form = new LtftForm();
+          form.setStatus(List.of(
+              new LtftForm.LtftLifecycleStateHistory(s, "test", Instant.now())));
+          return form;
         })
         .toList();
     template.insertAll(ltfts);
 
     LtftForm ltft = new LtftForm();
-    ltft.setStatus(LifecycleState.SUBMITTED);
+    ltft.setStatus(List.of(
+        new LtftForm.LtftLifecycleStateHistory(LifecycleState.SUBMITTED, "test", Instant.now())));
     template.insert(ltft);
 
     mockMvc.perform(get("/api/admin/ltft/count")
@@ -113,9 +116,10 @@ class AdminLtftResourceIntegrationTest {
   void shouldCountMatchingLtftsWhenHasStatusFilter(LifecycleState status) throws Exception {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
         .map(s -> {
-          LtftForm ltft = new LtftForm();
-          ltft.setStatus(s);
-          return ltft;
+          LtftForm form = new LtftForm();
+          form.setStatus(List.of(
+              new LtftForm.LtftLifecycleStateHistory(s, "test", Instant.now())));
+          return form;
         })
         .toList();
     template.insertAll(ltfts);
@@ -131,15 +135,17 @@ class AdminLtftResourceIntegrationTest {
   void shouldCountMatchingLtftsWhenMultipleStatusFilters() throws Exception {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
         .map(s -> {
-          LtftForm ltft = new LtftForm();
-          ltft.setStatus(s);
-          return ltft;
+          LtftForm form = new LtftForm();
+          form.setStatus(List.of(
+              new LtftForm.LtftLifecycleStateHistory(s, "test", Instant.now())));
+          return form;
         })
         .toList();
     template.insertAll(ltfts);
 
     LtftForm ltft = new LtftForm();
-    ltft.setStatus(LifecycleState.SUBMITTED);
+    ltft.setStatus(List.of(
+        new LtftForm.LtftLifecycleStateHistory(LifecycleState.SUBMITTED, "test", Instant.now())));
     template.insert(ltft);
 
     String statusFilter = "%s,%s".formatted(LifecycleState.SUBMITTED, LifecycleState.UNSUBMITTED);

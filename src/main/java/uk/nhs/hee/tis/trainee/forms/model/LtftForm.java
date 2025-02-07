@@ -21,7 +21,10 @@
 
 package uk.nhs.hee.tis.trainee.forms.model;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
 import lombok.Data;
@@ -43,21 +46,29 @@ public class LtftForm extends AbstractAuditedForm {
 
   String name;
   LtftProgrammeMembership programmeMembership;
-
-  LifecycleState status;
+  List<LtftLifecycleStateHistory> status;
 
   @Override
   public String getFormType() {
     return "ltft";
   }
 
+  /**
+   * Get the current (most recent) lifecycle state.
+   * @return The lifecycle state, or null if no lifecycle states exist.
+   */
   @Override
   public LifecycleState getLifecycleState() {
-    return status;
+    if (status == null || status.isEmpty()) {
+      return null; //DRAFT?
+    }
+    return status.stream()
+        .max(Comparator.comparing(LtftLifecycleStateHistory::timestamp))
+        .get().state();
   }
 
   /**
-   * Programme membership data for a calculation.
+   * Programme membership data for a LTFT application.
    *
    * @param id        The ID of the programme membership.
    * @param name      The name of the programme.
@@ -77,4 +88,18 @@ public class LtftForm extends AbstractAuditedForm {
 
   }
 
+  /**
+   * Lifecycle state history for a LTFT application.
+   *
+   * @param state     The lifecycle state.
+   * @param detail    Details of what triggered the state change.
+   * @param timestamp The timestamp of when the state changed.
+   */
+  @Builder
+  public record LtftLifecycleStateHistory(
+      LifecycleState state,
+      String detail,
+      Instant timestamp) {
+
+  }
 }

@@ -24,8 +24,11 @@ package uk.nhs.hee.tis.trainee.forms.mapper;
 import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
 
 import java.util.List;
+import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 
@@ -42,6 +45,7 @@ public interface LtftMapper {
    * @return The equivalent summary DTO.
    */
   @Mapping(target = "programmeMembershipId", source = "programmeMembership.id")
+  @Mapping(target = "status", expression = "java(entity.getLifecycleState())")
   LtftSummaryDto toSummaryDto(LtftForm entity);
 
   /**
@@ -51,4 +55,32 @@ public interface LtftMapper {
    * @return The equivalent summary DTOs.
    */
   List<LtftSummaryDto> toSummaryDtos(List<LtftForm> entities);
+
+  /**
+   * Convert a {@link LtftForm} to {@link LtftFormDto} DTO.
+   *
+   * @param entity The form to convert.
+   * @return The equivalent DTO.
+   */
+  @Mapping(target = "status", ignore = true)
+  LtftFormDto toDto(LtftForm entity);
+
+  /**
+   * Convert a {@link LtftFormDto} DTO to a {@link LtftForm}.
+   *
+   * @param dto The DTO to convert.
+   * @return The equivalent LTFT Form.
+   */
+  @Mapping(target = "status", source = "dto.status.history")
+  LtftForm toEntity(LtftFormDto dto);
+
+  @AfterMapping
+  static void setLifecycleStatusDto(@MappingTarget LtftFormDto dto, LtftForm entity) {
+    LtftLifecycleStateHistoryMapper mapper = new LtftLifecycleStateHistoryMapperImpl();
+    LtftFormDto.LifecycleStateDto status = new LtftFormDto.LifecycleStateDto();
+    status.setCurrent(entity.getLifecycleState());
+    status.setHistory(mapper.toDtos(entity.getStatus()));
+    dto.setStatus(status);
+  }
+
 }
