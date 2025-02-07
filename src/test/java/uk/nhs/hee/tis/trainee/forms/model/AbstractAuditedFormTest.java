@@ -21,60 +21,42 @@
 
 package uk.nhs.hee.tis.trainee.forms.model;
 
-import java.time.LocalDate;
-import java.util.UUID;
-import lombok.Builder;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+
+import java.time.Instant;
+import org.junit.jupiter.api.Test;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
-/**
- * A LTFT form entity.
- */
-@Document("LtftForm")
-@Data
-@ToString(callSuper = true)
-@EqualsAndHashCode(callSuper = true)
-public class LtftForm extends AbstractAuditedForm {
+class AbstractAuditedFormTest {
 
-  String name;
-  LtftProgrammeMembership programmeMembership;
-
-  LifecycleState status;
-
-  @Override
-  public String getFormType() {
-    return "ltft";
+  @Test
+  void shouldConsiderFormWithoutCreatedAsNew() {
+    StubForm stubForm = new StubForm();
+    assertThat("Unexpected isNew.", stubForm.isNew(), is(true));
   }
 
-  @Override
-  public LifecycleState getLifecycleState() {
-    return status;
+  @Test
+  void shouldNotConsiderFormWithCreatedAsNew() {
+    StubForm stubForm = new StubForm();
+    stubForm.setCreated(Instant.now());
+    assertThat("Unexpected isNew.", stubForm.isNew(), is(false));
   }
 
   /**
-   * Programme membership data for a calculation.
-   *
-   * @param id        The ID of the programme membership.
-   * @param name      The name of the programme.
-   * @param startDate The start date of the programme.
-   * @param endDate   The end date of the programme.
-   * @param wte       The whole time equivalent of the programme membership.
+   * A stub for testing the behaviour of the AbstractForm event listener.
    */
-  @Builder
-  public record LtftProgrammeMembership(
-      @Indexed
-      @Field("id")
-      UUID id,
-      String name,
-      LocalDate startDate,
-      LocalDate endDate,
-      double wte) {
+  private static class StubForm extends AbstractAuditedForm {
+
+    @Override
+    public String getFormType() {
+      return "test-auditedform";
+    }
+
+    @Override
+    public LifecycleState getLifecycleState() {
+      return null;
+    }
 
   }
-
 }

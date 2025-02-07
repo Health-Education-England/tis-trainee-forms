@@ -22,20 +22,27 @@
 package uk.nhs.hee.tis.trainee.forms.model;
 
 import java.time.Instant;
+import java.util.UUID;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.domain.Persistable;
 
 @Data
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
-public abstract class AbstractAuditedForm extends AbstractForm {
+public abstract class AbstractAuditedForm extends AbstractForm implements Persistable<UUID> {
 
   @CreatedDate
   Instant created;
 
   @LastModifiedDate
   Instant lastModified;
+
+  @Override
+  public boolean isNew() {
+    return created == null;
+  }
 }

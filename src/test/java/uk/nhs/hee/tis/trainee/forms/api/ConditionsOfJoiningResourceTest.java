@@ -46,10 +46,13 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.core.io.Resource;
+import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -65,6 +68,14 @@ import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 @WebMvcTest(ConditionsOfJoiningResource.class)
 @ComponentScan(basePackageClasses = FilterConfiguration.class)
 class ConditionsOfJoiningResourceTest {
+
+  @TestConfiguration
+  static class TestConfig {
+    @Bean
+    public MongoMappingContext mongoMappingContext() {
+      return mock(MongoMappingContext.class);
+    }
+  }
 
   @MockBean
   private MongoConfiguration mongoConfiguration;
