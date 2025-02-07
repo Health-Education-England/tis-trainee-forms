@@ -66,4 +66,14 @@ public class LtftFormDto {
     private LifecycleState current;
     private List<LtftLifecycleStateHistoryDto> history;
   }
+
+  /**
+   * A DTO for LTFT form lifecycle state history.
+   */
+  @Data
+  public static class LtftLifecycleStateHistoryDto {
+    private LifecycleState state;
+    private String detail;
+    private Instant timestamp;
+  }
 }
