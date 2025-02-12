@@ -21,18 +21,21 @@
 
 package uk.nhs.hee.tis.trainee.forms.dto;
 
+import jakarta.validation.constraints.Null;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import lombok.Data;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
 
 /**
  * A DTO for transferring LTFT forms.
  */
 @Data
 public class LtftFormDto {
+  @Null(groups = Create.class)
   private UUID id;
 
   private String traineeTisId;
@@ -63,7 +66,7 @@ public class LtftFormDto {
    * A DTO for LTFT form lifecycle state.
    */
   @Data
-  public static class LifecycleStateDto {
+  public static class LtftStatusDto {
     private LifecycleState current;
     private List<LtftStatusInfoDto> history;
   }
@@ -77,19 +80,25 @@ public class LtftFormDto {
     private String detail;
     private Instant timestamp;
     private Integer revision;
-    }
+  }
 
-    @Data
+  /**
+   * A DTO for LTFT discussions.
+   */
+  @Data
   public static class LtftDiscussionDto {
     private String tpdName;
     private String tpdEmail;
     private List<LtftPersonRole> other;
   }
 
+  /**
+   * A DTO for LTFT form discussion non-TPD people.
+   */
   @Data
-    public static class LtftPersonRole {
-      private String name;
-      private String email;
-      private String role; //enum?
-    }
+  public static class LtftPersonRole {
+    private String name;
+    private String email;
+    private String role;
+  }
 }

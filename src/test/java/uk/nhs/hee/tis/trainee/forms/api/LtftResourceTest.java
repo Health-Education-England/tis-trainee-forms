@@ -24,19 +24,26 @@ package uk.nhs.hee.tis.trainee.forms.api;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.OK;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 
 class LtftResourceTest {
+
+  private static final UUID ID = UUID.randomUUID();
 
   private LtftResource controller;
   private LtftService service;
@@ -85,5 +92,82 @@ class LtftResourceTest {
     LtftSummaryDto responseDto2 = responseDtos.get(1);
     assertThat("Unexpected ID.", responseDto2.id(), is(id2));
     assertThat("Unexpected name.", responseDto2.name(), is("Test LTFT 2"));
+  }
+
+  @Test
+  void shouldReturnBadRequestWhenServiceWontSaveLtftForm() {
+    when(service.saveLtftForm(any())).thenReturn(Optional.empty());
+
+    ResponseEntity<LtftFormDto> response = controller.createLtft(new LtftFormDto());
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(BAD_REQUEST));
+  }
+
+  @Test
+  void shouldReturnBadRequestWhenServiceWontUpdateLtftForm() {
+    when(service.updateLtftForm(any(), any())).thenReturn(Optional.empty());
+
+    ResponseEntity<LtftFormDto> response = controller.updateLtft(ID, new LtftFormDto());
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(BAD_REQUEST));
+  }
+
+  @Test
+  void shouldReturnNotFoundWhenServiceCantFindLtftForm() {
+    when(service.getLtftForm(any())).thenReturn(Optional.empty());
+
+    ResponseEntity<LtftFormDto> response = controller.getLtft(ID);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(NOT_FOUND));
+  }
+
+  @Test
+  void shouldReturnSavedLtftFormWhenSaved() {
+    LtftFormDto savedForm = new LtftFormDto();
+    savedForm.setId(ID);
+    savedForm.setTraineeTisId("some trainee");
+    when(service.saveLtftForm(any())).thenReturn(Optional.of(savedForm));
+
+    LtftFormDto newForm = new LtftFormDto();
+    newForm.setTraineeTisId("some trainee");
+    ResponseEntity<LtftFormDto> response = controller.createLtft(newForm);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    LtftFormDto responseDto = response.getBody();
+    assert responseDto != null;
+    assertThat("Unexpected response body.", responseDto.equals(savedForm), is(true));
+  }
+
+  @Test
+  void shouldReturnSavedLtftFormWhenUpdated() {
+    LtftFormDto savedForm = new LtftFormDto();
+    savedForm.setId(ID);
+    savedForm.setTraineeTisId("some trainee");
+    when(service.updateLtftForm(any(), any())).thenReturn(Optional.of(savedForm));
+
+    LtftFormDto existingForm = new LtftFormDto();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId("some trainee");
+    ResponseEntity<LtftFormDto> response = controller.updateLtft(ID, existingForm);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    LtftFormDto responseDto = response.getBody();
+    assert responseDto != null;
+    assertThat("Unexpected response body.", responseDto.equals(savedForm), is(true));
+  }
+
+  @Test
+  void shouldReturnLtftFormWhenFound() {
+    LtftFormDto existingForm = new LtftFormDto();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId("some trainee");
+    when(service.getLtftForm(ID)).thenReturn(Optional.of(existingForm));
+
+    ResponseEntity<LtftFormDto> response = controller.getLtft(ID);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    LtftFormDto responseDto = response.getBody();
+    assert responseDto != null;
+    assertThat("Unexpected response body.", responseDto.equals(existingForm), is(true));
   }
 }

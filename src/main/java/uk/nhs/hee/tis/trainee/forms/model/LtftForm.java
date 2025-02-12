@@ -45,14 +45,13 @@ public class LtftForm extends AbstractAuditedForm {
 
   String name;
   LtftProgrammeMembership programmeMembership;
+  LtftDiscussions discussions;
   LtftStatus status;
 
   @Override
   public String getFormType() {
     return "ltft";
   }
-    LtftDiscussions discussions;
-
 
   /**
    * Get the current (most recent) lifecycle state.
@@ -62,7 +61,7 @@ public class LtftForm extends AbstractAuditedForm {
   @Override
   public LifecycleState getLifecycleState() {
     if (status == null) {
-      return null;
+      return null; //TODO: this should never happen
     }
     return status.current();
   }
@@ -117,6 +116,13 @@ public class LtftForm extends AbstractAuditedForm {
 
   }
 
+  /**
+   * Details of the people who have been approached to discuss a LTFT application, including TPD.
+   *
+   * @param tpdName  The Training Programme Director.
+   * @param tpdEmail The email for the TPD.
+   * @param other    The list of other people who have been contacted.
+   */
   @Builder
   public record LtftDiscussions(
       String tpdName,
@@ -125,6 +131,13 @@ public class LtftForm extends AbstractAuditedForm {
 
   }
 
+  /**
+   * Details of other people involved in the discussion.
+   *
+   * @param name  Person name.
+   * @param email Person email.
+   * @param role  Their role.
+   */
   @Builder
   public record LtftPersonRole(
       String name,

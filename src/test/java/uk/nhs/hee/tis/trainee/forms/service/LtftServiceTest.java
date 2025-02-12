@@ -24,23 +24,29 @@ package uk.nhs.hee.tis.trainee.forms.service;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm.LtftProgrammeMembership;
@@ -48,10 +54,12 @@ import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 
 class LtftServiceTest {
 
-  private static final String TRAINEE_ID = UUID.randomUUID().toString();
+  private static final String TRAINEE_ID = "40";
+  private static final UUID ID = UUID.randomUUID();
 
   private LtftService service;
   private LtftFormRepository ltftRepository;
+  private LtftMapper mapper = new LtftMapperImpl();
 
   @BeforeEach
   void setUp() {
@@ -64,7 +72,7 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldReturnEmptyGettingLtftFormsWhenNotFound() {
+  void shouldReturnEmptyGettingLtftFormSummariesWhenNotFound() {
     when(ltftRepository.findByTraineeTisIdOrderByLastModified(TRAINEE_ID)).thenReturn(
         List.of());
 
@@ -74,7 +82,7 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldGetLtftFormsWhenFound() {
+  void shouldGetLtftFormSummariesWhenFound() {
     UUID ltftId1 = UUID.randomUUID();
     UUID pmId1 = UUID.randomUUID();
     Instant created1 = Instant.now().minus(Duration.ofDays(1));
@@ -86,6 +94,12 @@ class LtftServiceTest {
     entity1.setName("Test LTFT form 1");
     entity1.setProgrammeMembership(LtftProgrammeMembership.builder()
         .id(pmId1)
+        .build());
+    entity1.setDiscussions(LtftForm.LtftDiscussions.builder()
+        .tpdName("tpd")
+        .other(List.of(LtftForm.LtftPersonRole.builder()
+            .name("other")
+            .build()))
         .build());
     entity1.setCreated(created1);
     entity1.setLastModified(lastModified1);
@@ -147,5 +161,146 @@ class LtftServiceTest {
 
     assertThat("Unexpected count.", count, is(40L));
     verify(ltftRepository, never()).count();
+  }
+
+  @Test
+  void shouldReturnEmptyIfLtftFormNotFound() {
+    when(ltftRepository.findByTraineeTisIdAndId(any(), any())).thenReturn(Optional.empty());
+
+    Optional<LtftFormDto> formDtoOptional = service.getLtftForm(ID);
+
+    assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
+    verify(ltftRepository).findByTraineeTisIdAndId(any(), eq(ID));
+    verifyNoMoreInteractions(ltftRepository);
+  }
+
+  @Test
+  void shouldReturnEmptyIfLtftFormForTraineeNotFound() {
+    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
+
+    Optional<LtftFormDto> formDtoOptional = service.getLtftForm(ID);
+
+    assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
+    verify(ltftRepository).findByTraineeTisIdAndId(TRAINEE_ID, ID);
+    verifyNoMoreInteractions(ltftRepository);
+  }
+
+  @Test
+  void shouldReturnDtoIfLtftFormForTraineeFound() {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setName("test");
+    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID))
+        .thenReturn(Optional.of(form));
+
+    Optional<LtftFormDto> formDtoOptional = service.getLtftForm(ID);
+
+    assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(false));
+    verify(ltftRepository).findByTraineeTisIdAndId(TRAINEE_ID, ID);
+    LtftFormDto returnedFormDto = formDtoOptional.get();
+    assertThat("Unexpected returned LTFT form.", returnedFormDto.equals(mapper.toDto(form)),
+        is(true));
+  }
+
+  @Test
+  void shouldNotSaveIfNewLtftFormNotForTrainee() {
+    LtftFormDto dtoToSave = new LtftFormDto();
+    dtoToSave.setTraineeTisId("another trainee");
+
+    Optional<LtftFormDto> formDtoOptional = service.saveLtftForm(dtoToSave);
+
+    assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
+    verifyNoInteractions(ltftRepository);
+  }
+
+  @Test
+  void shouldSaveIfNewLtftFormForTrainee() {
+    LtftFormDto dtoToSave = new LtftFormDto();
+    dtoToSave.setTraineeTisId(TRAINEE_ID);
+
+    LtftForm existingForm = new LtftForm();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId(TRAINEE_ID);
+    existingForm.setName("test");
+    when(ltftRepository.save(any())).thenReturn(existingForm);
+
+    Optional<LtftFormDto> formDtoOptional = service.saveLtftForm(dtoToSave);
+
+    verify(ltftRepository).save(any());
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
+  }
+
+  @Test
+  void shouldNotUpdateFormIfWithoutId() {
+    LtftFormDto dtoToSave = new LtftFormDto();
+    dtoToSave.setTraineeTisId(TRAINEE_ID);
+
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
+
+    assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
+    verifyNoInteractions(ltftRepository);
+  }
+
+  @Test
+  void shouldNotUpdateFormIfIdDoesNotMatchPathParameter() {
+    LtftFormDto dtoToSave = new LtftFormDto();
+    dtoToSave.setTraineeTisId(TRAINEE_ID);
+    dtoToSave.setId(ID);
+
+    Optional<LtftFormDto> formDtoOptional
+        = service.updateLtftForm(UUID.randomUUID(), dtoToSave);
+
+    assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
+    verifyNoInteractions(ltftRepository);
+  }
+
+  @Test
+  void shouldNotUpdateFormIfTraineeDoesNotMatchLoggedInUser() {
+    LtftFormDto dtoToSave = new LtftFormDto();
+    dtoToSave.setTraineeTisId("another trainee");
+    dtoToSave.setId(ID);
+
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
+
+    assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
+    verifyNoInteractions(ltftRepository);
+  }
+
+  @Test
+  void shouldNotUpdateFormIfExistingFormNotFound() {
+    LtftFormDto dtoToSave = new LtftFormDto();
+    dtoToSave.setTraineeTisId(TRAINEE_ID);
+    dtoToSave.setId(ID);
+
+    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID))
+        .thenReturn(Optional.empty());
+
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
+
+    assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
+    verify(ltftRepository).findByTraineeTisIdAndId(TRAINEE_ID, ID);
+    verifyNoMoreInteractions(ltftRepository);
+  }
+
+  @Test
+  void shouldSaveIfUpdatingLtftFormForTrainee() {
+    LtftFormDto dtoToSave = new LtftFormDto();
+    dtoToSave.setTraineeTisId(TRAINEE_ID);
+    dtoToSave.setId(ID);
+
+    LtftForm existingForm = new LtftForm();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId(TRAINEE_ID);
+    existingForm.setName("test");
+    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID))
+        .thenReturn(Optional.of(existingForm));
+    when(ltftRepository.save(any())).thenReturn(existingForm);
+
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
+
+    LtftForm formToSave = mapper.toEntity(dtoToSave);
+    verify(ltftRepository).save(formToSave);
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
   }
 }
