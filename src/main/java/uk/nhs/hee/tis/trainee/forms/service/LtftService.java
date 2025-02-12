@@ -87,6 +87,6 @@ public class LtftService {
       return ltftFormRepository.count();
     }
 
-    return ltftFormRepository.countByStatusIn(states);
+    return ltftFormRepository.countByStatus_CurrentIn(states);
   }
 }

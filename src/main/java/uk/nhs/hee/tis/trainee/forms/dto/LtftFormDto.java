@@ -19,35 +19,62 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.repository;
+package uk.nhs.hee.tis.trainee.forms.dto;
 
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
-import java.util.Set;
-import org.bson.types.ObjectId;
-import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.stereotype.Repository;
+import java.util.UUID;
+import lombok.Data;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
-import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 
 /**
- * A repository for LTFT forms.
+ * A DTO for transferring LTFT forms.
  */
-@Repository
-public interface LtftFormRepository extends MongoRepository<LtftForm, ObjectId> {
+@Data
+public class LtftFormDto {
+  private UUID id;
+
+  private String traineeTisId;
+
+  private String name;
+
+  private LtftProgrammeMembershipDto programmeMembership;
+
+  private LtftStatusDto status;
+
+  private Instant created;
+  private Instant lastModified;
 
   /**
-   * Find all LTFT forms belonging to the given trainee, ordered by last modified.
-   *
-   * @param traineeId The ID of the trainee.
-   * @return A list of found LTFT forms.
+   * A DTO for LTFT programme membership details.
    */
-  List<LtftForm> findByTraineeTisIdOrderByLastModified(String traineeId);
+  @Data
+  public static class LtftProgrammeMembershipDto {
+    private UUID id;
+    private String name;
+    private LocalDate startDate;
+    private LocalDate endDate;
+    private double wte;
+  }
 
   /**
-   * Count all LTFT forms with one of the given current states.
-   *
-   * @param states The states to include in the count.
-   * @return The number of found LTFT forms.
+   * A DTO for LTFT form lifecycle state.
    */
-  long countByStatus_CurrentIn(Set<LifecycleState> states);
+  @Data
+  public static class LtftStatusDto {
+    private LifecycleState current;
+    private List<LtftStatusInfoDto> history;
+  }
+
+  /**
+   * A DTO for LTFT form lifecycle state details.
+   */
+  @Data
+  public static class LtftStatusInfoDto {
+    private LifecycleState state;
+    private String detail;
+    private Instant timestamp;
+    private Integer revision;
+  }
 }

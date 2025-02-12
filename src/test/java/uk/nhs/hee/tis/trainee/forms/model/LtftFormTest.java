@@ -19,35 +19,38 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.repository;
+package uk.nhs.hee.tis.trainee.forms.model;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
+
+import java.time.Instant;
 import java.util.List;
-import java.util.Set;
-import org.bson.types.ObjectId;
-import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.stereotype.Repository;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
-import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 
-/**
- * A repository for LTFT forms.
- */
-@Repository
-public interface LtftFormRepository extends MongoRepository<LtftForm, ObjectId> {
+class LtftFormTest {
 
-  /**
-   * Find all LTFT forms belonging to the given trainee, ordered by last modified.
-   *
-   * @param traineeId The ID of the trainee.
-   * @return A list of found LTFT forms.
-   */
-  List<LtftForm> findByTraineeTisIdOrderByLastModified(String traineeId);
+  @Test
+  void shouldGetFormType() {
+    assertThat("Unexpected form type.", new LtftForm().getFormType(), is("ltft"));
+  }
 
-  /**
-   * Count all LTFT forms with one of the given current states.
-   *
-   * @param states The states to include in the count.
-   * @return The number of found LTFT forms.
-   */
-  long countByStatus_CurrentIn(Set<LifecycleState> states);
+  @Test
+  void shouldGetLifecycleStateIfNull() {
+    assertThat("Unexpected lifecycle state.", new LtftForm().getLifecycleState(), is(nullValue()));
+  }
+
+  @ParameterizedTest
+  @EnumSource(LifecycleState.class)
+  void shouldGetLifecycleState(LifecycleState s) {
+    LtftForm form = new LtftForm();
+    List<LtftForm.LtftStatusInfo> history = List.of(
+        new LtftForm.LtftStatusInfo(LifecycleState.SUBMITTED, "test", Instant.now(), null));
+    form.setStatus(new LtftForm.LtftStatus(s, history));
+    assertThat("Unexpected lifecycle state.", form.getLifecycleState(), is(s));
+  }
 }
