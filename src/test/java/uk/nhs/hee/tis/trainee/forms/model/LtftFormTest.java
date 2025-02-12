@@ -48,9 +48,9 @@ class LtftFormTest {
   @EnumSource(LifecycleState.class)
   void shouldGetLifecycleState(LifecycleState s) {
     LtftForm form = new LtftForm();
-    List<LtftForm.LtftLifecycleStateHistory> history = List.of(
-        new LtftForm.LtftLifecycleStateHistory(LifecycleState.SUBMITTED, "test", Instant.now()));
-    form.setStatus(new LtftForm.LtftLifecycleState(s, history));
+    List<LtftForm.LtftStatusInfo> history = List.of(
+        new LtftForm.LtftStatusInfo(LifecycleState.SUBMITTED, "test", Instant.now(), null));
+    form.setStatus(new LtftForm.LtftStatus(s, history));
     assertThat("Unexpected lifecycle state.", form.getLifecycleState(), is(s));
   }
 }

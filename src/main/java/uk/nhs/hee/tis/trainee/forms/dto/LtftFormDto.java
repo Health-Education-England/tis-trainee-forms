@@ -41,7 +41,7 @@ public class LtftFormDto {
 
   private LtftProgrammeMembershipDto programmeMembership;
 
-  private LifecycleStateDto status;
+  private LtftStatusDto status;
 
   private Instant created;
   private Instant lastModified;
@@ -62,18 +62,19 @@ public class LtftFormDto {
    * A DTO for LTFT form lifecycle state.
    */
   @Data
-  public static class LifecycleStateDto {
+  public static class LtftStatusDto {
     private LifecycleState current;
-    private List<LtftLifecycleStateHistoryDto> history;
+    private List<LtftStatusInfoDto> history;
   }
 
   /**
-   * A DTO for LTFT form lifecycle state history.
+   * A DTO for LTFT form lifecycle state details.
    */
   @Data
-  public static class LtftLifecycleStateHistoryDto {
+  public static class LtftStatusInfoDto {
     private LifecycleState state;
     private String detail;
     private Instant timestamp;
+    private Integer revision;
   }
 }

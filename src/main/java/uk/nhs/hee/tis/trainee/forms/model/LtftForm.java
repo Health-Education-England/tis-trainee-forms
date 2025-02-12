@@ -45,7 +45,7 @@ public class LtftForm extends AbstractAuditedForm {
 
   String name;
   LtftProgrammeMembership programmeMembership;
-  LtftLifecycleState status;
+  LtftStatus status;
 
   @Override
   public String getFormType() {
@@ -93,9 +93,9 @@ public class LtftForm extends AbstractAuditedForm {
    * @param history The list of all states, past and current.
    */
   @Builder
-  public record LtftLifecycleState(
+  public record LtftStatus(
       LifecycleState current,
-      List<LtftLifecycleStateHistory> history) {
+      List<LtftStatusInfo> history) {
 
   }
 
@@ -107,10 +107,11 @@ public class LtftForm extends AbstractAuditedForm {
    * @param timestamp The timestamp of when the state changed.
    */
   @Builder
-  public record LtftLifecycleStateHistory(
+  public record LtftStatusInfo(
       LifecycleState state,
       String detail,
-      Instant timestamp) {
+      Instant timestamp,
+      Integer revision) {
 
   }
 }
