@@ -22,28 +22,37 @@
 package uk.nhs.hee.tis.trainee.forms.repository;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.springframework.data.domain.Sort.Direction.ASC;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.index.IndexField;
+import org.springframework.data.mongodb.core.index.IndexInfo;
+import org.springframework.data.mongodb.core.index.IndexOperations;
 import org.springframework.data.mongodb.core.query.Query;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 
 @SpringBootTest
 @Testcontainers
 class LtftRepositoryIntegrationTest {
+
   private static final String TRAINEE_ID = "40";
 
   @Container
@@ -59,17 +68,52 @@ class LtftRepositoryIntegrationTest {
     template.findAllAndRemove(new Query(), LtftForm.class);
   }
 
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      _id_                                           | _id
+      traineeTisId                                   | traineeTisId
+      formRef                                        | formRef
+      content.programmeMembership.id                 | content.programmeMembership.id
+      content.programmeMembership.designatedBodyCode | content.programmeMembership.designatedBodyCode
+      status.current.state                           | status.current.state
+      status.history.state                           | status.history.state
+      """)
+  void shouldCreateSingleFieldIndexes(String indexName, String fieldName) {
+    IndexOperations indexOperations = template.indexOps(LtftForm.class);
+    List<IndexInfo> indexes = indexOperations.getIndexInfo();
+
+    assertThat("Unexpected index count.", indexes, hasSize(7));
+
+    IndexInfo index = indexes.stream()
+        .filter(i -> i.getName().equals(indexName))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("Expected index not found."));
+
+    List<IndexField> indexFields = index.getIndexFields();
+    assertThat("Unexpected index field count.", indexFields, hasSize(1));
+
+    IndexField indexField = indexFields.get(0);
+    assertThat("Unexpected index field key.", indexField.getKey(), is(fieldName));
+    assertThat("Unexpected index field direction.", indexField.getDirection(), is(ASC));
+
+    assertThat("Unexpected hidden index.", index.isHidden(), is(false));
+    assertThat("Unexpected hashed index.", index.isHashed(), is(false));
+    assertThat("Unexpected sparse index.", index.isSparse(), is(false));
+    assertThat("Unexpected unique index.", index.isUnique(), is(false));
+    assertThat("Unexpected wildcard index.", index.isWildcard(), is(false));
+  }
+
   @Test
   void shouldSetCreatedAndLastModifiedWhenSave() {
     LtftForm ltft = new LtftForm();
     ltft.setTraineeTisId(TRAINEE_ID);
-    ltft.setName("name");
+    ltft.setContent(LtftContent.builder().name("name").build());
     template.insert(ltft);
 
     List<LtftForm> savedRecords = template.find(new Query(), LtftForm.class);
     assertThat("Unexpected saved records.", savedRecords.size(), is(1));
     LtftForm savedRecord = savedRecords.get(0);
-    assertThat("Unexpected saved record name.", savedRecord.getName(), is("name"));
+    assertThat("Unexpected saved record name.", savedRecord.getContent().name(), is("name"));
     assertThat("Unexpected saved record trainee id.", savedRecord.getTraineeTisId(),
         is(TRAINEE_ID));
     assertThat("Unexpected saved record id.", savedRecord.getId(), is(notNullValue()));
@@ -86,7 +130,7 @@ class LtftRepositoryIntegrationTest {
   void shouldUpdateLastModifiedWhenUpdate() throws InterruptedException {
     LtftForm ltft = new LtftForm();
     ltft.setTraineeTisId(TRAINEE_ID);
-    ltft.setName("name");
+    ltft.setContent(LtftContent.builder().name("name").build());
     template.insert(ltft);
 
     List<LtftForm> savedRecords = template.find(new Query(), LtftForm.class);

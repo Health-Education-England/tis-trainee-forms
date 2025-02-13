@@ -46,6 +46,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 
 @SpringBootTest
@@ -92,17 +94,30 @@ class AdminLtftResourceIntegrationTest {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
         .map(s -> {
           LtftForm form = new LtftForm();
-          form.setStatus(new LtftForm.LtftStatus(s,
-              List.of(new LtftForm.LtftStatusInfo(s, "test", Instant.now(), null))));
+          StatusInfo statusInfo = StatusInfo.builder()
+              .state(s)
+              .timestamp(Instant.now())
+              .build();
+          form.setStatus(Status.builder()
+              .current(statusInfo)
+              .history(List.of(statusInfo))
+              .build()
+          );
           return form;
         })
         .toList();
     template.insertAll(ltfts);
 
     LtftForm ltft = new LtftForm();
-    ltft.setStatus(new LtftForm.LtftStatus(LifecycleState.SUBMITTED,
-        List.of(new LtftForm.LtftStatusInfo(
-            LifecycleState.SUBMITTED, "test", Instant.now(), null))));
+    StatusInfo statusInfo = StatusInfo.builder()
+        .state(LifecycleState.SUBMITTED)
+        .timestamp(Instant.now())
+        .build();
+    ltft.setStatus(Status.builder()
+        .current(statusInfo)
+        .history(List.of(statusInfo))
+        .build()
+    );
     template.insert(ltft);
 
     mockMvc.perform(get("/api/admin/ltft/count")
@@ -118,8 +133,15 @@ class AdminLtftResourceIntegrationTest {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
         .map(s -> {
           LtftForm form = new LtftForm();
-          form.setStatus(new LtftForm.LtftStatus(s,
-              List.of(new LtftForm.LtftStatusInfo(s, "test", Instant.now(), null))));
+          StatusInfo statusInfo = StatusInfo.builder()
+              .state(s)
+              .timestamp(Instant.now())
+              .build();
+          form.setStatus(Status.builder()
+              .current(statusInfo)
+              .history(List.of(statusInfo))
+              .build()
+          );
           return form;
         })
         .toList();
@@ -137,17 +159,30 @@ class AdminLtftResourceIntegrationTest {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
         .map(s -> {
           LtftForm form = new LtftForm();
-          form.setStatus(new LtftForm.LtftStatus(s,
-              List.of(new LtftForm.LtftStatusInfo(s, "test", Instant.now(), null))));
+          StatusInfo statusInfo = StatusInfo.builder()
+              .state(s)
+              .timestamp(Instant.now())
+              .build();
+          form.setStatus(Status.builder()
+              .current(statusInfo)
+              .history(List.of(statusInfo))
+              .build()
+          );
           return form;
         })
         .toList();
     template.insertAll(ltfts);
 
     LtftForm ltft = new LtftForm();
-    ltft.setStatus(new LtftForm.LtftStatus(LifecycleState.SUBMITTED,
-        List.of(new LtftForm.LtftStatusInfo(
-            LifecycleState.SUBMITTED, "test", Instant.now(), null))));
+    StatusInfo statusInfo = StatusInfo.builder()
+        .state(LifecycleState.SUBMITTED)
+        .timestamp(Instant.now())
+        .build();
+    ltft.setStatus(Status.builder()
+        .current(statusInfo)
+        .history(List.of(statusInfo))
+        .build()
+    );
     template.insert(ltft);
 
     String statusFilter = "%s,%s".formatted(LifecycleState.SUBMITTED, LifecycleState.UNSUBMITTED);

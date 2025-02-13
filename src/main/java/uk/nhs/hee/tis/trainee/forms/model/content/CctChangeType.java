@@ -19,25 +19,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.model;
-
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
-import org.springframework.data.mongodb.core.mapping.Document;
-import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
+package uk.nhs.hee.tis.trainee.forms.model.content;
 
 /**
- * A LTFT form entity.
+ * The types of available CCT changes.
  */
-@Document("LtftForm")
-@Data
-@ToString(callSuper = true)
-@EqualsAndHashCode(callSuper = true)
-public class LtftForm extends AbstractAuditedForm<LtftContent> {
-
-  @Override
-  public String getFormType() {
-    return "ltft";
-  }
+public enum CctChangeType {
+  LTFT
 }

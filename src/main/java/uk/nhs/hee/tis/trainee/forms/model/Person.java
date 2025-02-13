@@ -21,23 +21,19 @@
 
 package uk.nhs.hee.tis.trainee.forms.model;
 
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
-import org.springframework.data.mongodb.core.mapping.Document;
-import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
+import lombok.Builder;
 
 /**
- * A LTFT form entity.
+ * Details of a person and their role.
+ *
+ * @param name  The person's name.
+ * @param email The person's contact email.
+ * @param role  The person's role, context dependent.
  */
-@Document("LtftForm")
-@Data
-@ToString(callSuper = true)
-@EqualsAndHashCode(callSuper = true)
-public class LtftForm extends AbstractAuditedForm<LtftContent> {
+@Builder
+public record Person(
+    String name,
+    String email,
+    String role) {
 
-  @Override
-  public String getFormType() {
-    return "ltft";
-  }
 }

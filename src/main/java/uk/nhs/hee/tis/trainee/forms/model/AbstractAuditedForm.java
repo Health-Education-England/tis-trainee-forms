@@ -22,27 +22,94 @@
 package uk.nhs.hee.tis.trainee.forms.model;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
+import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.domain.Persistable;
+import org.springframework.data.mongodb.core.index.Indexed;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.model.content.FormContent;
 
+/**
+ * An abstract for audited forms, which include status history, revisions and create/modify
+ * timestamps.
+ *
+ * @param <T> The type of the {@link FormContent}.
+ */
 @Data
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
-public abstract class AbstractAuditedForm extends AbstractForm implements Persistable<UUID> {
+public abstract class AbstractAuditedForm<T extends FormContent> extends AbstractForm implements
+    Persistable<UUID> {
+
+  @Indexed
+  private String formRef;
+  private int revision;
+
+  private T content;
+  private Status status;
 
   @CreatedDate
-  Instant created;
+  private Instant created;
 
   @LastModifiedDate
-  Instant lastModified;
+  private Instant lastModified;
+
+  /**
+   * Get the current (most recent) lifecycle state.
+   *
+   * @return The lifecycle state, or null if no lifecycle states exist.
+   */
+  @Override
+  public LifecycleState getLifecycleState() {
+    if (status == null || status.current == null) {
+      return null;
+    }
+    return status.current.state;
+  }
 
   @Override
   public boolean isNew() {
     return created == null;
+  }
+
+  /**
+   * The form status.
+   *
+   * @param current The information for the current form status.
+   * @param history A list of form status history.
+   */
+  @Builder
+  public record Status(
+
+      StatusInfo current,
+      List<StatusInfo> history) {
+
+    /**
+     * Form status information.
+     *
+     * @param state      The lifecycle state of the form.
+     * @param detail     Any status detail.
+     * @param modifiedBy The Person who made this status change.
+     * @param timestamp  The timestamp of the status change.
+     * @param revision   The revision number associated with this status change.
+     */
+    @Builder
+    public record StatusInfo(
+
+        @Indexed
+        LifecycleState state,
+        String detail,
+        Person modifiedBy,
+        Instant timestamp,
+        Integer revision
+    ) {
+
+    }
   }
 }

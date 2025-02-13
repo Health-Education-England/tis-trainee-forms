@@ -34,7 +34,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -55,11 +54,15 @@ import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
+import uk.nhs.hee.tis.trainee.forms.model.Person;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Discussions;
 
 @SpringBootTest
 @Testcontainers
 @AutoConfigureMockMvc
 class LtftResourceIntegrationTest {
+
   private static final String TRAINEE_ID = "40";
   private static final UUID ID = UUID.randomUUID();
 
@@ -166,14 +169,19 @@ class LtftResourceIntegrationTest {
     LtftForm ltft = new LtftForm();
     ltft.setId(ID);
     ltft.setTraineeTisId(TRAINEE_ID);
-    ltft.setName("name");
-    ltft.setDiscussions(LtftForm.LtftDiscussions.builder()
-        .tpdName("tpd")
-        .other(List.of(
-            LtftForm.LtftPersonRole.builder()
+
+    LtftContent content = LtftContent.builder()
+        .name("name")
+        .discussions(Discussions.builder()
+            .tpdName("tpd")
+            .other(List.of(Person.builder()
                 .name("other person")
-                .build()))
-        .build());
+                .build()
+            ))
+            .build()
+        )
+        .build();
+    ltft.setContent(content);
     template.insert(ltft);
 
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
@@ -238,7 +246,8 @@ class LtftResourceIntegrationTest {
     assertThat("Unexpected saved record count.", template.count(new Query(), LtftForm.class),
         is(1L));
     List<LtftForm> savedRecords = template.find(new Query(), LtftForm.class);
-    assertThat("Unexpected saved record name.", savedRecords.get(0).getName(), is("test"));
+    assertThat("Unexpected saved record name.", savedRecords.get(0).getContent().name(),
+        is("test"));
     assertThat("Unexpected saved record trainee id.", savedRecords.get(0).getTraineeTisId(),
         is(TRAINEE_ID));
     assertThat("Unexpected saved record id.", savedRecords.get(0).getId(), is(notNullValue()));
@@ -334,7 +343,8 @@ class LtftResourceIntegrationTest {
     assertThat("Unexpected saved record count.", template.count(new Query(), LtftForm.class),
         is(1L));
     List<LtftForm> savedRecords = template.find(new Query(), LtftForm.class);
-    assertThat("Unexpected saved record name.", savedRecords.get(0).getName(), is("updated"));
+    assertThat("Unexpected saved record name.", savedRecords.get(0).getContent().name(),
+        is("updated"));
     assertThat("Unexpected saved record trainee id.", savedRecords.get(0).getTraineeTisId(),
         is(TRAINEE_ID));
     assertThat("Unexpected saved record id.", savedRecords.get(0).getId(),

@@ -19,25 +19,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.model;
-
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
-import org.springframework.data.mongodb.core.mapping.Document;
-import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
+package uk.nhs.hee.tis.trainee.forms.model.content;
 
 /**
- * A LTFT form entity.
+ * An interface representing form content, to be implemented by each form.
  */
-@Document("LtftForm")
-@Data
-@ToString(callSuper = true)
-@EqualsAndHashCode(callSuper = true)
-public class LtftForm extends AbstractAuditedForm<LtftContent> {
+public interface FormContent {
 
-  @Override
-  public String getFormType() {
-    return "ltft";
-  }
 }

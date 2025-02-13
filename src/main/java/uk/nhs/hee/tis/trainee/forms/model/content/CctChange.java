@@ -19,25 +19,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.model;
+package uk.nhs.hee.tis.trainee.forms.model.content;
 
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
-import org.springframework.data.mongodb.core.mapping.Document;
-import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
+import java.time.LocalDate;
+import java.util.UUID;
+import lombok.Builder;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 /**
- * A LTFT form entity.
+ * The calculated LTFT change.
+ *
+ * @param id            The ID of the CCT change used to start the application.
+ * @param calculationId The ID of the CCT calculation used to start the application.
+ * @param type          The type of change.
+ * @param wte           The whole time equivalent after the change.
+ * @param startDate     The start date of the change.
+ * @param endDate       The end date of the change.
  */
-@Document("LtftForm")
-@Data
-@ToString(callSuper = true)
-@EqualsAndHashCode(callSuper = true)
-public class LtftForm extends AbstractAuditedForm<LtftContent> {
+@Builder
+public record CctChange(
+    @Field("id")
+    UUID id,
+    UUID calculationId,
+    CctChangeType type,
+    double wte,
+    LocalDate startDate,
+    LocalDate endDate
+) {
 
-  @Override
-  public String getFormType() {
-    return "ltft";
-  }
 }

@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.mapper;
 import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
 
 import java.util.List;
+import org.mapstruct.InheritInverseConfiguration;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
@@ -42,8 +43,9 @@ public interface LtftMapper {
    * @param entity The entity to convert to a DTO.
    * @return The equivalent summary DTO.
    */
-  @Mapping(target = "programmeMembershipId", source = "programmeMembership.id")
-  @Mapping(target = "status", expression = "java(entity.getLifecycleState())")
+  @Mapping(target = "name", source = "content.name")
+  @Mapping(target = "programmeMembershipId", source = "content.programmeMembership.id")
+  @Mapping(target = "status", source = "status.current.state")
   LtftSummaryDto toSummaryDto(LtftForm entity);
 
   /**
@@ -60,6 +62,10 @@ public interface LtftMapper {
    * @param entity The form to convert.
    * @return The equivalent DTO.
    */
+  @Mapping(target = "name", source = "content.name")
+  @Mapping(target = "discussions", source = "content.discussions")
+  @Mapping(target = "programmeMembership", source = "content.programmeMembership")
+  @Mapping(target = "status.current", source = "status.current.state")
   LtftFormDto toDto(LtftForm entity);
 
   /**
@@ -68,6 +74,6 @@ public interface LtftMapper {
    * @param dto The DTO to convert.
    * @return The equivalent LTFT Form.
    */
+  @InheritInverseConfiguration
   LtftForm toEntity(LtftFormDto dto);
-
 }
