@@ -22,14 +22,21 @@
 package uk.nhs.hee.tis.trainee.forms.repository;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.data.domain.Sort.Direction.ASC;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.mongodb.client.FindIterable;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
+import org.bson.Document;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -77,7 +84,7 @@ class LtftRepositoryIntegrationTest {
       content.programmeMembership.designatedBodyCode | content.programmeMembership.designatedBodyCode
       status.current.state                           | status.current.state
       status.history.state                           | status.history.state
-      """)
+       """)
   void shouldCreateSingleFieldIndexes(String indexName, String fieldName) {
     IndexOperations indexOperations = template.indexOps(LtftForm.class);
     List<IndexInfo> indexes = indexOperations.getIndexInfo();
@@ -101,6 +108,39 @@ class LtftRepositoryIntegrationTest {
     assertThat("Unexpected sparse index.", index.isSparse(), is(false));
     assertThat("Unexpected unique index.", index.isUnique(), is(false));
     assertThat("Unexpected wildcard index.", index.isWildcard(), is(false));
+  }
+
+  @Test
+  void shouldStoreWithUuidIdType() throws JsonProcessingException {
+    template.insert(new LtftForm());
+
+    String document = template.execute(LtftForm.class, collection -> {
+      FindIterable<Document> documents = collection.find();
+      return documents.cursor().next().toJson();
+    });
+
+    ObjectNode jsonDocument = (ObjectNode) new ObjectMapper().readTree(document);
+
+    String idType = jsonDocument.get("_id").get("$binary").get("subType").textValue();
+    assertThat("Unexpected ID format.", idType, is("04"));
+  }
+
+  @Test
+  void shouldNotStoreUnexpectedFields() throws JsonProcessingException {
+    template.insert(new LtftForm());
+
+    String document = template.execute(LtftForm.class, collection -> {
+      FindIterable<Document> documents = collection.find();
+      return documents.cursor().next().toJson();
+    });
+
+    ObjectNode jsonDocument = (ObjectNode) new ObjectMapper().readTree(document);
+    List<String> fieldNames = new ArrayList<>();
+    jsonDocument.fieldNames().forEachRemaining(fieldNames::add);
+
+    assertThat("Unexpected field count.", fieldNames, hasSize(5));
+    assertThat("Unexpected fields.", fieldNames,
+        hasItems("_id", "revision", "created", "lastModified", "_class"));
   }
 
   @Test

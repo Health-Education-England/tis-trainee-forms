@@ -22,12 +22,20 @@
 package uk.nhs.hee.tis.trainee.forms.repository;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.springframework.data.domain.Sort.Direction.ASC;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.mongodb.client.FindIterable;
+import java.util.ArrayList;
 import java.util.List;
+import org.bson.Document;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,8 +55,6 @@ import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 @SpringBootTest
 @Testcontainers
 class FormRPartBRepositoryIntegrationTest {
-
-  private static final String TRAINEE_ID = "40";
 
   @Container
   @ServiceConnection
@@ -91,5 +97,38 @@ class FormRPartBRepositoryIntegrationTest {
     assertThat("Unexpected sparse index.", index.isSparse(), is(false));
     assertThat("Unexpected unique index.", index.isUnique(), is(false));
     assertThat("Unexpected wildcard index.", index.isWildcard(), is(false));
+  }
+
+  @Test
+  void shouldStoreWithUuidIdType() throws JsonProcessingException {
+    template.insert(new FormRPartB());
+
+    String document = template.execute(FormRPartB.class, collection -> {
+      FindIterable<Document> documents = collection.find();
+      return documents.cursor().next().toJson();
+    });
+
+    ObjectNode jsonDocument = (ObjectNode) new ObjectMapper().readTree(document);
+
+    String idType = jsonDocument.get("_id").get("$binary").get("subType").textValue();
+    assertThat("Unexpected ID format.", idType, is("04"));
+  }
+
+  @Test
+  void shouldNotStoreUnexpectedFields() throws JsonProcessingException {
+    template.insert(new FormRPartB());
+
+    String document = template.execute(FormRPartB.class, collection -> {
+      FindIterable<Document> documents = collection.find();
+      return documents.cursor().next().toJson();
+    });
+
+    ObjectNode jsonDocument = (ObjectNode) new ObjectMapper().readTree(document);
+    List<String> fieldNames = new ArrayList<>();
+    jsonDocument.fieldNames().forEachRemaining(fieldNames::add);
+
+    assertThat("Unexpected field count.", fieldNames, hasSize(5));
+    assertThat("Unexpected fields.", fieldNames,
+        hasItems("_id", "currentDeclarations", "previousDeclarations", "work", "_class"));
   }
 }
