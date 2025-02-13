@@ -135,7 +135,7 @@ class LtftResourceTest {
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     LtftFormDto responseDto = response.getBody();
     assert responseDto != null;
-    assertThat("Unexpected response body.", responseDto.equals(savedForm), is(true));
+    assertThat("Unexpected response body.", responseDto, is(savedForm));
   }
 
   @Test

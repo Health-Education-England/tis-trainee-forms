@@ -103,13 +103,11 @@ public class LtftService {
     log.info("Getting LTFT form {} for trainee [{}]", formId, traineeId);
 
     Optional<LtftForm> form = ltftFormRepository.findByTraineeTisIdAndId(traineeId, formId);
-    if (form.isPresent()) {
-      log.info("Found form {} for trainee [{}]", formId, traineeId);
-      return Optional.of(mapper.toDto(form.get()));
-    } else {
-      log.info("Did not find form {} for trainee [{}]", formId, traineeId);
-      return Optional.empty();
-    }
+    form.ifPresentOrElse(
+        value -> log.info("Found form {} for trainee [{}]", formId, traineeId),
+        () -> log.info("Did not find form {} for trainee [{}]", formId, traineeId)
+    );
+    return form.map(mapper::toDto);
   }
 
   /**

@@ -180,7 +180,7 @@ class LtftServiceTest {
 
     Optional<LtftFormDto> formDtoOptional = service.getLtftForm(ID);
 
-    assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
+    assertThat("Unexpected form returned.", formDtoOptional, is(Optional.empty()));
     verify(ltftRepository).findByTraineeTisIdAndId(TRAINEE_ID, ID);
     verifyNoMoreInteractions(ltftRepository);
   }
@@ -199,8 +199,7 @@ class LtftServiceTest {
     assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(false));
     verify(ltftRepository).findByTraineeTisIdAndId(TRAINEE_ID, ID);
     LtftFormDto returnedFormDto = formDtoOptional.get();
-    assertThat("Unexpected returned LTFT form.", returnedFormDto.equals(mapper.toDto(form)),
-        is(true));
+    assertThat("Unexpected returned LTFT form.", returnedFormDto, is(mapper.toDto(form)));
   }
 
   @Test

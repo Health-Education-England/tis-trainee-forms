@@ -114,6 +114,6 @@ public class LtftResource {
   public ResponseEntity<LtftFormDto> getLtft(@PathVariable UUID formId) {
     log.info("Request to retrieve LTFT form {}.", formId);
     Optional<LtftFormDto> ltft = service.getLtftForm(formId);
-    return ltft.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+    return ResponseEntity.of(ltft);
   }
 }
