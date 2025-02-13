@@ -21,40 +21,15 @@
 
 package uk.nhs.hee.tis.trainee.forms.config;
 
-import jakarta.annotation.PostConstruct;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.config.EnableMongoAuditing;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.index.Index;
-import org.springframework.data.mongodb.core.index.IndexOperations;
-import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
-import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 
 /**
  * Configuration for the Mongo database.
+ * TODO: Fix test failures when moving @EnabledMongoAuditing to the application class.
  */
 @Configuration
 @EnableMongoAuditing
 public class MongoConfiguration {
 
-  private final MongoTemplate template;
-
-  MongoConfiguration(MongoTemplate template) {
-    this.template = template;
-  }
-
-  /**
-   * Add custom indexes to the Mongo collections.
-   */
-  @PostConstruct
-  public void initIndexes() {
-    IndexOperations formRpartAindexOps = template.indexOps(FormRPartA.class);
-    formRpartAindexOps.ensureIndex(new Index().on("traineeTisId", Sort.Direction.ASC));
-    formRpartAindexOps.ensureIndex(new Index().on("lifecycleState", Sort.Direction.ASC));
-
-    IndexOperations formRpartBindexOps = template.indexOps(FormRPartB.class);
-    formRpartBindexOps.ensureIndex(new Index().on("traineeTisId", Sort.Direction.ASC));
-    formRpartBindexOps.ensureIndex(new Index().on("lifecycleState", Sort.Direction.ASC));
-  }
 }
