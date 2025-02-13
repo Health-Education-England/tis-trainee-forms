@@ -98,5 +98,4 @@ class MongoConfigurationTest {
     assertThat("Unexpected FormR PartB index.", indexKeys,
         hasItems("traineeTisId", "lifecycleState"));
   }
-
 }

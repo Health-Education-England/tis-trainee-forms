@@ -23,9 +23,12 @@ package uk.nhs.hee.tis.trainee.forms.service;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -66,7 +69,7 @@ public class LtftService {
    */
   public List<LtftSummaryDto> getLtftSummaries() {
     String traineeId = traineeIdentity.getTraineeId();
-    log.info("Getting LTFT forms for trainee [{}]", traineeId);
+    log.info("Getting LTFT form summaries for trainee [{}]", traineeId);
 
     List<LtftForm> entities = ltftFormRepository.findByTraineeTisIdOrderByLastModified(
         traineeId);
@@ -88,5 +91,72 @@ public class LtftService {
     }
 
     return ltftFormRepository.countByStatus_CurrentIn(states);
+  }
+
+  /**
+   * Get the 'id' LTFT form if it belongs to the current user.
+   *
+   * @return The LTFT form, or optional empty if not found or does not belong to user.
+   */
+  public Optional<LtftFormDto> getLtftForm(UUID formId) {
+    String traineeId = traineeIdentity.getTraineeId();
+    log.info("Getting LTFT form {} for trainee [{}]", formId, traineeId);
+
+    Optional<LtftForm> form = ltftFormRepository.findByTraineeTisIdAndId(traineeId, formId);
+    form.ifPresentOrElse(
+        value -> log.info("Found form {} for trainee [{}]", formId, traineeId),
+        () -> log.info("Did not find form {} for trainee [{}]", formId, traineeId)
+    );
+    return form.map(mapper::toDto);
+  }
+
+  /**
+   * Save the dto as a new LTFT form.
+   *
+   * @param dto The LTFT DTO to save.
+   * @return The saved form DTO.
+   */
+  public Optional<LtftFormDto> saveLtftForm(LtftFormDto dto) {
+    String traineeId = traineeIdentity.getTraineeId();
+    log.info("Saving LTFT form for trainee [{}]: {}", traineeId, dto);
+    LtftForm form = mapper.toEntity(dto);
+    if (!form.getTraineeTisId().equals(traineeId)) {
+      log.warn("Could not save form since it does belong to the logged-in trainee {}: {}",
+          traineeId, dto);
+      return Optional.empty();
+    }
+    LtftForm savedForm = ltftFormRepository.save(form);
+    return Optional.of(mapper.toDto(savedForm));
+  }
+
+  /**
+   * Update the existing LTFT form.
+   *
+   * @param formId The id of the LTFT form to update.
+   * @param dto    The updated LTFT DTO to save.
+   * @return The updated form DTO.
+   */
+  public Optional<LtftFormDto> updateLtftForm(UUID formId, LtftFormDto dto) {
+    String traineeId = traineeIdentity.getTraineeId();
+    log.info("Updating LTFT form {} for trainee [{}]: {}", formId, traineeId, dto);
+    LtftForm form = mapper.toEntity(dto);
+    if (form.getId() == null || !form.getId().equals(formId)) {
+      log.warn("Could not update form since its id {} does not equal provided form id {}",
+          form.getId(), formId);
+      return Optional.empty();
+    }
+    if (!form.getTraineeTisId().equals(traineeId)) {
+      log.warn("Could not update form since it does belong to the logged-in trainee {}: {}",
+          traineeId, dto);
+      return Optional.empty();
+    }
+    Optional<LtftForm> existingForm = ltftFormRepository.findByTraineeTisIdAndId(traineeId, formId);
+    if (existingForm.isEmpty()) {
+      log.warn("Could not update form {} since no existing form with this id for trainee {}",
+          formId, traineeId);
+      return Optional.empty();
+    }
+    LtftForm savedForm = ltftFormRepository.save(form);
+    return Optional.of(mapper.toDto(savedForm));
   }
 }
