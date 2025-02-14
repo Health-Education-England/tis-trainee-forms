@@ -50,7 +50,8 @@ class LtftFormTest {
     LtftForm form = new LtftForm();
     List<LtftForm.LtftStatusInfo> history = List.of(
         new LtftForm.LtftStatusInfo(LifecycleState.SUBMITTED, "test", Instant.now(), null));
-    form.setStatus(new LtftForm.LtftStatus(s, history));
+    LtftForm.LtftStatusInfo current = new LtftForm.LtftStatusInfo(s, "test", Instant.now(), null);
+    form.setStatus(new LtftForm.LtftStatus(current, history));
     assertThat("Unexpected lifecycle state.", form.getLifecycleState(), is(s));
   }
 }

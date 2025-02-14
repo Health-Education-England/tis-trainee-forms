@@ -90,7 +90,7 @@ public class LtftService {
       return ltftFormRepository.count();
     }
 
-    return ltftFormRepository.countByStatus_CurrentIn(states);
+    return ltftFormRepository.countByStatus_Current_StateIn(states);
   }
 
   /**

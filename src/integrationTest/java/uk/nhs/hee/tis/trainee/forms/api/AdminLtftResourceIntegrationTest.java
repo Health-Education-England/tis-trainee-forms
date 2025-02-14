@@ -92,17 +92,17 @@ class AdminLtftResourceIntegrationTest {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
         .map(s -> {
           LtftForm form = new LtftForm();
-          form.setStatus(new LtftForm.LtftStatus(s,
-              List.of(new LtftForm.LtftStatusInfo(s, "test", Instant.now(), null))));
+          LtftForm.LtftStatusInfo status = new LtftForm.LtftStatusInfo(s, "test", Instant.now(), null);
+          form.setStatus(new LtftForm.LtftStatus(status, List.of(status)));
           return form;
         })
         .toList();
     template.insertAll(ltfts);
 
     LtftForm ltft = new LtftForm();
-    ltft.setStatus(new LtftForm.LtftStatus(LifecycleState.SUBMITTED,
-        List.of(new LtftForm.LtftStatusInfo(
-            LifecycleState.SUBMITTED, "test", Instant.now(), null))));
+    LtftForm.LtftStatusInfo submittedStatus
+        = new LtftForm.LtftStatusInfo(LifecycleState.SUBMITTED, "test", Instant.now(), null);
+    ltft.setStatus(new LtftForm.LtftStatus(submittedStatus, List.of(submittedStatus)));
     template.insert(ltft);
 
     mockMvc.perform(get("/api/admin/ltft/count")
@@ -118,8 +118,9 @@ class AdminLtftResourceIntegrationTest {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
         .map(s -> {
           LtftForm form = new LtftForm();
-          form.setStatus(new LtftForm.LtftStatus(s,
-              List.of(new LtftForm.LtftStatusInfo(s, "test", Instant.now(), null))));
+          LtftForm.LtftStatusInfo statusInForm
+              = new LtftForm.LtftStatusInfo(s, "test", Instant.now(), null);
+          form.setStatus(new LtftForm.LtftStatus(statusInForm, List.of(statusInForm)));
           return form;
         })
         .toList();
@@ -137,17 +138,18 @@ class AdminLtftResourceIntegrationTest {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
         .map(s -> {
           LtftForm form = new LtftForm();
-          form.setStatus(new LtftForm.LtftStatus(s,
-              List.of(new LtftForm.LtftStatusInfo(s, "test", Instant.now(), null))));
+          LtftForm.LtftStatusInfo status = new LtftForm.LtftStatusInfo(s, "test", Instant.now(), null);
+          form.setStatus(new LtftForm.LtftStatus(status,
+              List.of(status)));
           return form;
         })
         .toList();
     template.insertAll(ltfts);
 
     LtftForm ltft = new LtftForm();
-    ltft.setStatus(new LtftForm.LtftStatus(LifecycleState.SUBMITTED,
-        List.of(new LtftForm.LtftStatusInfo(
-            LifecycleState.SUBMITTED, "test", Instant.now(), null))));
+    LtftForm.LtftStatusInfo submittedStatus
+        = new LtftForm.LtftStatusInfo(LifecycleState.SUBMITTED, "test", Instant.now(), null);
+    ltft.setStatus(new LtftForm.LtftStatus(submittedStatus, List.of(submittedStatus)));
     template.insert(ltft);
 
     String statusFilter = "%s,%s".formatted(LifecycleState.SUBMITTED, LifecycleState.UNSUBMITTED);
