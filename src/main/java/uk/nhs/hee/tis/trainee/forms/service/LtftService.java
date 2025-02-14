@@ -31,6 +31,7 @@ import org.springframework.stereotype.Service;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
@@ -44,6 +45,7 @@ import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 @XRayEnabled
 public class LtftService {
 
+  private final AdminIdentity adminIdentity;
   private final TraineeIdentity traineeIdentity;
   private final LtftFormRepository ltftFormRepository;
   private final LtftMapper mapper;
@@ -51,12 +53,14 @@ public class LtftService {
   /**
    * Instantiate the LTFT form service.
    *
-   * @param traineeIdentity    The logged-in trainee.
+   * @param adminIdentity      The logged-in admin, for admin features.
+   * @param traineeIdentity    The logged-in trainee, for trainee features.
    * @param ltftFormRepository The LTFT repository.
    * @param mapper             The LTFT mapper.
    */
-  public LtftService(TraineeIdentity traineeIdentity, LtftFormRepository ltftFormRepository,
-      LtftMapper mapper) {
+  public LtftService(AdminIdentity adminIdentity, TraineeIdentity traineeIdentity,
+      LtftFormRepository ltftFormRepository, LtftMapper mapper) {
+    this.adminIdentity = adminIdentity;
     this.traineeIdentity = traineeIdentity;
     this.ltftFormRepository = ltftFormRepository;
     this.mapper = mapper;
@@ -85,12 +89,16 @@ public class LtftService {
    * @return The number of found LTFT forms.
    */
   public long getAdminLtftCount(Set<LifecycleState> states) {
+    Set<String> groups = adminIdentity.getGroups();
+
     if (states == null || states.isEmpty()) {
       log.debug("No status filter provided, counting all LTFTs.");
-      return ltftFormRepository.count();
+      return ltftFormRepository.countByContent_ProgrammeMembership_DesignatedBodyCodeIn(groups);
     }
 
-    return ltftFormRepository.countByStatus_Current_StateIn(states);
+    return ltftFormRepository
+        .countByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(states,
+            groups);
   }
 
   /**
