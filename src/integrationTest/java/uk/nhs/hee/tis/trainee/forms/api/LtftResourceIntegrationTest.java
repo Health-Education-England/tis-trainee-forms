@@ -34,6 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -323,7 +324,6 @@ class LtftResourceIntegrationTest {
     formToUpdate.setTraineeTisId(TRAINEE_ID);
     formToUpdate.setId(savedId);
     formToUpdate.setName("updated");
-    formToUpdate.setCreated(formSaved.getCreated()); //otherwise it is assumed to be a new form
 
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
@@ -336,7 +336,7 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.traineeTisId").value(TRAINEE_ID))
         .andExpect(jsonPath("$.name").value("updated"))
         .andExpect(jsonPath("$.created").value(
-            formSaved.getCreated().toString()))
+            formSaved.getCreated().truncatedTo(ChronoUnit.MILLIS).toString()))
         .andExpect(jsonPath("$.lastModified",
             greaterThan(formSaved.getLastModified().toString())));
 
