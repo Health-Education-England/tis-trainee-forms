@@ -156,6 +156,7 @@ public class LtftService {
           formId, traineeId);
       return Optional.empty();
     }
+    form.setCreated(existingForm.get().getCreated()); //explicitly set otherwise form saved as 'new'
     LtftForm savedForm = ltftFormRepository.save(form);
     return Optional.of(mapper.toDto(savedForm));
   }
