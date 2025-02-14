@@ -19,17 +19,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.config;
-
-import org.springframework.context.annotation.Configuration;
-import org.springframework.data.mongodb.config.EnableMongoAuditing;
+package uk.nhs.hee.tis.trainee.forms.model.content;
 
 /**
- * Configuration for the Mongo database.
- * TODO: Fix test failures when moving @EnabledMongoAuditing to the application class.
+ * The types of available CCT changes.
  */
-@Configuration
-@EnableMongoAuditing
-public class MongoConfiguration {
-
+public enum CctChangeType {
+  LTFT
 }

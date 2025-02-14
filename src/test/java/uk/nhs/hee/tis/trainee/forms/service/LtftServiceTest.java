@@ -49,7 +49,10 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
-import uk.nhs.hee.tis.trainee.forms.model.LtftForm.LtftProgrammeMembership;
+import uk.nhs.hee.tis.trainee.forms.model.Person;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Discussions;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ProgrammeMembership;
 import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 
 class LtftServiceTest {
@@ -59,7 +62,7 @@ class LtftServiceTest {
 
   private LtftService service;
   private LtftFormRepository ltftRepository;
-  private LtftMapper mapper = new LtftMapperImpl();
+  private final LtftMapper mapper = new LtftMapperImpl();
 
   @BeforeEach
   void setUp() {
@@ -91,16 +94,20 @@ class LtftServiceTest {
     LtftForm entity1 = new LtftForm();
     entity1.setId(ltftId1);
     entity1.setTraineeTisId(TRAINEE_ID);
-    entity1.setName("Test LTFT form 1");
-    entity1.setProgrammeMembership(LtftProgrammeMembership.builder()
-        .id(pmId1)
-        .build());
-    entity1.setDiscussions(LtftForm.LtftDiscussions.builder()
-        .tpdName("tpd")
-        .other(List.of(LtftForm.LtftPersonRole.builder()
-            .name("other")
-            .build()))
-        .build());
+
+    LtftContent content1 = LtftContent.builder()
+        .name("Test LTFT form 1")
+        .programmeMembership(ProgrammeMembership.builder()
+            .id(pmId1)
+            .build())
+        .discussions(Discussions.builder()
+            .tpdName("tpd")
+            .other(List.of(Person.builder()
+                .name("other")
+                .build()))
+            .build())
+        .build();
+    entity1.setContent(content1);
     entity1.setCreated(created1);
     entity1.setLastModified(lastModified1);
 
@@ -112,10 +119,14 @@ class LtftServiceTest {
     LtftForm entity2 = new LtftForm();
     entity2.setId(ltftId2);
     entity2.setTraineeTisId(TRAINEE_ID);
-    entity2.setName("Test LTFT form 2");
-    entity2.setProgrammeMembership(LtftProgrammeMembership.builder()
-        .id(pmId2)
-        .build());
+
+    LtftContent content2 = LtftContent.builder()
+        .name("Test LTFT form 2")
+        .programmeMembership(ProgrammeMembership.builder()
+            .id(pmId2)
+            .build())
+        .build();
+    entity2.setContent(content2);
     entity2.setCreated(created2);
     entity2.setLastModified(lastModified2);
 
@@ -149,13 +160,13 @@ class LtftServiceTest {
     long count = service.getAdminLtftCount(states);
 
     assertThat("Unexpected count.", count, is(40L));
-    verify(ltftRepository, never()).countByStatus_CurrentIn(any());
+    verify(ltftRepository, never()).countByStatus_Current_StateIn(any());
   }
 
   @Test
   void shouldCountFilteredLtftWhenFiltersNotEmpty() {
     Set<LifecycleState> states = Set.of(LifecycleState.SUBMITTED);
-    when(ltftRepository.countByStatus_CurrentIn(states)).thenReturn(40L);
+    when(ltftRepository.countByStatus_Current_StateIn(states)).thenReturn(40L);
 
     long count = service.getAdminLtftCount(Set.of(LifecycleState.SUBMITTED));
 
@@ -190,7 +201,7 @@ class LtftServiceTest {
     LtftForm form = new LtftForm();
     form.setId(ID);
     form.setTraineeTisId(TRAINEE_ID);
-    form.setName("test");
+    form.setContent(LtftContent.builder().name("test").build());
     when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID))
         .thenReturn(Optional.of(form));
 
@@ -221,7 +232,7 @@ class LtftServiceTest {
     LtftForm existingForm = new LtftForm();
     existingForm.setId(ID);
     existingForm.setTraineeTisId(TRAINEE_ID);
-    existingForm.setName("test");
+    existingForm.setContent(LtftContent.builder().name("test").build());
     when(ltftRepository.save(any())).thenReturn(existingForm);
 
     Optional<LtftFormDto> formDtoOptional = service.saveLtftForm(dtoToSave);
@@ -291,7 +302,7 @@ class LtftServiceTest {
     LtftForm existingForm = new LtftForm();
     existingForm.setId(ID);
     existingForm.setTraineeTisId(TRAINEE_ID);
-    existingForm.setName("test");
+    existingForm.setContent(LtftContent.builder().name("test").build());
     when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID))
         .thenReturn(Optional.of(existingForm));
     when(ltftRepository.save(any())).thenReturn(existingForm);

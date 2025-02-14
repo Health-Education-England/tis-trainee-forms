@@ -79,7 +79,7 @@ public class LtftService {
   }
 
   /**
-   * Count all LTFT forms associated with the admin's local office.
+   * Count all LTFT forms associated with the local offices of the calling admin.
    *
    * @param states The states to include in the count.
    * @return The number of found LTFT forms.
@@ -90,7 +90,7 @@ public class LtftService {
       return ltftFormRepository.count();
     }
 
-    return ltftFormRepository.countByStatus_CurrentIn(states);
+    return ltftFormRepository.countByStatus_Current_StateIn(states);
   }
 
   /**

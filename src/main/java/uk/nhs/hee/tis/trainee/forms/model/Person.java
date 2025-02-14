@@ -19,17 +19,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.config;
+package uk.nhs.hee.tis.trainee.forms.model;
 
-import org.springframework.context.annotation.Configuration;
-import org.springframework.data.mongodb.config.EnableMongoAuditing;
+import lombok.Builder;
 
 /**
- * Configuration for the Mongo database.
- * TODO: Fix test failures when moving @EnabledMongoAuditing to the application class.
+ * Details of a person and their role.
+ *
+ * @param name  The person's name.
+ * @param email The person's contact email.
+ * @param role  The person's role, context dependent.
  */
-@Configuration
-@EnableMongoAuditing
-public class MongoConfiguration {
+@Builder
+public record Person(
+    String name,
+    String email,
+    String role) {
 
 }

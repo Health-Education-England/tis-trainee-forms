@@ -19,17 +19,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.config;
+package uk.nhs.hee.tis.trainee.forms.model.content;
 
-import org.springframework.context.annotation.Configuration;
-import org.springframework.data.mongodb.config.EnableMongoAuditing;
+import java.time.LocalDate;
+import java.util.UUID;
+import lombok.Builder;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 /**
- * Configuration for the Mongo database.
- * TODO: Fix test failures when moving @EnabledMongoAuditing to the application class.
+ * The calculated LTFT change.
+ *
+ * @param id            The ID of the CCT change used to start the application.
+ * @param calculationId The ID of the CCT calculation used to start the application.
+ * @param type          The type of change.
+ * @param wte           The whole time equivalent after the change.
+ * @param startDate     The start date of the change.
+ * @param endDate       The end date of the change.
  */
-@Configuration
-@EnableMongoAuditing
-public class MongoConfiguration {
+@Builder
+public record CctChange(
+    @Field("id")
+    UUID id,
+    UUID calculationId,
+    CctChangeType type,
+    double wte,
+    LocalDate startDate,
+    LocalDate endDate
+) {
 
 }

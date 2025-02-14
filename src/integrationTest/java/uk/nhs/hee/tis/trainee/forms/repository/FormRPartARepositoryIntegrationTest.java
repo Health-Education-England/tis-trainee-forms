@@ -25,15 +25,12 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.data.domain.Sort.Direction.ASC;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mongodb.client.FindIterable;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import org.bson.Document;
@@ -53,14 +50,11 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
-import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
-import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
+import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 
 @SpringBootTest
 @Testcontainers
-class LtftRepositoryIntegrationTest {
-
-  private static final String TRAINEE_ID = "40";
+class FormRPartARepositoryIntegrationTest {
 
   @Container
   @ServiceConnection
@@ -72,24 +66,19 @@ class LtftRepositoryIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    template.findAllAndRemove(new Query(), LtftForm.class);
+    template.findAllAndRemove(new Query(), FormRPartA.class);
   }
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      _id_                                           | _id
-      traineeTisId                                   | traineeTisId
-      formRef                                        | formRef
-      content.programmeMembership.id                 | content.programmeMembership.id
-      content.programmeMembership.designatedBodyCode | content.programmeMembership.designatedBodyCode
-      status.current.state                           | status.current.state
-      status.history.state                           | status.history.state
-       """)
+      _id_         | _id
+      traineeTisId | traineeTisId
+      """)
   void shouldCreateSingleFieldIndexes(String indexName, String fieldName) {
-    IndexOperations indexOperations = template.indexOps(LtftForm.class);
+    IndexOperations indexOperations = template.indexOps(FormRPartA.class);
     List<IndexInfo> indexes = indexOperations.getIndexInfo();
 
-    assertThat("Unexpected index count.", indexes, hasSize(7));
+    assertThat("Unexpected index count.", indexes, hasSize(2));
 
     IndexInfo index = indexes.stream()
         .filter(i -> i.getName().equals(indexName))
@@ -112,9 +101,9 @@ class LtftRepositoryIntegrationTest {
 
   @Test
   void shouldStoreWithUuidIdType() throws JsonProcessingException {
-    template.insert(new LtftForm());
+    template.insert(new FormRPartA());
 
-    String document = template.execute(LtftForm.class, collection -> {
+    String document = template.execute(FormRPartA.class, collection -> {
       FindIterable<Document> documents = collection.find();
       return documents.cursor().next().toJson();
     });
@@ -127,9 +116,9 @@ class LtftRepositoryIntegrationTest {
 
   @Test
   void shouldNotStoreUnexpectedFields() throws JsonProcessingException {
-    template.insert(new LtftForm());
+    template.insert(new FormRPartA());
 
-    String document = template.execute(LtftForm.class, collection -> {
+    String document = template.execute(FormRPartA.class, collection -> {
       FindIterable<Document> documents = collection.find();
       return documents.cursor().next().toJson();
     });
@@ -138,60 +127,7 @@ class LtftRepositoryIntegrationTest {
     List<String> fieldNames = new ArrayList<>();
     jsonDocument.fieldNames().forEachRemaining(fieldNames::add);
 
-    assertThat("Unexpected field count.", fieldNames, hasSize(5));
-    assertThat("Unexpected fields.", fieldNames,
-        hasItems("_id", "revision", "created", "lastModified", "_class"));
-  }
-
-  @Test
-  void shouldSetCreatedAndLastModifiedWhenSave() {
-    LtftForm ltft = new LtftForm();
-    ltft.setTraineeTisId(TRAINEE_ID);
-    ltft.setContent(LtftContent.builder().name("name").build());
-    template.insert(ltft);
-
-    List<LtftForm> savedRecords = template.find(new Query(), LtftForm.class);
-    assertThat("Unexpected saved records.", savedRecords.size(), is(1));
-    LtftForm savedRecord = savedRecords.get(0);
-    assertThat("Unexpected saved record name.", savedRecord.getContent().name(), is("name"));
-    assertThat("Unexpected saved record trainee id.", savedRecord.getTraineeTisId(),
-        is(TRAINEE_ID));
-    assertThat("Unexpected saved record id.", savedRecord.getId(), is(notNullValue()));
-    Instant roughlyNow = Instant.now().truncatedTo(ChronoUnit.SECONDS);
-    Instant roughlyCreated = savedRecord.getCreated().truncatedTo(ChronoUnit.SECONDS);
-    assertThat("Unexpected saved record created timestamp.",
-        roughlyCreated.equals(roughlyNow), is(true));
-    Instant roughlyLastModified = savedRecord.getLastModified().truncatedTo(ChronoUnit.SECONDS);
-    assertThat("Unexpected saved record last modified timestamp.",
-        roughlyLastModified.equals(roughlyNow), is(true));
-  }
-
-  @Test
-  void shouldUpdateLastModifiedWhenUpdate() throws InterruptedException {
-    LtftForm ltft = new LtftForm();
-    ltft.setTraineeTisId(TRAINEE_ID);
-    ltft.setContent(LtftContent.builder().name("name").build());
-    template.insert(ltft);
-
-    List<LtftForm> savedRecords = template.find(new Query(), LtftForm.class);
-    assertThat("Unexpected saved records.", savedRecords.size(), is(1));
-    LtftForm savedRecord = savedRecords.get(0);
-    Instant savedCreated = savedRecord.getCreated();
-    Instant savedLastModified = savedRecord.getLastModified();
-
-    ltft.setId(savedRecord.getId());
-    Thread.sleep(1000);
-    template.save(ltft);
-
-    List<LtftForm> updatedRecords = template.find(new Query(), LtftForm.class);
-    assertThat("Unexpected updated records.", updatedRecords.size(), is(1));
-    LtftForm updatedRecord = updatedRecords.get(0);
-    Instant updatedCreated = updatedRecord.getCreated();
-    Instant updatedLastModified = updatedRecord.getLastModified();
-
-    assertThat("Unexpected updated record created timestamp.",
-        updatedCreated.equals(savedCreated), is(true));
-    assertThat("Unexpected updated record last modified timestamp.",
-        updatedLastModified.isAfter(savedLastModified), is(true));
+    assertThat("Unexpected field count.", fieldNames, hasSize(2));
+    assertThat("Unexpected fields.", fieldNames, hasItems("_id", "_class"));
   }
 }
