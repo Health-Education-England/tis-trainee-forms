@@ -50,7 +50,7 @@ public interface LtftFormRepository extends MongoRepository<LtftForm, UUID> {
    * @param states The states to include in the count.
    * @return The number of found LTFT forms.
    */
-  long countByStatus_CurrentIn(Set<LifecycleState> states);
+  long countByStatus_Current_StateIn(Set<LifecycleState> states);
 
   /**
    * Find the LTFT form with the given id that belongs to the given trainee.

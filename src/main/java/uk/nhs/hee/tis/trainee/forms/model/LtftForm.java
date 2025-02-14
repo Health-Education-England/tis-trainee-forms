@@ -63,7 +63,7 @@ public class LtftForm extends AbstractAuditedForm {
     if (status == null) {
       return null; //TODO: this should never happen
     }
-    return status.current();
+    return status.current().state();
   }
 
   /**
@@ -95,7 +95,7 @@ public class LtftForm extends AbstractAuditedForm {
    */
   @Builder
   public record LtftStatus(
-      LifecycleState current,
+      LtftStatusInfo current,
       List<LtftStatusInfo> history) {
 
   }

@@ -149,13 +149,13 @@ class LtftServiceTest {
     long count = service.getAdminLtftCount(states);
 
     assertThat("Unexpected count.", count, is(40L));
-    verify(ltftRepository, never()).countByStatus_CurrentIn(any());
+    verify(ltftRepository, never()).countByStatus_Current_StateIn(any());
   }
 
   @Test
   void shouldCountFilteredLtftWhenFiltersNotEmpty() {
     Set<LifecycleState> states = Set.of(LifecycleState.SUBMITTED);
-    when(ltftRepository.countByStatus_CurrentIn(states)).thenReturn(40L);
+    when(ltftRepository.countByStatus_Current_StateIn(states)).thenReturn(40L);
 
     long count = service.getAdminLtftCount(Set.of(LifecycleState.SUBMITTED));
 

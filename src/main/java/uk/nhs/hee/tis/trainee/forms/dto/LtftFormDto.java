@@ -67,7 +67,7 @@ public class LtftFormDto {
    */
   @Data
   public static class LtftStatusDto {
-    private LifecycleState current;
+    private LtftStatusInfoDto current;
     private List<LtftStatusInfoDto> history;
   }
 
