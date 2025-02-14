@@ -55,8 +55,8 @@ import uk.nhs.hee.tis.trainee.forms.api.validation.FormRPartBValidator;
 import uk.nhs.hee.tis.trainee.forms.config.InterceptorConfiguration;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
-import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 
 @Import(FormRPartBResource.class)
