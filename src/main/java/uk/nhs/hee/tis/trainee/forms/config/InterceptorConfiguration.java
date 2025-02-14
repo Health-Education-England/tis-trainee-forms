@@ -26,8 +26,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.context.annotation.RequestScope;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-import org.springframework.web.servlet.handler.MappedInterceptor;
-import uk.nhs.hee.tis.trainee.forms.dto.TraineeIdentity;
+import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
+import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
+import uk.nhs.hee.tis.trainee.forms.interceptor.AdminIdentityInterceptor;
 import uk.nhs.hee.tis.trainee.forms.interceptor.TraineeIdentityInterceptor;
 
 /**
@@ -38,23 +39,44 @@ public class InterceptorConfiguration implements WebMvcConfigurer {
 
   // Endpoints are a mix of authenticated (public) and unauthenticated (internal), limit
   // trainee ID verification to LTFT, COJ and FormR endpoints for now.
-  protected static final String[] TRAINEE_ID_APIS
-      = {"/api/coj",
-        "/api/formr-parta", "/api/formr-partas", "/api/formr-parta/**",
-        "/api/formr-partb", "/api/formr-partbs", "/api/formr-partb/**",
-        "/api/ltft", "/api/ltft/**"};
+  protected static final String[] TRAINEE_ID_APIS = {
+      "/api/coj",
+      "/api/formr-parta", "/api/formr-partas", "/api/formr-parta/**",
+      "/api/formr-partb", "/api/formr-partbs", "/api/formr-partb/**",
+      "/api/ltft", "/api/ltft/**"
+  };
 
   @Override
   public void addInterceptors(InterceptorRegistry registry) {
-    MappedInterceptor mappedInterceptor
-        = new MappedInterceptor(TRAINEE_ID_APIS, traineeIdentityInterceptor());
-    registry.addInterceptor(mappedInterceptor);
+    registry.addInterceptor(adminIdentityInterceptor()).addPathPatterns("/api/admin/**");
+    registry.addInterceptor(traineeIdentityInterceptor()).addPathPatterns(TRAINEE_ID_APIS);
+  }
+
+  /**
+   * Create an interceptor for creating a {@link AdminIdentity} from a request.
+   *
+   * @return The admin identity interceptor.
+   */
+  @Bean
+  public AdminIdentityInterceptor adminIdentityInterceptor() {
+    return new AdminIdentityInterceptor(adminIdentity());
+  }
+
+  /**
+   * Create a {@link AdminIdentity} for each request.
+   *
+   * @return The created admin identity.
+   */
+  @Bean
+  @RequestScope
+  public AdminIdentity adminIdentity() {
+    return new AdminIdentity();
   }
 
   /**
    * Create an interceptor for creating a {@link TraineeIdentity} from a request.
    *
-   * @return The trainee identity inteceptor.
+   * @return The trainee identity interceptor.
    */
   @Bean
   public TraineeIdentityInterceptor traineeIdentityInterceptor() {
