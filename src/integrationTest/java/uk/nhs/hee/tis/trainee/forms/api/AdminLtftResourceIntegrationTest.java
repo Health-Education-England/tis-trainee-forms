@@ -25,6 +25,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -42,6 +43,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -52,11 +54,17 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ProgrammeMembership;
 
 @SpringBootTest
+@ActiveProfiles("test")
 @Testcontainers
 @AutoConfigureMockMvc
 class AdminLtftResourceIntegrationTest {
+
+  private static final String DBC_1 = "1-abc123";
+  private static final String DBC_2 = "1-yxz789";
 
   @Container
   @ServiceConnection
@@ -101,7 +109,7 @@ class AdminLtftResourceIntegrationTest {
 
   @Test
   void shouldReturnBadRequestForCountWhenInvalidStatusFilter() throws Exception {
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of("123"));
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft/count")
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", "INVALID_FILTER"))
@@ -111,7 +119,7 @@ class AdminLtftResourceIntegrationTest {
   @ParameterizedTest
   @NullAndEmptySource
   void shouldCountZeroWhenNoLtfts(String statusFilter) throws Exception {
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of("123"));
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft/count")
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", statusFilter))
@@ -122,37 +130,30 @@ class AdminLtftResourceIntegrationTest {
 
   @ParameterizedTest
   @NullAndEmptySource
-  void shouldCountAllLtftsWhenNoStatusFilter(String statusFilter) throws Exception {
+  void shouldCountZeroWhenNoLtftsWithMatchingDbc(String statusFilter) throws Exception {
+    template.insert(createLtftForm(SUBMITTED, DBC_2));
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(get("/api/admin/ltft/count")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .param("status", statusFilter))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.TEXT_PLAIN))
+        .andExpect(content().string("0"));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  void shouldOnlyCountLtftsWithMatchingDbcWhenNoStatusFilter(String statusFilter) throws Exception {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
-        .map(s -> {
-          LtftForm form = new LtftForm();
-          StatusInfo statusInfo = StatusInfo.builder()
-              .state(s)
-              .timestamp(Instant.now())
-              .build();
-          form.setStatus(Status.builder()
-              .current(statusInfo)
-              .history(List.of(statusInfo))
-              .build()
-          );
-          return form;
-        })
+        .map(s -> createLtftForm(s, DBC_1))
         .toList();
     template.insertAll(ltfts);
 
-    LtftForm ltft = new LtftForm();
-    StatusInfo statusInfo = StatusInfo.builder()
-        .state(LifecycleState.SUBMITTED)
-        .timestamp(Instant.now())
-        .build();
-    ltft.setStatus(Status.builder()
-        .current(statusInfo)
-        .history(List.of(statusInfo))
-        .build()
-    );
-    template.insert(ltft);
+    template.insert(createLtftForm(SUBMITTED, DBC_1));
+    template.insert(createLtftForm(SUBMITTED, DBC_2));
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of("123"));
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft/count")
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", statusFilter))
@@ -163,25 +164,16 @@ class AdminLtftResourceIntegrationTest {
 
   @ParameterizedTest
   @EnumSource(LifecycleState.class)
-  void shouldCountMatchingLtftsWhenHasStatusFilter(LifecycleState status) throws Exception {
+  void shouldOnlyCountLtftsWithMatchingDbcWhenHasStatusFilter(LifecycleState status)
+      throws Exception {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
-        .map(s -> {
-          LtftForm form = new LtftForm();
-          StatusInfo statusInfo = StatusInfo.builder()
-              .state(s)
-              .timestamp(Instant.now())
-              .build();
-          form.setStatus(Status.builder()
-              .current(statusInfo)
-              .history(List.of(statusInfo))
-              .build()
-          );
-          return form;
-        })
+        .map(s -> createLtftForm(s, DBC_1))
         .toList();
     template.insertAll(ltfts);
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of("123"));
+    template.insert(createLtftForm(status, DBC_2));
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft/count")
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", status.toString()))
@@ -191,27 +183,60 @@ class AdminLtftResourceIntegrationTest {
   }
 
   @Test
-  void shouldCountMatchingLtftsWhenMultipleStatusFilters() throws Exception {
+  void shouldCountMatchingLtftsWhenMultipleDbcs() throws Exception {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
-        .map(s -> {
-          LtftForm form = new LtftForm();
-          StatusInfo statusInfo = StatusInfo.builder()
-              .state(s)
-              .timestamp(Instant.now())
-              .build();
-          form.setStatus(Status.builder()
-              .current(statusInfo)
-              .history(List.of(statusInfo))
-              .build()
-          );
-          return form;
-        })
+        .map(s -> createLtftForm(s, DBC_1))
         .toList();
     template.insertAll(ltfts);
 
+    template.insert(createLtftForm(SUBMITTED, DBC_2));
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1, DBC_2));
+    mockMvc.perform(get("/api/admin/ltft/count")
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.TEXT_PLAIN))
+        .andExpect(content().string(String.valueOf(LifecycleState.values().length + 1)));
+  }
+
+  @Test
+  void shouldCountMatchingLtftsWhenMultipleStatusFilters() throws Exception {
+    List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
+        .map(s -> createLtftForm(s, DBC_1))
+        .toList();
+    template.insertAll(ltfts);
+
+    template.insert(createLtftForm(SUBMITTED, DBC_1));
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String statusFilter = "%s,%s".formatted(SUBMITTED, LifecycleState.UNSUBMITTED);
+    mockMvc.perform(get("/api/admin/ltft/count")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .param("status", statusFilter))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.TEXT_PLAIN))
+        .andExpect(content().string(String.valueOf(3)));
+  }
+
+  /**
+   * Create a form with the given details, other fields will get sensible defaults.
+   *
+   * @param state The current state of the form.
+   * @param dbc   The designated body code to include in the form's programme membership.
+   * @return The created form.
+   */
+  private LtftForm createLtftForm(LifecycleState state, String dbc) {
     LtftForm ltft = new LtftForm();
+
+    LtftContent content = LtftContent.builder()
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(dbc)
+            .build())
+        .build();
+    ltft.setContent(content);
+
     StatusInfo statusInfo = StatusInfo.builder()
-        .state(LifecycleState.SUBMITTED)
+        .state(state)
         .timestamp(Instant.now())
         .build();
     ltft.setStatus(Status.builder()
@@ -219,15 +244,7 @@ class AdminLtftResourceIntegrationTest {
         .history(List.of(statusInfo))
         .build()
     );
-    template.insert(ltft);
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of("123"));
-    String statusFilter = "%s,%s".formatted(LifecycleState.SUBMITTED, LifecycleState.UNSUBMITTED);
-    mockMvc.perform(get("/api/admin/ltft/count")
-            .header(HttpHeaders.AUTHORIZATION, token)
-            .param("status", statusFilter))
-        .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.TEXT_PLAIN))
-        .andExpect(content().string(String.valueOf(3)));
+    return ltft;
   }
 }
