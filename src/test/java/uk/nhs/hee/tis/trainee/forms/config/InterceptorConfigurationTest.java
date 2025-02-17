@@ -21,18 +21,21 @@
 
 package uk.nhs.hee.tis.trainee.forms.config;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static uk.nhs.hee.tis.trainee.forms.config.InterceptorConfiguration.TRAINEE_ID_APIS;
 
-import java.util.Arrays;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
-import org.springframework.web.servlet.handler.MappedInterceptor;
+import uk.nhs.hee.tis.trainee.forms.interceptor.AdminIdentityInterceptor;
 import uk.nhs.hee.tis.trainee.forms.interceptor.TraineeIdentityInterceptor;
 
 /**
@@ -48,23 +51,56 @@ class InterceptorConfigurationTest {
   }
 
   @Test
-  void shouldAddTraineeIdentityInterceptorToRegistry() {
+  void shouldAddAdminIdentityInterceptorToRegistry() {
     InterceptorRegistry registry = mock(InterceptorRegistry.class);
+    when(registry.addInterceptor(any())).thenReturn(mock(InterceptorRegistration.class));
+
+    InterceptorRegistration registration = mock(InterceptorRegistration.class);
+    when(registry.addInterceptor(any(AdminIdentityInterceptor.class))).thenReturn(registration);
+
     configuration.addInterceptors(registry);
 
-    ArgumentCaptor<MappedInterceptor> mappedInterceptorCaptor
-        = ArgumentCaptor.forClass(MappedInterceptor.class);
-    verify(registry).addInterceptor(mappedInterceptorCaptor.capture());
+    ArgumentCaptor<AdminIdentityInterceptor> interceptorCaptor = ArgumentCaptor.captor();
+    verify(registry).addInterceptor(interceptorCaptor.capture());
 
-    MappedInterceptor actualMappedInterceptor = mappedInterceptorCaptor.getValue();
-    String[] pathPatterns = actualMappedInterceptor.getIncludePathPatterns();
+    AdminIdentityInterceptor interceptor = interceptorCaptor.getValue();
+    assertThat("Unexpected interceptor class.", interceptor,
+        instanceOf(AdminIdentityInterceptor.class));
+
+    ArgumentCaptor<String[]> pathPatternsCaptor = ArgumentCaptor.captor();
+    verify(registration).addPathPatterns(pathPatternsCaptor.capture());
+
+    String[] pathPatterns = pathPatternsCaptor.getValue();
+    assert pathPatterns != null;
+    assertThat("Unexpected included path patterns count.", pathPatterns.length, is(1));
+    assertThat("Unexpected included path patterns.", pathPatterns,
+        is(new String[]{"/api/admin/**"}));
+  }
+
+  @Test
+  void shouldAddTraineeIdentityInterceptorToRegistry() {
+    InterceptorRegistry registry = mock(InterceptorRegistry.class);
+    when(registry.addInterceptor(any())).thenReturn(mock(InterceptorRegistration.class));
+
+    InterceptorRegistration registration = mock(InterceptorRegistration.class);
+    when(registry.addInterceptor(any(TraineeIdentityInterceptor.class))).thenReturn(registration);
+
+    configuration.addInterceptors(registry);
+
+    ArgumentCaptor<TraineeIdentityInterceptor> interceptorCaptor = ArgumentCaptor.captor();
+    verify(registry).addInterceptor(interceptorCaptor.capture());
+
+    TraineeIdentityInterceptor interceptor = interceptorCaptor.getValue();
+    assertThat("Unexpected interceptor class.", interceptor,
+        instanceOf(TraineeIdentityInterceptor.class));
+
+    ArgumentCaptor<String[]> pathPatternsCaptor = ArgumentCaptor.captor();
+    verify(registration).addPathPatterns(pathPatternsCaptor.capture());
+
+    String[] pathPatterns = pathPatternsCaptor.getValue();
     assert pathPatterns != null;
     assertThat("Unexpected included path patterns.",
         pathPatterns.length, is(TRAINEE_ID_APIS.length));
-    assertThat("Unexpected included path patterns.",
-        Arrays.equals(pathPatterns, TRAINEE_ID_APIS), is(true));
-
-    assertThat("Unexpected interceptor class.",
-        actualMappedInterceptor.getInterceptor().getClass(), is(TraineeIdentityInterceptor.class));
+    assertThat("Unexpected included path patterns.", pathPatterns, is(TRAINEE_ID_APIS));
   }
 }

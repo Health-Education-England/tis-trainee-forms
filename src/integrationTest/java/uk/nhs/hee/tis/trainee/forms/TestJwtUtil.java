@@ -23,6 +23,8 @@ package uk.nhs.hee.tis.trainee.forms;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * A utility for generating test JWT tokens.
@@ -51,6 +53,29 @@ public class TestJwtUtil {
    */
   public static String generateTokenForTisId(String traineeTisId) {
     String payload = String.format("{\"%s\":\"%s\"}", TIS_ID_ATTRIBUTE, traineeTisId);
+    return generateToken(payload);
+  }
+
+  /**
+   * Generate an admin token with the given groups and default attributes for other fields.
+   *
+   * @param groups The groups to add in to the token.
+   * @return The generated token.
+   */
+  public static String generateAdminTokenForGroups(List<String> groups) {
+    String groupString = groups.stream()
+        .map(s -> s.replaceAll("^|$", "\""))
+        .collect(Collectors.joining(","));
+
+    String payload = """
+        {
+          "email": "ad.min@example.com",
+          "given_name": "Ad",
+          "family_name": "Min",
+          "cognito:groups": [%s]
+        }
+        """.formatted(groupString);
+
     return generateToken(payload);
   }
 }

@@ -49,66 +49,84 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.config.InterceptorConfiguration;
-import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
-import uk.nhs.hee.tis.trainee.forms.interceptor.TraineeIdentityInterceptorIntegrationTest.InterceptorTestController;
+import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
+import uk.nhs.hee.tis.trainee.forms.interceptor.AdminIdentityInterceptorIntegrationTest.InterceptorTestController;
 
 @WebMvcTest(InterceptorTestController.class)
 @Import(InterceptorConfiguration.class)
-class TraineeIdentityInterceptorIntegrationTest {
+class AdminIdentityInterceptorIntegrationTest {
 
-  private static final String API_PATH = "/api/formr-partas";
-  private static final String ID_1 = "40";
-  private static final String ID_2 = "41";
+  private static final String API_PATH = "/api/admin";
+  private static final String EMAIL_1 = "admin.1@example.com";
+  private static final String EMAIL_2 = "admin.2@example.com";
 
-  private static final String BEAN_NAME = "traineeIdentity";
+  private static final String BEAN_NAME = "adminIdentity";
   private static final String TARGET_BEAN_NAME = ScopedProxyUtils.getTargetBeanName(BEAN_NAME);
-  private static final String TRAINEE_ID = "traineeId";
+  private static final String ADMIN_EMAIL = "email";
 
   @Autowired
   private MockMvc mockMvc;
 
   @SpyBean
-  private TraineeIdentityInterceptor interceptor;
+  private AdminIdentityInterceptor interceptor;
 
   @ParameterizedTest
-  @ValueSource(strings = {"/api/coj",
-      "/api/formr-parta", "/api/formr-partas", "/api/formr-parta/xxx", "/api/formr-parta/xxx/yyy",
-      "/api/formr-partb", "/api/formr-partbs", "/api/formr-partb/xxx", "/api/formr-partb/xxx/yyy",
-      "/api/ltft", "/api/ltft/xxx", "/api/ltft/xxx/yyy"})
-  void shouldAddTraineeIdToRequest(String apiPath) throws Exception {
+  @ValueSource(strings = {"/api/admin", "/api/admin/abc", "/api/admin/abc/xyz"})
+  void shouldAddAdminIdentityToRequest(String apiPath) throws Exception {
+    String token = TestJwtUtil.generateToken("""
+        {
+           "email": "%s",
+           "cognito:groups": []
+        }
+        """.formatted(EMAIL_1));
     mockMvc.perform(get(apiPath)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(ID_1)))
+            .header(HttpHeaders.AUTHORIZATION, token))
         .andExpect(request().attribute(BEAN_NAME, nullValue()))
-        .andExpect(request().attribute(TARGET_BEAN_NAME, hasProperty(TRAINEE_ID, is(ID_1))));
+        .andExpect(
+            request().attribute(TARGET_BEAN_NAME, hasProperty(ADMIN_EMAIL, is(EMAIL_1))));
 
     verify(interceptor).preHandle(any(), any(), any());
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"/api/coj",
-      "/api/formr-parta", "/api/formr-partas", "/api/formr-parta/xxx", "/api/formr-parta/xxx/yyy",
-      "/api/formr-partb", "/api/formr-partbs", "/api/formr-partb/xxx", "/api/formr-partb/xxx/yyy",
-      "/api/ltft", "/api/ltft/xxx", "/api/ltft/xxx/yyy"})
-  void shouldAddNewTraineeIdOnEachRequest(String apiPath) throws Exception {
+  @ValueSource(strings = {"/api/admin", "/api/admin/xxx", "/api/admin/xxx/yyy"})
+  void shouldAddNewAdminIdentityOnEachRequest(String apiPath) throws Exception {
+    String token1 = TestJwtUtil.generateToken("""
+        {
+           "email": "%s",
+           "given_name": "Ad",
+           "family_name": "Min-One",
+           "cognito:groups": []
+        }
+        """.formatted(EMAIL_1));
     mockMvc.perform(get(apiPath)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(ID_1)))
+            .header(HttpHeaders.AUTHORIZATION, token1))
         .andExpect(request().attribute(BEAN_NAME, nullValue()))
-        .andExpect(request().attribute(TARGET_BEAN_NAME, hasProperty(TRAINEE_ID, is(ID_1))));
+        .andExpect(
+            request().attribute(TARGET_BEAN_NAME, hasProperty(ADMIN_EMAIL, is(EMAIL_1))));
 
+    String token2 = TestJwtUtil.generateToken("""
+        {
+           "email": "%s",
+           "given_name": "Ad",
+           "family_name": "Min-Two",
+           "cognito:groups": []
+        }
+        """.formatted(EMAIL_2));
     mockMvc.perform(get(API_PATH)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(ID_2)))
+            .header(HttpHeaders.AUTHORIZATION, token2))
         .andExpect(request().attribute(BEAN_NAME, nullValue()))
-        .andExpect(request().attribute(TARGET_BEAN_NAME, hasProperty(TRAINEE_ID, is(ID_2))));
+        .andExpect(
+            request().attribute(TARGET_BEAN_NAME, hasProperty(ADMIN_EMAIL, is(EMAIL_2))));
 
     verify(interceptor, times(2)).preHandle(any(), any(), any());
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"/api", "/api/xxx", "/api/xxx/yyy", "/api/feature-flags",
-      "/api/form-relocate/xxx"})
-  void shouldNotAddTraineeIdToNonInterceptedRequests(String apiPath) throws Exception {
+  @ValueSource(strings = {"/api", "/api/xxx", "/api/xxx/yyy"})
+  void shouldNotAddAdminIdentityToNonInterceptedRequests(String apiPath) throws Exception {
     mockMvc.perform(get(apiPath)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(ID_1)))
+            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(EMAIL_1)))
         .andExpect(request().attribute(BEAN_NAME, nullValue()))
         .andExpect(request().attribute(TARGET_BEAN_NAME, nullValue()));
 
@@ -116,31 +134,46 @@ class TraineeIdentityInterceptorIntegrationTest {
   }
 
   @Test
-  void shouldMakeTraineeIdentityAvailableToControllers() throws Exception {
+  void shouldMakeAdminIdentityAvailableToControllers() throws Exception {
+    String token1 = TestJwtUtil.generateToken("""
+        {
+           "email": "%s",
+           "given_name": "Ad",
+           "family_name": "Min-One",
+           "cognito:groups": ["123"]
+        }
+        """.formatted(EMAIL_1));
     mockMvc.perform(get(API_PATH)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(ID_1)))
-        .andExpect(content().string(ID_1));
+            .header(HttpHeaders.AUTHORIZATION, token1))
+        .andExpect(content().string(EMAIL_1));
 
+    String token2 = TestJwtUtil.generateToken("""
+        {
+           "email": "%s",
+           "given_name": "Ad",
+           "family_name": "Min-Two",
+           "cognito:groups": ["321"]
+        }
+        """.formatted(EMAIL_2));
     mockMvc.perform(get(API_PATH)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(ID_2)))
-        .andExpect(content().string(ID_2));
+            .header(HttpHeaders.AUTHORIZATION, token2))
+        .andExpect(content().string(EMAIL_2));
   }
 
   @SpringBootApplication
   @RestController
   public static class InterceptorTestController {
 
-    private final TraineeIdentity traineeIdentity;
+    private final AdminIdentity adminIdentity;
 
-    public InterceptorTestController(TraineeIdentity traineeIdentity) {
-      this.traineeIdentity = traineeIdentity;
+    public InterceptorTestController(AdminIdentity adminIdentity) {
+      this.adminIdentity = adminIdentity;
     }
 
     @GetMapping(API_PATH)
     public String testInterceptor() {
-      assertThat("Unexpected trainee identity.", traineeIdentity, notNullValue());
-      return traineeIdentity.getTraineeId();
+      assertThat("Unexpected admin identity.", adminIdentity, notNullValue());
+      return adminIdentity.getEmail();
     }
-
   }
 }

@@ -23,6 +23,7 @@ package uk.nhs.hee.tis.trainee.forms.api;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
@@ -39,12 +40,14 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
+import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
@@ -72,8 +75,35 @@ class AdminLtftResourceIntegrationTest {
   }
 
   @Test
-  void shouldReturnErrorWhenInvalidStatusFilter() throws Exception {
+  void shouldReturnForbiddenForCountWhenNoToken() throws Exception {
+    mockMvc.perform(get("/api/admin/ltft/count"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @Test
+  void shouldReturnForbiddenForCountWhenEmptyToken() throws Exception {
+    String token = TestJwtUtil.generateToken("{}");
     mockMvc.perform(get("/api/admin/ltft/count")
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @Test
+  void shouldReturnForbiddenForCountWhenNoGroupsInToken() throws Exception {
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of());
+    mockMvc.perform(get("/api/admin/ltft/count")
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @Test
+  void shouldReturnBadRequestForCountWhenInvalidStatusFilter() throws Exception {
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of("123"));
+    mockMvc.perform(get("/api/admin/ltft/count")
+            .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", "INVALID_FILTER"))
         .andExpect(status().isBadRequest());
   }
@@ -81,7 +111,9 @@ class AdminLtftResourceIntegrationTest {
   @ParameterizedTest
   @NullAndEmptySource
   void shouldCountZeroWhenNoLtfts(String statusFilter) throws Exception {
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of("123"));
     mockMvc.perform(get("/api/admin/ltft/count")
+            .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", statusFilter))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.TEXT_PLAIN))
@@ -120,7 +152,9 @@ class AdminLtftResourceIntegrationTest {
     );
     template.insert(ltft);
 
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of("123"));
     mockMvc.perform(get("/api/admin/ltft/count")
+            .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", statusFilter))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.TEXT_PLAIN))
@@ -147,7 +181,9 @@ class AdminLtftResourceIntegrationTest {
         .toList();
     template.insertAll(ltfts);
 
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of("123"));
     mockMvc.perform(get("/api/admin/ltft/count")
+            .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", status.toString()))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.TEXT_PLAIN))
@@ -185,8 +221,10 @@ class AdminLtftResourceIntegrationTest {
     );
     template.insert(ltft);
 
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of("123"));
     String statusFilter = "%s,%s".formatted(LifecycleState.SUBMITTED, LifecycleState.UNSUBMITTED);
     mockMvc.perform(get("/api/admin/ltft/count")
+            .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", statusFilter))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.TEXT_PLAIN))

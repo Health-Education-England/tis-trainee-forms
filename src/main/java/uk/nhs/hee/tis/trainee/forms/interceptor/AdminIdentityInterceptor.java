@@ -24,25 +24,29 @@ package uk.nhs.hee.tis.trainee.forms.interceptor;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.servlet.HandlerInterceptor;
 import uk.nhs.hee.tis.trainee.forms.api.util.AuthTokenUtil;
-import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
+import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 
 /**
- * An interceptor for creating a {@link TraineeIdentity} from a request.
+ * An interceptor for creating a {@link AdminIdentity} from a request.
  */
 @Slf4j
-public class TraineeIdentityInterceptor implements HandlerInterceptor {
+public class AdminIdentityInterceptor implements HandlerInterceptor {
 
-  private static final String TIS_ID_ATTRIBUTE = "custom:tisId";
+  private static final String EMAIL_ATTRIBUTE = "email";
+  private static final String GIVEN_NAME_ATTRIBUTE = "given_name";
+  private static final String FAMILY_NAME_ATTRIBUTE = "family_name";
+  private static final String GROUPS_ATTRIBUTE = "cognito:groups";
 
-  private final TraineeIdentity traineeIdentity;
+  private final AdminIdentity adminIdentity;
 
-  public TraineeIdentityInterceptor(TraineeIdentity traineeIdentity) {
-    this.traineeIdentity = traineeIdentity;
+  public AdminIdentityInterceptor(AdminIdentity adminIdentity) {
+    this.adminIdentity = adminIdentity;
   }
 
   @Override
@@ -52,14 +56,22 @@ public class TraineeIdentityInterceptor implements HandlerInterceptor {
 
     if (authToken != null) {
       try {
-        String traineeId = AuthTokenUtil.getAttribute(authToken, TIS_ID_ATTRIBUTE);
-        traineeIdentity.setTraineeId(traineeId);
+        String email = AuthTokenUtil.getAttribute(authToken, EMAIL_ATTRIBUTE);
+        adminIdentity.setEmail(email);
+        Set<String> adminGroups = AuthTokenUtil.getAttributes(authToken, GROUPS_ATTRIBUTE);
+        adminIdentity.setGroups(adminGroups);
+
+        String givenName = AuthTokenUtil.getAttribute(authToken, GIVEN_NAME_ATTRIBUTE);
+        String familyName = AuthTokenUtil.getAttribute(authToken, FAMILY_NAME_ATTRIBUTE);
+        if (givenName != null && familyName != null) {
+          adminIdentity.setName("%s %s".formatted(givenName, familyName));
+        }
       } catch (IOException e) {
-        log.warn("Unable to extract trainee ID from authorization token.", e);
+        log.warn("Unable to extract the admin identity from authorization token.", e);
       }
     }
 
-    if (traineeIdentity.getTraineeId() == null) {
+    if (!adminIdentity.isComplete()) {
       response.setStatus(HttpStatus.FORBIDDEN.value());
       return false;
     }
