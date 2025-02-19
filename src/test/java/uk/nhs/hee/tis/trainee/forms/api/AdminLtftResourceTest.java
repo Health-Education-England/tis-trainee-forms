@@ -34,11 +34,19 @@ import static org.springframework.http.MediaType.TEXT_PLAIN;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
+import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedModel;
 import org.springframework.http.ResponseEntity;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 
@@ -76,5 +84,56 @@ class AdminLtftResourceTest {
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), is("40"));
     assertThat("Unexpected response type.", response.getHeaders().getContentType(), is(TEXT_PLAIN));
+  }
+
+  @Test
+  void shouldGetSummariesUsingStatusFilter() {
+    when(service.getAdminLtftSummaries(any(), any())).thenReturn(Page.empty());
+
+    Set<LifecycleState> states = Set.of(UNSUBMITTED, SUBMITTED);
+    controller.getLtftAdminSummaries(states, null);
+
+    ArgumentCaptor<Set<LifecycleState>> statesCaptor = ArgumentCaptor.captor();
+    verify(service).getAdminLtftSummaries(statesCaptor.capture(), any());
+
+    Set<LifecycleState> capturedStates = statesCaptor.getValue();
+    assertThat("Unexpected filter state count.", capturedStates, hasSize(2));
+    assertThat("Unexpected filter states.", capturedStates, hasItems(UNSUBMITTED, SUBMITTED));
+  }
+
+  @Test
+  void shouldGetSummariesUsingPageable() {
+    when(service.getAdminLtftSummaries(any(), any())).thenReturn(Page.empty());
+
+    PageRequest pageable = PageRequest.of(1, 2);
+    controller.getLtftAdminSummaries(Set.of(), pageable);
+
+    ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.captor();
+    verify(service).getAdminLtftSummaries(any(), pageableCaptor.capture());
+
+    Pageable capturedPageable = pageableCaptor.getValue();
+    assertThat("Unexpected page number.", capturedPageable.getPageNumber(), is(1));
+    assertThat("Unexpected page size.", capturedPageable.getPageSize(), is(2));
+  }
+
+  @Test
+  void shouldGetSummariesResponse() {
+    UUID id1 = UUID.randomUUID();
+    LtftAdminSummaryDto dto1 = LtftAdminSummaryDto.builder().id(id1).build();
+
+    UUID id2 = UUID.randomUUID();
+    LtftAdminSummaryDto dto2 = LtftAdminSummaryDto.builder().id(id2).build();
+
+    when(service.getAdminLtftSummaries(any(), any())).thenReturn(
+        new PageImpl<>(List.of(dto1, dto2)));
+
+    ResponseEntity<PagedModel<LtftAdminSummaryDto>> response = controller.getLtftAdminSummaries(
+        Set.of(), null);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    List<LtftAdminSummaryDto> content = response.getBody().getContent();
+    assertThat("Unexpected response size.", content, hasSize(2));
+    assertThat("Unexpected response ID.", content.get(0).id(), is(id1));
+    assertThat("Unexpected response ID.", content.get(1).id(), is(id2));
   }
 }

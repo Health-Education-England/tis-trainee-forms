@@ -27,6 +27,8 @@ import java.util.List;
 import org.mapstruct.InheritInverseConfiguration;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto.LtftAdminPersonalDetailsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
@@ -34,8 +36,38 @@ import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 /**
  * A mapper to convert between LTFT related entities and DTOs.
  */
-@Mapper(componentModel = SPRING)
+@Mapper(componentModel = SPRING, uses = TemporalMapper.class)
 public interface LtftMapper {
+
+  /**
+   * Convert a {@link LtftForm} entity to a {@link LtftAdminSummaryDto} DTO.
+   *
+   * @param entity The entity to convert to a DTO.
+   * @return The equivalent admin summary DTO.
+   */
+  @Mapping(target = "personalDetails", source = "entity")
+  @Mapping(target = "programmeName", source = "content.programmeMembership.name")
+  @Mapping(target = "proposedStartDate", source = "content.change.startDate")
+  @Mapping(target = "submissionDate", source = "created") //TODO: original or latest submission?
+  @Mapping(target = "reason", constant = "TODO") //TODO: which reason to show?
+  @Mapping(target = "daysToStart", constant = "40") //TODO: calculate
+  @Mapping(target = "shortNotice", constant = "false") //TODO: calculate from submission date
+  @Mapping(target = "tpd.email", source = "content.discussions.tpdEmail")
+  @Mapping(target = "tpd.emailStatus", constant = "TODO") // TODO: not available.
+  @Mapping(target = "status", source = "status.current.state")
+  @Mapping(target = "assignedAdmin.name", source = "content.assignedAdmin.name")
+  @Mapping(target = "assignedAdmin.email", source = "content.assignedAdmin.email")
+  LtftAdminSummaryDto toAdminSummaryDto(LtftForm entity);
+
+  /**
+   * Build a {@link LtftAdminPersonalDetailsDto} from an {@link LtftForm}.
+   *
+   * @param entity The entity to build personal details from.
+   * @return The built personal details.
+   */
+  @Mapping(target = "id", source = "traineeTisId")
+  @Mapping(target = ".", source = "content.personalDetails")
+  LtftAdminPersonalDetailsDto buildPersonalDetails(LtftForm entity);
 
   /**
    * Convert a {@link LtftForm} entity to a {@link LtftSummaryDto} DTO.

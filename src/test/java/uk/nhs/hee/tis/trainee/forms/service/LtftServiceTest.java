@@ -32,6 +32,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Field;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -42,6 +43,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.util.ReflectionUtils;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -49,6 +55,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapperImpl;
+import uk.nhs.hee.tis.trainee.forms.mapper.TemporalMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
@@ -64,7 +71,7 @@ class LtftServiceTest {
 
   private LtftService service;
   private LtftFormRepository ltftRepository;
-  private final LtftMapper mapper = new LtftMapperImpl();
+  private LtftMapper mapper;
 
   @BeforeEach
   void setUp() {
@@ -76,7 +83,12 @@ class LtftServiceTest {
 
     ltftRepository = mock(LtftFormRepository.class);
 
-    service = new LtftService(adminIdentity, traineeIdentity, ltftRepository, new LtftMapperImpl());
+    mapper = new LtftMapperImpl();
+    Field field = ReflectionUtils.findField(LtftMapperImpl.class, "temporalMapper");
+    field.setAccessible(true);
+    ReflectionUtils.setField(field, mapper, new TemporalMapperImpl());
+
+    service = new LtftService(adminIdentity, traineeIdentity, ltftRepository, mapper);
   }
 
   @Test
@@ -184,6 +196,66 @@ class LtftServiceTest {
     assertThat("Unexpected count.", count, is(40L));
     verify(ltftRepository, never()).count();
     verify(ltftRepository, never()).countByContent_ProgrammeMembership_DesignatedBodyCodeIn(any());
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  void shouldGetAllLocalOfficeLtftWhenFiltersEmpty(Set<LifecycleState> states) {
+    PageRequest pageRequest = PageRequest.of(1, 1);
+
+    LtftForm entity1 = new LtftForm();
+    UUID id1 = UUID.randomUUID();
+    entity1.setId(id1);
+
+    LtftForm entity2 = new LtftForm();
+    UUID id2 = UUID.randomUUID();
+    entity2.setId(id2);
+
+    when(ltftRepository
+        .findByContent_ProgrammeMembership_DesignatedBodyCodeIn(Set.of(ADMIN_GROUP), pageRequest))
+        .thenReturn(new PageImpl<>(List.of(entity1, entity2)));
+
+    Page<LtftAdminSummaryDto> dtos = service.getAdminLtftSummaries(states, pageRequest);
+
+    assertThat("Unexpected total elements.", dtos.getTotalElements(), is(2L));
+
+    List<LtftAdminSummaryDto> content = dtos.getContent();
+    assertThat("Unexpected ID.", content.get(0).id(), is(id1));
+    assertThat("Unexpected ID.", content.get(1).id(), is(id2));
+
+    verify(ltftRepository,
+        never()).findByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        any(), any(), any());
+  }
+
+  @Test
+  void shouldGetFilteredLocalOfficeLtftWhenFiltersNotEmpty() {
+    Set<LifecycleState> states = Set.of(LifecycleState.SUBMITTED);
+    PageRequest pageRequest = PageRequest.of(1, 1);
+
+    LtftForm entity1 = new LtftForm();
+    UUID id1 = UUID.randomUUID();
+    entity1.setId(id1);
+
+    LtftForm entity2 = new LtftForm();
+    UUID id2 = UUID.randomUUID();
+    entity2.setId(id2);
+
+    when(ltftRepository
+        .findByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(states,
+            Set.of(ADMIN_GROUP), pageRequest))
+        .thenReturn(new PageImpl<>(List.of(entity1, entity2)));
+
+    Page<LtftAdminSummaryDto> dtos = service.getAdminLtftSummaries(states, pageRequest);
+
+    assertThat("Unexpected total elements.", dtos.getTotalElements(), is(2L));
+
+    List<LtftAdminSummaryDto> content = dtos.getContent();
+    assertThat("Unexpected ID.", content.get(0).id(), is(id1));
+    assertThat("Unexpected ID.", content.get(1).id(), is(id2));
+
+    verify(ltftRepository, never()).findByContent_ProgrammeMembership_DesignatedBodyCodeIn(any(),
+        any());
   }
 
   @Test
