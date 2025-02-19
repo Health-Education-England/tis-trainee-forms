@@ -45,6 +45,7 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapperImpl;
@@ -58,6 +59,7 @@ import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 class LtftServiceTest {
 
   private static final String TRAINEE_ID = "40";
+  private static final String ADMIN_GROUP = "abc-123";
   private static final UUID ID = UUID.randomUUID();
 
   private LtftService service;
@@ -66,12 +68,15 @@ class LtftServiceTest {
 
   @BeforeEach
   void setUp() {
+    AdminIdentity adminIdentity = new AdminIdentity();
+    adminIdentity.setGroups(Set.of(ADMIN_GROUP));
+
     TraineeIdentity traineeIdentity = new TraineeIdentity();
     traineeIdentity.setTraineeId(TRAINEE_ID);
 
     ltftRepository = mock(LtftFormRepository.class);
 
-    service = new LtftService(traineeIdentity, ltftRepository, new LtftMapperImpl());
+    service = new LtftService(adminIdentity, traineeIdentity, ltftRepository, new LtftMapperImpl());
   }
 
   @Test
@@ -154,24 +159,31 @@ class LtftServiceTest {
 
   @ParameterizedTest
   @NullAndEmptySource
-  void shouldCountAllLtftWhenFiltersEmpty(Set<LifecycleState> states) {
-    when(ltftRepository.count()).thenReturn(40L);
+  void shouldCountAllLocalOfficeLtftWhenFiltersEmpty(Set<LifecycleState> states) {
+    when(ltftRepository.countByContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        Set.of(ADMIN_GROUP))).thenReturn(40L);
 
     long count = service.getAdminLtftCount(states);
 
     assertThat("Unexpected count.", count, is(40L));
-    verify(ltftRepository, never()).countByStatus_Current_StateIn(any());
+    verify(ltftRepository, never()).count();
+    verify(ltftRepository, never())
+        .countByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(any(),
+            any());
   }
 
   @Test
-  void shouldCountFilteredLtftWhenFiltersNotEmpty() {
+  void shouldCountFilteredLocalOfficeLtftWhenFiltersNotEmpty() {
     Set<LifecycleState> states = Set.of(LifecycleState.SUBMITTED);
-    when(ltftRepository.countByStatus_Current_StateIn(states)).thenReturn(40L);
+    when(ltftRepository
+        .countByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(states,
+            Set.of(ADMIN_GROUP))).thenReturn(40L);
 
-    long count = service.getAdminLtftCount(Set.of(LifecycleState.SUBMITTED));
+    long count = service.getAdminLtftCount(states);
 
     assertThat("Unexpected count.", count, is(40L));
     verify(ltftRepository, never()).count();
+    verify(ltftRepository, never()).countByContent_ProgrammeMembership_DesignatedBodyCodeIn(any());
   }
 
   @Test

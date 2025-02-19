@@ -45,12 +45,21 @@ public interface LtftFormRepository extends MongoRepository<LtftForm, UUID> {
   List<LtftForm> findByTraineeTisIdOrderByLastModified(String traineeId);
 
   /**
-   * Count all LTFT forms with one of the given current states.
+   * Count all LTFT forms with one of the given DBCs.
+   *
+   * @param dbcs The designated body codes to include in the count.
+   * @return The number of found LTFT forms.
+   */
+  long countByContent_ProgrammeMembership_DesignatedBodyCodeIn(Set<String> dbcs);
+
+  /**
+   * Count all LTFT forms with one of the given current states and DBCs.
    *
    * @param states The states to include in the count.
    * @return The number of found LTFT forms.
    */
-  long countByStatus_Current_StateIn(Set<LifecycleState> states);
+  long countByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+      Set<LifecycleState> states, Set<String> dbcs);
 
   /**
    * Find the LTFT form with the given id that belongs to the given trainee.
