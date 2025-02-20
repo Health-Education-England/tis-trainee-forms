@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.api;
 import static org.hamcrest.Matchers.aMapWithSize;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.oneOf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -470,9 +471,12 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.content").isArray())
         .andExpect(jsonPath("$.content", hasSize(3)))
-        .andExpect(jsonPath("$.content[0].status", is(SUBMITTED.toString())))
-        .andExpect(jsonPath("$.content[1].status", is(UNSUBMITTED.toString())))
-        .andExpect(jsonPath("$.content[2].status", is(SUBMITTED.toString())))
+        .andExpect(
+            jsonPath("$.content[0].status", oneOf(SUBMITTED.toString(), UNSUBMITTED.toString())))
+        .andExpect(
+            jsonPath("$.content[1].status", oneOf(SUBMITTED.toString(), UNSUBMITTED.toString())))
+        .andExpect(
+            jsonPath("$.content[2].status", oneOf(SUBMITTED.toString(), UNSUBMITTED.toString())))
         .andExpect(jsonPath("$.page", aMapWithSize(4)))
         .andExpect(jsonPath("$.page.size", is(2000)))
         .andExpect(jsonPath("$.page.number", is(0)))
@@ -510,10 +514,51 @@ class AdminLtftResourceIntegrationTest {
 
   @ParameterizedTest
   @NullAndEmptySource
-  void shouldSortLtftSummariesByCreatedWhenNoSortProvided(String sort) throws Exception {
-    LtftForm form1 = template.insert(createLtftForm(SUBMITTED, DBC_1));
-    LtftForm form2 = template.insert(createLtftForm(SUBMITTED, DBC_1));
-    LtftForm form3 = template.insert(createLtftForm(SUBMITTED, DBC_1));
+  void shouldSortLtftSummariesByStartDateWhenNoSortProvided(String sort) throws Exception {
+    LtftForm form1 = new LtftForm();
+    form1.setStatus(Status.builder()
+        .current(StatusInfo.builder()
+            .state(SUBMITTED)
+            .build())
+        .build());
+    form1.setContent(LtftContent.builder()
+        .change(CctChange.builder()
+            .startDate(LocalDate.now()).build())
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(DBC_1)
+            .build())
+        .build());
+    form1 = template.insert(form1);
+
+    LtftForm form2 = new LtftForm();
+    form2.setStatus(Status.builder()
+        .current(StatusInfo.builder()
+            .state(SUBMITTED)
+            .build())
+        .build());
+    form2.setContent(LtftContent.builder()
+        .change(CctChange.builder()
+            .startDate(LocalDate.now().minusYears(1)).build())
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(DBC_1)
+            .build())
+        .build());
+    form2 = template.insert(form2);
+
+    LtftForm form3 = new LtftForm();
+    form3.setStatus(Status.builder()
+        .current(StatusInfo.builder()
+            .state(SUBMITTED)
+            .build())
+        .build());
+    form3.setContent(LtftContent.builder()
+        .change(CctChange.builder()
+            .startDate(LocalDate.now().plusYears(1)).build())
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(DBC_1)
+            .build())
+        .build());
+    form3 = template.insert(form3);
 
     String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft")
@@ -523,8 +568,8 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.content").isArray())
         .andExpect(jsonPath("$.content", hasSize(3)))
-        .andExpect(jsonPath("$.content[0].id", is(form1.getId().toString())))
-        .andExpect(jsonPath("$.content[1].id", is(form2.getId().toString())))
+        .andExpect(jsonPath("$.content[0].id", is(form2.getId().toString())))
+        .andExpect(jsonPath("$.content[1].id", is(form1.getId().toString())))
         .andExpect(jsonPath("$.content[2].id", is(form3.getId().toString())))
         .andExpect(jsonPath("$.page", aMapWithSize(4)))
         .andExpect(jsonPath("$.page.size", is(2000)))
