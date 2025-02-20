@@ -58,6 +58,7 @@ public record LtftContent(
    * @param title                   The trainee's title.
    * @param forenames               The trainee's forenames or given name.
    * @param surname                 The trainee's surname or family name.
+   * @param email                   The trainee's email address.
    * @param telephoneNumber         The trainee's contact telephone number.
    * @param mobileNumber            The trainee's contact mobile number.
    * @param gmcNumber               The trainee's GMC registration number.
@@ -69,6 +70,7 @@ public record LtftContent(
       String title,
       String forenames,
       String surname,
+      String email,
       String telephoneNumber,
       String mobileNumber,
       String gmcNumber,

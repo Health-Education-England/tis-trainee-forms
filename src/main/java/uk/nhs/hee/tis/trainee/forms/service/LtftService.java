@@ -27,7 +27,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -99,6 +102,31 @@ public class LtftService {
     return ltftFormRepository
         .countByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(states,
             groups);
+  }
+
+  /**
+   * Find all LTFT forms associated with the local offices of the calling admin.
+   *
+   * @param states   The states to include in the count.
+   * @param pageable The page information to apply to the search.
+   * @return A page of found LTFT forms.
+   */
+  public Page<LtftAdminSummaryDto> getAdminLtftSummaries(Set<LifecycleState> states,
+      Pageable pageable) {
+    Set<String> groups = adminIdentity.getGroups();
+    Page<LtftForm> forms;
+
+    if (states == null || states.isEmpty()) {
+      log.debug("No status filter provided, searching all LTFTs.");
+      forms = ltftFormRepository.findByContent_ProgrammeMembership_DesignatedBodyCodeIn(groups,
+          pageable);
+    } else {
+      forms = ltftFormRepository
+          .findByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(states,
+              groups, pageable);
+    }
+
+    return forms.map(mapper::toAdminSummaryDto);
   }
 
   /**

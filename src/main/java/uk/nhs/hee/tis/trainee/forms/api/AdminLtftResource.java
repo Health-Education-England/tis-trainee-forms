@@ -24,12 +24,18 @@ package uk.nhs.hee.tis.trainee.forms.api;
 import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort.Direction;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.web.PagedModel;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 
@@ -59,5 +65,21 @@ public class AdminLtftResource {
       @RequestParam(value = "status", required = false) Set<LifecycleState> states) {
     long count = service.getAdminLtftCount(states);
     return ResponseEntity.ok().contentType(MediaType.TEXT_PLAIN).body(String.valueOf(count));
+  }
+
+  /**
+   * Get the LTFT application summaries associated with the admin's local office.
+   *
+   * @param pageable The desired paging and sorting details, defaults to all records sorted by
+   *                 submission date.
+   * @return A page of LTFT summaries meeting the criteria.
+   */
+  @GetMapping
+  ResponseEntity<PagedModel<LtftAdminSummaryDto>> getLtftAdminSummaries(
+      @RequestParam(value = "status", required = false) Set<LifecycleState> states,
+      @PageableDefault(size = Integer.MAX_VALUE, sort = "created", direction = Direction.ASC)
+      Pageable pageable) {
+    Page<LtftAdminSummaryDto> page = service.getAdminLtftSummaries(states, pageable);
+    return ResponseEntity.ok(new PagedModel<>(page));
   }
 }
