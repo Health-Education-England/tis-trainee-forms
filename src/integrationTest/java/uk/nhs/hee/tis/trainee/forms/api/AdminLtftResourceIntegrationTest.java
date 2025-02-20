@@ -34,8 +34,10 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMIT
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
 import java.net.URI;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -46,6 +48,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -92,6 +95,9 @@ class AdminLtftResourceIntegrationTest {
 
   @Autowired
   private MongoTemplate template;
+
+  @Value("${application.timezone}")
+  private ZoneId timezone;
 
   @AfterEach
   void tearDown() {
@@ -306,7 +312,7 @@ class AdminLtftResourceIntegrationTest {
             .startDate(startDate)
             .build())
         .reasons(Reasons.builder()
-            .selected(List.of("Caring responsibilities"))
+            .selected(List.of("Other", "Caring responsibilities"))
             .build())
         .discussions(Discussions.builder()
             .tpdEmail("tpd@example.com")
@@ -317,11 +323,17 @@ class AdminLtftResourceIntegrationTest {
         .build();
     form.setContent(content);
 
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+    LocalDate latestSubmittedDate = LocalDate.ofInstant(latestSubmitted, timezone);
+
     StatusInfo statusInfo = StatusInfo.builder()
         .state(SUBMITTED).timestamp(Instant.now())
         .build();
     form.setStatus(Status.builder()
-        .current(statusInfo).history(List.of(statusInfo))
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            StatusInfo.builder().state(SUBMITTED).timestamp(latestSubmitted).build()))
         .build()
     );
 
@@ -342,12 +354,12 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.content[0].personalDetails.gdcNumber", is("D123456")))
         .andExpect(jsonPath("$.content[0].programmeName", is("General Practice")))
         .andExpect(jsonPath("$.content[0].proposedStartDate", is(startDate.toString())))
-        .andExpect(jsonPath("$.content[0].submissionDate", is(LocalDate.now().toString())))
-        .andExpect(jsonPath("$.content[0].reason", is("TODO")))
-        .andExpect(jsonPath("$.content[0].daysToStart", is(40)))
+        .andExpect(jsonPath("$.content[0].submissionDate", is(latestSubmittedDate.toString())))
+        .andExpect(jsonPath("$.content[0].reason", is("Caring responsibilities, Other")))
+        .andExpect(jsonPath("$.content[0].daysToStart", is(140)))
         .andExpect(jsonPath("$.content[0].shortNotice", is(false)))
         .andExpect(jsonPath("$.content[0].tpd.email", is("tpd@example.com")))
-        .andExpect(jsonPath("$.content[0].tpd.emailStatus", is("TODO")))
+        .andExpect(jsonPath("$.content[0].tpd.emailStatus", is("UNKNOWN")))
         .andExpect(jsonPath("$.content[0].status", is(SUBMITTED.name())))
         .andExpect(jsonPath("$.content[0].assignedAdmin.name", is("Ad Min")))
         .andExpect(jsonPath("$.content[0].assignedAdmin.email", is("ad.min@example.com")))

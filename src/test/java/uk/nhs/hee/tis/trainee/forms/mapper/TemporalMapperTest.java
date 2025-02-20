@@ -50,7 +50,7 @@ class TemporalMapperTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"Etc/UTC", "Europe/London"})
+  @ValueSource(strings = {"Etc/UTC", "Etc/GMT+12", "Etc/GMT-12"})
   void shouldConvertInstantToLocalDate(ZoneId zoneId) {
     Instant now = Instant.now();
 
@@ -58,5 +58,45 @@ class TemporalMapperTest {
     LocalDate localDate = mapper.toLocalDate(now);
 
     assertThat("Unexpected local date.", localDate, is(LocalDate.now(zoneId)));
+  }
+
+  @Test
+  void shouldCalculateNullDaysUntilWhenLocalDateNull() {
+    Integer daysUntil = mapper.calculateDaysUntil(null);
+
+    assertThat("Unexpected days until.", daysUntil, nullValue());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"Etc/UTC", "Etc/GMT+12", "Etc/GMT-12"})
+  void shouldCalculateDaysUntilWhenLocalDateInPast(ZoneId zoneId) {
+    LocalDate future = LocalDate.now(zoneId).minusDays(7);
+
+    mapper.zoneId = zoneId;
+    Integer daysUntil = mapper.calculateDaysUntil(future);
+
+    assertThat("Unexpected days until.", daysUntil, is(-7));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"Etc/UTC", "Etc/GMT+12", "Etc/GMT-12"})
+  void shouldCalculateDaysUntilWhenLocalDateSameDay(ZoneId zoneId) {
+    LocalDate future = LocalDate.now(zoneId);
+
+    mapper.zoneId = zoneId;
+    Integer daysUntil = mapper.calculateDaysUntil(future);
+
+    assertThat("Unexpected days until.", daysUntil, is(0));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"Etc/UTC", "Etc/GMT+12", "Etc/GMT-12"})
+  void shouldCalculateDaysUntilWhenLocalDateInFuture(ZoneId zoneId) {
+    LocalDate future = LocalDate.now(zoneId).plusDays(7);
+
+    mapper.zoneId = zoneId;
+    Integer daysUntil = mapper.calculateDaysUntil(future);
+
+    assertThat("Unexpected days until.", daysUntil, is(7));
   }
 }

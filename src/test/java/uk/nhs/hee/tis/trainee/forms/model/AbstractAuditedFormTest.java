@@ -23,24 +23,118 @@ package uk.nhs.hee.tis.trainee.forms.model;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 
 import java.time.Instant;
+import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
 
 class AbstractAuditedFormTest {
 
+  private AbstractAuditedForm<?> form;
+
+  @BeforeEach
+  void setUp() {
+    form = new StubForm();
+  }
+
   @Test
   void shouldConsiderFormWithoutCreatedAsNew() {
-    StubForm stubForm = new StubForm();
-    assertThat("Unexpected isNew.", stubForm.isNew(), is(true));
+    assertThat("Unexpected isNew.", form.isNew(), is(true));
   }
 
   @Test
   void shouldNotConsiderFormWithCreatedAsNew() {
-    StubForm stubForm = new StubForm();
-    stubForm.setCreated(Instant.now());
-    assertThat("Unexpected isNew.", stubForm.isNew(), is(false));
+    form.setCreated(Instant.now());
+    assertThat("Unexpected isNew.", form.isNew(), is(false));
+  }
+
+  @Test
+  void shouldReturnNullSubmittedWhenNoStatus() {
+    form.setStatus(null);
+
+    Instant submitted = form.getSubmitted();
+
+    assertThat("Unexpected submitted timestamp.", submitted, nullValue());
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  void shouldReturnNullSubmittedWhenNoStatusHistory(List<StatusInfo> history) {
+    form.setStatus(Status.builder()
+        .history(history)
+        .build());
+
+    Instant submitted = form.getSubmitted();
+
+    assertThat("Unexpected submitted timestamp.", submitted, nullValue());
+  }
+
+  @Test
+  void shouldReturnNullSubmittedWhenNeverSubmitted() {
+    form.setStatus(Status.builder()
+        .history(List.of(StatusInfo.builder()
+            .state(DRAFT)
+            .timestamp(Instant.now())
+            .build()))
+        .build());
+
+    Instant submitted = form.getSubmitted();
+
+    assertThat("Unexpected submitted timestamp.", submitted, nullValue());
+  }
+
+  @Test
+  void shouldReturnSubmittedWhenSingleSubmitted() {
+    Instant now = Instant.now();
+
+    form.setStatus(Status.builder()
+        .history(List.of(StatusInfo.builder()
+            .state(SUBMITTED)
+            .timestamp(now)
+            .build()))
+        .build());
+
+    Instant submitted = form.getSubmitted();
+
+    assertThat("Unexpected submitted timestamp.", submitted, is(now));
+
+  }
+
+  @Test
+  void shouldReturnLatestSubmittedWhenMultipleSubmitted() {
+    Instant earlier = Instant.now().minusSeconds(60);
+    Instant now = Instant.now();
+    Instant later = Instant.now().plusSeconds(60);
+
+    form.setStatus(Status.builder()
+        .history(List.of(
+            StatusInfo.builder()
+                .state(SUBMITTED)
+                .timestamp(earlier)
+                .build(),
+            StatusInfo.builder()
+                .state(SUBMITTED)
+                .timestamp(later)
+                .build(),
+            StatusInfo.builder()
+                .state(SUBMITTED)
+                .timestamp(now)
+                .build()
+        ))
+        .build());
+
+    Instant submitted = form.getSubmitted();
+
+    assertThat("Unexpected submitted timestamp.", submitted, is(later));
   }
 
   /**

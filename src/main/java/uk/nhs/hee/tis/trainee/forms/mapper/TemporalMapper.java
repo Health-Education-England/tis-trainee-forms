@@ -26,7 +26,9 @@ import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import org.mapstruct.Mapper;
+import org.mapstruct.Named;
 import org.springframework.beans.factory.annotation.Value;
 
 /**
@@ -46,5 +48,17 @@ public abstract class TemporalMapper {
    */
   public LocalDate toLocalDate(Instant instant) {
     return instant == null ? null : LocalDate.ofInstant(instant, zoneId);
+  }
+
+  /**
+   * Calculate the days until the given date.
+   *
+   * @param localDate The date to get the days until.
+   * @return A positive number if the date is future, negative if past or zero if current date.
+   */
+  @Named("DaysUntil")
+  public Integer calculateDaysUntil(LocalDate localDate) {
+    return localDate == null ? null
+        : Math.toIntExact(ChronoUnit.DAYS.between(LocalDate.now(zoneId), localDate));
   }
 }

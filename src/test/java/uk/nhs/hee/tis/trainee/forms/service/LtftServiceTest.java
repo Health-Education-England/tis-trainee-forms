@@ -32,7 +32,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-import java.lang.reflect.Field;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -46,7 +45,6 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.util.ReflectionUtils;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
@@ -83,11 +81,7 @@ class LtftServiceTest {
 
     ltftRepository = mock(LtftFormRepository.class);
 
-    mapper = new LtftMapperImpl();
-    Field field = ReflectionUtils.findField(LtftMapperImpl.class, "temporalMapper");
-    field.setAccessible(true);
-    ReflectionUtils.setField(field, mapper, new TemporalMapperImpl());
-
+    mapper = new LtftMapperImpl(new TemporalMapperImpl());
     service = new LtftService(adminIdentity, traineeIdentity, ltftRepository, mapper);
   }
 

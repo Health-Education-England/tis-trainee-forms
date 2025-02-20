@@ -49,8 +49,8 @@ public record LtftAdminSummaryDto(
     LocalDate proposedStartDate,
     LocalDate submissionDate,
     String reason,
-    int daysToStart,
-    boolean shortNotice,
+    Integer daysToStart,
+    Boolean shortNotice,
     LtftAdminNotificationDto tpd,
     LifecycleState status,
     PersonDto assignedAdmin) {
