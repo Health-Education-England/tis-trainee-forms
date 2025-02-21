@@ -77,7 +77,8 @@ public class AdminLtftResource {
   @GetMapping
   ResponseEntity<PagedModel<LtftAdminSummaryDto>> getLtftAdminSummaries(
       @RequestParam(value = "status", required = false) Set<LifecycleState> states,
-      @PageableDefault(size = Integer.MAX_VALUE, sort = "created", direction = Direction.ASC)
+      @PageableDefault(size = Integer.MAX_VALUE, sort = "content.change.startDate",
+          direction = Direction.ASC)
       Pageable pageable) {
     Page<LtftAdminSummaryDto> page = service.getAdminLtftSummaries(states, pageable);
     return ResponseEntity.ok(new PagedModel<>(page));

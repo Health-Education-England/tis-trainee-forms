@@ -22,6 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.model;
 
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
@@ -33,6 +34,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.domain.Persistable;
 import org.springframework.data.mongodb.core.index.Indexed;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
 import uk.nhs.hee.tis.trainee.forms.model.content.FormContent;
 
 /**
@@ -76,6 +78,23 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
   @Override
   public boolean isNew() {
     return created == null;
+  }
+
+  /**
+   * Get the submission timestamp for the form.
+   *
+   * @return The submitted timestamp, or null if not submitted.
+   */
+  public Instant getSubmitted() {
+    if (status == null || status.history == null) {
+      return null;
+    }
+
+    return status.history.stream()
+        .filter(h -> h.state == LifecycleState.SUBMITTED)
+        .max(Comparator.comparing(StatusInfo::timestamp))
+        .map(StatusInfo::timestamp)
+        .orElse(null);
   }
 
   /**

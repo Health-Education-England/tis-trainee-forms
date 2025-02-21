@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.api;
 import static org.hamcrest.Matchers.aMapWithSize;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.oneOf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -34,8 +35,10 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMIT
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
 import java.net.URI;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -46,6 +49,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -92,6 +96,9 @@ class AdminLtftResourceIntegrationTest {
 
   @Autowired
   private MongoTemplate template;
+
+  @Value("${application.timezone}")
+  private ZoneId timezone;
 
   @AfterEach
   void tearDown() {
@@ -306,7 +313,7 @@ class AdminLtftResourceIntegrationTest {
             .startDate(startDate)
             .build())
         .reasons(Reasons.builder()
-            .selected(List.of("Caring responsibilities"))
+            .selected(List.of("Other", "Caring responsibilities"))
             .build())
         .discussions(Discussions.builder()
             .tpdEmail("tpd@example.com")
@@ -317,11 +324,17 @@ class AdminLtftResourceIntegrationTest {
         .build();
     form.setContent(content);
 
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+    LocalDate latestSubmittedDate = LocalDate.ofInstant(latestSubmitted, timezone);
+
     StatusInfo statusInfo = StatusInfo.builder()
         .state(SUBMITTED).timestamp(Instant.now())
         .build();
     form.setStatus(Status.builder()
-        .current(statusInfo).history(List.of(statusInfo))
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            StatusInfo.builder().state(SUBMITTED).timestamp(latestSubmitted).build()))
         .build()
     );
 
@@ -342,12 +355,12 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.content[0].personalDetails.gdcNumber", is("D123456")))
         .andExpect(jsonPath("$.content[0].programmeName", is("General Practice")))
         .andExpect(jsonPath("$.content[0].proposedStartDate", is(startDate.toString())))
-        .andExpect(jsonPath("$.content[0].submissionDate", is(LocalDate.now().toString())))
-        .andExpect(jsonPath("$.content[0].reason", is("TODO")))
-        .andExpect(jsonPath("$.content[0].daysToStart", is(40)))
+        .andExpect(jsonPath("$.content[0].submissionDate", is(latestSubmittedDate.toString())))
+        .andExpect(jsonPath("$.content[0].reason", is("Caring responsibilities, Other")))
+        .andExpect(jsonPath("$.content[0].daysToStart", is(140)))
         .andExpect(jsonPath("$.content[0].shortNotice", is(false)))
         .andExpect(jsonPath("$.content[0].tpd.email", is("tpd@example.com")))
-        .andExpect(jsonPath("$.content[0].tpd.emailStatus", is("TODO")))
+        .andExpect(jsonPath("$.content[0].tpd.emailStatus", is("UNKNOWN")))
         .andExpect(jsonPath("$.content[0].status", is(SUBMITTED.name())))
         .andExpect(jsonPath("$.content[0].assignedAdmin.name", is("Ad Min")))
         .andExpect(jsonPath("$.content[0].assignedAdmin.email", is("ad.min@example.com")))
@@ -458,9 +471,12 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.content").isArray())
         .andExpect(jsonPath("$.content", hasSize(3)))
-        .andExpect(jsonPath("$.content[0].status", is(SUBMITTED.toString())))
-        .andExpect(jsonPath("$.content[1].status", is(UNSUBMITTED.toString())))
-        .andExpect(jsonPath("$.content[2].status", is(SUBMITTED.toString())))
+        .andExpect(
+            jsonPath("$.content[0].status", oneOf(SUBMITTED.toString(), UNSUBMITTED.toString())))
+        .andExpect(
+            jsonPath("$.content[1].status", oneOf(SUBMITTED.toString(), UNSUBMITTED.toString())))
+        .andExpect(
+            jsonPath("$.content[2].status", oneOf(SUBMITTED.toString(), UNSUBMITTED.toString())))
         .andExpect(jsonPath("$.page", aMapWithSize(4)))
         .andExpect(jsonPath("$.page.size", is(2000)))
         .andExpect(jsonPath("$.page.number", is(0)))
@@ -498,10 +514,51 @@ class AdminLtftResourceIntegrationTest {
 
   @ParameterizedTest
   @NullAndEmptySource
-  void shouldSortLtftSummariesByCreatedWhenNoSortProvided(String sort) throws Exception {
-    LtftForm form1 = template.insert(createLtftForm(SUBMITTED, DBC_1));
-    LtftForm form2 = template.insert(createLtftForm(SUBMITTED, DBC_1));
-    LtftForm form3 = template.insert(createLtftForm(SUBMITTED, DBC_1));
+  void shouldSortLtftSummariesByStartDateWhenNoSortProvided(String sort) throws Exception {
+    LtftForm form1 = new LtftForm();
+    form1.setStatus(Status.builder()
+        .current(StatusInfo.builder()
+            .state(SUBMITTED)
+            .build())
+        .build());
+    form1.setContent(LtftContent.builder()
+        .change(CctChange.builder()
+            .startDate(LocalDate.now()).build())
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(DBC_1)
+            .build())
+        .build());
+    form1 = template.insert(form1);
+
+    LtftForm form2 = new LtftForm();
+    form2.setStatus(Status.builder()
+        .current(StatusInfo.builder()
+            .state(SUBMITTED)
+            .build())
+        .build());
+    form2.setContent(LtftContent.builder()
+        .change(CctChange.builder()
+            .startDate(LocalDate.now().minusYears(1)).build())
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(DBC_1)
+            .build())
+        .build());
+    form2 = template.insert(form2);
+
+    LtftForm form3 = new LtftForm();
+    form3.setStatus(Status.builder()
+        .current(StatusInfo.builder()
+            .state(SUBMITTED)
+            .build())
+        .build());
+    form3.setContent(LtftContent.builder()
+        .change(CctChange.builder()
+            .startDate(LocalDate.now().plusYears(1)).build())
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(DBC_1)
+            .build())
+        .build());
+    form3 = template.insert(form3);
 
     String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft")
@@ -511,8 +568,8 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.content").isArray())
         .andExpect(jsonPath("$.content", hasSize(3)))
-        .andExpect(jsonPath("$.content[0].id", is(form1.getId().toString())))
-        .andExpect(jsonPath("$.content[1].id", is(form2.getId().toString())))
+        .andExpect(jsonPath("$.content[0].id", is(form2.getId().toString())))
+        .andExpect(jsonPath("$.content[1].id", is(form1.getId().toString())))
         .andExpect(jsonPath("$.content[2].id", is(form3.getId().toString())))
         .andExpect(jsonPath("$.page", aMapWithSize(4)))
         .andExpect(jsonPath("$.page.size", is(2000)))

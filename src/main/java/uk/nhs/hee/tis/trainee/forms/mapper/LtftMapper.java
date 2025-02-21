@@ -21,23 +21,42 @@
 
 package uk.nhs.hee.tis.trainee.forms.mapper;
 
+import static org.mapstruct.InjectionStrategy.CONSTRUCTOR;
 import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
+import jakarta.annotation.Nullable;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
+import lombok.Getter;
+import lombok.Setter;
 import org.mapstruct.InheritInverseConfiguration;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.Named;
+import org.springframework.beans.factory.annotation.Autowired;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto.LtftAdminPersonalDetailsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
+import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 
 /**
  * A mapper to convert between LTFT related entities and DTOs.
  */
-@Mapper(componentModel = SPRING, uses = TemporalMapper.class)
-public interface LtftMapper {
+@Mapper(componentModel = SPRING, uses = TemporalMapper.class, injectionStrategy = CONSTRUCTOR)
+public abstract class LtftMapper {
+
+  private static final int NOTICE_PERIOD_DAYS = 112; // 16 weeks.
+
+  @Getter
+  @Setter(onMethod_ = @Autowired)
+  TemporalMapper temporalMapper;
 
   /**
    * Convert a {@link LtftForm} entity to a {@link LtftAdminSummaryDto} DTO.
@@ -48,16 +67,18 @@ public interface LtftMapper {
   @Mapping(target = "personalDetails", source = "entity")
   @Mapping(target = "programmeName", source = "content.programmeMembership.name")
   @Mapping(target = "proposedStartDate", source = "content.change.startDate")
-  @Mapping(target = "submissionDate", source = "created") //TODO: original or latest submission?
-  @Mapping(target = "reason", constant = "TODO") //TODO: which reason to show?
-  @Mapping(target = "daysToStart", constant = "40") //TODO: calculate
-  @Mapping(target = "shortNotice", constant = "false") //TODO: calculate from submission date
+  @Mapping(target = "submissionDate", source = "submitted")
+  @Mapping(target = "reason", source = "content.reasons.selected",
+      qualifiedByName = "JoinWithComma")
+  @Mapping(target = "daysToStart", source = "content.change.startDate",
+      qualifiedByName = "DaysUntil")
+  @Mapping(target = "shortNotice", source = "entity", qualifiedByName = "IsShortNotice")
   @Mapping(target = "tpd.email", source = "content.discussions.tpdEmail")
-  @Mapping(target = "tpd.emailStatus", constant = "TODO") // TODO: not available.
+  @Mapping(target = "tpd.emailStatus", constant = "UNKNOWN") // TODO: not yet available (TIS21-7022)
   @Mapping(target = "status", source = "status.current.state")
   @Mapping(target = "assignedAdmin.name", source = "content.assignedAdmin.name")
   @Mapping(target = "assignedAdmin.email", source = "content.assignedAdmin.email")
-  LtftAdminSummaryDto toAdminSummaryDto(LtftForm entity);
+  public abstract LtftAdminSummaryDto toAdminSummaryDto(LtftForm entity);
 
   /**
    * Build a {@link LtftAdminPersonalDetailsDto} from an {@link LtftForm}.
@@ -67,7 +88,7 @@ public interface LtftMapper {
    */
   @Mapping(target = "id", source = "traineeTisId")
   @Mapping(target = ".", source = "content.personalDetails")
-  LtftAdminPersonalDetailsDto buildPersonalDetails(LtftForm entity);
+  abstract LtftAdminPersonalDetailsDto buildPersonalDetails(LtftForm entity);
 
   /**
    * Convert a {@link LtftForm} entity to a {@link LtftSummaryDto} DTO.
@@ -78,7 +99,7 @@ public interface LtftMapper {
   @Mapping(target = "name", source = "content.name")
   @Mapping(target = "programmeMembershipId", source = "content.programmeMembership.id")
   @Mapping(target = "status", source = "status.current.state")
-  LtftSummaryDto toSummaryDto(LtftForm entity);
+  public abstract LtftSummaryDto toSummaryDto(LtftForm entity);
 
   /**
    * Convert a list of {@link LtftForm} to {@link LtftSummaryDto} DTOs.
@@ -86,7 +107,7 @@ public interface LtftMapper {
    * @param entities The entities to convert to DTOs.
    * @return The equivalent summary DTOs.
    */
-  List<LtftSummaryDto> toSummaryDtos(List<LtftForm> entities);
+  public abstract List<LtftSummaryDto> toSummaryDtos(List<LtftForm> entities);
 
   /**
    * Convert a {@link LtftForm} to {@link LtftFormDto} DTO.
@@ -98,7 +119,7 @@ public interface LtftMapper {
   @Mapping(target = "discussions", source = "content.discussions")
   @Mapping(target = "programmeMembership", source = "content.programmeMembership")
   @Mapping(target = "status.current", source = "status.current.state")
-  LtftFormDto toDto(LtftForm entity);
+  public abstract LtftFormDto toDto(LtftForm entity);
 
   /**
    * Convert a {@link LtftFormDto} DTO to a {@link LtftForm}.
@@ -107,5 +128,48 @@ public interface LtftMapper {
    * @return The equivalent LTFT Form.
    */
   @InheritInverseConfiguration
-  LtftForm toEntity(LtftFormDto dto);
+  public abstract LtftForm toEntity(LtftFormDto dto);
+
+  /**
+   * Joins a list of strings with a comma, sorted alphabetically for consistency.
+   *
+   * @param list The list of strings to join.
+   * @return The joined string.
+   */
+  @Named("JoinWithComma")
+  String joinListWithComma(List<String> list) {
+    if (list == null) {
+      return null;
+    }
+
+    List<String> sorted = list.stream().sorted().toList();
+    return String.join(", ", sorted);
+  }
+
+  /**
+   * Calculate whether the LTFT application is short notice.
+   *
+   * @param entity The LTFT application.
+   * @return Whether the application is short notice, or null if one of the required dates was null.
+   */
+  @Named("IsShortNotice")
+  @Nullable
+  Boolean isShortNotice(LtftForm entity) {
+    Instant submitted = entity.getSubmitted();
+
+    if (submitted == null) {
+      return null;
+    }
+
+    // If the form is unsubmitted, use the current date instead of the last submission date.
+    Instant referenceInstant =
+        entity.getStatus().current().state() == UNSUBMITTED ? Instant.now() : submitted;
+    LocalDate referenceDate = getTemporalMapper().toLocalDate(referenceInstant);
+
+    return Optional.ofNullable(entity.getContent())
+        .map(LtftContent::change)
+        .map(CctChange::startDate)
+        .map(startDate -> ChronoUnit.DAYS.between(referenceDate, startDate) < NOTICE_PERIOD_DAYS)
+        .orElse(null);
+  }
 }
