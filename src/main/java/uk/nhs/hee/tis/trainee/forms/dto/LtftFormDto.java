@@ -60,6 +60,7 @@ public class LtftFormDto {
     private LocalDate startDate;
     private LocalDate endDate;
     private double wte;
+    private String designatedBodyCode;
   }
 
   /**
