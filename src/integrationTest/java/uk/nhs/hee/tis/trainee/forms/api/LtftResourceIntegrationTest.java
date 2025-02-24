@@ -26,6 +26,7 @@ import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -39,6 +40,8 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -55,6 +58,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
@@ -351,5 +356,52 @@ class LtftResourceIntegrationTest {
         is(TRAINEE_ID));
     assertThat("Unexpected saved record id.", savedRecords.get(0).getId(),
         is(formSaved.getId()));
+  }
+
+  @Test
+  void shouldReturnNotFoundWhenDeletingNonExistentLtftForm() throws Exception {
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(delete("/api/ltft/" + UUID.randomUUID())
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"DRAFT"}, mode = EnumSource.Mode.EXCLUDE)
+  void shouldReturnBadRequestWhenServiceCantDeleteLtftForm(LifecycleState lifecycleState)
+      throws Exception {
+    LtftForm form = new LtftForm();
+    form.setTraineeTisId(TRAINEE_ID);
+    AbstractAuditedForm.Status.StatusInfo statusInfo
+        = AbstractAuditedForm.Status.StatusInfo.builder().state(lifecycleState).build();
+    form.setStatus(new AbstractAuditedForm.Status(statusInfo, List.of(statusInfo)));
+    LtftForm formSaved = template.save(form);
+
+    UUID savedId = formSaved.getId();
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(delete("/api/ltft/" + savedId)
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @Test
+  void shouldDeleteLtftForm() throws Exception {
+    LtftForm form = new LtftForm();
+    form.setTraineeTisId(TRAINEE_ID);
+    AbstractAuditedForm.Status.StatusInfo statusInfo
+        = AbstractAuditedForm.Status.StatusInfo.builder().state(LifecycleState.DRAFT).build();
+    form.setStatus(new AbstractAuditedForm.Status(statusInfo, List.of(statusInfo)));
+    LtftForm formSaved = template.save(form);
+
+    UUID savedId = formSaved.getId();
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(delete("/api/ltft/" + savedId)
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$").doesNotExist());
+
+    assertThat("Unexpected saved record count.", template.count(new Query(), LtftForm.class), is(0L));
   }
 }

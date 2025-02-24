@@ -29,6 +29,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.NO_CONTENT;
 import static org.springframework.http.HttpStatus.OK;
 
 import java.util.List;
@@ -169,5 +170,32 @@ class LtftResourceTest {
     LtftFormDto responseDto = response.getBody();
     assert responseDto != null;
     assertThat("Unexpected response body.", responseDto.equals(existingForm), is(true));
+  }
+
+  @Test
+  void shouldReturnNotFoundWhenServiceCantFindLtftFormToDelete() {
+    when(service.deleteLtftForm(any())).thenReturn(Optional.empty());
+
+    ResponseEntity<Void> response = controller.deleteLtft(ID);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(NOT_FOUND));
+  }
+
+  @Test
+  void shouldReturnBadRequestWhenServiceCantDeleteLtftForm() {
+    when(service.deleteLtftForm(any())).thenReturn(Optional.of(false));
+
+    ResponseEntity<Void> response = controller.deleteLtft(ID);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(BAD_REQUEST));
+  }
+
+  @Test
+  void shouldReturnOkWhenServiceDeletesLtftForm() {
+    when(service.deleteLtftForm(any())).thenReturn(Optional.of(true));
+
+    ResponseEntity<Void> response = controller.deleteLtft(ID);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
   }
 }

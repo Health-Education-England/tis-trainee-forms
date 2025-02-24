@@ -21,10 +21,76 @@
 
 package uk.nhs.hee.tis.trainee.forms.dto.enumeration;
 
+import java.util.Set;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractForm;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractFormR;
+import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
+
 public enum LifecycleState {
+  APPROVED,
+  DELETED,
   DRAFT,
+  REJECTED,
   SUBMITTED,
   UNSUBMITTED,
-  DELETED
+  WITHDRAWN;
 
+  private Set<Class<? extends AbstractForm>> allowedFormTypes;
+  private Set<LifecycleState> allowedTransitions;
+
+  static {
+    APPROVED.allowedTransitions = Set.of();
+    APPROVED.allowedFormTypes = Set.of(LtftForm.class);
+
+    DELETED.allowedTransitions = Set.of();
+    DELETED.allowedFormTypes = Set.of(AbstractFormR.class);
+
+    DRAFT.allowedTransitions = Set.of(SUBMITTED, DELETED); // Delete transition is allowed, but is hard delete so may not want to map it here.
+    DRAFT.allowedFormTypes = Set.of(AbstractForm.class);
+
+    REJECTED.allowedTransitions = Set.of();
+    REJECTED.allowedFormTypes = Set.of(LtftForm.class);
+
+    SUBMITTED.allowedTransitions = Set.of(APPROVED, REJECTED, UNSUBMITTED, WITHDRAWN);
+    SUBMITTED.allowedFormTypes = Set.of(AbstractForm.class);
+
+    UNSUBMITTED.allowedTransitions = Set.of(SUBMITTED);
+    UNSUBMITTED.allowedFormTypes = Set.of(AbstractForm.class);
+
+    WITHDRAWN.allowedTransitions = Set.of();
+    WITHDRAWN.allowedFormTypes = Set.of(LtftForm.class);
+  }
+
+  /**
+   * Whether the given form has a valid lifecycle state based on the allowed states for the type.
+   *
+   * @param form The form to check for a valid lifecycle state.
+   * @return Whether the given form's state is valid, false if the form's state is null
+   */
+  public static boolean hasValidLifecycleState(AbstractForm form) {
+    LifecycleState lifecycleState = form.getLifecycleState();
+    return lifecycleState != null && lifecycleState.allowedFormTypes.contains(form.getClass());
+  }
+
+  /**
+   * Checks whether the transition from the form's current state to the new state is allowed.
+   *
+   * @param form              The form to check.
+   * @param newLifecycleState The new target state.
+   * @return Whether the transition is allowed, false if the form's state is null.
+   */
+  public static boolean canTransitionTo(AbstractForm form, LifecycleState newLifecycleState) {
+    LifecycleState currentState = form.getLifecycleState();
+    return currentState != null && currentState.allowedTransitions.contains(newLifecycleState);
+  }
+
+  /**
+   * Checks whether the transition from the current state to the new state is allowed.
+   *
+   * @param newLifecycleState The new target state.
+   * @return Whether the transition is allowed.
+   */
+  public boolean canTransitionTo(LifecycleState newLifecycleState) {
+    return allowedTransitions.contains(newLifecycleState);
+  }
 }
