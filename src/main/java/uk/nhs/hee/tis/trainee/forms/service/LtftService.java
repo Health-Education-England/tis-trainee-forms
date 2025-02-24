@@ -204,7 +204,7 @@ public class LtftService {
    *
    * @param formId The id of the LTFT form to delete.
    * @return Optional empty if the form was not found, true if the form was deleted, or false if
-   * it was not in a permitted state to delete.
+   *         it was not in a permitted state to delete.
    */
   public Optional<Boolean> deleteLtftForm(UUID formId) {
     String traineeId = traineeIdentity.getTraineeId();

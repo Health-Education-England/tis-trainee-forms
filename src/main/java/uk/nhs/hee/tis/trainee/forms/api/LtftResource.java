@@ -132,6 +132,8 @@ public class LtftResource {
     if (deleted.isEmpty()) {
       return ResponseEntity.notFound().build();
     }
-    return deleted.get() ? ResponseEntity.ok().build() : ResponseEntity.badRequest().build();
+    return deleted.get().equals(true)
+        ? ResponseEntity.ok().build()
+        : ResponseEntity.badRequest().build();
   }
 }

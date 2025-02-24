@@ -97,6 +97,7 @@ public interface LtftFormRepository extends MongoRepository<LtftForm, UUID> {
 
   /**
    * Delete the LTFT form with the given id.
+   *
    * @param id must not be {@literal null}.
    */
   void deleteById(@NotNull UUID id);

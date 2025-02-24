@@ -45,7 +45,7 @@ public enum LifecycleState {
     DELETED.allowedTransitions = Set.of();
     DELETED.allowedFormTypes = Set.of(AbstractFormR.class);
 
-    DRAFT.allowedTransitions = Set.of(SUBMITTED, DELETED); // Delete transition is allowed, but is hard delete so may not want to map it here.
+    DRAFT.allowedTransitions = Set.of(SUBMITTED, DELETED);
     DRAFT.allowedFormTypes = Set.of(AbstractForm.class);
 
     REJECTED.allowedTransitions = Set.of();
@@ -54,22 +54,11 @@ public enum LifecycleState {
     SUBMITTED.allowedTransitions = Set.of(APPROVED, REJECTED, UNSUBMITTED, WITHDRAWN);
     SUBMITTED.allowedFormTypes = Set.of(AbstractForm.class);
 
-    UNSUBMITTED.allowedTransitions = Set.of(SUBMITTED);
+    UNSUBMITTED.allowedTransitions = Set.of(SUBMITTED, WITHDRAWN);
     UNSUBMITTED.allowedFormTypes = Set.of(AbstractForm.class);
 
     WITHDRAWN.allowedTransitions = Set.of();
     WITHDRAWN.allowedFormTypes = Set.of(LtftForm.class);
-  }
-
-  /**
-   * Whether the given form has a valid lifecycle state based on the allowed states for the type.
-   *
-   * @param form The form to check for a valid lifecycle state.
-   * @return Whether the given form's state is valid, false if the form's state is null
-   */
-  public static boolean hasValidLifecycleState(AbstractForm form) {
-    LifecycleState lifecycleState = form.getLifecycleState();
-    return lifecycleState != null && lifecycleState.allowedFormTypes.contains(form.getClass());
   }
 
   /**
@@ -82,15 +71,5 @@ public enum LifecycleState {
   public static boolean canTransitionTo(AbstractForm form, LifecycleState newLifecycleState) {
     LifecycleState currentState = form.getLifecycleState();
     return currentState != null && currentState.allowedTransitions.contains(newLifecycleState);
-  }
-
-  /**
-   * Checks whether the transition from the current state to the new state is allowed.
-   *
-   * @param newLifecycleState The new target state.
-   * @return Whether the transition is allowed.
-   */
-  public boolean canTransitionTo(LifecycleState newLifecycleState) {
-    return allowedTransitions.contains(newLifecycleState);
   }
 }

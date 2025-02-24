@@ -417,7 +417,9 @@ class LtftServiceTest {
 
     Optional<Boolean> result = service.deleteLtftForm(ID);
 
-    assertThat("Expected false result when form cannot transition to DELETED.", result.get(), is(false));
+    assertThat("Unexpected empty result when form is deleted.", result.isEmpty(), is(false));
+    assertThat("Expected false result when form cannot transition to DELETED.", result.get(),
+        is(false));
   }
 
   @Test
