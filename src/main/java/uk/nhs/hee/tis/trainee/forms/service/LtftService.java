@@ -21,9 +21,9 @@
 
 package uk.nhs.hee.tis.trainee.forms.service;
 
-import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.canTransitionTo;
-
 import com.amazonaws.xray.spring.aop.XRayEnabled;
+import jakarta.annotation.Nullable;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -32,14 +32,22 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.LtftStatusInfoDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
+import uk.nhs.hee.tis.trainee.forms.model.Person;
 import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 
 /**
@@ -200,11 +208,121 @@ public class LtftService {
   }
 
   /**
+   * Update the status of an LTFT form as an admin, the form must be associated with the admin's
+   * local office.
+   *
+   * @param formId The ID of the form to update the status of.
+   * @param state  The new state.
+   * @param detail A detailed reason for the change, may be null.
+   * @return The updated LTFT application, empty if the form did not exist or did not belong to the
+   * admin's local office.
+   * @throws MethodArgumentNotValidException If the state transition is not allowed.
+   */
+  public Optional<LtftFormDto> updateLtftStatusAsAdmin(UUID formId, LifecycleState state,
+      LftfStatusInfoDetailDto detail) throws MethodArgumentNotValidException {
+    log.info("Updating LTFT form {} as admin [{}]: New state = {}", formId,
+        adminIdentity.getEmail(), state);
+
+    Set<String> dbcs = adminIdentity.getGroups();
+    Optional<LtftForm> form = ltftFormRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        formId, dbcs);
+
+    if (form.isPresent()) {
+      form = updateLtftStatus(form.get(), state,
+          Person.builder().name(adminIdentity.getName()).email(adminIdentity.getEmail())
+              .role("ADMIN").build(), detail);
+    } else {
+      log.warn("Could not update form {} since no form exists with this ID for DBCs [{}]",
+          formId, dbcs);
+    }
+
+    return form.map(mapper::toDto);
+  }
+
+  /**
+   * Update the status of an LTFT form as an admin, the form must be associated with the admin's
+   * local office.
+   *
+   * @param formId The ID of the form to update the status of.
+   * @param state  The new state.
+   * @return The updated LTFT application, empty if the form did not exist or did not belong to the
+   * trainee.
+   * @throws MethodArgumentNotValidException If the state transition is not allowed.
+   */
+  public Optional<LtftFormDto> updateLtftStatusAsTrainee(UUID formId, LifecycleState state)
+      throws MethodArgumentNotValidException {
+    String traineeId = traineeIdentity.getTraineeId();
+    log.info("Updating LTFT form {} as trainee [{}]: New state = {}", formId, traineeId, state);
+
+    Optional<LtftForm> form = ltftFormRepository.findByTraineeTisIdAndId(traineeId, formId);
+
+    if (form.isPresent()) {
+      form = updateLtftStatus(form.get(), state, Person.builder().role("TRAINEE").build(), null);
+    } else {
+      log.warn("Could not update form {} since no existing form with this id for trainee {}",
+          formId, traineeId);
+    }
+
+    return form.map(mapper::toDto);
+  }
+
+  /**
+   * Update the status of the LTFT, the current status and history will both be updated.
+   *
+   * @param form   The form to update the status of.
+   * @param state  The new state.
+   * @param actor  Who is performing the status change.
+   * @param detail A detailed reason for the change, may be null.
+   * @return The updated LTFT application.
+   * @throws MethodArgumentNotValidException If the state transition is not allowed.
+   */
+  private Optional<LtftForm> updateLtftStatus(LtftForm form, LifecycleState state, Person actor,
+      @Nullable LftfStatusInfoDetailDto detail) throws MethodArgumentNotValidException {
+    if (!LifecycleState.canTransitionTo(form, state)) {
+
+      BeanPropertyBindingResult result = new BeanPropertyBindingResult(form, "form");
+      result.addError(new FieldError("LtftForm", "status.current.state",
+          "can not be transitioned to %s".formatted(state)));
+
+      log.warn(
+          "Could not update form {}, invalid lifecycle transition from {}} to {} for form type '{}'",
+          form.getId(), form.getStatus().current().state(), state, form.getFormType());
+
+      throw new MethodArgumentNotValidException(null, result);
+    }
+
+    // TODO: move to mapper?
+    StatusDetail detailEntity = null;
+    if (detail != null) {
+      detailEntity = StatusDetail.builder()
+          .reason(detail.getReason())
+          .message(detail.getMessage())
+          .build();
+    }
+
+    StatusInfo newStatusInfo = StatusInfo.builder()
+        .state(state)
+        .detail(detailEntity)
+        .modifiedBy(actor)
+        .timestamp(Instant.now())
+        .build();
+
+    Status status = form.getStatus();
+    status = status.withCurrent(newStatusInfo);
+    status.history().add(newStatusInfo);
+    form.setStatus(status);
+
+    form.setCreated(form.getCreated()); //explicitly set otherwise form saved as 'new'
+    LtftForm savedForm = ltftFormRepository.save(form);
+    return Optional.of(savedForm);
+  }
+
+  /**
    * Delete the LTFT form with the given id.
    *
    * @param formId The id of the LTFT form to delete.
-   * @return Optional empty if the form was not found, true if the form was deleted, or false if
-   *         it was not in a permitted state to delete.
+   * @return Optional empty if the form was not found, true if the form was deleted, or false if it
+   * was not in a permitted state to delete.
    */
   public Optional<Boolean> deleteLtftForm(UUID formId) {
     String traineeId = traineeIdentity.getTraineeId();
@@ -216,7 +334,7 @@ public class LtftService {
     }
 
     LtftForm form = formOptional.get();
-    if (!canTransitionTo(form, LifecycleState.DELETED)) {
+    if (!LifecycleState.canTransitionTo(form, LifecycleState.DELETED)) {
       log.info("Form {} was not in a permitted state to delete [{}]", formId,
           form.getLifecycleState());
       return Optional.of(false);
