@@ -55,7 +55,6 @@ import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.mapper.TemporalMapperImpl;
-import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
@@ -416,9 +415,7 @@ class LtftServiceTest {
     LtftForm form = new LtftForm();
     form.setId(ID);
     form.setTraineeTisId(TRAINEE_ID);
-    AbstractAuditedForm.Status.StatusInfo statusInfo
-        = AbstractAuditedForm.Status.StatusInfo.builder().state(lifecycleState).build();
-    form.setStatus(new AbstractAuditedForm.Status(statusInfo, List.of(statusInfo)));
+    form.setLifecycleState(lifecycleState);
 
     when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
 
@@ -434,9 +431,7 @@ class LtftServiceTest {
     LtftForm form = new LtftForm();
     form.setId(ID);
     form.setTraineeTisId(TRAINEE_ID);
-    AbstractAuditedForm.Status.StatusInfo statusInfo
-        = AbstractAuditedForm.Status.StatusInfo.builder().state(LifecycleState.DRAFT).build();
-    form.setStatus(new AbstractAuditedForm.Status(statusInfo, List.of(statusInfo)));
+    form.setLifecycleState(LifecycleState.DRAFT);
 
     when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
 

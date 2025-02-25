@@ -22,12 +22,17 @@
 package uk.nhs.hee.tis.trainee.forms.model;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -64,6 +69,94 @@ class AbstractAuditedFormTest {
     Instant submitted = form.getSubmitted();
 
     assertThat("Unexpected submitted timestamp.", submitted, nullValue());
+  }
+
+  @Test
+  void shouldReturnNullLifecycleStateWhenNoStatus() {
+    form.setStatus(null);
+
+    LifecycleState state = form.getLifecycleState();
+
+    assertThat("Unexpected lifecycle state.", state, nullValue());
+  }
+
+  @Test
+  void shouldReturnNullLifecycleStateWhenNoCurrentStatus() {
+    form.setStatus(new Status(null, List.of()));
+
+    LifecycleState state = form.getLifecycleState();
+
+    assertThat("Unexpected lifecycle state.", state, nullValue());
+  }
+
+  @Test
+  void shouldSetLifecycleState() {
+    form.setRevision(1);
+    form.setStatus(null);
+    form.setLifecycleState(LifecycleState.SUBMITTED);
+
+    assertEquals(LifecycleState.SUBMITTED, form.getLifecycleState(),
+        "Unexpected lifecycle state.");
+    Status.StatusInfo statusInfo = form.getStatus().current();
+    assertEquals(LifecycleState.SUBMITTED, statusInfo.state(),
+        "Unexpected lifecycle state in status.");
+    assertThat("Unexpected modified by in status.", statusInfo.modifiedBy(), nullValue());
+    assertThat("Unexpected detail in status.", statusInfo.detail(), nullValue());
+    assertThat("Unexpected revision in status.", statusInfo.revision(), is(1));
+    assertThat("Unexpected timestamp in status.",
+        statusInfo.timestamp().truncatedTo(ChronoUnit.SECONDS),
+        is(Instant.now().truncatedTo(ChronoUnit.SECONDS)));
+
+    Status.StatusInfo statusInfoHistory = form.getStatus().history().get(0);
+    assertEquals(statusInfoHistory, statusInfo, "Unexpected status info in history.");
+  }
+
+  @Test
+  void shouldSetLifecycleStateIfCurrentIsMissing() {
+    form.setRevision(1);
+    form.setStatus(new Status(null, List.of()));
+    form.setLifecycleState(LifecycleState.SUBMITTED);
+
+    assertEquals(LifecycleState.SUBMITTED, form.getLifecycleState(),
+        "Unexpected lifecycle state.");
+    Status.StatusInfo statusInfo = form.getStatus().current();
+    assertEquals(LifecycleState.SUBMITTED, statusInfo.state(),
+        "Unexpected lifecycle state in status.");
+    assertThat("Unexpected modified by in status.", statusInfo.modifiedBy(), nullValue());
+    assertThat("Unexpected detail in status.", statusInfo.detail(), nullValue());
+    assertThat("Unexpected revision in status.", statusInfo.revision(), is(1));
+    assertThat("Unexpected timestamp in status.",
+        statusInfo.timestamp().truncatedTo(ChronoUnit.SECONDS),
+        is(Instant.now().truncatedTo(ChronoUnit.SECONDS)));
+
+    Status.StatusInfo statusInfoHistory = form.getStatus().history().get(0);
+    assertEquals(statusInfoHistory, statusInfo, "Unexpected status info in history.");
+  }
+
+  @Test
+  void shouldOverwriteExistingLifecycleState() {
+    form.setLifecycleState(LifecycleState.DRAFT);
+    form.setLifecycleState(LifecycleState.APPROVED);
+
+    assertEquals(LifecycleState.APPROVED, form.getLifecycleState(),
+        "Unexpected lifecycle state.");
+  }
+
+  @Test
+  void shouldHandleNullLifecycleState() {
+    form.setLifecycleState(null);
+
+    assertNull(form.getLifecycleState(), "Expected lifecycle state to be null.");
+  }
+
+  @Test
+  void shouldAddLifecycleStateToHistory() {
+    form.setLifecycleState(LifecycleState.DRAFT);
+    form.setLifecycleState(LifecycleState.SUBMITTED);
+
+    assertThat("Unexpected status history items.", form.getStatus().history().stream()
+        .map(StatusInfo::state).toList()
+        .containsAll(List.of(DRAFT, SUBMITTED)));
   }
 
   @ParameterizedTest
@@ -146,11 +239,5 @@ class AbstractAuditedFormTest {
     public String getFormType() {
       return "test-auditedform";
     }
-
-    @Override
-    public LifecycleState getLifecycleState() {
-      return null;
-    }
-
   }
 }
