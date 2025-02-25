@@ -75,6 +75,16 @@ public interface LtftFormRepository extends MongoRepository<LtftForm, UUID> {
   Optional<LtftForm> findByTraineeTisIdAndId(String traineeId, UUID id);
 
   /**
+   * Find the LTFT form with the given ID associated with one of the given DBCs.
+   *
+   * @param id   The ID of the form.
+   * @param dbcs The designated body codes to include in the search.
+   * @return The LTFT form, or optional empty if ID not found or did not match DBCs.
+   */
+  Optional<LtftForm> findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(UUID id,
+      Set<String> dbcs);
+
+  /**
    * Find all LTFT forms with one of the given DBCs.
    *
    * @param dbcs     The designated body codes to include in the search.

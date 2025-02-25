@@ -45,13 +45,13 @@ public enum LifecycleState {
     DELETED.allowedTransitions = Set.of();
     DELETED.allowedFormTypes = Set.of(AbstractFormR.class);
 
-    DRAFT.allowedTransitions = Set.of(SUBMITTED, DELETED);
+    DRAFT.allowedTransitions = Set.of(DELETED, SUBMITTED);
     DRAFT.allowedFormTypes = Set.of(AbstractForm.class);
 
     REJECTED.allowedTransitions = Set.of();
     REJECTED.allowedFormTypes = Set.of(LtftForm.class);
 
-    SUBMITTED.allowedTransitions = Set.of(APPROVED, REJECTED, UNSUBMITTED, WITHDRAWN);
+    SUBMITTED.allowedTransitions = Set.of(APPROVED, DELETED, REJECTED, UNSUBMITTED, WITHDRAWN);
     SUBMITTED.allowedFormTypes = Set.of(AbstractForm.class);
 
     UNSUBMITTED.allowedTransitions = Set.of(SUBMITTED, WITHDRAWN);
@@ -70,6 +70,9 @@ public enum LifecycleState {
    */
   public static boolean canTransitionTo(AbstractForm form, LifecycleState newLifecycleState) {
     LifecycleState currentState = form.getLifecycleState();
-    return currentState != null && currentState.allowedTransitions.contains(newLifecycleState);
+
+    return currentState != null && currentState.allowedTransitions.contains(newLifecycleState)
+        && newLifecycleState.allowedFormTypes.stream()
+        .anyMatch(type -> type.isAssignableFrom(form.getClass()));
   }
 }

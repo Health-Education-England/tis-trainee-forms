@@ -29,6 +29,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
+import lombok.With;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.domain.Persistable;
@@ -106,6 +107,7 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
   @Builder
   public record Status(
 
+      @With
       StatusInfo current,
       List<StatusInfo> history) {
 
@@ -123,12 +125,16 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
 
         @Indexed
         LifecycleState state,
-        String detail,
+        StatusDetail detail,
         Person modifiedBy,
         Instant timestamp,
         Integer revision
     ) {
 
+      @Builder
+      public record StatusDetail(String reason, String message) {
+
+      }
     }
   }
 }

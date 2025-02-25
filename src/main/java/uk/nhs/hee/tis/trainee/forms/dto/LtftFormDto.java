@@ -29,12 +29,14 @@ import java.util.UUID;
 import lombok.Data;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
+import uk.nhs.hee.tis.trainee.forms.model.Person;
 
 /**
  * A DTO for transferring LTFT forms.
  */
 @Data
 public class LtftFormDto {
+
   @Null(groups = Create.class)
   private UUID id;
 
@@ -55,6 +57,7 @@ public class LtftFormDto {
    */
   @Data
   public static class LtftProgrammeMembershipDto {
+
     private UUID id;
     private String name;
     private LocalDate startDate;
@@ -67,6 +70,7 @@ public class LtftFormDto {
    */
   @Data
   public static class LtftStatusDto {
+
     private LifecycleState current;
     private List<LtftStatusInfoDto> history;
   }
@@ -76,10 +80,22 @@ public class LtftFormDto {
    */
   @Data
   public static class LtftStatusInfoDto {
+
     private LifecycleState state;
-    private String detail;
+    private LftfStatusInfoDetailDto detail;
+    private Person modifiedBy;
     private Instant timestamp;
     private Integer revision;
+
+    /**
+     * A DTO for state change details.
+     */
+    @Data
+    public static class LftfStatusInfoDetailDto {
+
+      private String reason;
+      private String message;
+    }
   }
 
   /**
@@ -87,6 +103,7 @@ public class LtftFormDto {
    */
   @Data
   public static class LtftDiscussionDto {
+
     private String tpdName;
     private String tpdEmail;
     private List<LtftPersonRole> other;
@@ -97,6 +114,7 @@ public class LtftFormDto {
    */
   @Data
   public static class LtftPersonRole {
+
     private String name;
     private String email;
     private String role;

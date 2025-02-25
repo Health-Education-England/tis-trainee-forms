@@ -33,6 +33,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo.StatusDetail;
 
 class LtftFormTest {
 
@@ -55,7 +56,7 @@ class LtftFormTest {
         .build();
     List<StatusInfo> history = List.of(StatusInfo.builder()
         .state(LifecycleState.SUBMITTED)
-        .detail("test")
+        .detail(StatusDetail.builder().reason("testReason").message("testMessage").build())
         .timestamp(Instant.now())
         .build()
     );
