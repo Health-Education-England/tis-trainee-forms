@@ -170,4 +170,31 @@ class LtftResourceTest {
     assert responseDto != null;
     assertThat("Unexpected response body.", responseDto.equals(existingForm), is(true));
   }
+
+  @Test
+  void shouldReturnNotFoundWhenServiceCantFindLtftFormToDelete() {
+    when(service.deleteLtftForm(any())).thenReturn(Optional.empty());
+
+    ResponseEntity<Void> response = controller.deleteLtft(ID);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(NOT_FOUND));
+  }
+
+  @Test
+  void shouldReturnBadRequestWhenServiceCantDeleteLtftForm() {
+    when(service.deleteLtftForm(any())).thenReturn(Optional.of(false));
+
+    ResponseEntity<Void> response = controller.deleteLtft(ID);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(BAD_REQUEST));
+  }
+
+  @Test
+  void shouldReturnOkWhenServiceDeletesLtftForm() {
+    when(service.deleteLtftForm(any())).thenReturn(Optional.of(true));
+
+    ResponseEntity<Void> response = controller.deleteLtft(ID);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+  }
 }

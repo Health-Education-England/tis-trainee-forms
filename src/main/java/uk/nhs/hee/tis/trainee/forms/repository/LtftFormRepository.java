@@ -21,6 +21,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.repository;
 
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -93,4 +94,11 @@ public interface LtftFormRepository extends MongoRepository<LtftForm, UUID> {
    */
   Page<LtftForm> findByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
       Set<LifecycleState> states, Set<String> dbcs, Pageable pageable);
+
+  /**
+   * Delete the LTFT form with the given id.
+   *
+   * @param id must not be {@literal null}.
+   */
+  void deleteById(@NotNull UUID id);
 }

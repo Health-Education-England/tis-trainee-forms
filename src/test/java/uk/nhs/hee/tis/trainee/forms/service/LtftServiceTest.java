@@ -41,6 +41,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -54,6 +55,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.mapper.TemporalMapperImpl;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
@@ -390,5 +392,51 @@ class LtftServiceTest {
     LtftForm formToSave = mapper.toEntity(dtoToSave);
     verify(ltftRepository).save(formToSave);
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
+  }
+
+  @Test
+  void shouldReturnEmptyWhenDeletingIfFormNotFound() {
+    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
+
+    Optional<Boolean> result = service.deleteLtftForm(ID);
+
+    assertThat("Expected empty result when form not found to delete.", result.isEmpty(), is(true));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"DRAFT"}, mode = EnumSource.Mode.EXCLUDE)
+  void shouldReturnFalseIfFormCannotTransitionToDeleted(LifecycleState lifecycleState) {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setTraineeTisId(TRAINEE_ID);
+    AbstractAuditedForm.Status.StatusInfo statusInfo
+        = AbstractAuditedForm.Status.StatusInfo.builder().state(lifecycleState).build();
+    form.setStatus(new AbstractAuditedForm.Status(statusInfo, List.of(statusInfo)));
+
+    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+
+    Optional<Boolean> result = service.deleteLtftForm(ID);
+
+    assertThat("Unexpected empty result when form is deleted.", result.isEmpty(), is(false));
+    assertThat("Expected false result when form cannot transition to DELETED.", result.get(),
+        is(false));
+  }
+
+  @Test
+  void shouldDeleteFormIfCanTransitionToDeleted() {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setTraineeTisId(TRAINEE_ID);
+    AbstractAuditedForm.Status.StatusInfo statusInfo
+        = AbstractAuditedForm.Status.StatusInfo.builder().state(LifecycleState.DRAFT).build();
+    form.setStatus(new AbstractAuditedForm.Status(statusInfo, List.of(statusInfo)));
+
+    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+
+    Optional<Boolean> result = service.deleteLtftForm(ID);
+
+    assertThat("Unexpected empty result when form is deleted.", result.isEmpty(), is(false));
+    assertThat("Expected true result when form is deleted.", result.get(), is(true));
+    verify(ltftRepository).deleteById(ID);
   }
 }

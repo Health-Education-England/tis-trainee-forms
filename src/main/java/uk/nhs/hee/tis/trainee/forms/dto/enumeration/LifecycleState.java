@@ -21,10 +21,55 @@
 
 package uk.nhs.hee.tis.trainee.forms.dto.enumeration;
 
+import java.util.Set;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractForm;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractFormR;
+import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
+
 public enum LifecycleState {
+  APPROVED,
+  DELETED,
   DRAFT,
+  REJECTED,
   SUBMITTED,
   UNSUBMITTED,
-  DELETED
+  WITHDRAWN;
 
+  private Set<Class<? extends AbstractForm>> allowedFormTypes;
+  private Set<LifecycleState> allowedTransitions;
+
+  static {
+    APPROVED.allowedTransitions = Set.of();
+    APPROVED.allowedFormTypes = Set.of(LtftForm.class);
+
+    DELETED.allowedTransitions = Set.of();
+    DELETED.allowedFormTypes = Set.of(AbstractFormR.class);
+
+    DRAFT.allowedTransitions = Set.of(SUBMITTED, DELETED);
+    DRAFT.allowedFormTypes = Set.of(AbstractForm.class);
+
+    REJECTED.allowedTransitions = Set.of();
+    REJECTED.allowedFormTypes = Set.of(LtftForm.class);
+
+    SUBMITTED.allowedTransitions = Set.of(APPROVED, REJECTED, UNSUBMITTED, WITHDRAWN);
+    SUBMITTED.allowedFormTypes = Set.of(AbstractForm.class);
+
+    UNSUBMITTED.allowedTransitions = Set.of(SUBMITTED, WITHDRAWN);
+    UNSUBMITTED.allowedFormTypes = Set.of(AbstractForm.class);
+
+    WITHDRAWN.allowedTransitions = Set.of();
+    WITHDRAWN.allowedFormTypes = Set.of(LtftForm.class);
+  }
+
+  /**
+   * Checks whether the transition from the form's current state to the new state is allowed.
+   *
+   * @param form              The form to check.
+   * @param newLifecycleState The new target state.
+   * @return Whether the transition is allowed, false if the form's state is null.
+   */
+  public static boolean canTransitionTo(AbstractForm form, LifecycleState newLifecycleState) {
+    LifecycleState currentState = form.getLifecycleState();
+    return currentState != null && currentState.allowedTransitions.contains(newLifecycleState);
+  }
 }

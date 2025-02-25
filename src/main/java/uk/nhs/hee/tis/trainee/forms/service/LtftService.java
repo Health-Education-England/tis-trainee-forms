@@ -21,6 +21,8 @@
 
 package uk.nhs.hee.tis.trainee.forms.service;
 
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.canTransitionTo;
+
 import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.util.List;
 import java.util.Optional;
@@ -195,5 +197,33 @@ public class LtftService {
     form.setCreated(existingForm.get().getCreated()); //explicitly set otherwise form saved as 'new'
     LtftForm savedForm = ltftFormRepository.save(form);
     return Optional.of(mapper.toDto(savedForm));
+  }
+
+  /**
+   * Delete the LTFT form with the given id.
+   *
+   * @param formId The id of the LTFT form to delete.
+   * @return Optional empty if the form was not found, true if the form was deleted, or false if
+   *         it was not in a permitted state to delete.
+   */
+  public Optional<Boolean> deleteLtftForm(UUID formId) {
+    String traineeId = traineeIdentity.getTraineeId();
+    Optional<LtftForm> formOptional = ltftFormRepository.findByTraineeTisIdAndId(traineeId, formId);
+
+    if (formOptional.isEmpty()) {
+      log.info("Did not find form {} for trainee [{}]", formId, traineeId);
+      return Optional.empty();
+    }
+
+    LtftForm form = formOptional.get();
+    if (!canTransitionTo(form, LifecycleState.DELETED)) {
+      log.info("Form {} was not in a permitted state to delete [{}]", formId,
+          form.getLifecycleState());
+      return Optional.of(false);
+    }
+
+    log.info("Deleting form {} for trainee [{}]", formId, traineeId);
+    ltftFormRepository.deleteById(formId);
+    return Optional.of(true);
   }
 }

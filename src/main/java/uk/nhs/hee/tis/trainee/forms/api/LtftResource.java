@@ -28,6 +28,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -37,6 +38,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 
@@ -115,5 +117,23 @@ public class LtftResource {
     log.info("Request to retrieve LTFT form {}.", formId);
     Optional<LtftFormDto> ltft = service.getLtftForm(formId);
     return ResponseEntity.of(ltft);
+  }
+
+  /**
+   * Delete an existing LTFT form.
+   *
+   * @param formId The id of the LTFT form to delete.
+   * @return A response entity indicating the result of the deletion.
+   */
+  @DeleteMapping("/{formId}")
+  public ResponseEntity<Void> deleteLtft(@PathVariable UUID formId) {
+    log.info("Request to delete LTFT form {}.", formId);
+    Optional<Boolean> deleted = service.deleteLtftForm(formId);
+    if (deleted.isEmpty()) {
+      return ResponseEntity.notFound().build();
+    }
+    return deleted.get().equals(true)
+        ? ResponseEntity.ok().build()
+        : ResponseEntity.badRequest().build();
   }
 }
