@@ -21,7 +21,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.service;
 
-import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.canTransitionTo;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.util.List;
@@ -216,7 +216,7 @@ public class LtftService {
     }
 
     LtftForm form = formOptional.get();
-    if (!canTransitionTo(form, LifecycleState.DELETED)) {
+    if (!form.getLifecycleState().equals(DRAFT)) {
       log.info("Form {} was not in a permitted state to delete [{}]", formId,
           form.getLifecycleState());
       return Optional.of(false);

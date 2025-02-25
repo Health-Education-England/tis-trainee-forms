@@ -45,7 +45,7 @@ public enum LifecycleState {
     DELETED.allowedTransitions = Set.of();
     DELETED.allowedFormTypes = Set.of(AbstractFormR.class);
 
-    DRAFT.allowedTransitions = Set.of(SUBMITTED, DELETED);
+    DRAFT.allowedTransitions = Set.of(SUBMITTED);
     DRAFT.allowedFormTypes = Set.of(AbstractForm.class);
 
     REJECTED.allowedTransitions = Set.of();
