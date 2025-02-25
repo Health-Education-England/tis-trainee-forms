@@ -22,6 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.model;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -73,6 +74,45 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
       return null;
     }
     return status.current.state;
+  }
+
+  /**
+   * Set the current lifecycle state of the form, appending to the status history.
+   *
+   * @param lifecycleState The new lifecycle state.
+   *                       The current revision number will be used and other details set to null.
+   */
+  @Override
+  public void setLifecycleState(LifecycleState lifecycleState) {
+    setLifecycleState(lifecycleState, null, null, revision);
+  }
+
+  /**
+   * Set the current lifecycle state of the form, appending to the status history.
+   *
+   * @param lifecycleState The new lifecycle state.
+   * @param detail         Any status detail.
+   * @param modifiedBy     The Person who made this status change.
+   * @param revision       The revision number associated with this status change.
+   */
+  public void setLifecycleState(LifecycleState lifecycleState, String detail, Person modifiedBy,
+      int revision) {
+    Status.StatusInfo statusInfo
+        = StatusInfo.builder()
+        .state(lifecycleState)
+        .detail(detail)
+        .modifiedBy(modifiedBy)
+        .timestamp(Instant.now())
+        .revision(revision)
+        .build();
+
+    if (status == null || status.current == null) {
+      setStatus(new Status(statusInfo, List.of(statusInfo)));
+    } else {
+      List<StatusInfo> newHistory = new ArrayList<>(List.of(statusInfo));
+      newHistory.addAll(status.history);
+      setStatus(new Status(statusInfo, newHistory));
+    }
   }
 
   @Override

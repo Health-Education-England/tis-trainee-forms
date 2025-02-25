@@ -892,9 +892,7 @@ class LtftServiceTest {
     LtftForm form = new LtftForm();
     form.setId(ID);
     form.setTraineeTisId(TRAINEE_ID);
-    AbstractAuditedForm.Status.StatusInfo statusInfo
-        = AbstractAuditedForm.Status.StatusInfo.builder().state(lifecycleState).build();
-    form.setStatus(new AbstractAuditedForm.Status(statusInfo, List.of(statusInfo)));
+    form.setLifecycleState(lifecycleState);
 
     when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
 
@@ -910,9 +908,7 @@ class LtftServiceTest {
     LtftForm form = new LtftForm();
     form.setId(ID);
     form.setTraineeTisId(TRAINEE_ID);
-    AbstractAuditedForm.Status.StatusInfo statusInfo
-        = AbstractAuditedForm.Status.StatusInfo.builder().state(LifecycleState.DRAFT).build();
-    form.setStatus(new AbstractAuditedForm.Status(statusInfo, List.of(statusInfo)));
+    form.setLifecycleState(LifecycleState.DRAFT);
 
     when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
 

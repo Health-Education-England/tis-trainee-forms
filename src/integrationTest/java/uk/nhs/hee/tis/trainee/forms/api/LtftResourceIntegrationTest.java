@@ -59,7 +59,6 @@ import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
-import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
@@ -380,9 +379,7 @@ class LtftResourceIntegrationTest {
       throws Exception {
     LtftForm form = new LtftForm();
     form.setTraineeTisId(TRAINEE_ID);
-    AbstractAuditedForm.Status.StatusInfo statusInfo
-        = AbstractAuditedForm.Status.StatusInfo.builder().state(lifecycleState).build();
-    form.setStatus(new AbstractAuditedForm.Status(statusInfo, List.of(statusInfo)));
+    form.setLifecycleState(lifecycleState);
     LtftForm formSaved = template.save(form);
 
     UUID savedId = formSaved.getId();
@@ -397,9 +394,7 @@ class LtftResourceIntegrationTest {
   void shouldDeleteLtftForm() throws Exception {
     LtftForm form = new LtftForm();
     form.setTraineeTisId(TRAINEE_ID);
-    AbstractAuditedForm.Status.StatusInfo statusInfo
-        = AbstractAuditedForm.Status.StatusInfo.builder().state(LifecycleState.DRAFT).build();
-    form.setStatus(new AbstractAuditedForm.Status(statusInfo, List.of(statusInfo)));
+    form.setLifecycleState(LifecycleState.DRAFT);
     LtftForm formSaved = template.save(form);
 
     UUID savedId = formSaved.getId();
