@@ -22,7 +22,6 @@
 package uk.nhs.hee.tis.trainee.forms.model;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -32,7 +31,6 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMIT
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Comparator;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
