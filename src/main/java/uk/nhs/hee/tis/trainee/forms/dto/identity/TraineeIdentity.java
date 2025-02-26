@@ -29,5 +29,11 @@ import lombok.Data;
 @Data
 public class TraineeIdentity {
 
-  String traineeId;
+  //TODO: consider merging with AdminIdentity.
+
+  public static final String ROLE = "TRAINEE";
+
+  private String traineeId;
+  private String email;
+  private String name;
 }

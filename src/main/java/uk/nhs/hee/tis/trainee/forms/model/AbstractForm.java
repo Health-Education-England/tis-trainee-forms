@@ -41,4 +41,6 @@ public abstract class AbstractForm {
   public abstract String getFormType();
 
   public abstract LifecycleState getLifecycleState();
+
+  public abstract void setLifecycleState(LifecycleState lifecycleState);
 }
