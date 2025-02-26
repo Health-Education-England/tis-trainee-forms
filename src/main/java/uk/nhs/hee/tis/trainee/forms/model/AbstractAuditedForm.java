@@ -88,15 +88,16 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
   }
 
   /**
-   * Set the current lifecycle state of the form, appending to the status history.
+   * Set the current lifecycle state of the form, appending to the status history. This does not
+   * consider whether a state transition is valid or not, it simply sets the state.
    *
    * @param lifecycleState The new lifecycle state.
    * @param detail         Any status detail.
    * @param modifiedBy     The Person who made this status change.
    * @param revision       The revision number associated with this status change.
    */
-  public void setLifecycleState(LifecycleState lifecycleState, String detail, Person modifiedBy,
-      int revision) {
+  public void setLifecycleState(LifecycleState lifecycleState, Status.StatusDetail detail,
+      Person modifiedBy, int revision) {
     Status.StatusInfo statusInfo
         = StatusInfo.builder()
         .state(lifecycleState)
@@ -153,7 +154,7 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
      * Form status information.
      *
      * @param state      The lifecycle state of the form.
-     * @param detail     Any status detail.
+     * @param detail     Any status reason detail.
      * @param modifiedBy The Person who made this status change.
      * @param timestamp  The timestamp of the status change.
      * @param revision   The revision number associated with this status change.
@@ -163,11 +164,22 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
 
         @Indexed
         LifecycleState state,
-        String detail,
+        StatusDetail detail,
         Person modifiedBy,
         Instant timestamp,
         Integer revision
     ) {
+
+    }
+
+    /**
+     * Form status reason detail.
+     *
+     * @param reason  The reason for the status.
+     * @param message Any additional message.
+     */
+    @Builder
+    public record StatusDetail(String reason, String message) {
 
     }
   }

@@ -38,6 +38,10 @@ public enum LifecycleState {
   private Set<Class<? extends AbstractForm>> allowedFormTypes;
   private Set<LifecycleState> allowedTransitions;
 
+  // NOTE: allowedFormTypes can effectively disallow specific allowedTransitions.
+  // Example:
+  // UNSUBMITTED -> WITHDRAWN is allowed, but if the AbstractForm form is not a LtftForm
+  // (or subclass), then WITHDRAWN is not allowed and the only allowed transition is SUBMITTED.
   static {
     APPROVED.allowedTransitions = Set.of();
     APPROVED.allowedFormTypes = Set.of(LtftForm.class);
@@ -51,7 +55,7 @@ public enum LifecycleState {
     REJECTED.allowedTransitions = Set.of();
     REJECTED.allowedFormTypes = Set.of(LtftForm.class);
 
-    SUBMITTED.allowedTransitions = Set.of(APPROVED, REJECTED, UNSUBMITTED, WITHDRAWN);
+    SUBMITTED.allowedTransitions = Set.of(APPROVED, DELETED, REJECTED, UNSUBMITTED, WITHDRAWN);
     SUBMITTED.allowedFormTypes = Set.of(AbstractForm.class);
 
     UNSUBMITTED.allowedTransitions = Set.of(SUBMITTED, WITHDRAWN);
@@ -70,6 +74,10 @@ public enum LifecycleState {
    */
   public static boolean canTransitionTo(AbstractForm form, LifecycleState newLifecycleState) {
     LifecycleState currentState = form.getLifecycleState();
-    return currentState != null && currentState.allowedTransitions.contains(newLifecycleState);
+
+    return currentState != null && currentState.allowedTransitions.contains(newLifecycleState)
+        && newLifecycleState.allowedFormTypes.stream()
+        .anyMatch(type -> type.isAssignableFrom(form.getClass()));
+    // NOTE: we check the _new_ state's allowedFormTypes, not the current state's
   }
 }
