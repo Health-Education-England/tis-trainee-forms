@@ -30,7 +30,10 @@ import uk.nhs.hee.tis.trainee.forms.model.AbstractForm;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractFormR;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 
-public class LifecycleStateTest {
+/**
+ * Tests for the {@link LifecycleState} enumeration.
+ */
+class LifecycleStateTest {
 
   @ParameterizedTest
   @EnumSource(LifecycleState.class)
