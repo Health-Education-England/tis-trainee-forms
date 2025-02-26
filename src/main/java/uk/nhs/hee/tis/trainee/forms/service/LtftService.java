@@ -116,6 +116,8 @@ public class LtftService {
   public Page<LtftAdminSummaryDto> getAdminLtftSummaries(Set<LifecycleState> states,
       Pageable pageable) {
     Set<String> groups = adminIdentity.getGroups();
+    log.info("Getting LTFT forms for admin {} with states {} and DBCs {}", adminIdentity.getEmail(),
+        states, groups);
     Page<LtftForm> forms;
 
     if (states == null || states.isEmpty()) {
@@ -128,7 +130,25 @@ public class LtftService {
               groups, pageable);
     }
 
+    log.info("Found {} total LTFTs, returning page {} of {}", forms.getTotalElements(),
+        pageable.getPageNumber(), forms.getTotalPages());
     return forms.map(mapper::toAdminSummaryDto);
+  }
+
+  /**
+   * Find an LTFT form associated with the local offices of the calling admin.
+   *
+   * @param formId The ID of the form.
+   * @return The found form, empty if the form does not exist or does not match the admin's DBCs.
+   */
+  public Optional<LtftFormDto> getAdminLtftDetail(UUID formId) {
+    Set<String> groups = adminIdentity.getGroups();
+    log.info("Getting LTFT form {} for admin {} with DBCs [{}]", formId, adminIdentity.getEmail(),
+        groups);
+    Optional<LtftForm> form = ltftFormRepository.
+        findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            formId, Set.of(DRAFT), adminIdentity.getGroups());
+    return form.map(v -> mapper.toDto(v, null));
   }
 
   /**
@@ -203,8 +223,8 @@ public class LtftService {
    * Delete the LTFT form with the given id.
    *
    * @param formId The id of the LTFT form to delete.
-   * @return Optional empty if the form was not found, true if the form was deleted, or false if
-   *         it was not in a permitted state to delete.
+   * @return Optional empty if the form was not found, true if the form was deleted, or false if it
+   * was not in a permitted state to delete.
    */
   public Optional<Boolean> deleteLtftForm(UUID formId) {
     String traineeId = traineeIdentity.getTraineeId();

@@ -96,6 +96,18 @@ public interface LtftFormRepository extends MongoRepository<LtftForm, UUID> {
       Set<LifecycleState> states, Set<String> dbcs, Pageable pageable);
 
   /**
+   * Find the LTFT form with the given ID and one of the given DBCs.
+   *
+   * @param id     The ID of the form to find.
+   * @param states The states to exclude from the search.
+   * @param dbcs   The designated body codes to include in the search.
+   * @return The found LTFT form, empty if not found.
+   */
+  Optional<LtftForm>
+  findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+      UUID id, Set<LifecycleState> states, Set<String> dbcs);
+
+  /**
    * Delete the LTFT form with the given id.
    *
    * @param id must not be {@literal null}.

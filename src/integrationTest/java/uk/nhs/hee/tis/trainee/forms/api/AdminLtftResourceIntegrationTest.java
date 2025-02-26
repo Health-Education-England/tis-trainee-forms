@@ -22,6 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import static org.hamcrest.Matchers.aMapWithSize;
+import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
@@ -41,6 +42,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -108,6 +110,7 @@ class AdminLtftResourceIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       GET | /api/admin/ltft
+      GET | /api/admin/ltft/123
       GET | /api/admin/ltft/count
       """)
   void shouldReturnForbiddenWhenNoToken(HttpMethod method, URI uri) throws Exception {
@@ -119,6 +122,7 @@ class AdminLtftResourceIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       GET | /api/admin/ltft
+      GET | /api/admin/ltft/123
       GET | /api/admin/ltft/count
       """)
   void shouldReturnForbiddenWhenEmptyToken(HttpMethod method, URI uri) throws Exception {
@@ -132,6 +136,7 @@ class AdminLtftResourceIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       GET | /api/admin/ltft
+      GET | /api/admin/ltft/123
       GET | /api/admin/ltft/count
       """)
   void shouldReturnForbiddenWhenNoGroupsInToken(HttpMethod method, URI uri) throws Exception {
@@ -140,6 +145,17 @@ class AdminLtftResourceIntegrationTest {
             .header(HttpHeaders.AUTHORIZATION, token))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      GET | /api/admin/ltft/123
+      """)
+  void shouldReturnBadRequestWhenInvalidFormId(HttpMethod method, URI uri) throws Exception {
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(request(method, uri)
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isBadRequest());
   }
 
   @ParameterizedTest
@@ -600,6 +616,103 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.page.number", is(0)))
         .andExpect(jsonPath("$.page.totalElements", is(3)))
         .andExpect(jsonPath("$.page.totalPages", is(1)));
+  }
+
+  @Test
+  void shouldReturnNotFoundGettingDetailWhenLtftDoesNotExist() throws Exception {
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(get("/api/admin/ltft/{id}", UUID.randomUUID())
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void shouldReturnNotFoundGettingDetailWhenLtftDoesNotMatchDbc() throws Exception {
+    LtftForm form = createLtftForm(SUBMITTED, DBC_2);
+    form = template.save(form);
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void shouldReturnNotFoundGettingDetailWhenLtftWithMatchingDbcIsDraft() throws Exception {
+    LtftForm form = createLtftForm(DRAFT, DBC_1);
+    form = template.save(form);
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void shouldGetDetailWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
+    LocalDate startDate = LocalDate.now().plusWeeks(20);
+
+    LtftForm form = new LtftForm();
+    form.setTraineeTisId("47165");
+
+    LtftContent content = LtftContent.builder()
+        .personalDetails(PersonalDetails.builder()
+            .forenames("Anthony").surname("Gilliam").gmcNumber("1234567").gdcNumber("D123456")
+            .build())
+        .programmeMembership(ProgrammeMembership.builder()
+            .name("General Practice").designatedBodyCode(DBC_1)
+            .build())
+        .change(CctChange.builder()
+            .startDate(startDate)
+            .build())
+        .reasons(Reasons.builder()
+            .selected(List.of("Other", "Caring responsibilities"))
+            .build())
+        .discussions(Discussions.builder()
+            .tpdEmail("tpd@example.com")
+            .build())
+        .assignedAdmin(Person.builder()
+            .name("Ad Min").email("ad.min@example.com").role("ADMIN")
+            .build())
+        .build();
+    form.setContent(content);
+
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+
+    StatusInfo statusInfo = StatusInfo.builder()
+        .state(SUBMITTED).timestamp(Instant.now())
+        .build();
+    form.setStatus(Status.builder()
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            StatusInfo.builder().state(SUBMITTED).timestamp(latestSubmitted).build()))
+        .build()
+    );
+
+    form = template.insert(form);
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.id", is(form.getId().toString())))
+        .andExpect(jsonPath("$.traineeTisId", is("47165")))
+        .andExpect(jsonPath("$.personalDetails.id", is("47165")))
+        .andExpect(jsonPath("$.personalDetails.forenames", is("Anthony")))
+        .andExpect(jsonPath("$.personalDetails.surname", is("Gilliam")))
+        .andExpect(jsonPath("$.personalDetails.gmcNumber", is("1234567")))
+        .andExpect(jsonPath("$.personalDetails.gdcNumber", is("D123456")))
+        .andExpect(jsonPath("$.programmeMembership.name", is("General Practice")))
+        .andExpect(jsonPath("$.change.startDate", is(startDate.toString())))
+        .andExpect(jsonPath("$.reasons.selected", hasSize(2)))
+        .andExpect(jsonPath("$.reasons.selected", hasItems("Caring responsibilities", "Other")))
+        .andExpect(jsonPath("$.discussions.tpdEmail", is("tpd@example.com")))
+        .andExpect(jsonPath("$.status.current.state", is(SUBMITTED.name())))
+        .andExpect(jsonPath("$.assignedAdmin.name", is("Ad Min")))
+        .andExpect(jsonPath("$.assignedAdmin.email", is("ad.min@example.com")))
+        .andExpect(jsonPath("$.assignedAdmin.role", is("ADMIN")));
   }
 
   /**
