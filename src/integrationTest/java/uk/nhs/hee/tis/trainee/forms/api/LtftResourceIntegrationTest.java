@@ -59,6 +59,7 @@ import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
@@ -406,5 +407,87 @@ class LtftResourceIntegrationTest {
 
     assertThat("Unexpected saved record count.", template.count(new Query(), LtftForm.class),
         is(0L));
+  }
+
+  @Test
+  void shouldBeForbiddenFromSubmittingLtftFormWhenNoToken() throws Exception {
+    mockMvc.perform(put("/api/ltft/" + ID + "/submit")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @Test
+  void shouldBeForbiddenFromSubmittingLtftFormWhenTokenLacksTraineeId() throws Exception {
+    String token = TestJwtUtil.generateToken("{}");
+    mockMvc.perform(put("/api/ltft/" + ID + "/submit")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @Test
+  void shouldReturnBadRequestWhenSubmittingLtftFormNotOwnedByUser() throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setId(ID);
+    ltft.setTraineeTisId("another trainee");
+    template.insert(ltft);
+
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(put("/api/ltft/" + ID + "/submit")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @Test
+  void shouldReturnBadRequestWhenSubmittingLtftFormInInvalidState() throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setId(ID);
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setLifecycleState(LifecycleState.APPROVED);
+    ltft.setContent(LtftContent.builder().name("test").build());
+    template.insert(ltft);
+
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(put("/api/ltft/" + ID + "/submit")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @Test
+  void shouldSubmitLtftForm() throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setId(ID);
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setLifecycleState(LifecycleState.DRAFT);
+    ltft.setContent(LtftContent.builder().name("test").build());
+    template.insert(ltft);
+
+    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
+        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+    String detailJson = mapper.writeValueAsString(detail);
+    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID, "email", "given", "family");
+    mockMvc.perform(put("/api/ltft/" + ID + "/submit")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(detailJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(ID.toString()))
+        .andExpect(jsonPath("$.traineeTisId").value(TRAINEE_ID))
+        .andExpect(jsonPath("$.status.current.state").value(LifecycleState.SUBMITTED.name()))
+        .andExpect(jsonPath("$.status.current.detail.reason").value("reason"))
+        .andExpect(jsonPath("$.status.current.detail.message").value("message"))
+        .andExpect(jsonPath("$.status.current.modifiedBy.name").value("given family"))
+        .andExpect(jsonPath("$.status.current.modifiedBy.email").value("email"))
+        .andExpect(jsonPath("$.status.current.modifiedBy.role").value(TraineeIdentity.role));
   }
 }
