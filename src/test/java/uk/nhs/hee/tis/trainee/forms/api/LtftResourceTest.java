@@ -98,7 +98,7 @@ class LtftResourceTest {
   void shouldReturnBadRequestWhenServiceWontSaveLtftForm() {
     when(service.saveLtftForm(any())).thenReturn(Optional.empty());
 
-    ResponseEntity<LtftFormDto> response = controller.createLtft(new LtftFormDto());
+    ResponseEntity<LtftFormDto> response = controller.createLtft(LtftFormDto.builder().build());
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(BAD_REQUEST));
   }
@@ -107,7 +107,7 @@ class LtftResourceTest {
   void shouldReturnBadRequestWhenServiceWontUpdateLtftForm() {
     when(service.updateLtftForm(any(), any())).thenReturn(Optional.empty());
 
-    ResponseEntity<LtftFormDto> response = controller.updateLtft(ID, new LtftFormDto());
+    ResponseEntity<LtftFormDto> response = controller.updateLtft(ID, LtftFormDto.builder().build());
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(BAD_REQUEST));
   }
@@ -123,13 +123,15 @@ class LtftResourceTest {
 
   @Test
   void shouldReturnSavedLtftFormWhenSaved() {
-    LtftFormDto savedForm = new LtftFormDto();
-    savedForm.setId(ID);
-    savedForm.setTraineeTisId("some trainee");
+    LtftFormDto savedForm = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId("some trainee")
+        .build();
     when(service.saveLtftForm(any())).thenReturn(Optional.of(savedForm));
 
-    LtftFormDto newForm = new LtftFormDto();
-    newForm.setTraineeTisId("some trainee");
+    LtftFormDto newForm = LtftFormDto.builder()
+        .traineeTisId("some trainee")
+        .build();
     ResponseEntity<LtftFormDto> response = controller.createLtft(newForm);
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
@@ -140,14 +142,16 @@ class LtftResourceTest {
 
   @Test
   void shouldReturnSavedLtftFormWhenUpdated() {
-    LtftFormDto savedForm = new LtftFormDto();
-    savedForm.setId(ID);
-    savedForm.setTraineeTisId("some trainee");
+    LtftFormDto savedForm = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId("some trainee")
+        .build();
     when(service.updateLtftForm(any(), any())).thenReturn(Optional.of(savedForm));
 
-    LtftFormDto existingForm = new LtftFormDto();
-    existingForm.setId(ID);
-    existingForm.setTraineeTisId("some trainee");
+    LtftFormDto existingForm = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId("some trainee")
+        .build();
     ResponseEntity<LtftFormDto> response = controller.updateLtft(ID, existingForm);
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
@@ -158,9 +162,10 @@ class LtftResourceTest {
 
   @Test
   void shouldReturnLtftFormWhenFound() {
-    LtftFormDto existingForm = new LtftFormDto();
-    existingForm.setId(ID);
-    existingForm.setTraineeTisId("some trainee");
+    LtftFormDto existingForm = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId("some trainee")
+        .build();
     when(service.getLtftForm(ID)).thenReturn(Optional.of(existingForm));
 
     ResponseEntity<LtftFormDto> response = controller.getLtft(ID);

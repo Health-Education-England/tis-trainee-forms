@@ -41,6 +41,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto.LtftAdminPersonalDetailsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctChangeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
@@ -112,14 +113,32 @@ public abstract class LtftMapper {
   /**
    * Convert a {@link LtftForm} to {@link LtftFormDto} DTO.
    *
-   * @param entity The form to convert.
+   * @param entity  The form to convert.
+   * @param cctDate The calculated CCT date.
    * @return The equivalent DTO.
    */
-  @Mapping(target = "name", source = "content.name")
-  @Mapping(target = "discussions", source = "content.discussions")
-  @Mapping(target = "programmeMembership", source = "content.programmeMembership")
-  @Mapping(target = "status.current", source = "status.current.state")
-  public abstract LtftFormDto toDto(LtftForm entity);
+  @Mapping(target = "id", source = "entity.id")
+  @Mapping(target = "formRef", source = "entity.formRef")
+  @Mapping(target = "name", source = "entity.content.name")
+  @Mapping(target = "personalDetails", source = "entity.content.personalDetails")
+  @Mapping(target = "programmeMembership", source = "entity.content.programmeMembership")
+  @Mapping(target = "declarations", source = "entity.content.declarations")
+  @Mapping(target = "discussions", source = "entity.content.discussions")
+  @Mapping(target = "change", expression = "java(toDto(entity.getContent().change(), cctDate))")
+  @Mapping(target = "reasons", source = "entity.content.reasons")
+  @Mapping(target = "assignedAdmin", source = "entity.content.assignedAdmin")
+  public abstract LtftFormDto toDto(LtftForm entity, LocalDate cctDate);
+
+  /**
+   * Convert a {@link CctChange} to {@link CctChangeDto}.
+   *
+   * @param entity  The entity to convert.
+   * @param cctDate The calculated CCT date.
+   * @return The equivalent DTO.
+   */
+  @Mapping(target = ".", source = "entity")
+  @Mapping(target = "cctDate", source = "cctDate")
+  public abstract CctChangeDto toDto(CctChange entity, LocalDate cctDate);
 
   /**
    * Convert a {@link LtftFormDto} DTO to a {@link LtftForm}.
@@ -128,6 +147,7 @@ public abstract class LtftMapper {
    * @return The equivalent LTFT Form.
    */
   @InheritInverseConfiguration
+  @Mapping(target = "content", source = "dto")
   public abstract LtftForm toEntity(LtftFormDto dto);
 
   /**

@@ -290,13 +290,14 @@ class LtftServiceTest {
     assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(false));
     verify(ltftRepository).findByTraineeTisIdAndId(TRAINEE_ID, ID);
     LtftFormDto returnedFormDto = formDtoOptional.get();
-    assertThat("Unexpected returned LTFT form.", returnedFormDto, is(mapper.toDto(form)));
+    assertThat("Unexpected returned LTFT form.", returnedFormDto, is(mapper.toDto(form, null)));
   }
 
   @Test
   void shouldNotSaveIfNewLtftFormNotForTrainee() {
-    LtftFormDto dtoToSave = new LtftFormDto();
-    dtoToSave.setTraineeTisId("another trainee");
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .traineeTisId("another trainee")
+        .build();
 
     Optional<LtftFormDto> formDtoOptional = service.saveLtftForm(dtoToSave);
 
@@ -306,8 +307,9 @@ class LtftServiceTest {
 
   @Test
   void shouldSaveIfNewLtftFormForTrainee() {
-    LtftFormDto dtoToSave = new LtftFormDto();
-    dtoToSave.setTraineeTisId(TRAINEE_ID);
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .build();
 
     LtftForm existingForm = new LtftForm();
     existingForm.setId(ID);
@@ -323,8 +325,9 @@ class LtftServiceTest {
 
   @Test
   void shouldNotUpdateFormIfWithoutId() {
-    LtftFormDto dtoToSave = new LtftFormDto();
-    dtoToSave.setTraineeTisId(TRAINEE_ID);
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .build();
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
 
@@ -334,9 +337,10 @@ class LtftServiceTest {
 
   @Test
   void shouldNotUpdateFormIfIdDoesNotMatchPathParameter() {
-    LtftFormDto dtoToSave = new LtftFormDto();
-    dtoToSave.setTraineeTisId(TRAINEE_ID);
-    dtoToSave.setId(ID);
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .build();
 
     Optional<LtftFormDto> formDtoOptional
         = service.updateLtftForm(UUID.randomUUID(), dtoToSave);
@@ -347,9 +351,10 @@ class LtftServiceTest {
 
   @Test
   void shouldNotUpdateFormIfTraineeDoesNotMatchLoggedInUser() {
-    LtftFormDto dtoToSave = new LtftFormDto();
-    dtoToSave.setTraineeTisId("another trainee");
-    dtoToSave.setId(ID);
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId("another trainee")
+        .build();
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
 
@@ -359,9 +364,10 @@ class LtftServiceTest {
 
   @Test
   void shouldNotUpdateFormIfExistingFormNotFound() {
-    LtftFormDto dtoToSave = new LtftFormDto();
-    dtoToSave.setTraineeTisId(TRAINEE_ID);
-    dtoToSave.setId(ID);
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .build();
 
     when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID))
         .thenReturn(Optional.empty());
@@ -375,9 +381,10 @@ class LtftServiceTest {
 
   @Test
   void shouldSaveIfUpdatingLtftFormForTrainee() {
-    LtftFormDto dtoToSave = new LtftFormDto();
-    dtoToSave.setTraineeTisId(TRAINEE_ID);
-    dtoToSave.setId(ID);
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .build();
 
     LtftForm existingForm = new LtftForm();
     existingForm.setId(ID);
