@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -122,12 +123,14 @@ public class LtftService {
 
     if (states == null || states.isEmpty()) {
       log.debug("No status filter provided, searching all LTFTs.");
-      forms = ltftFormRepository.findByContent_ProgrammeMembership_DesignatedBodyCodeIn(groups,
-          pageable);
-    } else {
       forms = ltftFormRepository
-          .findByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(states,
-              groups, pageable);
+          .findByStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+              Set.of(DRAFT), groups, pageable);
+    } else {
+      states = states.stream().filter(s -> s != DRAFT).collect(Collectors.toSet());
+      forms = ltftFormRepository
+          .findByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+              states, groups, pageable);
     }
 
     log.info("Found {} total LTFTs, returning page {} of {}", forms.getTotalElements(),

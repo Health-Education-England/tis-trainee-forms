@@ -31,6 +31,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROVED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
@@ -48,6 +49,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -311,6 +313,26 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.page.totalPages", is(0)));
   }
 
+  @ParameterizedTest
+  @NullAndEmptySource
+  void shouldReturnNoSummariesWhenLtftWithMatchingDbcIsDraft(String statusFilter) throws Exception {
+    template.insert(createLtftForm(DRAFT, DBC_1));
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(get("/api/admin/ltft")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .param("status", statusFilter))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.content").isArray())
+        .andExpect(jsonPath("$.content", hasSize(0)))
+        .andExpect(jsonPath("$.page", aMapWithSize(4)))
+        .andExpect(jsonPath("$.page.size", is(2000)))
+        .andExpect(jsonPath("$.page.number", is(0)))
+        .andExpect(jsonPath("$.page.totalElements", is(0)))
+        .andExpect(jsonPath("$.page.totalPages", is(0)));
+  }
+
   @Test
   void shouldReturnSummaryContentWhenLtftWithMatchingDbc() throws Exception {
     LocalDate startDate = LocalDate.now().plusWeeks(20);
@@ -400,7 +422,8 @@ class AdminLtftResourceIntegrationTest {
     template.insert(createLtftForm(SUBMITTED, DBC_1));
     template.insert(createLtftForm(SUBMITTED, DBC_2));
 
-    int expectedCount = LifecycleState.values().length + 1;
+    // Total number of states, plus an additional SUBMITTED, minus DRAFT.
+    int expectedCount = LifecycleState.values().length;
 
     String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft")
@@ -418,7 +441,7 @@ class AdminLtftResourceIntegrationTest {
   }
 
   @ParameterizedTest
-  @EnumSource(LifecycleState.class)
+  @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = "DRAFT")
   void shouldOnlyReturnSummariesWithMatchingDbcWhenHasStatusFilter(LifecycleState status)
       throws Exception {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
@@ -453,7 +476,8 @@ class AdminLtftResourceIntegrationTest {
 
     template.insert(createLtftForm(SUBMITTED, DBC_2));
 
-    int expectedCount = LifecycleState.values().length + 1;
+    // Total number of states, plus an additional SUBMITTED, minus DRAFT.
+    int expectedCount = LifecycleState.values().length;
 
     String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1, DBC_2));
     mockMvc.perform(get("/api/admin/ltft")
@@ -598,7 +622,7 @@ class AdminLtftResourceIntegrationTest {
   void shouldSortLtftSummariesByProvidedSortWhenSortProvided() throws Exception {
     LtftForm form1 = template.insert(createLtftForm(UNSUBMITTED, DBC_1));
     LtftForm form2 = template.insert(createLtftForm(SUBMITTED, DBC_1));
-    LtftForm form3 = template.insert(createLtftForm(DRAFT, DBC_1));
+    LtftForm form3 = template.insert(createLtftForm(APPROVED, DBC_1));
 
     String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft")

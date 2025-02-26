@@ -22,6 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
@@ -46,6 +47,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -215,7 +217,7 @@ class LtftServiceTest {
 
   @ParameterizedTest
   @NullAndEmptySource
-  void shouldGetAllAdminLtftsWhenFiltersEmpty(Set<LifecycleState> states) {
+  void shouldGetAllNonDraftAdminLtftsWhenFiltersEmpty(Set<LifecycleState> states) {
     PageRequest pageRequest = PageRequest.of(1, 1);
 
     LtftForm entity1 = new LtftForm();
@@ -227,7 +229,8 @@ class LtftServiceTest {
     entity2.setId(id2);
 
     when(ltftRepository
-        .findByContent_ProgrammeMembership_DesignatedBodyCodeIn(Set.of(ADMIN_GROUP), pageRequest))
+        .findByStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            Set.of(LifecycleState.DRAFT), Set.of(ADMIN_GROUP), pageRequest))
         .thenReturn(new PageImpl<>(List.of(entity1, entity2)));
 
     Page<LtftAdminSummaryDto> dtos = service.getAdminLtftSummaries(states, pageRequest);
@@ -269,8 +272,30 @@ class LtftServiceTest {
     assertThat("Unexpected ID.", content.get(0).id(), is(id1));
     assertThat("Unexpected ID.", content.get(1).id(), is(id2));
 
-    verify(ltftRepository, never()).findByContent_ProgrammeMembership_DesignatedBodyCodeIn(any(),
-        any());
+    verify(ltftRepository, never())
+        .findByStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            any(), any(), any());
+  }
+
+  @Test
+  void shouldNotGetDraftAdminLtftsWhenFiltersNotEmpty() {
+    Set<LifecycleState> states = Set.of(LifecycleState.DRAFT, LifecycleState.SUBMITTED);
+    PageRequest pageRequest = PageRequest.of(1, 1);
+
+    when(ltftRepository
+        .findByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(any(),
+            any(), any())).thenReturn(new PageImpl<>(List.of()));
+
+    service.getAdminLtftSummaries(states, pageRequest);
+
+    ArgumentCaptor<Set<LifecycleState>> statesCaptor = ArgumentCaptor.captor();
+    verify(
+        ltftRepository).findByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        statesCaptor.capture(), any(), any());
+
+    Set<LifecycleState> filteredStates = statesCaptor.getValue();
+    assertThat("Unexpected state count.", filteredStates, hasSize(1));
+    assertThat("Unexpected states.", filteredStates, hasItems(LifecycleState.SUBMITTED));
   }
 
   @Test
