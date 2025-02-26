@@ -27,6 +27,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -85,5 +87,35 @@ class TraineeIdentityInterceptorTest {
 
     assertThat("Unexpected result.", result, is(true));
     assertThat("Unexpected trainee ID.", traineeIdentity.getTraineeId(), is("40"));
+  }
+
+  @Test
+  void shouldReturnTrueAndIncludeOtherDetailsWhenInAuthToken() {
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.addHeader(HttpHeaders.AUTHORIZATION,
+        TestJwtUtil.generateTokenForTrainee("40", "email", "John", "Doe"));
+
+    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+
+    assertThat("Unexpected result.", result, is(true));
+    assertThat("Unexpected trainee ID.", traineeIdentity.getTraineeId(), is("40"));
+    assertThat("Unexpected email.", traineeIdentity.getEmail(), is("email"));
+    assertThat("Unexpected name.", traineeIdentity.getName(), is("John Doe"));
+  }
+
+  @ParameterizedTest
+  @CsvSource(value = {
+      "null, null",
+      "null, Doe",
+      "John, null" }, nullValues = { "null" })
+  void shouldExcludeNameWhenGivenOrFamilyNameMissingInAuthToken(
+      String givenName, String familyName) {
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.addHeader(HttpHeaders.AUTHORIZATION,
+        TestJwtUtil.generateTokenForTrainee("40", "email", givenName, familyName));
+
+    interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+
+    assertThat("Unexpected name.", traineeIdentity.getName(), is(nullValue()));
   }
 }

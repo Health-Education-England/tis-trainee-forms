@@ -169,7 +169,8 @@ public abstract class LtftMapper {
    * @param dto The DTO to convert.
    * @return The equivalent status detail.
    */
-  public abstract AbstractAuditedForm.Status.StatusDetail toStatusDetail(LtftFormDto.StatusDto.LftfStatusInfoDetailDto dto);
+  public abstract AbstractAuditedForm.Status.StatusDetail toStatusDetail(
+      LtftFormDto.StatusDto.LftfStatusInfoDetailDto dto);
 
   /**
    * Joins a list of strings with a comma, sorted alphabetically for consistency.

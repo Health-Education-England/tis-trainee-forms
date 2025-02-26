@@ -91,7 +91,7 @@ class LtftServiceTest {
   private static final String TRAINEE_ID = "40";
   private static final String TRAINEE_EMAIL = "email";
   private static final String TRAINEE_NAME = "name";
-  private static final String TRAINEE_ROLE = TraineeIdentity.role;
+  private static final String TRAINEE_ROLE = TraineeIdentity.ROLE;
   private static final String ADMIN_GROUP = "abc-123";
   private static final UUID ID = UUID.randomUUID();
 

@@ -269,7 +269,7 @@ public class LtftService {
     Optional<LtftForm> formOptional = ltftFormRepository.findByTraineeTisIdAndId(traineeId, formId);
 
     if (formOptional.isEmpty()) {
-      log.info("Did not find form {} for trainee [{}]", formId, traineeId);
+      log.info("Did not find form {} for trainee [{}] to submit", formId, traineeId);
       return Optional.empty();
     }
 
@@ -283,7 +283,7 @@ public class LtftService {
     Person modifiedBy = Person.builder()
         .name(traineeIdentity.getName())
         .email(traineeIdentity.getEmail())
-        .role(TraineeIdentity.role)
+        .role(TraineeIdentity.ROLE)
         .build();
     AbstractAuditedForm.Status.StatusDetail statusDetail
         = detail == null ? null : mapper.toStatusDetail(detail);

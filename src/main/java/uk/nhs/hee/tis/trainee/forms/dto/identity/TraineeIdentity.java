@@ -31,7 +31,7 @@ public class TraineeIdentity {
 
   //TODO: consider merging with AdminIdentity.
 
-  public static String role = "TRAINEE";
+  public static final String ROLE = "TRAINEE";
 
   private String traineeId;
   private String email;
