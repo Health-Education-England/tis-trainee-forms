@@ -26,79 +26,168 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
-import lombok.Data;
+import lombok.Builder;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
+import uk.nhs.hee.tis.trainee.forms.model.content.CctChangeType;
 
 /**
  * A DTO for transferring LTFT forms.
+ *
+ * @param id                  The ID of the LTFT form.
+ * @param traineeTisId        The trainee's TID ID.
+ * @param formRef             The human-readable reference for the form.
+ * @param revision            The revision number of the form.
+ * @param name                The trainee provided name for the application.
+ * @param personalDetails     The trainee's personal details.
+ * @param programmeMembership The programme membership linked with the LTFT application.
+ * @param declarations        The LTFT declarations.
+ * @param discussions         Discussions which took place as part of the LTFT process.
+ * @param change              The calculated LTFT change.
+ * @param reasons             The reasons for applying for LTFT.
+ * @param assignedAdmin       The administration assigned to the LTFT application.
+ * @param status              The status of the LTFT application, both current and audit history.
+ * @param created             When the LTFT application was first created.
+ * @param lastModified        When the LTFT application was last modified.
  */
-@Data
-public class LtftFormDto {
-  @Null(groups = Create.class)
-  private UUID id;
+@Builder
+public record LtftFormDto(
+    @Null(groups = Create.class)
+    UUID id,
+    String traineeTisId,
+    String formRef,
+    int revision,
+    String name,
+    PersonalDetailsDto personalDetails,
+    ProgrammeMembershipDto programmeMembership,
+    DeclarationsDto declarations,
+    DiscussionsDto discussions,
+    CctChangeDto change,
+    ReasonsDto reasons,
+    PersonDto assignedAdmin,
+    StatusDto status,
 
-  private String traineeTisId;
-
-  private String name;
-
-  private LtftProgrammeMembershipDto programmeMembership;
-
-  private LtftStatusDto status;
-  private LtftDiscussionDto discussions;
-
-  private Instant created;
-  private Instant lastModified;
+    Instant created,
+    Instant lastModified) {
 
   /**
-   * A DTO for LTFT programme membership details.
+   * The calculated LTFT change.
+   *
+   * @param id            The ID of the CCT change used to start the application.
+   * @param calculationId The ID of the CCT calculation used to start the application.
+   * @param type          The type of change.
+   * @param wte           The whole time equivalent after the change.
+   * @param startDate     The start date of the change.
+   * @param endDate       The end date of the change.
+   * @param cctDate       The expected CCT date after this change is applied.
    */
-  @Data
-  public static class LtftProgrammeMembershipDto {
-    private UUID id;
-    private String name;
-    private LocalDate startDate;
-    private LocalDate endDate;
-    private double wte;
+  @Builder
+  public record CctChangeDto(
+      UUID id,
+      UUID calculationId,
+      CctChangeType type,
+      double wte,
+      LocalDate startDate,
+      LocalDate endDate,
+      LocalDate cctDate) {
+
   }
 
   /**
-   * A DTO for LTFT form lifecycle state.
+   * A set of declarations that the trainee must provide.
+   *
+   * @param discussedWithTpd     That the trainee has discussed with their TPD.
+   * @param informationIsCorrect That the trainee has given correct information.
+   * @param notGuaranteed        That LTFT approval is not guaranteed
    */
-  @Data
-  public static class LtftStatusDto {
-    private LifecycleState current;
-    private List<LtftStatusInfoDto> history;
+  @Builder
+  public record DeclarationsDto(
+      boolean discussedWithTpd,
+      boolean informationIsCorrect,
+      boolean notGuaranteed) {
+
   }
 
   /**
-   * A DTO for LTFT form lifecycle state details.
+   * Programme membership data for a calculation.
+   *
+   * @param id                 The ID of the programme membership.
+   * @param name               The name of the programme.
+   * @param designatedBodyCode The designated body code for the programme.
+   * @param startDate          The start date of the programme.
+   * @param endDate            The end date of the programme.
+   * @param wte                The whole time equivalent of the programme membership.
    */
-  @Data
-  public static class LtftStatusInfoDto {
-    private LifecycleState state;
-    private String detail;
-    private Instant timestamp;
-    private Integer revision;
+  @Builder
+  public record ProgrammeMembershipDto(
+      UUID id,
+      String name,
+      String designatedBodyCode,
+      LocalDate startDate,
+      LocalDate endDate,
+      double wte) {
+
   }
 
   /**
-   * A DTO for LTFT discussions.
+   * Reasons for applying for LTFT.
+   *
+   * @param selected    A list of selected reasons.
+   * @param otherDetail Additional details if required.
    */
-  @Data
-  public static class LtftDiscussionDto {
-    private String tpdName;
-    private String tpdEmail;
-    private List<LtftPersonRole> other;
+  @Builder
+  public record ReasonsDto(
+      List<String> selected,
+      String otherDetail) {
+
   }
 
   /**
-   * A DTO for LTFT form discussion non-TPD people.
+   * The form status.
+   *
+   * @param current The information for the current form status.
+   * @param history A list of form status history.
    */
-  @Data
-  public static class LtftPersonRole {
-    private String name;
-    private String email;
-    private String role;
+  @Builder
+  public record StatusDto(
+
+      StatusInfoDto current,
+      List<StatusInfoDto> history) {
+
+    /**
+     * Form status information.
+     *
+     * @param state      The lifecycle state of the form.
+     * @param detail     Any status detail.
+     * @param modifiedBy The Person who made this status change.
+     * @param timestamp  The timestamp of the status change.
+     * @param revision   The revision number associated with this status change.
+     */
+    @Builder
+    public record StatusInfoDto(
+
+        LifecycleState state,
+        String detail,
+        PersonDto modifiedBy,
+        Instant timestamp,
+        Integer revision
+    ) {
+
+    }
+  }
+
+  /**
+   * Discussions that the trainee has had about their LTFT needs.
+   *
+   * @param tpdName  The name of their TPD.
+   * @param tpdEmail The contact email for their TPD.
+   * @param other    Other people they have discussed with e.g. Education Supervisor.
+   */
+  @Builder
+  public record DiscussionsDto(
+      String tpdName,
+      String tpdEmail,
+      List<PersonDto> other) {
+
   }
 }

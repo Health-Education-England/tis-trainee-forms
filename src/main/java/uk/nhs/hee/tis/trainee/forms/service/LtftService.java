@@ -145,7 +145,7 @@ public class LtftService {
         value -> log.info("Found form {} for trainee [{}]", formId, traineeId),
         () -> log.info("Did not find form {} for trainee [{}]", formId, traineeId)
     );
-    return form.map(mapper::toDto);
+    return form.map(v -> mapper.toDto(v, null));
   }
 
   /**
@@ -164,7 +164,7 @@ public class LtftService {
       return Optional.empty();
     }
     LtftForm savedForm = ltftFormRepository.save(form);
-    return Optional.of(mapper.toDto(savedForm));
+    return Optional.of(mapper.toDto(savedForm, null));
   }
 
   /**
@@ -196,7 +196,7 @@ public class LtftService {
     }
     form.setCreated(existingForm.get().getCreated()); //explicitly set otherwise form saved as 'new'
     LtftForm savedForm = ltftFormRepository.save(form);
-    return Optional.of(mapper.toDto(savedForm));
+    return Optional.of(mapper.toDto(savedForm, null));
   }
 
   /**

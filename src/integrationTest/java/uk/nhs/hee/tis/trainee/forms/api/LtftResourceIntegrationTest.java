@@ -218,9 +218,10 @@ class LtftResourceIntegrationTest {
 
   @Test
   void shouldBeBadRequestWhenCreatingLtftFormWithId() throws Exception {
-    LtftFormDto formToSave = new LtftFormDto();
-    formToSave.setId(ID);
-    formToSave.setTraineeTisId(TRAINEE_ID);
+    LtftFormDto formToSave = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
     mockMvc.perform(post("/api/ltft")
@@ -236,9 +237,10 @@ class LtftResourceIntegrationTest {
 
   @Test
   void shouldCreateLtftFormForTrainee() throws Exception {
-    LtftFormDto formToSave = new LtftFormDto();
-    formToSave.setTraineeTisId(TRAINEE_ID);
-    formToSave.setName("test");
+    LtftFormDto formToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .name("test")
+        .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
     mockMvc.perform(post("/api/ltft")
@@ -263,9 +265,10 @@ class LtftResourceIntegrationTest {
 
   @Test
   void shouldBeBadRequestWhenUpdatingLtftFormForDifferentTrainee() throws Exception {
-    LtftFormDto formToUpdate = new LtftFormDto();
-    formToUpdate.setTraineeTisId("another trainee");
-    formToUpdate.setId(ID);
+    LtftFormDto formToUpdate = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId("another trainee")
+        .build();
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
     mockMvc.perform(put("/api/ltft/" + ID)
@@ -278,8 +281,9 @@ class LtftResourceIntegrationTest {
 
   @Test
   void shouldBeBadRequestWhenUpdatingLtftFormWithoutId() throws Exception {
-    LtftFormDto formToUpdate = new LtftFormDto();
-    formToUpdate.setTraineeTisId(TRAINEE_ID);
+    LtftFormDto formToUpdate = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .build();
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
     mockMvc.perform(put("/api/ltft/someId")
@@ -292,9 +296,10 @@ class LtftResourceIntegrationTest {
 
   @Test
   void shouldBeBadRequestWhenUpdatingLtftFormWithInconsistentIds() throws Exception {
-    LtftFormDto formToUpdate = new LtftFormDto();
-    formToUpdate.setTraineeTisId(TRAINEE_ID);
-    formToUpdate.setId(ID);
+    LtftFormDto formToUpdate = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .build();
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
     mockMvc.perform(put("/api/ltft/" + UUID.randomUUID())
@@ -307,9 +312,10 @@ class LtftResourceIntegrationTest {
 
   @Test
   void shouldBeBadRequestWhenUpdatingLtftFormNotAlreadyExistingForTrainee() throws Exception {
-    LtftFormDto formToUpdate = new LtftFormDto();
-    formToUpdate.setTraineeTisId(TRAINEE_ID);
-    formToUpdate.setId(ID);
+    LtftFormDto formToUpdate = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .build();
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
     mockMvc.perform(put("/api/ltft/" + ID)
@@ -327,10 +333,11 @@ class LtftResourceIntegrationTest {
     LtftForm formSaved = template.save(form);
 
     UUID savedId = formSaved.getId();
-    LtftFormDto formToUpdate = new LtftFormDto();
-    formToUpdate.setTraineeTisId(TRAINEE_ID);
-    formToUpdate.setId(savedId);
-    formToUpdate.setName("updated");
+    LtftFormDto formToUpdate = LtftFormDto.builder()
+        .id(savedId)
+        .traineeTisId(TRAINEE_ID)
+        .name("updated")
+        .build();
 
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
@@ -402,6 +409,7 @@ class LtftResourceIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$").doesNotExist());
 
-    assertThat("Unexpected saved record count.", template.count(new Query(), LtftForm.class), is(0L));
+    assertThat("Unexpected saved record count.", template.count(new Query(), LtftForm.class),
+        is(0L));
   }
 }
