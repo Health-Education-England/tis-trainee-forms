@@ -42,10 +42,12 @@ public interface LtftFormRepository extends MongoRepository<LtftForm, UUID> {
   /**
    * Count all LTFT forms with one of the given DBCs.
    *
-   * @param dbcs The designated body codes to include in the count.
+   * @param states The states to exclude from the count.
+   * @param dbcs   The designated body codes to include in the count.
    * @return The number of found LTFT forms.
    */
-  long countByContent_ProgrammeMembership_DesignatedBodyCodeIn(Set<String> dbcs);
+  long countByStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+      Set<LifecycleState> states, Set<String> dbcs);
 
   /**
    * Count all LTFT forms with one of the given current states and DBCs.

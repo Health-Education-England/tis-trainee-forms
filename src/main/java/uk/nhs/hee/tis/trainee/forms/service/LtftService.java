@@ -99,9 +99,12 @@ public class LtftService {
 
     if (states == null || states.isEmpty()) {
       log.debug("No status filter provided, counting all LTFTs.");
-      return ltftFormRepository.countByContent_ProgrammeMembership_DesignatedBodyCodeIn(groups);
+      return ltftFormRepository
+          .countByStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+              Set.of(DRAFT), groups);
     }
 
+    states = states.stream().filter(s -> s != DRAFT).collect(Collectors.toSet());
     return ltftFormRepository
         .countByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(states,
             groups);

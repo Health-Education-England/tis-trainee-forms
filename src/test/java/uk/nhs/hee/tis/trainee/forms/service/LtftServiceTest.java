@@ -188,9 +188,10 @@ class LtftServiceTest {
 
   @ParameterizedTest
   @NullAndEmptySource
-  void shouldCountAllLocalOfficeLtftWhenFiltersEmpty(Set<LifecycleState> states) {
-    when(ltftRepository.countByContent_ProgrammeMembership_DesignatedBodyCodeIn(
-        Set.of(ADMIN_GROUP))).thenReturn(40L);
+  void shouldCountAllNonDraftAdminLtftsWhenFiltersEmpty(Set<LifecycleState> states) {
+    when(ltftRepository
+        .countByStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            Set.of(LifecycleState.DRAFT), Set.of(ADMIN_GROUP))).thenReturn(40L);
 
     long count = service.getAdminLtftCount(states);
 
@@ -202,7 +203,7 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldCountFilteredLocalOfficeLtftWhenFiltersNotEmpty() {
+  void shouldCountFilteredAdminLtftsWhenFiltersNotEmpty() {
     Set<LifecycleState> states = Set.of(LifecycleState.SUBMITTED);
     when(ltftRepository
         .countByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(states,
@@ -212,7 +213,25 @@ class LtftServiceTest {
 
     assertThat("Unexpected count.", count, is(40L));
     verify(ltftRepository, never()).count();
-    verify(ltftRepository, never()).countByContent_ProgrammeMembership_DesignatedBodyCodeIn(any());
+    verify(ltftRepository, never())
+        .countByStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            any(), any());
+  }
+
+  @Test
+  void shouldNotCountDraftAdminLtftsWhenFiltersNotEmpty() {
+    Set<LifecycleState> states = Set.of(LifecycleState.DRAFT, LifecycleState.SUBMITTED);
+
+    service.getAdminLtftCount(states);
+
+    ArgumentCaptor<Set<LifecycleState>> statesCaptor = ArgumentCaptor.captor();
+    verify(ltftRepository)
+        .countByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            statesCaptor.capture(), any());
+
+    Set<LifecycleState> filteredStates = statesCaptor.getValue();
+    assertThat("Unexpected state count.", filteredStates, hasSize(1));
+    assertThat("Unexpected states.", filteredStates, hasItems(LifecycleState.SUBMITTED));
   }
 
   @ParameterizedTest

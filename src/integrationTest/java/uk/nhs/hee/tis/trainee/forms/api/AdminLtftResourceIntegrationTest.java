@@ -201,6 +201,20 @@ class AdminLtftResourceIntegrationTest {
 
   @ParameterizedTest
   @NullAndEmptySource
+  void shouldCountZeroWhenLtftWithMatchingDbcIsDraft(String statusFilter) throws Exception {
+    template.insert(createLtftForm(DRAFT, DBC_1));
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(get("/api/admin/ltft/count")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .param("status", statusFilter))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.TEXT_PLAIN))
+        .andExpect(content().string("0"));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
   void shouldOnlyCountLtftsWithMatchingDbcWhenNoStatusFilter(String statusFilter) throws Exception {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
         .map(s -> createLtftForm(s, DBC_1))
@@ -210,17 +224,20 @@ class AdminLtftResourceIntegrationTest {
     template.insert(createLtftForm(SUBMITTED, DBC_1));
     template.insert(createLtftForm(SUBMITTED, DBC_2));
 
+    // Total number of states, plus an additional SUBMITTED, minus DRAFT.
+    int expectedCount = LifecycleState.values().length;
+
     String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft/count")
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", statusFilter))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.TEXT_PLAIN))
-        .andExpect(content().string(String.valueOf(LifecycleState.values().length + 1)));
+        .andExpect(content().string(String.valueOf(expectedCount)));
   }
 
   @ParameterizedTest
-  @EnumSource(LifecycleState.class)
+  @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = "DRAFT")
   void shouldOnlyCountLtftsWithMatchingDbcWhenHasStatusFilter(LifecycleState status)
       throws Exception {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
@@ -248,12 +265,15 @@ class AdminLtftResourceIntegrationTest {
 
     template.insert(createLtftForm(SUBMITTED, DBC_2));
 
+    // Total number of states, plus an additional SUBMITTED, minus DRAFT.
+    int expectedCount = LifecycleState.values().length;
+
     String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1, DBC_2));
     mockMvc.perform(get("/api/admin/ltft/count")
             .header(HttpHeaders.AUTHORIZATION, token))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.TEXT_PLAIN))
-        .andExpect(content().string(String.valueOf(LifecycleState.values().length + 1)));
+        .andExpect(content().string(String.valueOf(expectedCount)));
   }
 
   @Test
