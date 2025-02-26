@@ -55,7 +55,7 @@ class LtftFormTest {
         .build();
     List<StatusInfo> history = List.of(StatusInfo.builder()
         .state(LifecycleState.SUBMITTED)
-        .detail("test")
+        .detail(Status.StatusDetail.builder().reason("test").build())
         .timestamp(Instant.now())
         .build()
     );
