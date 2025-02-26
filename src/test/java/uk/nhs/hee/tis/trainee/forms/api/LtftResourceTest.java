@@ -202,4 +202,29 @@ class LtftResourceTest {
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
   }
+
+  @Test
+  void shouldReturnBadRequestWhenServiceWontSubmitLtftForm() {
+    when(service.submitLtftForm(any(), any())).thenReturn(Optional.empty());
+
+    ResponseEntity<LtftFormDto> response = controller.submitLtft(ID, null);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(BAD_REQUEST));
+  }
+
+  @Test
+  void shouldReturnSubmittedLtftFormWhenSubmitted() {
+    LtftFormDto submittedForm = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId("some trainee")
+        .build();
+    when(service.submitLtftForm(any(), any())).thenReturn(Optional.of(submittedForm));
+
+    ResponseEntity<LtftFormDto> response = controller.submitLtft(ID, null);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    LtftFormDto responseDto = response.getBody();
+    assert responseDto != null;
+    assertThat("Unexpected response body.", responseDto, is(submittedForm));
+  }
 }

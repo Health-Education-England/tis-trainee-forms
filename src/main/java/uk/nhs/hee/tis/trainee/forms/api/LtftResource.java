@@ -106,6 +106,21 @@ public class LtftResource {
   }
 
   /**
+   * Allow a trainee to submit an existing LTFT form.
+   *
+   * @param formId The id of the LTFT form to submit.
+   *
+   * @return The DTO of the submitted form, or a bad request if the form could not be submitted.
+   */
+  @PutMapping("/{formId}/submit")
+  public ResponseEntity<LtftFormDto> submitLtft(@PathVariable UUID formId,
+      @RequestBody LtftFormDto.StatusDto.LftfStatusInfoDetailDto reason) {
+    log.info("Request to submit LTFT form {} with reason {}.", formId, reason);
+    Optional<LtftFormDto> submittedLtft = service.submitLtftForm(formId, reason);
+    return submittedLtft.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.badRequest().build());
+  }
+
+  /**
    * Get an existing LTFT form.
    *
    * @param formId The id of the LTFT form to retrieve.

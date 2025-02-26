@@ -38,6 +38,9 @@ import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 public class TraineeIdentityInterceptor implements HandlerInterceptor {
 
   private static final String TIS_ID_ATTRIBUTE = "custom:tisId";
+  private static final String EMAIL_ATTRIBUTE = "email";
+  private static final String GIVEN_NAME_ATTRIBUTE = "given_name";
+  private static final String FAMILY_NAME_ATTRIBUTE = "family_name";
 
   private final TraineeIdentity traineeIdentity;
 
@@ -54,6 +57,13 @@ public class TraineeIdentityInterceptor implements HandlerInterceptor {
       try {
         String traineeId = AuthTokenUtil.getAttribute(authToken, TIS_ID_ATTRIBUTE);
         traineeIdentity.setTraineeId(traineeId);
+        String email = AuthTokenUtil.getAttribute(authToken, EMAIL_ATTRIBUTE);
+       traineeIdentity.setEmail(email);
+        String givenName = AuthTokenUtil.getAttribute(authToken, GIVEN_NAME_ATTRIBUTE);
+        String familyName = AuthTokenUtil.getAttribute(authToken, FAMILY_NAME_ATTRIBUTE);
+        if (givenName != null && familyName != null) {
+          traineeIdentity.setName("%s %s".formatted(givenName, familyName));
+        }
       } catch (IOException e) {
         log.warn("Unable to extract trainee ID from authorization token.", e);
       }

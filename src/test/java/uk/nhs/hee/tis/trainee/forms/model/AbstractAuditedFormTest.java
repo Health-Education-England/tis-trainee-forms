@@ -110,6 +110,30 @@ class AbstractAuditedFormTest {
   }
 
   @Test
+  void shouldSetFullLifecycleState() {
+    form.setRevision(1);
+    form.setStatus(null);
+    Status.StatusDetail detail = new Status.StatusDetail("reason", "message");
+    Person modifiedBy = new Person("name", "email", "role");
+    form.setLifecycleState(LifecycleState.SUBMITTED, detail, modifiedBy, 2);
+
+    assertEquals(LifecycleState.SUBMITTED, form.getLifecycleState(),
+        "Unexpected lifecycle state.");
+    Status.StatusInfo statusInfo = form.getStatus().current();
+    assertEquals(LifecycleState.SUBMITTED, statusInfo.state(),
+        "Unexpected lifecycle state in status.");
+    assertThat("Unexpected modified by in status.", statusInfo.modifiedBy(), is(modifiedBy));
+    assertThat("Unexpected detail in status.", statusInfo.detail(), is(detail));
+    assertThat("Unexpected revision in status.", statusInfo.revision(), is(2));
+    assertThat("Unexpected timestamp in status.",
+        statusInfo.timestamp().truncatedTo(ChronoUnit.SECONDS),
+        is(Instant.now().truncatedTo(ChronoUnit.SECONDS)));
+
+    Status.StatusInfo statusInfoHistory = form.getStatus().history().get(0);
+    assertEquals(statusInfoHistory, statusInfo, "Unexpected status info in history.");
+  }
+
+  @Test
   void shouldSetLifecycleStateIfCurrentIsMissing() {
     form.setRevision(1);
     form.setStatus(new Status(null, List.of()));
