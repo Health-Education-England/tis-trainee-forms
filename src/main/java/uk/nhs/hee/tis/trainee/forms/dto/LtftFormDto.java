@@ -177,6 +177,7 @@ public record LtftFormDto(
 
     /**
      * A DTO for state change details.
+     *
      * @param reason  The reason for the state change.
      * @param message A message associated with the state change.
      */
