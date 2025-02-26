@@ -22,6 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import static org.hamcrest.Matchers.aMapWithSize;
+import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
@@ -30,6 +31,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROVED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
@@ -41,11 +43,13 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -108,6 +112,7 @@ class AdminLtftResourceIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       GET | /api/admin/ltft
+      GET | /api/admin/ltft/123
       GET | /api/admin/ltft/count
       """)
   void shouldReturnForbiddenWhenNoToken(HttpMethod method, URI uri) throws Exception {
@@ -119,6 +124,7 @@ class AdminLtftResourceIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       GET | /api/admin/ltft
+      GET | /api/admin/ltft/123
       GET | /api/admin/ltft/count
       """)
   void shouldReturnForbiddenWhenEmptyToken(HttpMethod method, URI uri) throws Exception {
@@ -132,6 +138,7 @@ class AdminLtftResourceIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       GET | /api/admin/ltft
+      GET | /api/admin/ltft/123
       GET | /api/admin/ltft/count
       """)
   void shouldReturnForbiddenWhenNoGroupsInToken(HttpMethod method, URI uri) throws Exception {
@@ -140,6 +147,17 @@ class AdminLtftResourceIntegrationTest {
             .header(HttpHeaders.AUTHORIZATION, token))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      GET | /api/admin/ltft/123
+      """)
+  void shouldReturnBadRequestWhenInvalidFormId(HttpMethod method, URI uri) throws Exception {
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(request(method, uri)
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isBadRequest());
   }
 
   @ParameterizedTest
@@ -183,6 +201,20 @@ class AdminLtftResourceIntegrationTest {
 
   @ParameterizedTest
   @NullAndEmptySource
+  void shouldCountZeroWhenLtftWithMatchingDbcIsDraft(String statusFilter) throws Exception {
+    template.insert(createLtftForm(DRAFT, DBC_1));
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(get("/api/admin/ltft/count")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .param("status", statusFilter))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.TEXT_PLAIN))
+        .andExpect(content().string("0"));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
   void shouldOnlyCountLtftsWithMatchingDbcWhenNoStatusFilter(String statusFilter) throws Exception {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
         .map(s -> createLtftForm(s, DBC_1))
@@ -192,17 +224,20 @@ class AdminLtftResourceIntegrationTest {
     template.insert(createLtftForm(SUBMITTED, DBC_1));
     template.insert(createLtftForm(SUBMITTED, DBC_2));
 
+    // Total number of states, plus an additional SUBMITTED, minus DRAFT.
+    int expectedCount = LifecycleState.values().length;
+
     String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft/count")
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", statusFilter))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.TEXT_PLAIN))
-        .andExpect(content().string(String.valueOf(LifecycleState.values().length + 1)));
+        .andExpect(content().string(String.valueOf(expectedCount)));
   }
 
   @ParameterizedTest
-  @EnumSource(LifecycleState.class)
+  @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = "DRAFT")
   void shouldOnlyCountLtftsWithMatchingDbcWhenHasStatusFilter(LifecycleState status)
       throws Exception {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
@@ -230,12 +265,15 @@ class AdminLtftResourceIntegrationTest {
 
     template.insert(createLtftForm(SUBMITTED, DBC_2));
 
+    // Total number of states, plus an additional SUBMITTED, minus DRAFT.
+    int expectedCount = LifecycleState.values().length;
+
     String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1, DBC_2));
     mockMvc.perform(get("/api/admin/ltft/count")
             .header(HttpHeaders.AUTHORIZATION, token))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.TEXT_PLAIN))
-        .andExpect(content().string(String.valueOf(LifecycleState.values().length + 1)));
+        .andExpect(content().string(String.valueOf(expectedCount)));
   }
 
   @Test
@@ -279,6 +317,26 @@ class AdminLtftResourceIntegrationTest {
   @NullAndEmptySource
   void shouldReturnNoSummariesWhenNoLtftsWithMatchingDbc(String statusFilter) throws Exception {
     template.insert(createLtftForm(SUBMITTED, DBC_2));
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(get("/api/admin/ltft")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .param("status", statusFilter))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.content").isArray())
+        .andExpect(jsonPath("$.content", hasSize(0)))
+        .andExpect(jsonPath("$.page", aMapWithSize(4)))
+        .andExpect(jsonPath("$.page.size", is(2000)))
+        .andExpect(jsonPath("$.page.number", is(0)))
+        .andExpect(jsonPath("$.page.totalElements", is(0)))
+        .andExpect(jsonPath("$.page.totalPages", is(0)));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  void shouldReturnNoSummariesWhenLtftWithMatchingDbcIsDraft(String statusFilter) throws Exception {
+    template.insert(createLtftForm(DRAFT, DBC_1));
 
     String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft")
@@ -384,7 +442,8 @@ class AdminLtftResourceIntegrationTest {
     template.insert(createLtftForm(SUBMITTED, DBC_1));
     template.insert(createLtftForm(SUBMITTED, DBC_2));
 
-    int expectedCount = LifecycleState.values().length + 1;
+    // Total number of states, plus an additional SUBMITTED, minus DRAFT.
+    int expectedCount = LifecycleState.values().length;
 
     String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft")
@@ -402,7 +461,7 @@ class AdminLtftResourceIntegrationTest {
   }
 
   @ParameterizedTest
-  @EnumSource(LifecycleState.class)
+  @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = "DRAFT")
   void shouldOnlyReturnSummariesWithMatchingDbcWhenHasStatusFilter(LifecycleState status)
       throws Exception {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
@@ -437,7 +496,8 @@ class AdminLtftResourceIntegrationTest {
 
     template.insert(createLtftForm(SUBMITTED, DBC_2));
 
-    int expectedCount = LifecycleState.values().length + 1;
+    // Total number of states, plus an additional SUBMITTED, minus DRAFT.
+    int expectedCount = LifecycleState.values().length;
 
     String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1, DBC_2));
     mockMvc.perform(get("/api/admin/ltft")
@@ -582,7 +642,7 @@ class AdminLtftResourceIntegrationTest {
   void shouldSortLtftSummariesByProvidedSortWhenSortProvided() throws Exception {
     LtftForm form1 = template.insert(createLtftForm(UNSUBMITTED, DBC_1));
     LtftForm form2 = template.insert(createLtftForm(SUBMITTED, DBC_1));
-    LtftForm form3 = template.insert(createLtftForm(DRAFT, DBC_1));
+    LtftForm form3 = template.insert(createLtftForm(APPROVED, DBC_1));
 
     String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft")
@@ -600,6 +660,103 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.page.number", is(0)))
         .andExpect(jsonPath("$.page.totalElements", is(3)))
         .andExpect(jsonPath("$.page.totalPages", is(1)));
+  }
+
+  @Test
+  void shouldReturnNotFoundGettingDetailWhenLtftDoesNotExist() throws Exception {
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(get("/api/admin/ltft/{id}", UUID.randomUUID())
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void shouldReturnNotFoundGettingDetailWhenLtftDoesNotMatchDbc() throws Exception {
+    LtftForm form = createLtftForm(SUBMITTED, DBC_2);
+    form = template.save(form);
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void shouldReturnNotFoundGettingDetailWhenLtftWithMatchingDbcIsDraft() throws Exception {
+    LtftForm form = createLtftForm(DRAFT, DBC_1);
+    form = template.save(form);
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void shouldGetDetailWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
+    LocalDate startDate = LocalDate.now().plusWeeks(20);
+
+    LtftForm form = new LtftForm();
+    form.setTraineeTisId("47165");
+
+    LtftContent content = LtftContent.builder()
+        .personalDetails(PersonalDetails.builder()
+            .forenames("Anthony").surname("Gilliam").gmcNumber("1234567").gdcNumber("D123456")
+            .build())
+        .programmeMembership(ProgrammeMembership.builder()
+            .name("General Practice").designatedBodyCode(DBC_1)
+            .build())
+        .change(CctChange.builder()
+            .startDate(startDate)
+            .build())
+        .reasons(Reasons.builder()
+            .selected(List.of("Other", "Caring responsibilities"))
+            .build())
+        .discussions(Discussions.builder()
+            .tpdEmail("tpd@example.com")
+            .build())
+        .assignedAdmin(Person.builder()
+            .name("Ad Min").email("ad.min@example.com").role("ADMIN")
+            .build())
+        .build();
+    form.setContent(content);
+
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+
+    StatusInfo statusInfo = StatusInfo.builder()
+        .state(SUBMITTED).timestamp(Instant.now())
+        .build();
+    form.setStatus(Status.builder()
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            StatusInfo.builder().state(SUBMITTED).timestamp(latestSubmitted).build()))
+        .build()
+    );
+
+    form = template.insert(form);
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.id", is(form.getId().toString())))
+        .andExpect(jsonPath("$.traineeTisId", is("47165")))
+        .andExpect(jsonPath("$.personalDetails.id", is("47165")))
+        .andExpect(jsonPath("$.personalDetails.forenames", is("Anthony")))
+        .andExpect(jsonPath("$.personalDetails.surname", is("Gilliam")))
+        .andExpect(jsonPath("$.personalDetails.gmcNumber", is("1234567")))
+        .andExpect(jsonPath("$.personalDetails.gdcNumber", is("D123456")))
+        .andExpect(jsonPath("$.programmeMembership.name", is("General Practice")))
+        .andExpect(jsonPath("$.change.startDate", is(startDate.toString())))
+        .andExpect(jsonPath("$.reasons.selected", hasSize(2)))
+        .andExpect(jsonPath("$.reasons.selected", hasItems("Caring responsibilities", "Other")))
+        .andExpect(jsonPath("$.discussions.tpdEmail", is("tpd@example.com")))
+        .andExpect(jsonPath("$.status.current.state", is(SUBMITTED.name())))
+        .andExpect(jsonPath("$.assignedAdmin.name", is("Ad Min")))
+        .andExpect(jsonPath("$.assignedAdmin.email", is("ad.min@example.com")))
+        .andExpect(jsonPath("$.assignedAdmin.role", is("ADMIN")));
   }
 
   /**

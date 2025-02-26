@@ -43,6 +43,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto.LtftAdminPersonalDet
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctChangeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
+import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
@@ -89,7 +90,17 @@ public abstract class LtftMapper {
    */
   @Mapping(target = "id", source = "traineeTisId")
   @Mapping(target = ".", source = "content.personalDetails")
-  abstract LtftAdminPersonalDetailsDto buildPersonalDetails(LtftForm entity);
+  abstract LtftAdminPersonalDetailsDto buildAdminPersonalDetails(LtftForm entity);
+
+  /**
+   * Build a {@link PersonalDetailsDto} from an {@link LtftForm}.
+   *
+   * @param entity The entity to build personal details from.
+   * @return The built personal details.
+   */
+  @Mapping(target = "id", source = "traineeTisId")
+  @Mapping(target = ".", source = "content.personalDetails")
+  abstract PersonalDetailsDto buildPersonalDetails(LtftForm entity);
 
   /**
    * Convert a {@link LtftForm} entity to a {@link LtftSummaryDto} DTO.
@@ -120,7 +131,7 @@ public abstract class LtftMapper {
   @Mapping(target = "id", source = "entity.id")
   @Mapping(target = "formRef", source = "entity.formRef")
   @Mapping(target = "name", source = "entity.content.name")
-  @Mapping(target = "personalDetails", source = "entity.content.personalDetails")
+  @Mapping(target = "personalDetails", source = "entity")
   @Mapping(target = "programmeMembership", source = "entity.content.programmeMembership")
   @Mapping(target = "declarations", source = "entity.content.declarations")
   @Mapping(target = "discussions", source = "entity.content.discussions")
