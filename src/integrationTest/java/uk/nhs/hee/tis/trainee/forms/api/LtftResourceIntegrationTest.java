@@ -488,6 +488,6 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.current.detail.message").value("message"))
         .andExpect(jsonPath("$.status.current.modifiedBy.name").value("given family"))
         .andExpect(jsonPath("$.status.current.modifiedBy.email").value("email"))
-        .andExpect(jsonPath("$.status.current.modifiedBy.role").value(TraineeIdentity.role));
+        .andExpect(jsonPath("$.status.current.modifiedBy.role").value(TraineeIdentity.ROLE));
   }
 }

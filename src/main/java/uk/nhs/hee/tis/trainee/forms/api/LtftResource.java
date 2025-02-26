@@ -117,7 +117,8 @@ public class LtftResource {
       @RequestBody LtftFormDto.StatusDto.LftfStatusInfoDetailDto reason) {
     log.info("Request to submit LTFT form {} with reason {}.", formId, reason);
     Optional<LtftFormDto> submittedLtft = service.submitLtftForm(formId, reason);
-    return submittedLtft.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.badRequest().build());
+    return submittedLtft.map(ResponseEntity::ok)
+        .orElseGet(() -> ResponseEntity.badRequest().build());
   }
 
   /**

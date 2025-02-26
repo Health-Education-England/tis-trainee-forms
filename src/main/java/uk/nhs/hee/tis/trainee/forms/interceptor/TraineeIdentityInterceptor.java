@@ -58,7 +58,7 @@ public class TraineeIdentityInterceptor implements HandlerInterceptor {
         String traineeId = AuthTokenUtil.getAttribute(authToken, TIS_ID_ATTRIBUTE);
         traineeIdentity.setTraineeId(traineeId);
         String email = AuthTokenUtil.getAttribute(authToken, EMAIL_ATTRIBUTE);
-       traineeIdentity.setEmail(email);
+        traineeIdentity.setEmail(email);
         String givenName = AuthTokenUtil.getAttribute(authToken, GIVEN_NAME_ATTRIBUTE);
         String familyName = AuthTokenUtil.getAttribute(authToken, FAMILY_NAME_ATTRIBUTE);
         if (givenName != null && familyName != null) {
