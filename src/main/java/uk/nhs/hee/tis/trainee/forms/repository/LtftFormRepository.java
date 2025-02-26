@@ -107,8 +107,8 @@ public interface LtftFormRepository extends MongoRepository<LtftForm, UUID> {
    * @return The found LTFT form, empty if not found.
    */
   Optional<LtftForm>
-  findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-      UUID id, Set<LifecycleState> states, Set<String> dbcs);
+      findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+          UUID id, Set<LifecycleState> states, Set<String> dbcs);
 
   /**
    * Delete the LTFT form with the given id.

@@ -308,9 +308,9 @@ class LtftServiceTest {
     service.getAdminLtftSummaries(states, pageRequest);
 
     ArgumentCaptor<Set<LifecycleState>> statesCaptor = ArgumentCaptor.captor();
-    verify(
-        ltftRepository).findByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-        statesCaptor.capture(), any(), any());
+    verify(ltftRepository)
+        .findByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            statesCaptor.capture(), any(), any());
 
     Set<LifecycleState> filteredStates = statesCaptor.getValue();
     assertThat("Unexpected state count.", filteredStates, hasSize(1));
@@ -409,8 +409,8 @@ class LtftServiceTest {
         .build();
     entity.setContent(content);
 
-    when(
-        ltftRepository.findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+    when(ltftRepository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
     Optional<LtftFormDto> optionalDto = service.getAdminLtftDetail(ID);
@@ -451,8 +451,8 @@ class LtftServiceTest {
         .build();
     entity.setContent(content);
 
-    when(
-        ltftRepository.findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+    when(ltftRepository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
     Optional<LtftFormDto> optionalDto = service.getAdminLtftDetail(ID);
@@ -483,8 +483,8 @@ class LtftServiceTest {
         .build();
     entity.setContent(content);
 
-    when(
-        ltftRepository.findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+    when(ltftRepository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
     Optional<LtftFormDto> optionalDto = service.getAdminLtftDetail(ID);
@@ -516,8 +516,8 @@ class LtftServiceTest {
         .build();
     entity.setContent(content);
 
-    when(
-        ltftRepository.findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+    when(ltftRepository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
     Optional<LtftFormDto> optionalDto = service.getAdminLtftDetail(ID);
@@ -561,8 +561,8 @@ class LtftServiceTest {
         .build();
     entity.setContent(content);
 
-    when(
-        ltftRepository.findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+    when(ltftRepository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
     Optional<LtftFormDto> optionalDto = service.getAdminLtftDetail(ID);
@@ -593,8 +593,8 @@ class LtftServiceTest {
         .build();
     entity.setContent(content);
 
-    when(
-        ltftRepository.findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+    when(ltftRepository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
     Optional<LtftFormDto> optionalDto = service.getAdminLtftDetail(ID);
@@ -624,8 +624,8 @@ class LtftServiceTest {
         .build();
     entity.setContent(content);
 
-    when(
-        ltftRepository.findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+    when(ltftRepository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
     Optional<LtftFormDto> optionalDto = service.getAdminLtftDetail(ID);
@@ -683,8 +683,8 @@ class LtftServiceTest {
         ))
         .build());
 
-    when(
-        ltftRepository.findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+    when(ltftRepository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
     Optional<LtftFormDto> optionalDto = service.getAdminLtftDetail(ID);
