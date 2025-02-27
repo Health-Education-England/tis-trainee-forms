@@ -70,9 +70,12 @@ public class TestJwtUtil {
    */
   public static String generateTokenForTrainee(String traineeTisId, String email, String givenName,
       String familyName) {
-    String payload = String.format("{\"%s\":\"%s\",\"%s\":\"%s\",\"%s\":\"%s\",\"%s\":\"%s\"}",
-        TIS_ID_ATTRIBUTE, traineeTisId, EMAIL_ATTRIBUTE, email, GIVEN_NAME_ATTRIBUTE, givenName,
-        FAMILY_NAME_ATTRIBUTE, familyName); // :tears:
+    String payload = String.format("{\"%s\":\"%s\"", TIS_ID_ATTRIBUTE, traineeTisId)
+        + (email == null ? "" : String.format(",\"%s\":\"%s\"", EMAIL_ATTRIBUTE, email)
+        + (givenName == null ? "" : String.format(",\"%s\":\"%s\"", GIVEN_NAME_ATTRIBUTE, givenName)
+        + (familyName == null ? "" : String.format(",\"%s\":\"%s\"", FAMILY_NAME_ATTRIBUTE,
+        familyName))))
+        + "}"; // :tears:
     return generateToken(payload);
   }
 
