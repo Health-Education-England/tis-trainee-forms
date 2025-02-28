@@ -42,7 +42,7 @@ public record CctChange(
     UUID id,
     UUID calculationId,
     CctChangeType type,
-    double wte,
+    Double wte,
     LocalDate startDate,
     LocalDate endDate
 ) {

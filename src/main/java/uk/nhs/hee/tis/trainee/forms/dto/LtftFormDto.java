@@ -86,7 +86,7 @@ public record LtftFormDto(
       UUID id,
       UUID calculationId,
       CctChangeType type,
-      double wte,
+      Double wte,
       LocalDate startDate,
       LocalDate endDate,
       LocalDate cctDate) {
@@ -102,9 +102,9 @@ public record LtftFormDto(
    */
   @Builder
   public record DeclarationsDto(
-      boolean discussedWithTpd,
-      boolean informationIsCorrect,
-      boolean notGuaranteed) {
+      Boolean discussedWithTpd,
+      Boolean informationIsCorrect,
+      Boolean notGuaranteed) {
 
   }
 
@@ -125,7 +125,7 @@ public record LtftFormDto(
       String designatedBodyCode,
       LocalDate startDate,
       LocalDate endDate,
-      double wte) {
+      Double wte) {
 
   }
 

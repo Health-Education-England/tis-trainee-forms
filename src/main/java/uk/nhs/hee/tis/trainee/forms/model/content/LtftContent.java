@@ -75,7 +75,7 @@ public record LtftContent(
       String mobileNumber,
       String gmcNumber,
       String gdcNumber,
-      boolean skilledWorkerVisaHolder) {
+      Boolean skilledWorkerVisaHolder) {
 
   }
 
@@ -99,7 +99,7 @@ public record LtftContent(
       String designatedBodyCode,
       LocalDate startDate,
       LocalDate endDate,
-      double wte) {
+      Double wte) {
 
   }
 
@@ -112,9 +112,9 @@ public record LtftContent(
    */
   @Builder
   public record Declarations(
-      boolean discussedWithTpd,
-      boolean informationIsCorrect,
-      boolean notGuaranteed) {
+      Boolean discussedWithTpd,
+      Boolean informationIsCorrect,
+      Boolean notGuaranteed) {
 
   }
 
