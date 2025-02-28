@@ -178,7 +178,7 @@ class AbstractAuditedFormTest {
 
     assertThat("Unexpected status history items.",
         form.getStatus().history().stream().map(StatusInfo::state).toList(),
-        is(List.of(DRAFT, SUBMITTED)));
+        is(List.of(SUBMITTED, DRAFT)));
   }
 
   @ParameterizedTest
