@@ -697,6 +697,7 @@ class LtftServiceTest {
             .wte(0.5)
             .startDate(LocalDate.MIN)
             .endDate(LocalDate.EPOCH)
+            .cctDate(LocalDate.MAX)
             .build())
         .build();
     entity.setContent(content);
@@ -717,7 +718,7 @@ class LtftServiceTest {
     assertThat("Unexpected WTE.", change.wte(), is(0.5));
     assertThat("Unexpected start date.", change.startDate(), is(LocalDate.MIN));
     assertThat("Unexpected end date.", change.endDate(), is(LocalDate.EPOCH));
-    assertThat("Unexpected CCT date.", change.cctDate(), nullValue());
+    assertThat("Unexpected CCT date.", change.cctDate(), is(LocalDate.MAX));
   }
 
   @Test
@@ -1012,7 +1013,7 @@ class LtftServiceTest {
     assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(false));
     verify(ltftRepository).findByTraineeTisIdAndId(TRAINEE_ID, ID);
     LtftFormDto returnedFormDto = formDtoOptional.get();
-    assertThat("Unexpected returned LTFT form.", returnedFormDto, is(mapper.toDto(form, null)));
+    assertThat("Unexpected returned LTFT form.", returnedFormDto, is(mapper.toDto(form)));
   }
 
   @Test

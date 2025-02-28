@@ -156,7 +156,7 @@ public class LtftService {
     Optional<LtftForm> form = ltftFormRepository.
         findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             formId, Set.of(DRAFT), adminIdentity.getGroups());
-    return form.map(v -> mapper.toDto(v, null));
+    return form.map(mapper::toDto);
   }
 
   /**
@@ -173,7 +173,7 @@ public class LtftService {
         value -> log.info("Found form {} for trainee [{}]", formId, traineeId),
         () -> log.info("Did not find form {} for trainee [{}]", formId, traineeId)
     );
-    return form.map(v -> mapper.toDto(v, null));
+    return form.map(mapper::toDto);
   }
 
   /**
@@ -192,7 +192,7 @@ public class LtftService {
       return Optional.empty();
     }
     LtftForm savedForm = ltftFormRepository.save(form);
-    return Optional.of(mapper.toDto(savedForm, null));
+    return Optional.of(mapper.toDto(savedForm));
   }
 
   /**
@@ -224,7 +224,7 @@ public class LtftService {
     }
     form.setCreated(existingForm.get().getCreated()); //explicitly set otherwise form saved as 'new'
     LtftForm savedForm = ltftFormRepository.save(form);
-    return Optional.of(mapper.toDto(savedForm, null));
+    return Optional.of(mapper.toDto(savedForm));
   }
 
   /**
@@ -260,7 +260,6 @@ public class LtftService {
    *
    * @param formId The id of the LTFT form to approve.
    * @param detail The status detail for the approval.
-   *
    * @return The DTO of the approved form, or empty if form not found or could not be approved.
    */
   public Optional<LtftFormDto> submitLtftForm(UUID formId,
@@ -289,6 +288,6 @@ public class LtftService {
     log.info("Submitting form {} for trainee [{}]", formId, traineeId);
     form.setLifecycleState(LifecycleState.SUBMITTED, statusDetail, modifiedBy, form.getRevision());
     LtftForm savedForm = ltftFormRepository.save(form);
-    return Optional.of(mapper.toDto(savedForm, null));
+    return Optional.of(mapper.toDto(savedForm));
   }
 }

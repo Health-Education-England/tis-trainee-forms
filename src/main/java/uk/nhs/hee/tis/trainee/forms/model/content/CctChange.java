@@ -35,6 +35,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
  * @param wte           The whole time equivalent after the change.
  * @param startDate     The start date of the change.
  * @param endDate       The end date of the change.
+ * @param cctDate       The new expected CCT/programme completion date.
  */
 @Builder
 public record CctChange(
@@ -44,7 +45,7 @@ public record CctChange(
     CctChangeType type,
     Double wte,
     LocalDate startDate,
-    LocalDate endDate
-) {
+    LocalDate endDate,
+    LocalDate cctDate) {
 
 }
