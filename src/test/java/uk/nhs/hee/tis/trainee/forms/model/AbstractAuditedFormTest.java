@@ -176,9 +176,9 @@ class AbstractAuditedFormTest {
     form.setLifecycleState(LifecycleState.DRAFT);
     form.setLifecycleState(LifecycleState.SUBMITTED);
 
-    assertThat("Unexpected status history items.", form.getStatus().history().stream()
-        .map(StatusInfo::state).toList()
-        .containsAll(List.of(DRAFT, SUBMITTED)));
+    assertThat("Unexpected status history items.",
+        form.getStatus().history().stream().map(StatusInfo::state).toList(),
+        is(List.of(DRAFT, SUBMITTED)));
   }
 
   @ParameterizedTest

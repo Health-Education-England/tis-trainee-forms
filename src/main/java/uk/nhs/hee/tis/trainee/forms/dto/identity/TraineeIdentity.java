@@ -29,7 +29,7 @@ import lombok.Data;
 @Data
 public class TraineeIdentity {
 
-  //TODO: consider merging with AdminIdentity.
+  //TODO: consider generic UserIdentity abstract class shared with AdminIdentity.
 
   public static final String ROLE = "TRAINEE";
 

@@ -23,6 +23,8 @@ package uk.nhs.hee.tis.trainee.forms.dto.enumeration;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -56,7 +58,7 @@ class LifecycleStateTest {
     boolean canTransition = LifecycleState.canTransitionTo(form, state);
 
     assertFalse(canTransition, "Expected LTFT transition from REJECTED to " + state
-        +  " to be disallowed.");
+        + " to be disallowed.");
   }
 
   @ParameterizedTest
@@ -68,7 +70,7 @@ class LifecycleStateTest {
     boolean canTransition = LifecycleState.canTransitionTo(form, state);
 
     assertFalse(canTransition, "Expected LTFT transition from WITHDRAWN to " + state
-        +  " to be disallowed.");
+        + " to be disallowed.");
   }
 
   @ParameterizedTest
@@ -81,62 +83,98 @@ class LifecycleStateTest {
     boolean canTransition = LifecycleState.canTransitionTo(form, state);
 
     assertFalse(canTransition, "Expected FormR transition from DELETED to " + state
-        +  " to be disallowed.");
+        + " to be disallowed.");
   }
 
   @ParameterizedTest
-  @EnumSource(LifecycleState.class)
+  @EnumSource(value = LifecycleState.class, names = {"SUBMITTED"}, mode = EXCLUDE)
+  void shouldNotAllowFormTransitionFromDraftToNotSubmitted(LifecycleState state) {
+    StubForm form = new StubForm();
+    form.setLifecycleState(LifecycleState.DRAFT);
+
+    boolean canTransition = LifecycleState.canTransitionTo(form, state);
+
+    assertFalse(canTransition, "Expected form transition from DRAFT to " + state
+        + " to be disallowed.");
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"SUBMITTED"}, mode = INCLUDE)
   void shouldAllowFormTransitionFromDraftToSubmittedOnly(LifecycleState state) {
     StubForm form = new StubForm();
     form.setLifecycleState(LifecycleState.DRAFT);
 
     boolean canTransition = LifecycleState.canTransitionTo(form, state);
 
-    if (state != LifecycleState.SUBMITTED) {
-      assertFalse(canTransition, "Expected form transition from DRAFT to " + state
-          +  " to be disallowed.");
-    } else {
-      assertTrue(canTransition, "Expected form transition from DRAFT to " + state
-          +  " to be allowed.");
-    }
+    assertTrue(canTransition, "Expected form transition from DRAFT to " + state
+        + " to be allowed.");
   }
 
   @ParameterizedTest
-  @EnumSource(LifecycleState.class)
+  @EnumSource(value = LifecycleState.class, names = {"UNSUBMITTED"}, mode = EXCLUDE)
+  void shouldNotAllowFormToTransitionFromSubmittedNotToUnsubmitted(LifecycleState state) {
+    StubForm form = new StubForm();
+    form.setLifecycleState(LifecycleState.SUBMITTED);
+
+    boolean canTransition = LifecycleState.canTransitionTo(form, state);
+
+    assertFalse(canTransition, "Expected form transition from SUBMITTED to " + state
+        + " to be disallowed.");
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"UNSUBMITTED"}, mode = INCLUDE)
   void shouldAllowFormToTransitionFromSubmittedToUnsubmitted(LifecycleState state) {
     StubForm form = new StubForm();
     form.setLifecycleState(LifecycleState.SUBMITTED);
 
     boolean canTransition = LifecycleState.canTransitionTo(form, state);
 
-    if (state != LifecycleState.UNSUBMITTED) {
-      assertFalse(canTransition, "Expected form transition from SUBMITTED to " + state
-          +  " to be disallowed.");
-    } else {
-      assertTrue(canTransition, "Expected form transition from SUBMITTED to " + state
-          +  " to be allowed.");
-    }
+    assertTrue(canTransition, "Expected form transition from SUBMITTED to " + state
+        + " to be allowed.");
   }
 
   @ParameterizedTest
-  @EnumSource(LifecycleState.class)
+  @EnumSource(value = LifecycleState.class, names = {"DELETED", "UNSUBMITTED"}, mode = EXCLUDE)
+  void shouldNotAllowFormRToTransitionFromSubmittedToNotDeletedOrUnsubmitted(LifecycleState state) {
+    StubFormRForm form = new StubFormRForm();
+    form.setLifecycleState(LifecycleState.SUBMITTED);
+
+    boolean canTransition = LifecycleState.canTransitionTo(form, state);
+
+    assertFalse(canTransition, "Expected formR transition from SUBMITTED to " + state
+        + " to be disallowed.");
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"DELETED", "UNSUBMITTED"}, mode = INCLUDE)
   void shouldAllowFormRToTransitionFromSubmittedToDeletedOrUnsubmitted(LifecycleState state) {
     StubFormRForm form = new StubFormRForm();
     form.setLifecycleState(LifecycleState.SUBMITTED);
 
     boolean canTransition = LifecycleState.canTransitionTo(form, state);
 
-    if (state != LifecycleState.DELETED && state != LifecycleState.UNSUBMITTED) {
-      assertFalse(canTransition, "Expected formR transition from SUBMITTED to " + state
-          +  " to be disallowed.");
-    } else {
-      assertTrue(canTransition, "Expected formR transition from SUBMITTED to " + state
-          +  " to be allowed.");
-    }
+    assertTrue(canTransition, "Expected formR transition from SUBMITTED to " + state
+        + " to be allowed.");
   }
 
   @ParameterizedTest
-  @EnumSource(LifecycleState.class)
+  @EnumSource(value = LifecycleState.class,
+      names = {"APPROVED", "REJECTED", "UNSUBMITTED", "WITHDRAWN"}, mode = EXCLUDE)
+  void shouldNotAllowLtftToTransitionFromSubmittedToNotApprovedOrRejectedOrWithdrawnOrUnsubmitted(
+      LifecycleState state) {
+    LtftForm form = new LtftForm();
+    form.setLifecycleState(LifecycleState.SUBMITTED);
+
+    boolean canTransition = LifecycleState.canTransitionTo(form, state);
+
+    assertFalse(canTransition, "Expected LTFT transition from SUBMITTED to " + state
+        + " to be disallowed.");
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class,
+      names = {"APPROVED", "REJECTED", "UNSUBMITTED", "WITHDRAWN"}, mode = INCLUDE)
   void shouldAllowLtftToTransitionFromSubmittedToApprovedOrRejectedOrWithdrawnOrUnsubmitted(
       LifecycleState state) {
     LtftForm form = new LtftForm();
@@ -144,48 +182,56 @@ class LifecycleStateTest {
 
     boolean canTransition = LifecycleState.canTransitionTo(form, state);
 
-    if (state != LifecycleState.APPROVED && state != LifecycleState.REJECTED
-        && state != LifecycleState.WITHDRAWN && state != LifecycleState.UNSUBMITTED) {
-      assertFalse(canTransition, "Expected LTFT transition from SUBMITTED to " + state
-          +  " to be disallowed.");
-    } else {
-      assertTrue(canTransition, "Expected LTFT transition from SUBMITTED to " + state
-          +  " to be allowed.");
-    }
+    assertTrue(canTransition, "Expected LTFT transition from SUBMITTED to " + state
+        + " to be allowed.");
   }
 
   @ParameterizedTest
-  @EnumSource(LifecycleState.class)
+  @EnumSource(value = LifecycleState.class, names = {"SUBMITTED"}, mode = EXCLUDE)
+  void shouldNotAllowFormTransitionFromUnsubmittedToNotSubmitted(LifecycleState state) {
+    StubForm form = new StubForm();
+    form.setLifecycleState(LifecycleState.UNSUBMITTED);
+
+    boolean canTransition = LifecycleState.canTransitionTo(form, state);
+
+    assertFalse(canTransition, "Expected form transition from UNSUBMITTED to " + state
+        + " to be disallowed.");
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"SUBMITTED"}, mode = INCLUDE)
   void shouldAllowFormTransitionFromUnsubmittedToSubmitted(LifecycleState state) {
     StubForm form = new StubForm();
     form.setLifecycleState(LifecycleState.UNSUBMITTED);
 
     boolean canTransition = LifecycleState.canTransitionTo(form, state);
 
-    if (state != LifecycleState.SUBMITTED) {
-      assertFalse(canTransition, "Expected form transition from UNSUBMITTED to " + state
-          +  " to be disallowed.");
-    } else {
-      assertTrue(canTransition, "Expected form transition from UNSUBMITTED to " + state
-          +  " to be allowed.");
-    }
+    assertTrue(canTransition, "Expected form transition from UNSUBMITTED to " + state
+        + " to be allowed.");
   }
 
   @ParameterizedTest
-  @EnumSource(LifecycleState.class)
+  @EnumSource(value = LifecycleState.class, names = {"SUBMITTED", "WITHDRAWN"}, mode = EXCLUDE)
+  void shouldNotAllowLtftTransitionFromUnsubmittedToNotWithdrawnOrSubmitted(LifecycleState state) {
+    LtftForm form = new LtftForm();
+    form.setLifecycleState(LifecycleState.UNSUBMITTED);
+
+    boolean canTransition = LifecycleState.canTransitionTo(form, state);
+
+    assertFalse(canTransition, "Expected form transition from UNSUBMITTED to " + state
+        + " to be disallowed.");
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"SUBMITTED", "WITHDRAWN"}, mode = INCLUDE)
   void shouldAllowLtftTransitionFromUnsubmittedToWithdrawnOrSubmitted(LifecycleState state) {
     LtftForm form = new LtftForm();
     form.setLifecycleState(LifecycleState.UNSUBMITTED);
 
     boolean canTransition = LifecycleState.canTransitionTo(form, state);
 
-    if (state != LifecycleState.WITHDRAWN && state != LifecycleState.SUBMITTED) {
-      assertFalse(canTransition, "Expected form transition from UNSUBMITTED to " + state
-          +  " to be disallowed.");
-    } else {
-      assertTrue(canTransition, "Expected form transition from UNSUBMITTED to " + state
-          +  " to be allowed.");
-    }
+    assertTrue(canTransition, "Expected form transition from UNSUBMITTED to " + state
+        + " to be allowed.");
   }
 
   @ParameterizedTest

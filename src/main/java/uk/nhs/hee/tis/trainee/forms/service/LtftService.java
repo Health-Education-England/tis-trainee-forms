@@ -285,8 +285,7 @@ public class LtftService {
         .email(traineeIdentity.getEmail())
         .role(TraineeIdentity.ROLE)
         .build();
-    AbstractAuditedForm.Status.StatusDetail statusDetail
-        = detail == null ? null : mapper.toStatusDetail(detail);
+    AbstractAuditedForm.Status.StatusDetail statusDetail = mapper.toStatusDetail(detail);
     log.info("Submitting form {} for trainee [{}]", formId, traineeId);
     form.setLifecycleState(LifecycleState.SUBMITTED, statusDetail, modifiedBy, form.getRevision());
     LtftForm savedForm = ltftFormRepository.save(form);
