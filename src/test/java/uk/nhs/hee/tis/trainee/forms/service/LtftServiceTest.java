@@ -395,6 +395,30 @@ class LtftServiceTest {
   }
 
   @Test
+  void shouldGetAdminLtftDetailWithDefaultValuesWhenFormFoundWithNullValues() {
+    LtftForm entity = new LtftForm();
+    entity.setId(ID);
+    entity.setContent(LtftContent.builder().build());
+
+    when(ltftRepository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            any(), any(), any())).thenReturn(Optional.of(entity));
+
+    Optional<LtftFormDto> optionalDto = service.getAdminLtftDetail(ID);
+
+    assertThat("Unexpected dto presence.", optionalDto.isPresent(), is(true));
+
+    LtftFormDto dto = optionalDto.get();
+    assertThat("Unexpected ID.", dto.id(), is(ID));
+    assertThat("Unexpected trainee ID.", dto.traineeTisId(), nullValue());
+    assertThat("Unexpected form ref.", dto.formRef(), nullValue());
+    assertThat("Unexpected revision.", dto.revision(), is(0));
+    assertThat("Unexpected name.", dto.name(), nullValue());
+    assertThat("Unexpected created.", dto.created(), nullValue());
+    assertThat("Unexpected lastModified.", dto.lastModified(), nullValue());
+  }
+
+  @Test
   void shouldGetAdminLtftPersonalDetailsDetailWhenFormFound() {
     LtftForm entity = new LtftForm();
     entity.setId(ID);
@@ -439,6 +463,38 @@ class LtftServiceTest {
   }
 
   @Test
+  void shouldGetAdminLtftPersonalDetailsDetailWithDefaultValuesWhenFormFoundWithNullValues() {
+    LtftForm entity = new LtftForm();
+    entity.setId(ID);
+
+    LtftContent content = LtftContent.builder()
+        .personalDetails(PersonalDetails.builder().build())
+        .build();
+    entity.setContent(content);
+
+    when(ltftRepository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            any(), any(), any())).thenReturn(Optional.of(entity));
+
+    Optional<LtftFormDto> optionalDto = service.getAdminLtftDetail(ID);
+
+    assertThat("Unexpected dto presence.", optionalDto.isPresent(), is(true));
+
+    LtftFormDto dto = optionalDto.get();
+    PersonalDetailsDto personalDetails = dto.personalDetails();
+    assertThat("Unexpected ID.", personalDetails.id(), nullValue());
+    assertThat("Unexpected title.", personalDetails.title(), nullValue());
+    assertThat("Unexpected forenames.", personalDetails.forenames(), nullValue());
+    assertThat("Unexpected surname.", personalDetails.surname(), nullValue());
+    assertThat("Unexpected email.", personalDetails.email(), nullValue());
+    assertThat("Unexpected telephone number.", personalDetails.telephoneNumber(), nullValue());
+    assertThat("Unexpected mobile number.", personalDetails.mobileNumber(), nullValue());
+    assertThat("Unexpected GMC number.", personalDetails.gmcNumber(), nullValue());
+    assertThat("Unexpected GDC number.", personalDetails.gdcNumber(), nullValue());
+    assertThat("Unexpected visa flag.", personalDetails.skilledWorkerVisaHolder(), nullValue());
+  }
+
+  @Test
   void shouldGetAdminLtftProgrammeMembershipDetailWhenFormFound() {
     LtftForm entity = new LtftForm();
     entity.setId(ID);
@@ -476,6 +532,34 @@ class LtftServiceTest {
   }
 
   @Test
+  void shouldGetAdminLtftProgrammeMembershipDetailWithDefaultValuesWhenFormFoundWithNullValues() {
+    LtftForm entity = new LtftForm();
+    entity.setId(ID);
+
+    LtftContent content = LtftContent.builder()
+        .programmeMembership(ProgrammeMembership.builder().build())
+        .build();
+    entity.setContent(content);
+
+    when(ltftRepository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            any(), any(), any())).thenReturn(Optional.of(entity));
+
+    Optional<LtftFormDto> optionalDto = service.getAdminLtftDetail(ID);
+
+    assertThat("Unexpected dto presence.", optionalDto.isPresent(), is(true));
+
+    LtftFormDto dto = optionalDto.get();
+    ProgrammeMembershipDto programmeMembership = dto.programmeMembership();
+    assertThat("Unexpected PM ID.", programmeMembership.id(), nullValue());
+    assertThat("Unexpected PM name.", programmeMembership.name(), nullValue());
+    assertThat("Unexpected PM DBC.", programmeMembership.designatedBodyCode(), nullValue());
+    assertThat("Unexpected PM start date.", programmeMembership.startDate(), nullValue());
+    assertThat("Unexpected PM end date.", programmeMembership.endDate(), nullValue());
+    assertThat("Unexpected PM wte.", programmeMembership.wte(), nullValue());
+  }
+
+  @Test
   void shouldGetAdminLtftDeclarationsDetailWhenFormFound() {
     LtftForm entity = new LtftForm();
     entity.setId(ID);
@@ -502,6 +586,31 @@ class LtftServiceTest {
     assertThat("Unexpected declaration.", declarations.discussedWithTpd(), is(true));
     assertThat("Unexpected declaration.", declarations.notGuaranteed(), is(false));
     assertThat("Unexpected declaration.", declarations.informationIsCorrect(), is(true));
+  }
+
+  @Test
+  void shouldGetAdminLtftDeclarationsDetailWithDefaultValuesWhenFormFoundWithNullValues() {
+    LtftForm entity = new LtftForm();
+    entity.setId(ID);
+
+    LtftContent content = LtftContent.builder()
+        .declarations(Declarations.builder().build())
+        .build();
+    entity.setContent(content);
+
+    when(ltftRepository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            any(), any(), any())).thenReturn(Optional.of(entity));
+
+    Optional<LtftFormDto> optionalDto = service.getAdminLtftDetail(ID);
+
+    assertThat("Unexpected dto presence.", optionalDto.isPresent(), is(true));
+
+    LtftFormDto dto = optionalDto.get();
+    DeclarationsDto declarations = dto.declarations();
+    assertThat("Unexpected declaration.", declarations.discussedWithTpd(), nullValue());
+    assertThat("Unexpected declaration.", declarations.notGuaranteed(), nullValue());
+    assertThat("Unexpected declaration.", declarations.informationIsCorrect(), nullValue());
   }
 
   @Test
@@ -548,6 +657,31 @@ class LtftServiceTest {
   }
 
   @Test
+  void shouldGetAdminLtftDiscussionDetailWithDefaultValuesWhenFormFoundWithNullValues() {
+    LtftForm entity = new LtftForm();
+    entity.setId(ID);
+
+    LtftContent content = LtftContent.builder()
+        .discussions(Discussions.builder().build())
+        .build();
+    entity.setContent(content);
+
+    when(ltftRepository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            any(), any(), any())).thenReturn(Optional.of(entity));
+
+    Optional<LtftFormDto> optionalDto = service.getAdminLtftDetail(ID);
+
+    assertThat("Unexpected dto presence.", optionalDto.isPresent(), is(true));
+
+    LtftFormDto dto = optionalDto.get();
+    DiscussionsDto discussions = dto.discussions();
+    assertThat("Unexpected TPD name.", discussions.tpdName(), nullValue());
+    assertThat("Unexpected TPD email.", discussions.tpdEmail(), nullValue());
+    assertThat("Unexpected other discussion count.", discussions.other(), nullValue());
+  }
+
+  @Test
   void shouldGetAdminLtftChangeDetailWhenFormFound() {
     LtftForm entity = new LtftForm();
     entity.setId(ID);
@@ -563,6 +697,7 @@ class LtftServiceTest {
             .wte(0.5)
             .startDate(LocalDate.MIN)
             .endDate(LocalDate.EPOCH)
+            .cctDate(LocalDate.MAX)
             .build())
         .build();
     entity.setContent(content);
@@ -583,6 +718,35 @@ class LtftServiceTest {
     assertThat("Unexpected WTE.", change.wte(), is(0.5));
     assertThat("Unexpected start date.", change.startDate(), is(LocalDate.MIN));
     assertThat("Unexpected end date.", change.endDate(), is(LocalDate.EPOCH));
+    assertThat("Unexpected CCT date.", change.cctDate(), is(LocalDate.MAX));
+  }
+
+  @Test
+  void shouldGetAdminLtftChangeDetailWithDefaultValuesWhenFormFoundWithNullValues() {
+    LtftForm entity = new LtftForm();
+    entity.setId(ID);
+
+    LtftContent content = LtftContent.builder()
+        .change(CctChange.builder().build())
+        .build();
+    entity.setContent(content);
+
+    when(ltftRepository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            any(), any(), any())).thenReturn(Optional.of(entity));
+
+    Optional<LtftFormDto> optionalDto = service.getAdminLtftDetail(ID);
+
+    assertThat("Unexpected dto presence.", optionalDto.isPresent(), is(true));
+
+    LtftFormDto dto = optionalDto.get();
+    CctChangeDto change = dto.change();
+    assertThat("Unexpected ID.", change.id(), nullValue());
+    assertThat("Unexpected calculation ID.", change.calculationId(), nullValue());
+    assertThat("Unexpected type.", change.type(), nullValue());
+    assertThat("Unexpected WTE.", change.wte(), nullValue());
+    assertThat("Unexpected start date.", change.startDate(), nullValue());
+    assertThat("Unexpected end date.", change.endDate(), nullValue());
     assertThat("Unexpected CCT date.", change.cctDate(), nullValue());
   }
 
@@ -617,6 +781,30 @@ class LtftServiceTest {
   }
 
   @Test
+  void shouldGetAdminLtftReasonsDetailWithDefaultValuesWhenFormFoundWithNullValues() {
+    LtftForm entity = new LtftForm();
+    entity.setId(ID);
+
+    LtftContent content = LtftContent.builder()
+        .reasons(Reasons.builder().build())
+        .build();
+    entity.setContent(content);
+
+    when(ltftRepository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            any(), any(), any())).thenReturn(Optional.of(entity));
+
+    Optional<LtftFormDto> optionalDto = service.getAdminLtftDetail(ID);
+
+    assertThat("Unexpected dto presence.", optionalDto.isPresent(), is(true));
+
+    LtftFormDto dto = optionalDto.get();
+    ReasonsDto reasons = dto.reasons();
+    assertThat("Unexpected reason count.", reasons.selected(), nullValue());
+    assertThat("Unexpected reason detail.", reasons.otherDetail(), nullValue());
+  }
+
+  @Test
   void shouldGetAdminLtftAssignedAdminDetailWhenFormFound() {
     LtftForm entity = new LtftForm();
     entity.setId(ID);
@@ -643,6 +831,31 @@ class LtftServiceTest {
     assertThat("Unexpected admin name.", assignedAdmin.name(), is("Ad Min"));
     assertThat("Unexpected admin email.", assignedAdmin.email(), is("ad.min@example.com"));
     assertThat("Unexpected admin role.", assignedAdmin.role(), is("ADMIN"));
+  }
+
+  @Test
+  void shouldGetAdminLtftAssignedAdminDetailWithDefaultValuesWhenFormFoundWithNullValues() {
+    LtftForm entity = new LtftForm();
+    entity.setId(ID);
+
+    LtftContent content = LtftContent.builder()
+        .assignedAdmin(Person.builder().build())
+        .build();
+    entity.setContent(content);
+
+    when(ltftRepository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            any(), any(), any())).thenReturn(Optional.of(entity));
+
+    Optional<LtftFormDto> optionalDto = service.getAdminLtftDetail(ID);
+
+    assertThat("Unexpected dto presence.", optionalDto.isPresent(), is(true));
+
+    LtftFormDto dto = optionalDto.get();
+    PersonDto assignedAdmin = dto.assignedAdmin();
+    assertThat("Unexpected admin name.", assignedAdmin.name(), nullValue());
+    assertThat("Unexpected admin email.", assignedAdmin.email(), nullValue());
+    assertThat("Unexpected admin role.", assignedAdmin.role(), nullValue());
   }
 
   @Test
@@ -743,6 +956,28 @@ class LtftServiceTest {
   }
 
   @Test
+  void shouldGetAdminLtftStatusDetailWithDefaultValuesWhenFormFoundWithNullValues() {
+    LtftForm entity = new LtftForm();
+    entity.setId(ID);
+    entity.setContent(LtftContent.builder().build());
+
+    entity.setStatus(Status.builder().build());
+
+    when(ltftRepository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            any(), any(), any())).thenReturn(Optional.of(entity));
+
+    Optional<LtftFormDto> optionalDto = service.getAdminLtftDetail(ID);
+
+    assertThat("Unexpected dto presence.", optionalDto.isPresent(), is(true));
+
+    LtftFormDto dto = optionalDto.get();
+    StatusDto status = dto.status();
+    assertThat("Unexpected state.", status.current(), nullValue());
+    assertThat("Unexpected history count.", status.history(), nullValue());
+  }
+
+  @Test
   void shouldReturnEmptyIfLtftFormNotFound() {
     when(ltftRepository.findByTraineeTisIdAndId(any(), any())).thenReturn(Optional.empty());
 
@@ -778,7 +1013,7 @@ class LtftServiceTest {
     assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(false));
     verify(ltftRepository).findByTraineeTisIdAndId(TRAINEE_ID, ID);
     LtftFormDto returnedFormDto = formDtoOptional.get();
-    assertThat("Unexpected returned LTFT form.", returnedFormDto, is(mapper.toDto(form, null)));
+    assertThat("Unexpected returned LTFT form.", returnedFormDto, is(mapper.toDto(form)));
   }
 
   @Test

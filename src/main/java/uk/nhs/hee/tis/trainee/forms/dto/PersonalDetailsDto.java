@@ -48,6 +48,6 @@ public record PersonalDetailsDto(
     String mobileNumber,
     String gmcNumber,
     String gdcNumber,
-    boolean skilledWorkerVisaHolder) {
+    Boolean skilledWorkerVisaHolder) {
 
 }
