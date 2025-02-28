@@ -87,7 +87,7 @@ class LifecycleStateTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, names = {"SUBMITTED"}, mode = EXCLUDE)
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = {"SUBMITTED"})
   void shouldNotAllowFormTransitionFromDraftToNotSubmitted(LifecycleState state) {
     StubForm form = new StubForm();
     form.setLifecycleState(LifecycleState.DRAFT);
@@ -99,7 +99,7 @@ class LifecycleStateTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, names = {"SUBMITTED"}, mode = INCLUDE)
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"SUBMITTED"})
   void shouldAllowFormTransitionFromDraftToSubmittedOnly(LifecycleState state) {
     StubForm form = new StubForm();
     form.setLifecycleState(LifecycleState.DRAFT);
@@ -111,7 +111,7 @@ class LifecycleStateTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, names = {"UNSUBMITTED"}, mode = EXCLUDE)
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = {"UNSUBMITTED"})
   void shouldNotAllowFormToTransitionFromSubmittedNotToUnsubmitted(LifecycleState state) {
     StubForm form = new StubForm();
     form.setLifecycleState(LifecycleState.SUBMITTED);
@@ -123,7 +123,7 @@ class LifecycleStateTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, names = {"UNSUBMITTED"}, mode = INCLUDE)
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"UNSUBMITTED"})
   void shouldAllowFormToTransitionFromSubmittedToUnsubmitted(LifecycleState state) {
     StubForm form = new StubForm();
     form.setLifecycleState(LifecycleState.SUBMITTED);
@@ -135,7 +135,7 @@ class LifecycleStateTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, names = {"DELETED", "UNSUBMITTED"}, mode = EXCLUDE)
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = {"DELETED", "UNSUBMITTED"})
   void shouldNotAllowFormRToTransitionFromSubmittedToNotDeletedOrUnsubmitted(LifecycleState state) {
     StubFormRForm form = new StubFormRForm();
     form.setLifecycleState(LifecycleState.SUBMITTED);
@@ -147,7 +147,7 @@ class LifecycleStateTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, names = {"DELETED", "UNSUBMITTED"}, mode = INCLUDE)
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"DELETED", "UNSUBMITTED"})
   void shouldAllowFormRToTransitionFromSubmittedToDeletedOrUnsubmitted(LifecycleState state) {
     StubFormRForm form = new StubFormRForm();
     form.setLifecycleState(LifecycleState.SUBMITTED);
@@ -159,8 +159,8 @@ class LifecycleStateTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class,
-      names = {"APPROVED", "REJECTED", "UNSUBMITTED", "WITHDRAWN"}, mode = EXCLUDE)
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE,
+      names = {"APPROVED", "REJECTED", "UNSUBMITTED", "WITHDRAWN"})
   void shouldNotAllowLtftToTransitionFromSubmittedToNotApprovedOrRejectedOrWithdrawnOrUnsubmitted(
       LifecycleState state) {
     LtftForm form = new LtftForm();
@@ -173,8 +173,8 @@ class LifecycleStateTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class,
-      names = {"APPROVED", "REJECTED", "UNSUBMITTED", "WITHDRAWN"}, mode = INCLUDE)
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE,
+      names = {"APPROVED", "REJECTED", "UNSUBMITTED", "WITHDRAWN"})
   void shouldAllowLtftToTransitionFromSubmittedToApprovedOrRejectedOrWithdrawnOrUnsubmitted(
       LifecycleState state) {
     LtftForm form = new LtftForm();
@@ -187,7 +187,7 @@ class LifecycleStateTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, names = {"SUBMITTED"}, mode = EXCLUDE)
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = {"SUBMITTED"})
   void shouldNotAllowFormTransitionFromUnsubmittedToNotSubmitted(LifecycleState state) {
     StubForm form = new StubForm();
     form.setLifecycleState(LifecycleState.UNSUBMITTED);
@@ -199,7 +199,7 @@ class LifecycleStateTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, names = {"SUBMITTED"}, mode = INCLUDE)
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"SUBMITTED"})
   void shouldAllowFormTransitionFromUnsubmittedToSubmitted(LifecycleState state) {
     StubForm form = new StubForm();
     form.setLifecycleState(LifecycleState.UNSUBMITTED);
@@ -211,7 +211,7 @@ class LifecycleStateTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, names = {"SUBMITTED", "WITHDRAWN"}, mode = EXCLUDE)
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = {"SUBMITTED", "WITHDRAWN"})
   void shouldNotAllowLtftTransitionFromUnsubmittedToNotWithdrawnOrSubmitted(LifecycleState state) {
     LtftForm form = new LtftForm();
     form.setLifecycleState(LifecycleState.UNSUBMITTED);
@@ -223,7 +223,7 @@ class LifecycleStateTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, names = {"SUBMITTED", "WITHDRAWN"}, mode = INCLUDE)
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"SUBMITTED", "WITHDRAWN"})
   void shouldAllowLtftTransitionFromUnsubmittedToWithdrawnOrSubmitted(LifecycleState state) {
     LtftForm form = new LtftForm();
     form.setLifecycleState(LifecycleState.UNSUBMITTED);

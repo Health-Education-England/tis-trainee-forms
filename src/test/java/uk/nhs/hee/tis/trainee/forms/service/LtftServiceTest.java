@@ -71,7 +71,6 @@ import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.mapper.TemporalMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm;
-import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
@@ -655,7 +654,9 @@ class LtftServiceTest {
     entity.setStatus(Status.builder()
         .current(StatusInfo.builder()
             .state(LifecycleState.SUBMITTED)
-            .detail("Submitted Detail")
+            .detail(AbstractAuditedForm.Status.StatusDetail.builder()
+                .reason("Submitted Detail")
+                .build())
             .timestamp(Instant.EPOCH)
             .revision(1)
             .modifiedBy(Person.builder()
@@ -667,7 +668,9 @@ class LtftServiceTest {
         .history(List.of(
             StatusInfo.builder()
                 .state(LifecycleState.DRAFT)
-                .detail("Draft Detail")
+                .detail(AbstractAuditedForm.Status.StatusDetail.builder()
+                    .reason("Draft Detail")
+                    .build())
                 .timestamp(Instant.MIN)
                 .revision(0)
                 .modifiedBy(Person.builder()
@@ -678,7 +681,9 @@ class LtftServiceTest {
                 .build(),
             StatusInfo.builder()
                 .state(LifecycleState.SUBMITTED)
-                .detail("Submitted Detail")
+                .detail(AbstractAuditedForm.Status.StatusDetail.builder()
+                    .reason("Submitted Detail")
+                    .build())
                 .timestamp(Instant.EPOCH)
                 .revision(1)
                 .modifiedBy(Person.builder()
@@ -702,7 +707,7 @@ class LtftServiceTest {
     StatusDto status = dto.status();
     StatusInfoDto currentStatus = status.current();
     assertThat("Unexpected state.", currentStatus.state(), is(LifecycleState.SUBMITTED));
-    assertThat("Unexpected detail.", currentStatus.detail(), is("Submitted Detail"));
+    assertThat("Unexpected detail.", currentStatus.detail().reason(), is("Submitted Detail"));
     assertThat("Unexpected timestamp.", currentStatus.timestamp(), is(Instant.EPOCH));
     assertThat("Unexpected revision.", currentStatus.revision(), is(1));
 
@@ -716,7 +721,7 @@ class LtftServiceTest {
 
     StatusInfoDto history1 = statusHistory.get(0);
     assertThat("Unexpected state.", history1.state(), is(LifecycleState.DRAFT));
-    assertThat("Unexpected detail.", history1.detail(), is("Draft Detail"));
+    assertThat("Unexpected detail.", history1.detail().reason(), is("Draft Detail"));
     assertThat("Unexpected timestamp.", history1.timestamp(), is(Instant.MIN));
     assertThat("Unexpected revision.", history1.revision(), is(0));
 
@@ -727,7 +732,7 @@ class LtftServiceTest {
 
     StatusInfoDto history2 = statusHistory.get(1);
     assertThat("Unexpected state.", history2.state(), is(LifecycleState.SUBMITTED));
-    assertThat("Unexpected detail.", history2.detail(), is("Submitted Detail"));
+    assertThat("Unexpected detail.", history2.detail().reason(), is("Submitted Detail"));
     assertThat("Unexpected timestamp.", history2.timestamp(), is(Instant.EPOCH));
     assertThat("Unexpected revision.", history2.revision(), is(1));
 

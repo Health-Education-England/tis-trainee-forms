@@ -377,7 +377,7 @@ class LtftResourceIntegrationTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, names = {"DRAFT"}, mode = EXCLUDE)
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = {"DRAFT"})
   void shouldReturnBadRequestWhenServiceCantDeleteLtftForm(LifecycleState lifecycleState)
       throws Exception {
     LtftForm form = new LtftForm();
