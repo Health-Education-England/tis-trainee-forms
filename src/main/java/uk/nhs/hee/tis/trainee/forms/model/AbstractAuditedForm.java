@@ -110,8 +110,8 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
     if (status == null || status.current == null) {
       setStatus(new Status(statusInfo, List.of(statusInfo)));
     } else {
-      List<StatusInfo> newHistory = new ArrayList<>(List.of(statusInfo));
-      newHistory.addAll(status.history);
+      List<StatusInfo> newHistory = new ArrayList<>(status.history);
+      newHistory.add(statusInfo);
       setStatus(new Status(statusInfo, newHistory));
     }
   }
