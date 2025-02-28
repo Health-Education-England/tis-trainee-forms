@@ -42,10 +42,12 @@ public interface LtftFormRepository extends MongoRepository<LtftForm, UUID> {
   /**
    * Count all LTFT forms with one of the given DBCs.
    *
-   * @param dbcs The designated body codes to include in the count.
+   * @param states The states to exclude from the count.
+   * @param dbcs   The designated body codes to include in the count.
    * @return The number of found LTFT forms.
    */
-  long countByContent_ProgrammeMembership_DesignatedBodyCodeIn(Set<String> dbcs);
+  long countByStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+      Set<LifecycleState> states, Set<String> dbcs);
 
   /**
    * Count all LTFT forms with one of the given current states and DBCs.
@@ -77,12 +79,13 @@ public interface LtftFormRepository extends MongoRepository<LtftForm, UUID> {
   /**
    * Find all LTFT forms with one of the given DBCs.
    *
+   * @param states   The states to exclude from the search.
    * @param dbcs     The designated body codes to include in the search.
    * @param pageable Page information to apply to the search.
    * @return A page of found LTFT forms.
    */
-  Page<LtftForm> findByContent_ProgrammeMembership_DesignatedBodyCodeIn(Set<String> dbcs,
-      Pageable pageable);
+  Page<LtftForm> findByStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+      Set<LifecycleState> states, Set<String> dbcs, Pageable pageable);
 
   /**
    * Find all LTFT forms with one of the given current states and DBCs.
@@ -94,6 +97,18 @@ public interface LtftFormRepository extends MongoRepository<LtftForm, UUID> {
    */
   Page<LtftForm> findByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
       Set<LifecycleState> states, Set<String> dbcs, Pageable pageable);
+
+  /**
+   * Find the LTFT form with the given ID and one of the given DBCs.
+   *
+   * @param id     The ID of the form to find.
+   * @param states The states to exclude from the search.
+   * @param dbcs   The designated body codes to include in the search.
+   * @return The found LTFT form, empty if not found.
+   */
+  Optional<LtftForm>
+      findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+          UUID id, Set<LifecycleState> states, Set<String> dbcs);
 
   /**
    * Delete the LTFT form with the given id.
