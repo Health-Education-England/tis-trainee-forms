@@ -30,6 +30,9 @@ import java.util.Base64;
 public class TestJwtUtil {
 
   public static final String TIS_ID_ATTRIBUTE = "custom:tisId";
+  public static final String EMAIL_ATTRIBUTE = "email";
+  public static final String GIVEN_NAME_ATTRIBUTE = "given_name";
+  public static final String FAMILY_NAME_ATTRIBUTE = "family_name";
 
   /**
    * Generate a token with the given payload.
@@ -51,6 +54,26 @@ public class TestJwtUtil {
    */
   public static String generateTokenForTisId(String traineeTisId) {
     String payload = String.format("{\"%s\":\"%s\"}", TIS_ID_ATTRIBUTE, traineeTisId);
+    return generateToken(payload);
+  }
+
+  /**
+   * Generate a token with the various attributes as the payload.
+   *
+   * @param traineeTisId The TIS ID to inject in to the payload.
+   * @param email        The email to inject in to the payload.
+   * @param givenName    The given name to inject in to the payload.
+   * @param familyName   The family name to inject in to the payload.
+   * @return The generated token.
+   */
+  public static String generateTokenForTrainee(String traineeTisId, String email, String givenName,
+      String familyName) {
+    String payload = String.format("{\"%s\":\"%s\"", TIS_ID_ATTRIBUTE, traineeTisId)
+        + (email == null ? "" : String.format(",\"%s\":\"%s\"", EMAIL_ATTRIBUTE, email)
+        + (givenName == null ? "" : String.format(",\"%s\":\"%s\"", GIVEN_NAME_ATTRIBUTE, givenName)
+        + (familyName == null ? "" : String.format(",\"%s\":\"%s\"", FAMILY_NAME_ATTRIBUTE,
+        familyName))))
+        + "}"; // :tears:
     return generateToken(payload);
   }
 }

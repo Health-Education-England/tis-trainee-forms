@@ -40,7 +40,9 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
+import uk.nhs.hee.tis.trainee.forms.model.Person;
 import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 
 /**
@@ -251,5 +253,42 @@ public class LtftService {
     log.info("Deleting form {} for trainee [{}]", formId, traineeId);
     ltftFormRepository.deleteById(formId);
     return Optional.of(true);
+  }
+
+  /**
+   * Approve the LTFT form with the given id.
+   *
+   * @param formId The id of the LTFT form to approve.
+   * @param detail The status detail for the approval.
+   *
+   * @return The DTO of the approved form, or empty if form not found or could not be approved.
+   */
+  public Optional<LtftFormDto> submitLtftForm(UUID formId,
+      LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail) {
+    String traineeId = traineeIdentity.getTraineeId();
+    Optional<LtftForm> formOptional = ltftFormRepository.findByTraineeTisIdAndId(traineeId, formId);
+
+    if (formOptional.isEmpty()) {
+      log.info("Did not find form {} for trainee [{}] to submit", formId, traineeId);
+      return Optional.empty();
+    }
+
+    LtftForm form = formOptional.get();
+    if (!LifecycleState.canTransitionTo(form, LifecycleState.SUBMITTED)) {
+      log.info("Form {} was not in a permitted state to submit [{}]", formId,
+          form.getLifecycleState());
+      return Optional.empty();
+    }
+
+    Person modifiedBy = Person.builder()
+        .name(traineeIdentity.getName())
+        .email(traineeIdentity.getEmail())
+        .role(TraineeIdentity.ROLE)
+        .build();
+    AbstractAuditedForm.Status.StatusDetail statusDetail = mapper.toStatusDetail(detail);
+    log.info("Submitting form {} for trainee [{}]", formId, traineeId);
+    form.setLifecycleState(LifecycleState.SUBMITTED, statusDetail, modifiedBy, form.getRevision());
+    LtftForm savedForm = ltftFormRepository.save(form);
+    return Optional.of(mapper.toDto(savedForm, null));
   }
 }

@@ -158,7 +158,7 @@ public record LtftFormDto(
      * Form status information.
      *
      * @param state      The lifecycle state of the form.
-     * @param detail     Any status detail.
+     * @param detail     Status reason detail.
      * @param modifiedBy The Person who made this status change.
      * @param timestamp  The timestamp of the status change.
      * @param revision   The revision number associated with this status change.
@@ -167,11 +167,25 @@ public record LtftFormDto(
     public record StatusInfoDto(
 
         LifecycleState state,
-        String detail,
+        LftfStatusInfoDetailDto detail,
         PersonDto modifiedBy,
         Instant timestamp,
         Integer revision
     ) {
+
+    }
+
+    /**
+     * A DTO for state change details.
+     *
+     * @param reason  The reason for the state change.
+     * @param message A message associated with the state change.
+     */
+    @Builder
+    public record LftfStatusInfoDetailDto(
+
+        String reason,
+        String message) {
 
     }
   }

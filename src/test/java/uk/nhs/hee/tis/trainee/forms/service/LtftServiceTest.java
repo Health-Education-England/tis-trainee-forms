@@ -25,6 +25,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -87,6 +88,9 @@ import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 class LtftServiceTest {
 
   private static final String TRAINEE_ID = "40";
+  private static final String TRAINEE_EMAIL = "email";
+  private static final String TRAINEE_NAME = "name";
+  private static final String TRAINEE_ROLE = TraineeIdentity.ROLE;
   private static final String ADMIN_GROUP = "abc-123";
   private static final UUID ID = UUID.randomUUID();
 
@@ -101,6 +105,8 @@ class LtftServiceTest {
 
     TraineeIdentity traineeIdentity = new TraineeIdentity();
     traineeIdentity.setTraineeId(TRAINEE_ID);
+    traineeIdentity.setEmail(TRAINEE_EMAIL);
+    traineeIdentity.setName(TRAINEE_NAME);
 
     ltftRepository = mock(LtftFormRepository.class);
 
@@ -648,7 +654,9 @@ class LtftServiceTest {
     entity.setStatus(Status.builder()
         .current(StatusInfo.builder()
             .state(LifecycleState.SUBMITTED)
-            .detail("Submitted Detail")
+            .detail(AbstractAuditedForm.Status.StatusDetail.builder()
+                .reason("Submitted Detail")
+                .build())
             .timestamp(Instant.EPOCH)
             .revision(1)
             .modifiedBy(Person.builder()
@@ -660,7 +668,9 @@ class LtftServiceTest {
         .history(List.of(
             StatusInfo.builder()
                 .state(LifecycleState.DRAFT)
-                .detail("Draft Detail")
+                .detail(AbstractAuditedForm.Status.StatusDetail.builder()
+                    .reason("Draft Detail")
+                    .build())
                 .timestamp(Instant.MIN)
                 .revision(0)
                 .modifiedBy(Person.builder()
@@ -671,7 +681,9 @@ class LtftServiceTest {
                 .build(),
             StatusInfo.builder()
                 .state(LifecycleState.SUBMITTED)
-                .detail("Submitted Detail")
+                .detail(AbstractAuditedForm.Status.StatusDetail.builder()
+                    .reason("Submitted Detail")
+                    .build())
                 .timestamp(Instant.EPOCH)
                 .revision(1)
                 .modifiedBy(Person.builder()
@@ -695,7 +707,7 @@ class LtftServiceTest {
     StatusDto status = dto.status();
     StatusInfoDto currentStatus = status.current();
     assertThat("Unexpected state.", currentStatus.state(), is(LifecycleState.SUBMITTED));
-    assertThat("Unexpected detail.", currentStatus.detail(), is("Submitted Detail"));
+    assertThat("Unexpected detail.", currentStatus.detail().reason(), is("Submitted Detail"));
     assertThat("Unexpected timestamp.", currentStatus.timestamp(), is(Instant.EPOCH));
     assertThat("Unexpected revision.", currentStatus.revision(), is(1));
 
@@ -709,7 +721,7 @@ class LtftServiceTest {
 
     StatusInfoDto history1 = statusHistory.get(0);
     assertThat("Unexpected state.", history1.state(), is(LifecycleState.DRAFT));
-    assertThat("Unexpected detail.", history1.detail(), is("Draft Detail"));
+    assertThat("Unexpected detail.", history1.detail().reason(), is("Draft Detail"));
     assertThat("Unexpected timestamp.", history1.timestamp(), is(Instant.MIN));
     assertThat("Unexpected revision.", history1.revision(), is(0));
 
@@ -720,7 +732,7 @@ class LtftServiceTest {
 
     StatusInfoDto history2 = statusHistory.get(1);
     assertThat("Unexpected state.", history2.state(), is(LifecycleState.SUBMITTED));
-    assertThat("Unexpected detail.", history2.detail(), is("Submitted Detail"));
+    assertThat("Unexpected detail.", history2.detail().reason(), is("Submitted Detail"));
     assertThat("Unexpected timestamp.", history2.timestamp(), is(Instant.EPOCH));
     assertThat("Unexpected revision.", history2.revision(), is(1));
 
@@ -892,9 +904,7 @@ class LtftServiceTest {
     LtftForm form = new LtftForm();
     form.setId(ID);
     form.setTraineeTisId(TRAINEE_ID);
-    AbstractAuditedForm.Status.StatusInfo statusInfo
-        = AbstractAuditedForm.Status.StatusInfo.builder().state(lifecycleState).build();
-    form.setStatus(new AbstractAuditedForm.Status(statusInfo, List.of(statusInfo)));
+    form.setLifecycleState(lifecycleState);
 
     when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
 
@@ -910,9 +920,7 @@ class LtftServiceTest {
     LtftForm form = new LtftForm();
     form.setId(ID);
     form.setTraineeTisId(TRAINEE_ID);
-    AbstractAuditedForm.Status.StatusInfo statusInfo
-        = AbstractAuditedForm.Status.StatusInfo.builder().state(LifecycleState.DRAFT).build();
-    form.setStatus(new AbstractAuditedForm.Status(statusInfo, List.of(statusInfo)));
+    form.setLifecycleState(LifecycleState.DRAFT);
 
     when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
 
@@ -921,5 +929,78 @@ class LtftServiceTest {
     assertThat("Unexpected empty result when form is deleted.", result.isEmpty(), is(false));
     assertThat("Expected true result when form is deleted.", result.get(), is(true));
     verify(ltftRepository).deleteById(ID);
+  }
+
+  @Test
+  void shouldReturnEmptyWhenFormNotFoundForSubmission() {
+    when(ltftRepository.findByTraineeTisIdAndId(any(), any())).thenReturn(Optional.empty());
+
+    Optional<LtftFormDto> result = service.submitLtftForm(ID, null);
+
+    assertThat("Unexpected result when form not found.", result.isEmpty(), is(true));
+  }
+
+  @Test
+  void shouldReturnEmptyWhenFormCannotTransitionToSubmitted() {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(LifecycleState.APPROVED);
+    form.setContent(LtftContent.builder().name("test").build());
+
+    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+
+    Optional<LtftFormDto> result = service.submitLtftForm(ID, null);
+
+    assertThat("Unexpected result when form cannot transition to SUBMITTED.", result.isEmpty(),
+        is(true));
+  }
+
+  @Test
+  void shouldSubmitFormWhenValidTransition() {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(LifecycleState.DRAFT);
+    form.setContent(LtftContent.builder().name("test").build());
+
+    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+    when(ltftRepository.save(any())).thenReturn(form);
+
+    Optional<LtftFormDto> result = service.submitLtftForm(ID, null);
+
+    assertThat("Unexpected result when form is submitted.", result.isPresent(), is(true));
+    verify(ltftRepository).save(form);
+  }
+
+  @Test
+  void shouldSubmitFormWithStatusDetail() {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setRevision(2);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(LifecycleState.DRAFT);
+    form.setContent(LtftContent.builder().name("test").build());
+
+    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
+        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+
+    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+    when(ltftRepository.save(any())).thenReturn(form);
+
+    Optional<LtftFormDto> result = service.submitLtftForm(ID, detail);
+
+    assertThat("Unexpected result when form is submitted with status detail.", result.isPresent(),
+        is(true));
+    Person expectedModifiedBy = new Person(TRAINEE_NAME, TRAINEE_EMAIL, TRAINEE_ROLE);
+    AbstractAuditedForm.Status.StatusDetail statusDetail = mapper.toStatusDetail(detail);
+    AbstractAuditedForm.Status.StatusInfo newFormState = form.getStatus().current();
+    assertThat("Unexpected status detail.", newFormState.detail(), is(statusDetail));
+    assertThat("Unexpected status modified by.", newFormState.modifiedBy(),
+        is(expectedModifiedBy));
+    assertThat("Unexpected status modified timestamp.", newFormState.timestamp(),
+        is(notNullValue()));
+    assertThat("Unexpected form revision.", form.getRevision(), is(2));
+    verify(ltftRepository).save(form);
   }
 }

@@ -44,6 +44,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctChangeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
@@ -160,6 +161,16 @@ public abstract class LtftMapper {
   @InheritInverseConfiguration
   @Mapping(target = "content", source = "dto")
   public abstract LtftForm toEntity(LtftFormDto dto);
+
+  /**
+   * Convert a {@link LtftFormDto.StatusDto.LftfStatusInfoDetailDto} to a
+   * {@link AbstractAuditedForm.Status.StatusDetail}.
+   *
+   * @param dto The DTO to convert.
+   * @return The equivalent status detail.
+   */
+  public abstract AbstractAuditedForm.Status.StatusDetail toStatusDetail(
+      LtftFormDto.StatusDto.LftfStatusInfoDetailDto dto);
 
   /**
    * Joins a list of strings with a comma, sorted alphabetically for consistency.
