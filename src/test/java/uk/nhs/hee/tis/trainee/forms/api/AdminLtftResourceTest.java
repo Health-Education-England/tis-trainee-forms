@@ -27,6 +27,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.sameInstance;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -34,6 +35,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.MediaType.TEXT_PLAIN;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROVED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
@@ -50,6 +52,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedModel;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -160,6 +163,38 @@ class AdminLtftResourceTest {
     when(service.getAdminLtftDetail(id)).thenReturn(Optional.of(dto));
 
     ResponseEntity<LtftFormDto> response = controller.getLtftAdminDetail(id);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), sameInstance(dto));
+  }
+
+  @Test
+  void shouldThrowExceptionWhenApprovalNotValid() throws MethodArgumentNotValidException {
+    UUID id = UUID.randomUUID();
+    when(service.updateStatusAsAdmin(id, APPROVED, null)).thenThrow(
+        MethodArgumentNotValidException.class);
+
+    assertThrows(MethodArgumentNotValidException.class, () -> controller.approveLtft(id));
+  }
+
+  @Test
+  void shouldReturnNotFoundWhenApprovalFormNotFound() throws MethodArgumentNotValidException {
+    UUID id = UUID.randomUUID();
+    when(service.updateStatusAsAdmin(id, APPROVED, null)).thenReturn(Optional.empty());
+
+    ResponseEntity<LtftFormDto> response = controller.approveLtft(id);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(NOT_FOUND));
+    assertThat("Unexpected response body.", response.getBody(), nullValue());
+  }
+
+  @Test
+  void shouldReturnApprovedFormWhenFormApproved() throws MethodArgumentNotValidException {
+    UUID id = UUID.randomUUID();
+    LtftFormDto dto = LtftFormDto.builder().id(id).build();
+    when(service.updateStatusAsAdmin(id, APPROVED, null)).thenReturn(Optional.of(dto));
+
+    ResponseEntity<LtftFormDto> response = controller.approveLtft(id);
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), sameInstance(dto));

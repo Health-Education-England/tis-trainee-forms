@@ -21,6 +21,8 @@
 
 package uk.nhs.hee.tis.trainee.forms.api;
 
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROVED;
+
 import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.util.Optional;
 import java.util.Set;
@@ -33,8 +35,10 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.data.web.PagedModel;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -98,5 +102,19 @@ public class AdminLtftResource {
   ResponseEntity<LtftFormDto> getLtftAdminDetail(@PathVariable UUID id) {
     Optional<LtftFormDto> formDetail = service.getAdminLtftDetail(id);
     return ResponseEntity.of(formDetail);
+  }
+
+  /**
+   * Approve the form with the given ID, must be associated with the user's local office.
+   *
+   * @param id The ID of the form to approve.
+   * @return The approved form.
+   * @throws MethodArgumentNotValidException When the state transition was not valid.
+   */
+  @PutMapping("/{id}/approve")
+  ResponseEntity<LtftFormDto> approveLtft(@PathVariable UUID id)
+      throws MethodArgumentNotValidException {
+    Optional<LtftFormDto> form = service.updateStatusAsAdmin(id, APPROVED, null);
+    return ResponseEntity.of(form);
   }
 }

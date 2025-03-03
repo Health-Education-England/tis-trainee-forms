@@ -241,7 +241,7 @@ public class LtftService {
    *
    * @param formId The id of the LTFT form to delete.
    * @return Optional empty if the form was not found, true if the form was deleted, or false if it
-   *         was not in a permitted state to delete.
+   *     was not in a permitted state to delete.
    */
   public Optional<Boolean> deleteLtftForm(UUID formId) {
     String traineeId = traineeIdentity.getTraineeId();
@@ -281,7 +281,7 @@ public class LtftService {
    * @param formId The id of the LTFT form to unsubmit.
    * @param detail The status detail for the unsubmission.
    * @return The DTO of the unsubmitted form, or empty if form not found or could not be
-   *         unsubmitted.
+   *     unsubmitted.
    */
   public Optional<LtftFormDto> unsubmitLtftForm(UUID formId, LftfStatusInfoDetailDto detail) {
     return changeLtftFormState(formId, detail, UNSUBMITTED);
@@ -322,11 +322,40 @@ public class LtftService {
     LtftForm form = formOptional.get();
 
     try {
-      Optional<LtftForm> updatedForm = updateStatus(form, targetState, traineeIdentity, detail);
-      return updatedForm.map(mapper::toDto);
+      LtftForm updatedForm = updateStatus(form, targetState, traineeIdentity, detail);
+      return Optional.of(mapper.toDto(updatedForm));
     } catch (MethodArgumentNotValidException e) {
-      log.info("Form {} was not in a permitted state to submit [{}]", formId,
-          form.getLifecycleState());
+      return Optional.empty();
+    }
+  }
+
+  /**
+   * Update the status of an LTFT form as an admin, the form must be associated with the admin's
+   * local office.
+   *
+   * @param formId The ID of the form to update the status of.
+   * @param state  The new state.
+   * @param detail A detailed reason for the change, may be null.
+   * @return The updated LTFT application, empty if the form did not exist or did not belong to the
+   *     admin's local office.
+   * @throws MethodArgumentNotValidException If the state transition is not allowed.
+   */
+  public Optional<LtftFormDto> updateStatusAsAdmin(UUID formId, LifecycleState state,
+      LftfStatusInfoDetailDto detail) throws MethodArgumentNotValidException {
+    log.info("Updating LTFT form {} as admin [{}]: New state = {}", formId,
+        adminIdentity.getEmail(), state);
+
+    Set<String> dbcs = adminIdentity.getGroups();
+    Optional<LtftForm> form =
+        ltftFormRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(formId,
+            dbcs);
+
+    if (form.isPresent()) {
+      LtftForm updatedForm = updateStatus(form.get(), state, adminIdentity, detail);
+      return Optional.of(mapper.toDto(updatedForm));
+    } else {
+      log.warn("Could not update form {} since no form exists with this ID for DBCs [{}]",
+          formId, dbcs);
       return Optional.empty();
     }
   }
@@ -341,23 +370,28 @@ public class LtftService {
    * @return The updated LTFT application.
    * @throws MethodArgumentNotValidException If the state transition is not allowed.
    */
-  private Optional<LtftForm> updateStatus(LtftForm form, LifecycleState targetState,
+  private LtftForm updateStatus(LtftForm form, LifecycleState targetState,
       UserIdentity identity, @Nullable LftfStatusInfoDetailDto detail)
       throws MethodArgumentNotValidException {
 
-    if (targetState.isRequiresDetails() && (detail == null || detail.reason() == null)) {
-      log.info("Form {} requires a reason to change to state [{}]", form.getId(), targetState);
-      return Optional.empty();
-    }
-
     if (!LifecycleState.canTransitionTo(form, targetState)) {
-      BeanPropertyBindingResult result = new BeanPropertyBindingResult(form, "form");
-      result.addError(new FieldError("LtftForm", "status.current.state",
-          "can not be transitioned to %s".formatted(targetState)));
-
       log.warn(
           "Could not update form {}, invalid lifecycle transition from {} to {} for form type '{}'",
           form.getId(), form.getStatus().current().state(), targetState, form.getFormType());
+
+      BeanPropertyBindingResult result = new BeanPropertyBindingResult(form, "form");
+      result.addError(new FieldError("LtftForm", "status.current.state",
+          "can not be transitioned to %s".formatted(targetState)));
+      throw new MethodArgumentNotValidException(null, result);
+    }
+
+    if (targetState.isRequiresDetails() && (detail == null || detail.reason() == null)) {
+      log.warn("Form {} requires a reason to change to state [{}]", form.getId(), targetState);
+
+      BeanPropertyBindingResult result = new BeanPropertyBindingResult(detail, "detail");
+      String field = detail == null ? "detail" : "detail.reason";
+      result.addError(new FieldError("StatusInfo", field,
+          "must not be null when transitioning to %s".formatted(targetState)));
 
       throw new MethodArgumentNotValidException(null, result);
     }
@@ -370,7 +404,6 @@ public class LtftService {
         .role(identity.getRole())
         .build();
     form.setLifecycleState(targetState, detailEntity, modifiedBy, form.getRevision());
-    LtftForm savedForm = ltftFormRepository.save(form);
-    return Optional.of(savedForm);
+    return ltftFormRepository.save(form);
   }
 }
