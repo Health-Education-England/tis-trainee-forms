@@ -214,16 +214,64 @@ class LtftResourceTest {
 
   @Test
   void shouldReturnSubmittedLtftFormWhenSubmitted() {
-    LtftFormDto submittedForm = LtftFormDto.builder()
+    LtftFormDto form = LtftFormDto.builder()
         .id(ID)
         .traineeTisId("some trainee")
         .build();
-    when(service.submitLtftForm(any(), any())).thenReturn(Optional.of(submittedForm));
+    when(service.submitLtftForm(any(), any())).thenReturn(Optional.of(form));
 
     ResponseEntity<LtftFormDto> response = controller.submitLtft(ID, null);
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     LtftFormDto responseDto = response.getBody();
-    assertThat("Unexpected response body.", responseDto, is(submittedForm));
+    assertThat("Unexpected response body.", responseDto, is(form));
+  }
+
+  @Test
+  void shouldReturnBadRequestWhenServiceWontUnsubmitLtftForm() {
+    when(service.unsubmitLtftForm(any(), any())).thenReturn(Optional.empty());
+
+    ResponseEntity<LtftFormDto> response = controller.unsubmitLtft(ID, null);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(BAD_REQUEST));
+  }
+
+  @Test
+  void shouldReturnUnsubmittedLtftFormWhenUnsubmitted() {
+    LtftFormDto form = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId("some trainee")
+        .build();
+    when(service.unsubmitLtftForm(any(), any())).thenReturn(Optional.of(form));
+
+    ResponseEntity<LtftFormDto> response = controller.unsubmitLtft(ID, null);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    LtftFormDto responseDto = response.getBody();
+    assertThat("Unexpected response body.", responseDto, is(form));
+  }
+
+  @Test
+  void shouldReturnBadRequestWhenServiceWontWithdrawLtftForm() {
+    when(service.withdrawLtftForm(any(), any())).thenReturn(Optional.empty());
+
+    ResponseEntity<LtftFormDto> response = controller.withdrawLtft(ID, null);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(BAD_REQUEST));
+  }
+
+  @Test
+  void shouldReturnWithdrawnLtftFormWhenWithdrawn() {
+    LtftFormDto form = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId("some trainee")
+        .build();
+    when(service.withdrawLtftForm(any(), any())).thenReturn(Optional.of(form));
+
+    ResponseEntity<LtftFormDto> response = controller.withdrawLtft(ID, null);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    LtftFormDto responseDto = response.getBody();
+    assertThat("Unexpected response body.", responseDto, is(form));
   }
 }

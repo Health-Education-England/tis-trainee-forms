@@ -32,17 +32,20 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URI;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -51,6 +54,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -95,35 +99,46 @@ class LtftResourceIntegrationTest {
     template.findAllAndRemove(new Query(), LtftForm.class);
   }
 
-  @Test
-  void shouldBeForbiddenFromGettingLtftFormWhenNoToken() throws Exception {
-    mockMvc.perform(get("/api/ltft/formX"))
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      GET | /api/ltft/formX
+      """)
+  void shouldReturnForbiddenWhenNoToken(HttpMethod method, URI uri) throws Exception {
+    mockMvc.perform(request(method, uri))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$").doesNotExist());
   }
 
-  @Test
-  void shouldBeForbiddenFromGettingLtftFormWhenTokenLacksTraineeId() throws Exception {
-    String token = TestJwtUtil.generateToken("{}");
-    mockMvc.perform(get("/api/ltft/formX")
-            .header(HttpHeaders.AUTHORIZATION, token))
-        .andExpect(status().isForbidden())
-        .andExpect(jsonPath("$").doesNotExist());
-  }
-
-  @Test
-  void shouldBeForbiddenFromCreatingLtftFormWhenNoToken() throws Exception {
-    mockMvc.perform(post("/api/ltft")
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      POST | /api/ltft
+      PUT  | /api/ltft/ec5c8db7-9848-419b-85ce-c5b53b1e3794
+      PUT  | /api/ltft/ec5c8db7-9848-419b-85ce-c5b53b1e3794/submit
+      PUT  | /api/ltft/ec5c8db7-9848-419b-85ce-c5b53b1e3794/unsubmit
+      PUT  | /api/ltft/ec5c8db7-9848-419b-85ce-c5b53b1e3794/withdraw
+      """)
+  void shouldReturnForbiddenWhenNoTokenInUpdateRequests(HttpMethod method, URI uri)
+      throws Exception {
+    mockMvc.perform(request(method, uri)
             .contentType(MediaType.APPLICATION_JSON)
             .content("{}"))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$").doesNotExist());
   }
 
-  @Test
-  void shouldBeForbiddenFromCreatingLtftFormWhenTokenLacksTraineeId() throws Exception {
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      POST | /api/ltft
+      PUT  | /api/ltft/ec5c8db7-9848-419b-85ce-c5b53b1e3794
+      PUT  | /api/ltft/ec5c8db7-9848-419b-85ce-c5b53b1e3794/submit
+      PUT  | /api/ltft/ec5c8db7-9848-419b-85ce-c5b53b1e3794/unsubmit
+      PUT  | /api/ltft/ec5c8db7-9848-419b-85ce-c5b53b1e3794/withdraw
+      """)
+  void shouldReturnForbiddenWhenTokenLacksTraineeIdInUpdateRequests(HttpMethod method, URI uri)
+      throws Exception {
     String token = TestJwtUtil.generateToken("{}");
-    mockMvc.perform(post("/api/ltft")
+    mockMvc.perform(request(method, uri)
             .header(HttpHeaders.AUTHORIZATION, token)
             .contentType(MediaType.APPLICATION_JSON)
             .content("{}"))
@@ -131,23 +146,37 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$").doesNotExist());
   }
 
-  @Test
-  void shouldBeForbiddenFromUpdatingLtftFormWhenNoToken() throws Exception {
-    mockMvc.perform(put("/api/ltft/someId")
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      PUT  | /api/ltft/ec5c8db7-9848-419b-85ce-c5b53b1e3794
+      PUT  | /api/ltft/ec5c8db7-9848-419b-85ce-c5b53b1e3794/submit
+      PUT  | /api/ltft/ec5c8db7-9848-419b-85ce-c5b53b1e3794/unsubmit
+      PUT  | /api/ltft/ec5c8db7-9848-419b-85ce-c5b53b1e3794/withdraw
+      """)
+  void shouldReturnBadRequestWhenUpdatingFormOwnedByDifferentTrainee(HttpMethod method, URI uri)
+      throws Exception {
+    LtftFormDto form = LtftFormDto.builder()
+        .id(UUID.fromString("ec5c8db7-9848-419b-85ce-c5b53b1e3794"))
+        .traineeTisId("another trainee")
+        .build();
+    String formToUpdateJson = mapper.writeValueAsString(form);
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(request(method, uri)
+            .header(HttpHeaders.AUTHORIZATION, token)
             .contentType(MediaType.APPLICATION_JSON)
-            .content("{}"))
-        .andExpect(status().isForbidden())
+            .content(formToUpdateJson))
+        .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$").doesNotExist());
   }
 
   @Test
-  void shouldBeForbiddenFromUpdatingLtftFormWhenTokenLacksTraineeId() throws Exception {
-    String token = TestJwtUtil.generateToken("{}");
-    mockMvc.perform(put("/api/ltft/someId")
+  void shouldBeBadRequestWhenCreatingLtftFormForDifferentTrainee() throws Exception {
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(post("/api/ltft")
             .header(HttpHeaders.AUTHORIZATION, token)
             .contentType(MediaType.APPLICATION_JSON)
-            .content("{}"))
-        .andExpect(status().isForbidden())
+            .content("{\"traineeTisId\": \"another id\"}"))
+        .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$").doesNotExist());
   }
 
@@ -208,17 +237,6 @@ class LtftResourceIntegrationTest {
   }
 
   @Test
-  void shouldBeBadRequestWhenCreatingLtftFormForDifferentTrainee() throws Exception {
-    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
-    mockMvc.perform(post("/api/ltft")
-            .header(HttpHeaders.AUTHORIZATION, token)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content("{\"traineeTisId\": \"another id\"}"))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$").doesNotExist());
-  }
-
-  @Test
   void shouldBeBadRequestWhenCreatingLtftFormWithId() throws Exception {
     LtftFormDto formToSave = LtftFormDto.builder()
         .id(ID)
@@ -263,22 +281,6 @@ class LtftResourceIntegrationTest {
     assertThat("Unexpected saved record trainee id.", savedRecords.get(0).getTraineeTisId(),
         is(TRAINEE_ID));
     assertThat("Unexpected saved record id.", savedRecords.get(0).getId(), is(notNullValue()));
-  }
-
-  @Test
-  void shouldBeBadRequestWhenUpdatingLtftFormForDifferentTrainee() throws Exception {
-    LtftFormDto formToUpdate = LtftFormDto.builder()
-        .id(ID)
-        .traineeTisId("another trainee")
-        .build();
-    String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
-    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
-    mockMvc.perform(put("/api/ltft/" + ID)
-            .header(HttpHeaders.AUTHORIZATION, token)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(formToUpdateJson))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$").doesNotExist());
   }
 
   @Test
@@ -411,42 +413,6 @@ class LtftResourceIntegrationTest {
         is(0L));
   }
 
-  @Test
-  void shouldBeForbiddenFromSubmittingLtftFormWhenNoToken() throws Exception {
-    mockMvc.perform(put("/api/ltft/{id}/submit", ID)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content("{}"))
-        .andExpect(status().isForbidden())
-        .andExpect(jsonPath("$").doesNotExist());
-  }
-
-  @Test
-  void shouldBeForbiddenFromSubmittingLtftFormWhenTokenLacksTraineeId() throws Exception {
-    String token = TestJwtUtil.generateToken("{}");
-    mockMvc.perform(put("/api/ltft/{id}/submit", ID)
-            .header(HttpHeaders.AUTHORIZATION, token)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content("{}"))
-        .andExpect(status().isForbidden())
-        .andExpect(jsonPath("$").doesNotExist());
-  }
-
-  @Test
-  void shouldReturnBadRequestWhenSubmittingLtftFormNotOwnedByUser() throws Exception {
-    LtftForm ltft = new LtftForm();
-    ltft.setId(ID);
-    ltft.setTraineeTisId("another trainee");
-    template.insert(ltft);
-
-    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
-    mockMvc.perform(put("/api/ltft/{id}/submit", ID)
-            .header(HttpHeaders.AUTHORIZATION, token)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content("{}"))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$").doesNotExist());
-  }
-
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = {"DRAFT", "UNSUBMITTED"})
   void shouldReturnBadRequestWhenSubmittingLtftFormInInvalidState(LifecycleState state)
@@ -489,6 +455,136 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.id").value(ID.toString()))
         .andExpect(jsonPath("$.traineeTisId").value(TRAINEE_ID))
         .andExpect(jsonPath("$.status.current.state").value(LifecycleState.SUBMITTED.name()))
+        .andExpect(jsonPath("$.status.current.detail.reason").value("reason"))
+        .andExpect(jsonPath("$.status.current.detail.message").value("message"))
+        .andExpect(jsonPath("$.status.current.modifiedBy.name").value("given family"))
+        .andExpect(jsonPath("$.status.current.modifiedBy.email").value("email"))
+        .andExpect(jsonPath("$.status.current.modifiedBy.role").value(TraineeIdentity.ROLE));
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      PUT  | /api/ltft/ec5c8db7-9848-419b-85ce-c5b53b1e3794/unsubmit
+      PUT  | /api/ltft/ec5c8db7-9848-419b-85ce-c5b53b1e3794/withdraw
+      """)
+  void shouldReturnForbiddenWhenNoRequiredDetailInUpdateRequests(HttpMethod method, URI uri)
+      throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setId(UUID.fromString("ec5c8db7-9848-419b-85ce-c5b53b1e3794"));
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setLifecycleState(LifecycleState.SUBMITTED);
+    ltft.setContent(LtftContent.builder().name("test").build());
+    template.insert(ltft);
+
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+
+    mockMvc.perform(request(method, uri)
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = {"SUBMITTED"})
+  void shouldReturnBadRequestWhenUnsubmittingLtftFormInInvalidState(LifecycleState state)
+      throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setId(ID);
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setLifecycleState(state);
+    ltft.setContent(LtftContent.builder().name("test").build());
+    template.insert(ltft);
+
+    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
+        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+    String detailJson = mapper.writeValueAsString(detail);
+
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(put("/api/ltft/{id}/unsubmit", ID)
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(detailJson))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"SUBMITTED"})
+  void shouldUnsubmitLtftForm(LifecycleState state) throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setId(ID);
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setLifecycleState(state);
+    ltft.setContent(LtftContent.builder().name("test").build());
+    template.insert(ltft);
+
+    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
+        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+    String detailJson = mapper.writeValueAsString(detail);
+    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID, "email", "given", "family");
+    mockMvc.perform(put("/api/ltft/{id}/unsubmit", ID)
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(detailJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(ID.toString()))
+        .andExpect(jsonPath("$.traineeTisId").value(TRAINEE_ID))
+        .andExpect(jsonPath("$.status.current.state").value(LifecycleState.UNSUBMITTED.name()))
+        .andExpect(jsonPath("$.status.current.detail.reason").value("reason"))
+        .andExpect(jsonPath("$.status.current.detail.message").value("message"))
+        .andExpect(jsonPath("$.status.current.modifiedBy.name").value("given family"))
+        .andExpect(jsonPath("$.status.current.modifiedBy.email").value("email"))
+        .andExpect(jsonPath("$.status.current.modifiedBy.role").value(TraineeIdentity.ROLE));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = {"SUBMITTED", "UNSUBMITTED"})
+  void shouldReturnBadRequestWhenWithdrawingLtftFormInInvalidState(LifecycleState state)
+      throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setId(ID);
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setLifecycleState(state);
+    ltft.setContent(LtftContent.builder().name("test").build());
+    template.insert(ltft);
+
+    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
+        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+    String detailJson = mapper.writeValueAsString(detail);
+
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(put("/api/ltft/{id}/withdraw", ID)
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(detailJson))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"SUBMITTED", "UNSUBMITTED"})
+  void shouldWithdrawLtftForm(LifecycleState state) throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setId(ID);
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setLifecycleState(state);
+    ltft.setContent(LtftContent.builder().name("test").build());
+    template.insert(ltft);
+
+    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
+        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+    String detailJson = mapper.writeValueAsString(detail);
+    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID, "email", "given", "family");
+    mockMvc.perform(put("/api/ltft/{id}/withdraw", ID)
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(detailJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(ID.toString()))
+        .andExpect(jsonPath("$.traineeTisId").value(TRAINEE_ID))
+        .andExpect(jsonPath("$.status.current.state").value(LifecycleState.WITHDRAWN.name()))
         .andExpect(jsonPath("$.status.current.detail.reason").value("reason"))
         .andExpect(jsonPath("$.status.current.detail.message").value("message"))
         .andExpect(jsonPath("$.status.current.modifiedBy.name").value("given family"))

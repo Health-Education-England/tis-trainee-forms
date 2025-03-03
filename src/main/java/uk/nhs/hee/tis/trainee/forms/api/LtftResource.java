@@ -122,6 +122,38 @@ public class LtftResource {
   }
 
   /**
+   * Allow a trainee to unsubmit an existing LTFT form.
+   *
+   * @param formId The id of the LTFT form to unsubmit.
+   *
+   * @return The DTO of the unsubmitted form, or a bad request if the form could not be unsubmitted.
+   */
+  @PutMapping("/{formId}/unsubmit")
+  public ResponseEntity<LtftFormDto> unsubmitLtft(@PathVariable UUID formId,
+      @RequestBody LtftFormDto.StatusDto.LftfStatusInfoDetailDto reason) {
+    log.info("Request to unsubmit LTFT form {} with reason {}.", formId, reason);
+    Optional<LtftFormDto> unsubmittedLtft = service.unsubmitLtftForm(formId, reason);
+    return unsubmittedLtft.map(ResponseEntity::ok)
+        .orElseGet(() -> ResponseEntity.badRequest().build());
+  }
+
+  /**
+   * Allow a trainee to withdraw an existing LTFT form.
+   *
+   * @param formId The id of the LTFT form to unsubmit.
+   *
+   * @return The DTO of the withdrawn form, or a bad request if the form could not be withdrawn.
+   */
+  @PutMapping("/{formId}/withdraw")
+  public ResponseEntity<LtftFormDto> withdrawLtft(@PathVariable UUID formId,
+      @RequestBody LtftFormDto.StatusDto.LftfStatusInfoDetailDto reason) {
+    log.info("Request to withdraw LTFT form {} with reason {}.", formId, reason);
+    Optional<LtftFormDto> withdrawnLtft = service.withdrawLtftForm(formId, reason);
+    return withdrawnLtft.map(ResponseEntity::ok)
+        .orElseGet(() -> ResponseEntity.badRequest().build());
+  }
+
+  /**
    * Get an existing LTFT form.
    *
    * @param formId The id of the LTFT form to retrieve.
