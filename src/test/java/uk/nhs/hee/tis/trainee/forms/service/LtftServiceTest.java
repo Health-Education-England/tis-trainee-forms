@@ -60,6 +60,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.DiscussionsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.ProgrammeMembershipDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.ReasonsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
@@ -90,7 +91,7 @@ class LtftServiceTest {
   private static final String TRAINEE_ID = "40";
   private static final String TRAINEE_EMAIL = "email";
   private static final String TRAINEE_NAME = "name";
-  private static final String TRAINEE_ROLE = TraineeIdentity.ROLE;
+  private static final String TRAINEE_ROLE = "TRAINEE";
   private static final String ADMIN_GROUP = "abc-123";
   private static final UUID ID = UUID.randomUUID();
 
@@ -1171,8 +1172,8 @@ class LtftServiceTest {
   @EnumSource(value = LifecycleState.class, names = {"SUBMITTED", "UNSUBMITTED", "WITHDRAWN"})
   void shouldReturnEmptyWhenTransitionFormNotFound(LifecycleState targetState) {
     when(ltftRepository.findByTraineeTisIdAndId(any(), any())).thenReturn(Optional.empty());
-    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
-        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+    LftfStatusInfoDetailDto detail
+        = new LftfStatusInfoDetailDto("reason", "message");
 
     Optional<LtftFormDto> result = service.changeLtftFormState(ID, detail, targetState);
     assertThat("Unexpected transition result when form not found.", result.isPresent(), is(false));
@@ -1186,8 +1187,7 @@ class LtftServiceTest {
     form.setTraineeTisId(TRAINEE_ID);
     form.setLifecycleState(LifecycleState.APPROVED); //cannot transition to any of the given states
     form.setContent(LtftContent.builder().name("test").build());
-    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
-        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+    LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
 
     when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
 
@@ -1221,8 +1221,7 @@ class LtftServiceTest {
     form.setTraineeTisId(TRAINEE_ID);
     form.setLifecycleState(LifecycleState.SUBMITTED);
     form.setContent(LtftContent.builder().name("test").build());
-    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
-        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto(null, "message");
+    LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto(null, "message");
 
     when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
 
@@ -1259,8 +1258,7 @@ class LtftServiceTest {
     form.setLifecycleState(LifecycleState.DRAFT);
     form.setContent(LtftContent.builder().name("test").build());
 
-    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
-        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+    LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
 
     when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
     when(ltftRepository.save(any())).thenReturn(form);
@@ -1290,8 +1288,7 @@ class LtftServiceTest {
     form.setLifecycleState(LifecycleState.SUBMITTED);
     form.setContent(LtftContent.builder().name("test").build());
 
-    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
-        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+    LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
 
     when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
     when(ltftRepository.save(any())).thenReturn(form);
@@ -1321,8 +1318,7 @@ class LtftServiceTest {
     form.setLifecycleState(LifecycleState.SUBMITTED);
     form.setContent(LtftContent.builder().name("test").build());
 
-    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
-        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+    LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
 
     when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
     when(ltftRepository.save(any())).thenReturn(form);

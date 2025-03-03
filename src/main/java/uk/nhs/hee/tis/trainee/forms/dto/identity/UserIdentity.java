@@ -21,32 +21,21 @@
 
 package uk.nhs.hee.tis.trainee.forms.dto.identity;
 
-import java.util.Set;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 /**
- * Identity data for an authenticated TIS Admin user.
+ * An abstract representation of a user's identity.
  */
 @Data
-@EqualsAndHashCode(callSuper = true)
-public class AdminIdentity extends UserIdentity {
+public abstract class UserIdentity {
 
-  private static final String ROLE = "ADMIN";
-
-  private Set<String> groups;
+  private String email;
+  private String name;
 
   /**
-   * Whether the admin identity is considered complete based on the populated fields.
+   * Get the role of the user.
    *
-   * @return Whether the admin identity is considered complete.
+   * @return The role of the user.
    */
-  public boolean isComplete() {
-    return getEmail() != null && getName() != null && groups != null && !groups.isEmpty();
-  }
-
-  @Override
-  public String getRole() {
-    return ROLE;
-  }
+  public abstract String getRole();
 }

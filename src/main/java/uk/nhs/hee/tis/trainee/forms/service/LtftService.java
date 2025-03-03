@@ -22,8 +22,12 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
+import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -33,14 +37,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
+import uk.nhs.hee.tis.trainee.forms.dto.identity.UserIdentity;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
-import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
 import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
@@ -153,8 +162,8 @@ public class LtftService {
     Set<String> groups = adminIdentity.getGroups();
     log.info("Getting LTFT form {} for admin {} with DBCs [{}]", formId, adminIdentity.getEmail(),
         groups);
-    Optional<LtftForm> form = ltftFormRepository.
-        findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+    Optional<LtftForm> form = ltftFormRepository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             formId, Set.of(DRAFT), adminIdentity.getGroups());
     return form.map(mapper::toDto);
   }
@@ -262,9 +271,8 @@ public class LtftService {
    * @param detail The status detail for the submission.
    * @return The DTO of the submitted form, or empty if form not found or could not be submitted.
    */
-  public Optional<LtftFormDto> submitLtftForm(UUID formId,
-      LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail) {
-    return changeLtftFormState(formId, detail, LifecycleState.SUBMITTED);
+  public Optional<LtftFormDto> submitLtftForm(UUID formId, LftfStatusInfoDetailDto detail) {
+    return changeLtftFormState(formId, detail, SUBMITTED);
   }
 
   /**
@@ -275,9 +283,8 @@ public class LtftService {
    * @return The DTO of the unsubmitted form, or empty if form not found or could not be
    *         unsubmitted.
    */
-  public Optional<LtftFormDto> unsubmitLtftForm(UUID formId,
-      LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail) {
-    return changeLtftFormState(formId, detail, LifecycleState.UNSUBMITTED);
+  public Optional<LtftFormDto> unsubmitLtftForm(UUID formId, LftfStatusInfoDetailDto detail) {
+    return changeLtftFormState(formId, detail, UNSUBMITTED);
   }
 
   /**
@@ -287,11 +294,9 @@ public class LtftService {
    * @param detail The status detail for the withdrawal.
    * @return The DTO of the withdrawn form, or empty if form not found or could not be withdrawn.
    */
-  public Optional<LtftFormDto> withdrawLtftForm(UUID formId,
-      LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail) {
-    return changeLtftFormState(formId, detail, LifecycleState.WITHDRAWN);
+  public Optional<LtftFormDto> withdrawLtftForm(UUID formId, LftfStatusInfoDetailDto detail) {
+    return changeLtftFormState(formId, detail, WITHDRAWN);
   }
-
 
   /**
    * Change the state of the LTFT form with the given id.
@@ -300,10 +305,10 @@ public class LtftService {
    * @param detail      The status detail for the change.
    * @param targetState The state to change to.
    * @return The DTO of the form after the state change, or empty if form not found or could not be
-   *         changed to the target state.
+   *     changed to the target state.
    */
-  protected Optional<LtftFormDto> changeLtftFormState(UUID formId,
-      LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail, LifecycleState targetState) {
+  protected Optional<LtftFormDto> changeLtftFormState(UUID formId, LftfStatusInfoDetailDto detail,
+      LifecycleState targetState) {
     String traineeId = traineeIdentity.getTraineeId();
     Optional<LtftForm> formOptional = ltftFormRepository.findByTraineeTisIdAndId(traineeId, formId);
 
@@ -313,26 +318,59 @@ public class LtftService {
       return Optional.empty();
     }
 
+    log.info("Changing form {} state to {} for trainee [{}]", formId, targetState, traineeId);
     LtftForm form = formOptional.get();
-    if (!LifecycleState.canTransitionTo(form, targetState)) {
-      log.info("Form {} was not in a permitted state to change to [{}]", formId, targetState);
+
+    try {
+      Optional<LtftForm> updatedForm = updateStatus(form, targetState, traineeIdentity, detail);
+      return updatedForm.map(mapper::toDto);
+    } catch (MethodArgumentNotValidException e) {
+      log.info("Form {} was not in a permitted state to submit [{}]", formId,
+          form.getLifecycleState());
       return Optional.empty();
     }
+  }
+
+  /**
+   * Update the status of the LTFT, the current status and history will both be updated.
+   *
+   * @param form        The form to update the status of.
+   * @param targetState The state to change to.
+   * @param identity    Who is performing the status change.
+   * @param detail      A detailed reason for the change, may be null.
+   * @return The updated LTFT application.
+   * @throws MethodArgumentNotValidException If the state transition is not allowed.
+   */
+  private Optional<LtftForm> updateStatus(LtftForm form, LifecycleState targetState,
+      UserIdentity identity, @Nullable LftfStatusInfoDetailDto detail)
+      throws MethodArgumentNotValidException {
 
     if (targetState.isRequiresDetails() && (detail == null || detail.reason() == null)) {
-      log.info("Form {} requires a reason to change to state [{}]", formId, targetState);
+      log.info("Form {} requires a reason to change to state [{}]", form.getId(), targetState);
       return Optional.empty();
     }
 
+    if (!LifecycleState.canTransitionTo(form, targetState)) {
+      BeanPropertyBindingResult result = new BeanPropertyBindingResult(form, "form");
+      result.addError(new FieldError("LtftForm", "status.current.state",
+          "can not be transitioned to %s".formatted(targetState)));
+
+      log.warn(
+          "Could not update form {}, invalid lifecycle transition from {} to {} for form type '{}'",
+          form.getId(), form.getStatus().current().state(), targetState, form.getFormType());
+
+      throw new MethodArgumentNotValidException(null, result);
+    }
+
+    StatusDetail detailEntity = mapper.toStatusDetail(detail);
+
     Person modifiedBy = Person.builder()
-        .name(traineeIdentity.getName())
-        .email(traineeIdentity.getEmail())
-        .role(TraineeIdentity.ROLE)
+        .name(identity.getName())
+        .email(identity.getEmail())
+        .role(identity.getRole())
         .build();
-    AbstractAuditedForm.Status.StatusDetail statusDetail = mapper.toStatusDetail(detail);
-    log.info("Changing form {} state to {} for trainee [{}]", formId, targetState, traineeId);
-    form.setLifecycleState(targetState, statusDetail, modifiedBy, form.getRevision());
+    form.setLifecycleState(targetState, detailEntity, modifiedBy, form.getRevision());
     LtftForm savedForm = ltftFormRepository.save(form);
-    return Optional.of(mapper.toDto(savedForm));
+    return Optional.of(savedForm);
   }
 }
