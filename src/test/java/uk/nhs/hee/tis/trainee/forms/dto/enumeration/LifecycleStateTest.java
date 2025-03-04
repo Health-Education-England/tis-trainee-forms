@@ -247,6 +247,20 @@ class LifecycleStateTest {
         "Expected form transition to be disallowed if current state is null.");
   }
 
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE,
+      names = {"REJECTED", "UNSUBMITTED", "WITHDRAWN"})
+  void shouldRequireDetailToTransitionToState(LifecycleState state) {
+    assertTrue(state.isRequiresDetails(), "Expected " + state + " to require details.");
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE,
+      names = {"REJECTED", "UNSUBMITTED", "WITHDRAWN"})
+  void shouldNotRequireDetailToTransitionToState(LifecycleState state) {
+    assertFalse(state.isRequiresDetails(), "Expected " + state + " to not require details.");
+  }
+
   /**
    * A stub for testing the behaviour of the AbstractFormR transitions.
    */

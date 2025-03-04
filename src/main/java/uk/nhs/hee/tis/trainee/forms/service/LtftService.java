@@ -232,7 +232,7 @@ public class LtftService {
    *
    * @param formId The id of the LTFT form to delete.
    * @return Optional empty if the form was not found, true if the form was deleted, or false if it
-   *     was not in a permitted state to delete.
+   *         was not in a permitted state to delete.
    */
   public Optional<Boolean> deleteLtftForm(UUID formId) {
     String traineeId = traineeIdentity.getTraineeId();
@@ -256,26 +256,71 @@ public class LtftService {
   }
 
   /**
-   * Approve the LTFT form with the given id.
+   * Submit the LTFT form with the given id.
    *
-   * @param formId The id of the LTFT form to approve.
-   * @param detail The status detail for the approval.
-   * @return The DTO of the approved form, or empty if form not found or could not be approved.
+   * @param formId The id of the LTFT form to submit.
+   * @param detail The status detail for the submission.
+   * @return The DTO of the submitted form, or empty if form not found or could not be submitted.
    */
   public Optional<LtftFormDto> submitLtftForm(UUID formId,
       LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail) {
+    return changeLtftFormState(formId, detail, LifecycleState.SUBMITTED);
+  }
+
+  /**
+   * Unsubmit the LTFT form with the given id.
+   *
+   * @param formId The id of the LTFT form to unsubmit.
+   * @param detail The status detail for the unsubmission.
+   * @return The DTO of the unsubmitted form, or empty if form not found or could not be
+   *         unsubmitted.
+   */
+  public Optional<LtftFormDto> unsubmitLtftForm(UUID formId,
+      LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail) {
+    return changeLtftFormState(formId, detail, LifecycleState.UNSUBMITTED);
+  }
+
+  /**
+   * Withdraw the LTFT form with the given id.
+   *
+   * @param formId The id of the LTFT form to withdraw.
+   * @param detail The status detail for the withdrawal.
+   * @return The DTO of the withdrawn form, or empty if form not found or could not be withdrawn.
+   */
+  public Optional<LtftFormDto> withdrawLtftForm(UUID formId,
+      LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail) {
+    return changeLtftFormState(formId, detail, LifecycleState.WITHDRAWN);
+  }
+
+
+  /**
+   * Change the state of the LTFT form with the given id.
+   *
+   * @param formId      The id of the LTFT form to change.
+   * @param detail      The status detail for the change.
+   * @param targetState The state to change to.
+   * @return The DTO of the form after the state change, or empty if form not found or could not be
+   *         changed to the target state.
+   */
+  protected Optional<LtftFormDto> changeLtftFormState(UUID formId,
+      LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail, LifecycleState targetState) {
     String traineeId = traineeIdentity.getTraineeId();
     Optional<LtftForm> formOptional = ltftFormRepository.findByTraineeTisIdAndId(traineeId, formId);
 
     if (formOptional.isEmpty()) {
-      log.info("Did not find form {} for trainee [{}] to submit", formId, traineeId);
+      log.info("Did not find form {} for trainee [{}] to change state to {}",
+          formId, traineeId, targetState);
       return Optional.empty();
     }
 
     LtftForm form = formOptional.get();
-    if (!LifecycleState.canTransitionTo(form, LifecycleState.SUBMITTED)) {
-      log.info("Form {} was not in a permitted state to submit [{}]", formId,
-          form.getLifecycleState());
+    if (!LifecycleState.canTransitionTo(form, targetState)) {
+      log.info("Form {} was not in a permitted state to change to [{}]", formId, targetState);
+      return Optional.empty();
+    }
+
+    if (targetState.isRequiresDetails() && (detail == null || detail.reason() == null)) {
+      log.info("Form {} requires a reason to change to state [{}]", formId, targetState);
       return Optional.empty();
     }
 
@@ -285,8 +330,8 @@ public class LtftService {
         .role(TraineeIdentity.ROLE)
         .build();
     AbstractAuditedForm.Status.StatusDetail statusDetail = mapper.toStatusDetail(detail);
-    log.info("Submitting form {} for trainee [{}]", formId, traineeId);
-    form.setLifecycleState(LifecycleState.SUBMITTED, statusDetail, modifiedBy, form.getRevision());
+    log.info("Changing form {} state to {} for trainee [{}]", formId, targetState, traineeId);
+    form.setLifecycleState(targetState, statusDetail, modifiedBy, form.getRevision());
     LtftForm savedForm = ltftFormRepository.save(form);
     return Optional.of(mapper.toDto(savedForm));
   }

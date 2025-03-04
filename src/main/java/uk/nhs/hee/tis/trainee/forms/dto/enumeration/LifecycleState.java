@@ -22,6 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.dto.enumeration;
 
 import java.util.Set;
+import lombok.Getter;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractForm;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractFormR;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
@@ -37,6 +38,8 @@ public enum LifecycleState {
 
   private Set<Class<? extends AbstractForm>> allowedFormTypes;
   private Set<LifecycleState> allowedTransitions;
+  @Getter
+  private boolean requiresDetails; //requires details to enter this state
 
   // NOTE: allowedFormTypes can effectively disallow specific allowedTransitions.
   // Example:
@@ -45,24 +48,31 @@ public enum LifecycleState {
   static {
     APPROVED.allowedTransitions = Set.of();
     APPROVED.allowedFormTypes = Set.of(LtftForm.class);
+    APPROVED.requiresDetails = false;
 
     DELETED.allowedTransitions = Set.of();
     DELETED.allowedFormTypes = Set.of(AbstractFormR.class);
+    DELETED.requiresDetails = false;
 
     DRAFT.allowedTransitions = Set.of(SUBMITTED);
     DRAFT.allowedFormTypes = Set.of(AbstractForm.class);
+    DRAFT.requiresDetails = false;
 
     REJECTED.allowedTransitions = Set.of();
     REJECTED.allowedFormTypes = Set.of(LtftForm.class);
+    REJECTED.requiresDetails = true;
 
     SUBMITTED.allowedTransitions = Set.of(APPROVED, DELETED, REJECTED, UNSUBMITTED, WITHDRAWN);
     SUBMITTED.allowedFormTypes = Set.of(AbstractForm.class);
+    SUBMITTED.requiresDetails = false;
 
     UNSUBMITTED.allowedTransitions = Set.of(SUBMITTED, WITHDRAWN);
     UNSUBMITTED.allowedFormTypes = Set.of(AbstractForm.class);
+    UNSUBMITTED.requiresDetails = true;
 
     WITHDRAWN.allowedTransitions = Set.of();
     WITHDRAWN.allowedFormTypes = Set.of(LtftForm.class);
+    WITHDRAWN.requiresDetails = true;
   }
 
   /**

@@ -983,7 +983,7 @@ class LtftServiceTest {
 
     Optional<LtftFormDto> formDtoOptional = service.getLtftForm(ID);
 
-    assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
     verify(ltftRepository).findByTraineeTisIdAndId(any(), eq(ID));
     verifyNoMoreInteractions(ltftRepository);
   }
@@ -1010,7 +1010,7 @@ class LtftServiceTest {
 
     Optional<LtftFormDto> formDtoOptional = service.getLtftForm(ID);
 
-    assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(false));
+    assertThat("Unexpected empty form returned.", formDtoOptional.isPresent(), is(true));
     verify(ltftRepository).findByTraineeTisIdAndId(TRAINEE_ID, ID);
     LtftFormDto returnedFormDto = formDtoOptional.get();
     assertThat("Unexpected returned LTFT form.", returnedFormDto, is(mapper.toDto(form)));
@@ -1024,7 +1024,7 @@ class LtftServiceTest {
 
     Optional<LtftFormDto> formDtoOptional = service.saveLtftForm(dtoToSave);
 
-    assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
     verifyNoInteractions(ltftRepository);
   }
 
@@ -1054,7 +1054,7 @@ class LtftServiceTest {
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
 
-    assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
     verifyNoInteractions(ltftRepository);
   }
 
@@ -1068,7 +1068,7 @@ class LtftServiceTest {
     Optional<LtftFormDto> formDtoOptional
         = service.updateLtftForm(UUID.randomUUID(), dtoToSave);
 
-    assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
     verifyNoInteractions(ltftRepository);
   }
 
@@ -1081,7 +1081,7 @@ class LtftServiceTest {
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
 
-    assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
     verifyNoInteractions(ltftRepository);
   }
 
@@ -1097,7 +1097,7 @@ class LtftServiceTest {
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
 
-    assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
     verify(ltftRepository).findByTraineeTisIdAndId(TRAINEE_ID, ID);
     verifyNoMoreInteractions(ltftRepository);
   }
@@ -1130,7 +1130,8 @@ class LtftServiceTest {
 
     Optional<Boolean> result = service.deleteLtftForm(ID);
 
-    assertThat("Expected empty result when form not found to delete.", result.isEmpty(), is(true));
+    assertThat("Expected empty result when form not found to delete.", result.isPresent(),
+        is(false));
   }
 
   @ParameterizedTest
@@ -1145,7 +1146,7 @@ class LtftServiceTest {
 
     Optional<Boolean> result = service.deleteLtftForm(ID);
 
-    assertThat("Unexpected empty result when form is deleted.", result.isEmpty(), is(false));
+    assertThat("Unexpected empty result when form is deleted.", result.isPresent(), is(true));
     assertThat("Expected false result when form cannot transition to DELETED.", result.get(),
         is(false));
   }
@@ -1161,34 +1162,75 @@ class LtftServiceTest {
 
     Optional<Boolean> result = service.deleteLtftForm(ID);
 
-    assertThat("Unexpected empty result when form is deleted.", result.isEmpty(), is(false));
+    assertThat("Unexpected empty result when form is deleted.", result.isPresent(), is(true));
     assertThat("Expected true result when form is deleted.", result.get(), is(true));
     verify(ltftRepository).deleteById(ID);
   }
 
-  @Test
-  void shouldReturnEmptyWhenFormNotFoundForSubmission() {
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"SUBMITTED", "UNSUBMITTED", "WITHDRAWN"})
+  void shouldReturnEmptyWhenTransitionFormNotFound(LifecycleState targetState) {
     when(ltftRepository.findByTraineeTisIdAndId(any(), any())).thenReturn(Optional.empty());
+    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
+        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
 
-    Optional<LtftFormDto> result = service.submitLtftForm(ID, null);
-
-    assertThat("Unexpected result when form not found.", result.isEmpty(), is(true));
+    Optional<LtftFormDto> result = service.changeLtftFormState(ID, detail, targetState);
+    assertThat("Unexpected transition result when form not found.", result.isPresent(), is(false));
   }
 
-  @Test
-  void shouldReturnEmptyWhenFormCannotTransitionToSubmitted() {
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"SUBMITTED", "UNSUBMITTED", "WITHDRAWN"})
+  void shouldReturnEmptyWhenFormCannotTransitionToGivenState(LifecycleState targetState) {
     LtftForm form = new LtftForm();
     form.setId(ID);
     form.setTraineeTisId(TRAINEE_ID);
-    form.setLifecycleState(LifecycleState.APPROVED);
+    form.setLifecycleState(LifecycleState.APPROVED); //cannot transition to any of the given states
+    form.setContent(LtftContent.builder().name("test").build());
+    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
+        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+
+    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+
+    Optional<LtftFormDto> result = service.changeLtftFormState(ID, detail, targetState);
+    assertThat("Unexpected form transition.", result.isPresent(), is(false));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"UNSUBMITTED", "WITHDRAWN"})
+  void shouldReturnEmptyWhenFormCannotTransitionWithoutStatusDetail(LifecycleState targetState) {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(LifecycleState.SUBMITTED);
     form.setContent(LtftContent.builder().name("test").build());
 
     when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
 
-    Optional<LtftFormDto> result = service.submitLtftForm(ID, null);
+    Optional<LtftFormDto> result = service.changeLtftFormState(ID, null, targetState);
 
-    assertThat("Unexpected result when form cannot transition to SUBMITTED.", result.isEmpty(),
-        is(true));
+    assertThat("Unexpected form transition without status detail.", result.isPresent(), is(false));
+    verify(ltftRepository, never()).save(any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"UNSUBMITTED", "WITHDRAWN"})
+  void shouldReturnEmptyWhenFormCannotTransitionWithoutStatusDetailReason(
+      LifecycleState targetState) {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(LifecycleState.SUBMITTED);
+    form.setContent(LtftContent.builder().name("test").build());
+    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
+        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto(null, "message");
+
+    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+
+    Optional<LtftFormDto> result = service.changeLtftFormState(ID, detail, targetState);
+
+    assertThat("Unexpected form transition without status detail reason.", result.isPresent(),
+        is(false));
+    verify(ltftRepository, never()).save(any());
   }
 
   @Test
@@ -1227,6 +1269,68 @@ class LtftServiceTest {
 
     assertThat("Unexpected result when form is submitted with status detail.", result.isPresent(),
         is(true));
+    Person expectedModifiedBy = new Person(TRAINEE_NAME, TRAINEE_EMAIL, TRAINEE_ROLE);
+    AbstractAuditedForm.Status.StatusDetail statusDetail = mapper.toStatusDetail(detail);
+    AbstractAuditedForm.Status.StatusInfo newFormState = form.getStatus().current();
+    assertThat("Unexpected status detail.", newFormState.detail(), is(statusDetail));
+    assertThat("Unexpected status modified by.", newFormState.modifiedBy(),
+        is(expectedModifiedBy));
+    assertThat("Unexpected status modified timestamp.", newFormState.timestamp(),
+        is(notNullValue()));
+    assertThat("Unexpected form revision.", form.getRevision(), is(2));
+    verify(ltftRepository).save(form);
+  }
+
+  @Test
+  void shouldUnsubmitFormWithStatusDetail() {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setRevision(2);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(LifecycleState.SUBMITTED);
+    form.setContent(LtftContent.builder().name("test").build());
+
+    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
+        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+
+    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+    when(ltftRepository.save(any())).thenReturn(form);
+
+    Optional<LtftFormDto> result = service.unsubmitLtftForm(ID, detail);
+
+    assertThat("Unexpected result when form is unsubmitted with status detail.",
+        result.isPresent(), is(true));
+    Person expectedModifiedBy = new Person(TRAINEE_NAME, TRAINEE_EMAIL, TRAINEE_ROLE);
+    AbstractAuditedForm.Status.StatusDetail statusDetail = mapper.toStatusDetail(detail);
+    AbstractAuditedForm.Status.StatusInfo newFormState = form.getStatus().current();
+    assertThat("Unexpected status detail.", newFormState.detail(), is(statusDetail));
+    assertThat("Unexpected status modified by.", newFormState.modifiedBy(),
+        is(expectedModifiedBy));
+    assertThat("Unexpected status modified timestamp.", newFormState.timestamp(),
+        is(notNullValue()));
+    assertThat("Unexpected form revision.", form.getRevision(), is(2));
+    verify(ltftRepository).save(form);
+  }
+
+  @Test
+  void shouldWithdrawFormWithStatusDetail() {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setRevision(2);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(LifecycleState.SUBMITTED);
+    form.setContent(LtftContent.builder().name("test").build());
+
+    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
+        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+
+    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+    when(ltftRepository.save(any())).thenReturn(form);
+
+    Optional<LtftFormDto> result = service.withdrawLtftForm(ID, detail);
+
+    assertThat("Unexpected result when form is unsubmitted with status detail.",
+        result.isPresent(), is(true));
     Person expectedModifiedBy = new Person(TRAINEE_NAME, TRAINEE_EMAIL, TRAINEE_ROLE);
     AbstractAuditedForm.Status.StatusDetail statusDetail = mapper.toStatusDetail(detail);
     AbstractAuditedForm.Status.StatusInfo newFormState = form.getStatus().current();
