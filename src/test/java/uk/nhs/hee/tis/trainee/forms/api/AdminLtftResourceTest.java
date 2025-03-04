@@ -55,6 +55,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 
@@ -195,6 +196,41 @@ class AdminLtftResourceTest {
     when(service.updateStatusAsAdmin(id, APPROVED, null)).thenReturn(Optional.of(dto));
 
     ResponseEntity<LtftFormDto> response = controller.approveLtft(id);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), sameInstance(dto));
+  }
+
+  @Test
+  void shouldThrowExceptionWhenUnsubmitNotValid() throws MethodArgumentNotValidException {
+    UUID id = UUID.randomUUID();
+    LftfStatusInfoDetailDto detail = LftfStatusInfoDetailDto.builder().reason("reason").build();
+    when(service.updateStatusAsAdmin(id, UNSUBMITTED, detail)).thenThrow(
+        MethodArgumentNotValidException.class);
+
+    assertThrows(MethodArgumentNotValidException.class, () -> controller.unsubmitLtft(id, detail));
+  }
+
+  @Test
+  void shouldReturnNotFoundWhenUnsubmitFormNotFound() throws MethodArgumentNotValidException {
+    UUID id = UUID.randomUUID();
+    LftfStatusInfoDetailDto detail = LftfStatusInfoDetailDto.builder().reason("reason").build();
+    when(service.updateStatusAsAdmin(id, UNSUBMITTED, detail)).thenReturn(Optional.empty());
+
+    ResponseEntity<LtftFormDto> response = controller.unsubmitLtft(id, detail);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(NOT_FOUND));
+    assertThat("Unexpected response body.", response.getBody(), nullValue());
+  }
+
+  @Test
+  void shouldReturnUnsubmittedFormWhenFormUnsubmitted() throws MethodArgumentNotValidException {
+    UUID id = UUID.randomUUID();
+    LtftFormDto dto = LtftFormDto.builder().id(id).build();
+    LftfStatusInfoDetailDto detail = LftfStatusInfoDetailDto.builder().reason("reason").build();
+    when(service.updateStatusAsAdmin(id, UNSUBMITTED, detail)).thenReturn(Optional.of(dto));
+
+    ResponseEntity<LtftFormDto> response = controller.unsubmitLtft(id, detail);
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), sameInstance(dto));

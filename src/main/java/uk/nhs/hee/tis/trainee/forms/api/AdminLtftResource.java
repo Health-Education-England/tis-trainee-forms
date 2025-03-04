@@ -22,6 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROVED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.util.Optional;
@@ -39,11 +40,13 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 
@@ -115,6 +118,21 @@ public class AdminLtftResource {
   ResponseEntity<LtftFormDto> approveLtft(@PathVariable UUID id)
       throws MethodArgumentNotValidException {
     Optional<LtftFormDto> form = service.updateStatusAsAdmin(id, APPROVED, null);
+    return ResponseEntity.of(form);
+  }
+
+  /**
+   * Unsubmit the form with the given ID, must be associated with the user's local office.
+   *
+   * @param id The ID of the form to unsubmit.
+   * @return The unsubmitted form.
+   * @throws MethodArgumentNotValidException When the state transition was not valid.
+   */
+  @PutMapping("/{id}/unsubmit")
+  ResponseEntity<LtftFormDto> unsubmitLtft(@PathVariable UUID id, @RequestBody
+      LftfStatusInfoDetailDto detail)
+      throws MethodArgumentNotValidException {
+    Optional<LtftFormDto> form = service.updateStatusAsAdmin(id, UNSUBMITTED, detail);
     return ResponseEntity.of(form);
   }
 }
