@@ -93,9 +93,9 @@ class RestResponseEntityExceptionHandlerTest {
     assertThat("Unexpected problem.", problem, notNullValue());
     assertThat("Unexpected problem title.", problem.getTitle(), is("Validation failure"));
     assertThat("Unexpected problem status.", problem.getStatus(), is(STATUS_CODE.value()));
-    assertThat("Unexpected problem status.", problem.getInstance(), nullValue());
-    assertThat("Unexpected problem status.", problem.getType(), is(URI.create("about:blank")));
-    assertThat("Unexpected problem status.", problem.getDetail(), nullValue());
+    assertThat("Unexpected problem instance.", problem.getInstance(), nullValue());
+    assertThat("Unexpected problem type.", problem.getType(), is(URI.create("about:blank")));
+    assertThat("Unexpected problem detail.", problem.getDetail(), nullValue());
 
     Map<String, Object> problemProperties = problem.getProperties();
     assertThat("Unexpected problem properties.", problemProperties, notNullValue());
@@ -150,9 +150,9 @@ class RestResponseEntityExceptionHandlerTest {
     assertThat("Unexpected problem.", problem, notNullValue());
     assertThat("Unexpected problem title.", problem.getTitle(), is("Validation failure"));
     assertThat("Unexpected problem status.", problem.getStatus(), is(STATUS_CODE.value()));
-    assertThat("Unexpected problem status.", problem.getInstance(), nullValue());
-    assertThat("Unexpected problem status.", problem.getType(), is(URI.create("about:blank")));
-    assertThat("Unexpected problem status.", problem.getDetail(), nullValue());
+    assertThat("Unexpected problem instance.", problem.getInstance(), nullValue());
+    assertThat("Unexpected problem type.", problem.getType(), is(URI.create("about:blank")));
+    assertThat("Unexpected problem detail.", problem.getDetail(), nullValue());
 
     Map<String, Object> problemProperties = problem.getProperties();
     assertThat("Unexpected problem properties.", problemProperties, notNullValue());
