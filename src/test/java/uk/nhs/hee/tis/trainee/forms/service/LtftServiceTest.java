@@ -1130,7 +1130,8 @@ class LtftServiceTest {
 
     Optional<Boolean> result = service.deleteLtftForm(ID);
 
-    assertThat("Expected empty result when form not found to delete.", result.isPresent(), is(false));
+    assertThat("Expected empty result when form not found to delete.", result.isPresent(),
+        is(false));
   }
 
   @ParameterizedTest
