@@ -118,6 +118,7 @@ class AdminLtftResourceIntegrationTest {
       GET | /api/admin/ltft
       GET | /api/admin/ltft/123
       PUT | /api/admin/ltft/123/approve
+      PUT | /api/admin/ltft/123/unsubmit
       GET | /api/admin/ltft/count
       """)
   void shouldReturnForbiddenWhenNoToken(HttpMethod method, URI uri) throws Exception {
@@ -131,6 +132,7 @@ class AdminLtftResourceIntegrationTest {
       GET | /api/admin/ltft
       GET | /api/admin/ltft/123
       PUT | /api/admin/ltft/123/approve
+      PUT | /api/admin/ltft/123/unsubmit
       GET | /api/admin/ltft/count
       """)
   void shouldReturnForbiddenWhenEmptyToken(HttpMethod method, URI uri) throws Exception {
@@ -146,6 +148,7 @@ class AdminLtftResourceIntegrationTest {
       GET | /api/admin/ltft
       GET | /api/admin/ltft/123
       PUT | /api/admin/ltft/123/approve
+      PUT | /api/admin/ltft/123/unsubmit
       GET | /api/admin/ltft/count
       """)
   void shouldReturnForbiddenWhenNoGroupsInToken(HttpMethod method, URI uri) throws Exception {
@@ -160,12 +163,60 @@ class AdminLtftResourceIntegrationTest {
   @CsvSource(delimiter = '|', textBlock = """
       GET | /api/admin/ltft/123
       PUT | /api/admin/ltft/123/approve
+      PUT | /api/admin/ltft/123/unsubmit
       """)
   void shouldReturnBadRequestWhenInvalidFormId(HttpMethod method, URI uri) throws Exception {
     String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
     mockMvc.perform(request(method, uri)
             .header(HttpHeaders.AUTHORIZATION, token))
         .andExpect(status().isBadRequest());
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      PUT | /api/admin/ltft/{id}/unsubmit
+      """)
+  void shouldReturnBadRequestWhenRequiredReasonMissing(HttpMethod method, String uriTemplate)
+      throws Exception {
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(request(method, uriTemplate, UUID.randomUUID())
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isBadRequest());
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      GET | /api/admin/ltft/{id}
+      PUT | /api/admin/ltft/{id}/approve
+      PUT | /api/admin/ltft/{id}/unsubmit
+      """)
+  void shouldReturnNotFoundWhenFormIdNotFound(HttpMethod method, String uriTemplate)
+      throws Exception {
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(request(method, uriTemplate, UUID.randomUUID())
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}")) // required by some endpoints
+        .andExpect(status().isNotFound());
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      GET | /api/admin/ltft/{id}
+      PUT | /api/admin/ltft/{id}/approve
+      PUT | /api/admin/ltft/{id}/unsubmit
+      """)
+  void shouldReturnNotFoundWhenLtftDoesNotMatchDbc(HttpMethod method, String uriTemplate)
+      throws Exception {
+    LtftForm form = createLtftForm(SUBMITTED, DBC_2);
+    form = template.save(form);
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(request(method, uriTemplate, form.getId())
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}")) // required by some endpoints
+        .andExpect(status().isNotFound());
   }
 
   @ParameterizedTest
@@ -671,25 +722,6 @@ class AdminLtftResourceIntegrationTest {
   }
 
   @Test
-  void shouldReturnNotFoundGettingDetailWhenLtftDoesNotExist() throws Exception {
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
-    mockMvc.perform(get("/api/admin/ltft/{id}", UUID.randomUUID())
-            .header(HttpHeaders.AUTHORIZATION, token))
-        .andExpect(status().isNotFound());
-  }
-
-  @Test
-  void shouldReturnNotFoundGettingDetailWhenLtftDoesNotMatchDbc() throws Exception {
-    LtftForm form = createLtftForm(SUBMITTED, DBC_2);
-    form = template.save(form);
-
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
-    mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
-            .header(HttpHeaders.AUTHORIZATION, token))
-        .andExpect(status().isNotFound());
-  }
-
-  @Test
   void shouldReturnNotFoundGettingDetailWhenLtftWithMatchingDbcIsDraft() throws Exception {
     LtftForm form = createLtftForm(DRAFT, DBC_1);
     form = template.save(form);
@@ -767,27 +799,6 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.assignedAdmin.role", is("ADMIN")));
   }
 
-  @Test
-  void shouldNotApproveLtftWhenLtftDoesNotExist() throws Exception {
-    UUID formId = UUID.randomUUID();
-
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
-    mockMvc.perform(put("/api/admin/ltft/{id}/approve", formId)
-            .header(HttpHeaders.AUTHORIZATION, token))
-        .andExpect(status().isNotFound());
-  }
-
-  @Test
-  void shouldNotApproveLtftWhenLtftDoesNotMatchDbc()
-      throws Exception {
-    LtftForm form = template.insert(createLtftForm(SUBMITTED, DBC_2));
-
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
-    mockMvc.perform(put("/api/admin/ltft/{id}/approve", form.getId())
-            .header(HttpHeaders.AUTHORIZATION, token))
-        .andExpect(status().isNotFound());
-  }
-
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = "SUBMITTED")
   void shouldNotApproveLtftWhenStateTransitionNotAllowed(LifecycleState currentState)
@@ -828,6 +839,98 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.history[0].state", is(currentState.toString())))
         .andExpect(jsonPath("$.status.history[1].state", is(APPROVED.toString())))
         .andExpect(jsonPath("$.status.history[1].detail").doesNotExist())
+        .andExpect(jsonPath("$.status.history[1].modifiedBy.name", is("Ad Min")))
+        .andExpect(jsonPath("$.status.history[1].modifiedBy.email", is("ad.min@example.com")))
+        .andExpect(jsonPath("$.status.history[1].modifiedBy.role", is("ADMIN")))
+        .andExpect(jsonPath("$.status.current.revision", is(0)))
+        .andExpect(jsonPath("$.status.current.timestamp", notNullValue()));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = "SUBMITTED")
+  void shouldNotUnsubmitLtftWhenStateTransitionNotAllowed(LifecycleState currentState)
+      throws Exception {
+    LtftForm form = template.insert(createLtftForm(currentState, DBC_1));
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(put("/api/admin/ltft/{id}/unsubmit", form.getId())
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "reason": "test reason"
+                }
+                """))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type", is("about:blank")))
+        .andExpect(jsonPath("$.title", is("Validation failure")))
+        .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
+        .andExpect(
+            jsonPath("$.instance", is("/api/admin/ltft/%s/unsubmit".formatted(form.getId()))))
+        .andExpect(jsonPath("$.properties.errors").isArray())
+        .andExpect(jsonPath("$.properties.errors", hasSize(1)))
+        .andExpect(jsonPath("$.properties.errors[0].pointer", is("#/status/current/state")))
+        .andExpect(jsonPath("$.properties.errors[0].detail",
+            is("can not be transitioned to UNSUBMITTED")));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = "SUBMITTED")
+  void shouldNotUnsubmitLtftWhenStateTransitionAllowedButNoReasonGiven(LifecycleState currentState)
+      throws Exception {
+    LtftForm form = template.insert(createLtftForm(currentState, DBC_1));
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(put("/api/admin/ltft/{id}/unsubmit", form.getId())
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "reason": null
+                }
+                """))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type", is("about:blank")))
+        .andExpect(jsonPath("$.title", is("Validation failure")))
+        .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
+        .andExpect(
+            jsonPath("$.instance", is("/api/admin/ltft/%s/unsubmit".formatted(form.getId()))))
+        .andExpect(jsonPath("$.properties.errors").isArray())
+        .andExpect(jsonPath("$.properties.errors", hasSize(1)))
+        .andExpect(jsonPath("$.properties.errors[0].pointer", is("#/detail/reason")))
+        .andExpect(jsonPath("$.properties.errors[0].detail",
+            is("must not be null when transitioning to UNSUBMITTED")));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = "SUBMITTED")
+  void shouldUnsubmitLtftWhenStateTransitionAllowedAndReasonGiven(LifecycleState currentState)
+      throws Exception {
+    LtftForm form = template.insert(createLtftForm(currentState, DBC_1));
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(put("/api/admin/ltft/{id}/unsubmit", form.getId())
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                  "reason": "test reason",
+                  "message": "test message"
+                }
+                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status.current.state", is(UNSUBMITTED.toString())))
+        .andExpect(jsonPath("$.status.current.modifiedBy.name", is("Ad Min")))
+        .andExpect(jsonPath("$.status.current.modifiedBy.email", is("ad.min@example.com")))
+        .andExpect(jsonPath("$.status.current.modifiedBy.role", is("ADMIN")))
+        .andExpect(jsonPath("$.status.current.revision", is(0)))
+        .andExpect(jsonPath("$.status.current.timestamp", notNullValue()))
+        .andExpect(jsonPath("$.status.history[0].state", is(currentState.toString())))
+        .andExpect(jsonPath("$.status.history[1].state", is(UNSUBMITTED.toString())))
+        .andExpect(jsonPath("$.status.history[1].detail.reason", is("test reason")))
+        .andExpect(jsonPath("$.status.history[1].detail.message", is("test message")))
         .andExpect(jsonPath("$.status.history[1].modifiedBy.name", is("Ad Min")))
         .andExpect(jsonPath("$.status.history[1].modifiedBy.email", is("ad.min@example.com")))
         .andExpect(jsonPath("$.status.history[1].modifiedBy.role", is("ADMIN")))
