@@ -22,18 +22,21 @@
 package uk.nhs.hee.tis.trainee.forms.dto.identity;
 
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * Trainee identity data for an authenticated user.
  */
 @Data
-public class TraineeIdentity {
+@EqualsAndHashCode(callSuper = true)
+public class TraineeIdentity extends UserIdentity {
 
-  //TODO: consider generic UserIdentity abstract class shared with AdminIdentity.
-
-  public static final String ROLE = "TRAINEE";
+  private static final String ROLE = "TRAINEE";
 
   private String traineeId;
-  private String email;
-  private String name;
+
+  @Override
+  public String getRole() {
+    return ROLE;
+  }
 }

@@ -25,8 +25,12 @@ import static org.hamcrest.Matchers.aMapWithSize;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.oneOf;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -49,7 +53,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,6 +64,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -113,6 +117,7 @@ class AdminLtftResourceIntegrationTest {
   @CsvSource(delimiter = '|', textBlock = """
       GET | /api/admin/ltft
       GET | /api/admin/ltft/123
+      PUT | /api/admin/ltft/123/approve
       GET | /api/admin/ltft/count
       """)
   void shouldReturnForbiddenWhenNoToken(HttpMethod method, URI uri) throws Exception {
@@ -125,6 +130,7 @@ class AdminLtftResourceIntegrationTest {
   @CsvSource(delimiter = '|', textBlock = """
       GET | /api/admin/ltft
       GET | /api/admin/ltft/123
+      PUT | /api/admin/ltft/123/approve
       GET | /api/admin/ltft/count
       """)
   void shouldReturnForbiddenWhenEmptyToken(HttpMethod method, URI uri) throws Exception {
@@ -139,6 +145,7 @@ class AdminLtftResourceIntegrationTest {
   @CsvSource(delimiter = '|', textBlock = """
       GET | /api/admin/ltft
       GET | /api/admin/ltft/123
+      PUT | /api/admin/ltft/123/approve
       GET | /api/admin/ltft/count
       """)
   void shouldReturnForbiddenWhenNoGroupsInToken(HttpMethod method, URI uri) throws Exception {
@@ -152,6 +159,7 @@ class AdminLtftResourceIntegrationTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       GET | /api/admin/ltft/123
+      PUT | /api/admin/ltft/123/approve
       """)
   void shouldReturnBadRequestWhenInvalidFormId(HttpMethod method, URI uri) throws Exception {
     String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
@@ -237,7 +245,7 @@ class AdminLtftResourceIntegrationTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = "DRAFT")
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = "DRAFT")
   void shouldOnlyCountLtftsWithMatchingDbcWhenHasStatusFilter(LifecycleState status)
       throws Exception {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
@@ -461,7 +469,7 @@ class AdminLtftResourceIntegrationTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = "DRAFT")
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = "DRAFT")
   void shouldOnlyReturnSummariesWithMatchingDbcWhenHasStatusFilter(LifecycleState status)
       throws Exception {
     List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
@@ -757,6 +765,74 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.assignedAdmin.name", is("Ad Min")))
         .andExpect(jsonPath("$.assignedAdmin.email", is("ad.min@example.com")))
         .andExpect(jsonPath("$.assignedAdmin.role", is("ADMIN")));
+  }
+
+  @Test
+  void shouldNotApproveLtftWhenLtftDoesNotExist() throws Exception {
+    UUID formId = UUID.randomUUID();
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(put("/api/admin/ltft/{id}/approve", formId)
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void shouldNotApproveLtftWhenLtftDoesNotMatchDbc()
+      throws Exception {
+    LtftForm form = template.insert(createLtftForm(SUBMITTED, DBC_2));
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(put("/api/admin/ltft/{id}/approve", form.getId())
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isNotFound());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = "SUBMITTED")
+  void shouldNotApproveLtftWhenStateTransitionNotAllowed(LifecycleState currentState)
+      throws Exception {
+    LtftForm form = template.insert(createLtftForm(currentState, DBC_1));
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(put("/api/admin/ltft/{id}/approve", form.getId())
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type", is("about:blank")))
+        .andExpect(jsonPath("$.title", is("Validation failure")))
+        .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
+        .andExpect(jsonPath("$.instance", is("/api/admin/ltft/%s/approve".formatted(form.getId()))))
+        .andExpect(jsonPath("$.properties.errors").isArray())
+        .andExpect(jsonPath("$.properties.errors", hasSize(1)))
+        .andExpect(jsonPath("$.properties.errors[0].pointer", is("#/status/current/state")))
+        .andExpect(
+            jsonPath("$.properties.errors[0].detail", is("can not be transitioned to APPROVED")));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = "SUBMITTED")
+  void shouldApproveLtftWhenStateTransitionAllowed(LifecycleState currentState) throws Exception {
+    LtftForm form = template.insert(createLtftForm(currentState, DBC_1));
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(put("/api/admin/ltft/{id}/approve", form.getId())
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status.current.state", is(APPROVED.toString())))
+        .andExpect(jsonPath("$.status.current.modifiedBy.name", is("Ad Min")))
+        .andExpect(jsonPath("$.status.current.modifiedBy.email", is("ad.min@example.com")))
+        .andExpect(jsonPath("$.status.current.modifiedBy.role", is("ADMIN")))
+        .andExpect(jsonPath("$.status.current.revision", is(0)))
+        .andExpect(jsonPath("$.status.current.timestamp", notNullValue()))
+        .andExpect(jsonPath("$.status.history[0].state", is(currentState.toString())))
+        .andExpect(jsonPath("$.status.history[1].state", is(APPROVED.toString())))
+        .andExpect(jsonPath("$.status.history[1].detail").doesNotExist())
+        .andExpect(jsonPath("$.status.history[1].modifiedBy.name", is("Ad Min")))
+        .andExpect(jsonPath("$.status.history[1].modifiedBy.email", is("ad.min@example.com")))
+        .andExpect(jsonPath("$.status.history[1].modifiedBy.role", is("ADMIN")))
+        .andExpect(jsonPath("$.status.current.revision", is(0)))
+        .andExpect(jsonPath("$.status.current.timestamp", notNullValue()));
   }
 
   /**

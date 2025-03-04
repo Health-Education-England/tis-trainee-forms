@@ -55,6 +55,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -65,7 +66,6 @@ import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
-import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
@@ -249,10 +249,16 @@ class LtftResourceIntegrationTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToSaveJson))
         .andExpect(status().isBadRequest())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$.fieldErrors", hasSize(1)))
-        .andExpect(jsonPath("$.fieldErrors[0].field").value("id"))
-        .andExpect(jsonPath("$.fieldErrors[0].message").value("must be null"));
+        .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type", is("about:blank")))
+        .andExpect(jsonPath("$.title", is("Validation failure")))
+        .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
+        .andExpect(jsonPath("$.instance", is("/api/ltft")))
+        .andExpect(jsonPath("$.properties.errors").isArray())
+        .andExpect(jsonPath("$.properties.errors", hasSize(1)))
+        .andExpect(jsonPath("$.properties.errors[0].pointer", is("#/id")))
+        .andExpect(
+            jsonPath("$.properties.errors[0].detail", is("must be null")));
   }
 
   @Test
@@ -295,7 +301,12 @@ class LtftResourceIntegrationTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToUpdateJson))
         .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$").doesNotExist());
+        .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type", is("about:blank")))
+        .andExpect(jsonPath("$.title", is("Bad Request")))
+        .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
+        .andExpect(jsonPath("$.detail", is("Failed to convert 'formId' with value: 'someId'")))
+        .andExpect(jsonPath("$.instance", is("/api/ltft/someId")));
   }
 
   @Test
@@ -459,7 +470,7 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.current.detail.message").value("message"))
         .andExpect(jsonPath("$.status.current.modifiedBy.name").value("given family"))
         .andExpect(jsonPath("$.status.current.modifiedBy.email").value("email"))
-        .andExpect(jsonPath("$.status.current.modifiedBy.role").value(TraineeIdentity.ROLE));
+        .andExpect(jsonPath("$.status.current.modifiedBy.role").value("TRAINEE"));
   }
 
   @ParameterizedTest
@@ -536,7 +547,7 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.current.detail.message").value("message"))
         .andExpect(jsonPath("$.status.current.modifiedBy.name").value("given family"))
         .andExpect(jsonPath("$.status.current.modifiedBy.email").value("email"))
-        .andExpect(jsonPath("$.status.current.modifiedBy.role").value(TraineeIdentity.ROLE));
+        .andExpect(jsonPath("$.status.current.modifiedBy.role").value("TRAINEE"));
   }
 
   @ParameterizedTest
@@ -589,6 +600,6 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.current.detail.message").value("message"))
         .andExpect(jsonPath("$.status.current.modifiedBy.name").value("given family"))
         .andExpect(jsonPath("$.status.current.modifiedBy.email").value("email"))
-        .andExpect(jsonPath("$.status.current.modifiedBy.role").value(TraineeIdentity.ROLE));
+        .andExpect(jsonPath("$.status.current.modifiedBy.role").value("TRAINEE"));
   }
 }
