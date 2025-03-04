@@ -983,7 +983,7 @@ class LtftServiceTest {
 
     Optional<LtftFormDto> formDtoOptional = service.getLtftForm(ID);
 
-    assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
     verify(ltftRepository).findByTraineeTisIdAndId(any(), eq(ID));
     verifyNoMoreInteractions(ltftRepository);
   }
@@ -1010,7 +1010,7 @@ class LtftServiceTest {
 
     Optional<LtftFormDto> formDtoOptional = service.getLtftForm(ID);
 
-    assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(false));
+    assertThat("Unexpected empty form returned.", formDtoOptional.isPresent(), is(true));
     verify(ltftRepository).findByTraineeTisIdAndId(TRAINEE_ID, ID);
     LtftFormDto returnedFormDto = formDtoOptional.get();
     assertThat("Unexpected returned LTFT form.", returnedFormDto, is(mapper.toDto(form)));
@@ -1024,7 +1024,7 @@ class LtftServiceTest {
 
     Optional<LtftFormDto> formDtoOptional = service.saveLtftForm(dtoToSave);
 
-    assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
     verifyNoInteractions(ltftRepository);
   }
 
@@ -1054,7 +1054,7 @@ class LtftServiceTest {
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
 
-    assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
     verifyNoInteractions(ltftRepository);
   }
 
@@ -1068,7 +1068,7 @@ class LtftServiceTest {
     Optional<LtftFormDto> formDtoOptional
         = service.updateLtftForm(UUID.randomUUID(), dtoToSave);
 
-    assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
     verifyNoInteractions(ltftRepository);
   }
 
@@ -1081,7 +1081,7 @@ class LtftServiceTest {
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
 
-    assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
     verifyNoInteractions(ltftRepository);
   }
 
@@ -1097,7 +1097,7 @@ class LtftServiceTest {
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
 
-    assertThat("Unexpected form returned.", formDtoOptional.isEmpty(), is(true));
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
     verify(ltftRepository).findByTraineeTisIdAndId(TRAINEE_ID, ID);
     verifyNoMoreInteractions(ltftRepository);
   }
@@ -1130,7 +1130,7 @@ class LtftServiceTest {
 
     Optional<Boolean> result = service.deleteLtftForm(ID);
 
-    assertThat("Expected empty result when form not found to delete.", result.isEmpty(), is(true));
+    assertThat("Expected empty result when form not found to delete.", result.isPresent(), is(false));
   }
 
   @ParameterizedTest
@@ -1145,7 +1145,7 @@ class LtftServiceTest {
 
     Optional<Boolean> result = service.deleteLtftForm(ID);
 
-    assertThat("Unexpected empty result when form is deleted.", result.isEmpty(), is(false));
+    assertThat("Unexpected empty result when form is deleted.", result.isPresent(), is(true));
     assertThat("Expected false result when form cannot transition to DELETED.", result.get(),
         is(false));
   }
@@ -1161,7 +1161,7 @@ class LtftServiceTest {
 
     Optional<Boolean> result = service.deleteLtftForm(ID);
 
-    assertThat("Unexpected empty result when form is deleted.", result.isEmpty(), is(false));
+    assertThat("Unexpected empty result when form is deleted.", result.isPresent(), is(true));
     assertThat("Expected true result when form is deleted.", result.get(), is(true));
     verify(ltftRepository).deleteById(ID);
   }
@@ -1174,7 +1174,7 @@ class LtftServiceTest {
         = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
 
     Optional<LtftFormDto> result = service.changeLtftFormState(ID, detail, targetState);
-    assertThat("Unexpected transition result when form not found.", result.isEmpty(), is(true));
+    assertThat("Unexpected transition result when form not found.", result.isPresent(), is(false));
   }
 
   @ParameterizedTest
@@ -1191,7 +1191,7 @@ class LtftServiceTest {
     when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
 
     Optional<LtftFormDto> result = service.changeLtftFormState(ID, detail, targetState);
-    assertThat("Unexpected form transition.", result.isEmpty(), is(true));
+    assertThat("Unexpected form transition.", result.isPresent(), is(false));
   }
 
   @ParameterizedTest

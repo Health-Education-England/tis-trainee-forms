@@ -39,7 +39,7 @@ public enum LifecycleState {
   private Set<Class<? extends AbstractForm>> allowedFormTypes;
   private Set<LifecycleState> allowedTransitions;
   @Getter
-  private boolean requiresDetails = false; //requires details to enter this state
+  private boolean requiresDetails; //requires details to enter this state
 
   // NOTE: allowedFormTypes can effectively disallow specific allowedTransitions.
   // Example:
@@ -48,12 +48,15 @@ public enum LifecycleState {
   static {
     APPROVED.allowedTransitions = Set.of();
     APPROVED.allowedFormTypes = Set.of(LtftForm.class);
+    APPROVED.requiresDetails = false;
 
     DELETED.allowedTransitions = Set.of();
     DELETED.allowedFormTypes = Set.of(AbstractFormR.class);
+    DELETED.requiresDetails = false;
 
     DRAFT.allowedTransitions = Set.of(SUBMITTED);
     DRAFT.allowedFormTypes = Set.of(AbstractForm.class);
+    DRAFT.requiresDetails = false;
 
     REJECTED.allowedTransitions = Set.of();
     REJECTED.allowedFormTypes = Set.of(LtftForm.class);
@@ -61,6 +64,7 @@ public enum LifecycleState {
 
     SUBMITTED.allowedTransitions = Set.of(APPROVED, DELETED, REJECTED, UNSUBMITTED, WITHDRAWN);
     SUBMITTED.allowedFormTypes = Set.of(AbstractForm.class);
+    SUBMITTED.requiresDetails = false;
 
     UNSUBMITTED.allowedTransitions = Set.of(SUBMITTED, WITHDRAWN);
     UNSUBMITTED.allowedFormTypes = Set.of(AbstractForm.class);

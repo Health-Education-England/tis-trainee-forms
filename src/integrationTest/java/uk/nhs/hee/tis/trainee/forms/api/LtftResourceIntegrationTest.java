@@ -467,7 +467,7 @@ class LtftResourceIntegrationTest {
       PUT  | /api/ltft/ec5c8db7-9848-419b-85ce-c5b53b1e3794/unsubmit
       PUT  | /api/ltft/ec5c8db7-9848-419b-85ce-c5b53b1e3794/withdraw
       """)
-  void shouldReturnForbiddenWhenNoRequiredDetailInUpdateRequests(HttpMethod method, URI uri)
+  void shouldReturnBadRequestWhenNoRequiredDetailInUpdateRequests(HttpMethod method, URI uri)
       throws Exception {
     LtftForm ltft = new LtftForm();
     ltft.setId(UUID.fromString("ec5c8db7-9848-419b-85ce-c5b53b1e3794"));
