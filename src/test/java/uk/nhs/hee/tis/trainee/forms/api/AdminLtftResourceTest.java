@@ -22,7 +22,6 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
@@ -40,8 +39,8 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMIT
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -56,7 +55,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
-import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 
 class AdminLtftResourceTest {
@@ -72,23 +70,24 @@ class AdminLtftResourceTest {
 
   @Test
   void shouldGetCountUsingStatusFilter() {
-    Set<LifecycleState> states = Set.of(UNSUBMITTED, SUBMITTED);
+    String states = String.join(",", UNSUBMITTED.name(), SUBMITTED.name());
+    Map<String, String> params = Map.of("status", states);
 
-    controller.getAdminLtftCount(states);
+    controller.getAdminLtftCount(params);
 
-    ArgumentCaptor<Set<LifecycleState>> statesCaptor = ArgumentCaptor.captor();
-    verify(service).getAdminLtftCount(statesCaptor.capture());
+    ArgumentCaptor<Map<String, String>> paramsCaptor = ArgumentCaptor.captor();
+    verify(service).getAdminLtftCount(paramsCaptor.capture());
 
-    Set<LifecycleState> capturedStates = statesCaptor.getValue();
-    assertThat("Unexpected filter state count.", capturedStates, hasSize(2));
-    assertThat("Unexpected filter states.", capturedStates, hasItems(UNSUBMITTED, SUBMITTED));
+    Map<String, String> capturedParams = paramsCaptor.getValue();
+    assertThat("Unexpected parameter count.", capturedParams.size(), is(1));
+    assertThat("Unexpected status filter.", capturedParams.get("status"), is(states));
   }
 
   @Test
   void shouldGetCountResponse() {
     when(service.getAdminLtftCount(any())).thenReturn(40L);
 
-    ResponseEntity<String> response = controller.getAdminLtftCount(Set.of());
+    ResponseEntity<String> response = controller.getAdminLtftCount(Map.of());
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), is("40"));
@@ -99,15 +98,16 @@ class AdminLtftResourceTest {
   void shouldGetSummariesUsingStatusFilter() {
     when(service.getAdminLtftSummaries(any(), any())).thenReturn(Page.empty());
 
-    Set<LifecycleState> states = Set.of(UNSUBMITTED, SUBMITTED);
-    controller.getLtftAdminSummaries(states, null);
+    String states = String.join(",", UNSUBMITTED.name(), SUBMITTED.name());
+    Map<String, String> params = Map.of("status", states);
+    controller.getLtftAdminSummaries(params, null);
 
-    ArgumentCaptor<Set<LifecycleState>> statesCaptor = ArgumentCaptor.captor();
-    verify(service).getAdminLtftSummaries(statesCaptor.capture(), any());
+    ArgumentCaptor<Map<String, String>> paramsCaptor = ArgumentCaptor.captor();
+    verify(service).getAdminLtftSummaries(paramsCaptor.capture(), any());
 
-    Set<LifecycleState> capturedStates = statesCaptor.getValue();
-    assertThat("Unexpected filter state count.", capturedStates, hasSize(2));
-    assertThat("Unexpected filter states.", capturedStates, hasItems(UNSUBMITTED, SUBMITTED));
+    Map<String, String> capturedParams = paramsCaptor.getValue();
+    assertThat("Unexpected parameter count.", capturedParams.size(), is(1));
+    assertThat("Unexpected status filter.", capturedParams.get("status"), is(states));
   }
 
   @Test
@@ -115,7 +115,7 @@ class AdminLtftResourceTest {
     when(service.getAdminLtftSummaries(any(), any())).thenReturn(Page.empty());
 
     PageRequest pageable = PageRequest.of(1, 2);
-    controller.getLtftAdminSummaries(Set.of(), pageable);
+    controller.getLtftAdminSummaries(Map.of(), pageable);
 
     ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.captor();
     verify(service).getAdminLtftSummaries(any(), pageableCaptor.capture());
@@ -137,7 +137,7 @@ class AdminLtftResourceTest {
         new PageImpl<>(List.of(dto1, dto2)));
 
     ResponseEntity<PagedModel<LtftAdminSummaryDto>> response = controller.getLtftAdminSummaries(
-        Set.of(), null);
+        Map.of(), null);
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     List<LtftAdminSummaryDto> content = response.getBody().getContent();

@@ -41,9 +41,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto.LtftAdminPersonalDetailsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
-import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
@@ -69,7 +70,7 @@ public abstract class LtftMapper {
   @Mapping(target = "personalDetails", source = "entity")
   @Mapping(target = "programmeName", source = "content.programmeMembership.name")
   @Mapping(target = "proposedStartDate", source = "content.change.startDate")
-  @Mapping(target = "submissionDate", source = "submitted")
+  @Mapping(target = "submissionDate", source = "status.submitted")
   @Mapping(target = "reason", source = "content.reasons.selected",
       qualifiedByName = "JoinWithComma")
   @Mapping(target = "daysToStart", source = "content.change.startDate",
@@ -150,14 +151,12 @@ public abstract class LtftMapper {
   public abstract LtftForm toEntity(LtftFormDto dto);
 
   /**
-   * Convert a {@link LtftFormDto.StatusDto.LftfStatusInfoDetailDto} to a
-   * {@link AbstractAuditedForm.Status.StatusDetail}.
+   * Convert a {@link LftfStatusInfoDetailDto} to a {@link StatusDetail}.
    *
    * @param dto The DTO to convert.
    * @return The equivalent status detail.
    */
-  public abstract AbstractAuditedForm.Status.StatusDetail toStatusDetail(
-      LtftFormDto.StatusDto.LftfStatusInfoDetailDto dto);
+  public abstract StatusDetail toStatusDetail(LftfStatusInfoDetailDto dto);
 
   /**
    * Joins a list of strings with a comma, sorted alphabetically for consistency.
@@ -184,11 +183,11 @@ public abstract class LtftMapper {
   @Named("IsShortNotice")
   @Nullable
   Boolean isShortNotice(LtftForm entity) {
-    Instant submitted = entity.getSubmitted();
-
-    if (submitted == null) {
+    if (entity.getStatus() == null || entity.getStatus().submitted() == null) {
       return null;
     }
+
+    Instant submitted = entity.getStatus().submitted();
 
     // If the form is unsubmitted, use the current date instead of the last submission date.
     Instant referenceInstant =

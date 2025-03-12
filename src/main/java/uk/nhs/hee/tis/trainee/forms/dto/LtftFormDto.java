@@ -145,13 +145,15 @@ public record LtftFormDto(
   /**
    * The form status.
    *
-   * @param current The information for the current form status.
-   * @param history A list of form status history.
+   * @param current   The information for the current form status.
+   * @param submitted When the form was last submitted.
+   * @param history   A list of form status history.
    */
   @Builder
   public record StatusDto(
 
       StatusInfoDto current,
+      Instant submitted,
       List<StatusInfoDto> history) {
 
     /**

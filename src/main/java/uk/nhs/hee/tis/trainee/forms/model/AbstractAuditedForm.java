@@ -21,9 +21,9 @@
 
 package uk.nhs.hee.tis.trainee.forms.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
@@ -69,6 +69,7 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
    * @return The lifecycle state, or null if no lifecycle states exist.
    */
   @Override
+  @JsonIgnore
   public LifecycleState getLifecycleState() {
     if (status == null || status.current == null) {
       return null;
@@ -107,47 +108,41 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
         .revision(revision)
         .build();
 
+    Instant submitted;
+
+    if (lifecycleState == LifecycleState.SUBMITTED) {
+      submitted = statusInfo.timestamp;
+    } else {
+      submitted = status != null ? status.submitted : null;
+    }
+
     if (status == null || status.current == null) {
-      setStatus(new Status(statusInfo, List.of(statusInfo)));
+      setStatus(new Status(statusInfo, submitted, List.of(statusInfo)));
     } else {
       List<StatusInfo> newHistory = new ArrayList<>(status.history);
       newHistory.add(statusInfo);
-      setStatus(new Status(statusInfo, newHistory));
+      setStatus(new Status(statusInfo, submitted, newHistory));
     }
   }
 
   @Override
+  @JsonIgnore
   public boolean isNew() {
     return created == null;
   }
 
   /**
-   * Get the submission timestamp for the form.
-   *
-   * @return The submitted timestamp, or null if not submitted.
-   */
-  public Instant getSubmitted() {
-    if (status == null || status.history == null) {
-      return null;
-    }
-
-    return status.history.stream()
-        .filter(h -> h.state == LifecycleState.SUBMITTED)
-        .max(Comparator.comparing(StatusInfo::timestamp))
-        .map(StatusInfo::timestamp)
-        .orElse(null);
-  }
-
-  /**
    * The form status.
    *
-   * @param current The information for the current form status.
-   * @param history A list of form status history.
+   * @param current   The information for the current form status.
+   * @param submitted When the form was last submitted.
+   * @param history   A list of form status history.
    */
   @Builder
   public record Status(
 
       StatusInfo current,
+      Instant submitted,
       List<StatusInfo> history) {
 
     /**

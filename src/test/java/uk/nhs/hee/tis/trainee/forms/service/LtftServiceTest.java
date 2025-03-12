@@ -22,9 +22,11 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -47,20 +49,28 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Order;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
@@ -110,7 +120,8 @@ class LtftServiceTest {
   private static final UUID ID = UUID.randomUUID();
 
   private LtftService service;
-  private LtftFormRepository ltftRepository;
+  private LtftFormRepository repository;
+  private MongoTemplate mongoTemplate;
   private LtftMapper mapper;
 
   @BeforeEach
@@ -125,16 +136,16 @@ class LtftServiceTest {
     traineeIdentity.setEmail(TRAINEE_EMAIL);
     traineeIdentity.setName(TRAINEE_NAME);
 
-    ltftRepository = mock(LtftFormRepository.class);
+    repository = mock(LtftFormRepository.class);
+    mongoTemplate = mock(MongoTemplate.class);
 
     mapper = new LtftMapperImpl(new TemporalMapperImpl());
-    service = new LtftService(adminIdentity, traineeIdentity, ltftRepository, mapper);
+    service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, mapper);
   }
 
   @Test
   void shouldReturnEmptyGettingLtftFormSummariesWhenNotFound() {
-    when(ltftRepository.findByTraineeTisIdOrderByLastModified(TRAINEE_ID)).thenReturn(
-        List.of());
+    when(repository.findByTraineeTisIdOrderByLastModified(TRAINEE_ID)).thenReturn(List.of());
 
     List<LtftSummaryDto> result = service.getLtftSummaries();
 
@@ -187,7 +198,7 @@ class LtftServiceTest {
     entity2.setCreated(created2);
     entity2.setLastModified(lastModified2);
 
-    when(ltftRepository.findByTraineeTisIdOrderByLastModified(TRAINEE_ID)).thenReturn(
+    when(repository.findByTraineeTisIdOrderByLastModified(TRAINEE_ID)).thenReturn(
         List.of(entity1, entity2));
 
     List<LtftSummaryDto> result = service.getLtftSummaries();
@@ -209,59 +220,175 @@ class LtftServiceTest {
     assertThat("Unexpected last modified timestamp.", dto2.lastModified(), is(lastModified2));
   }
 
-  @ParameterizedTest
-  @NullAndEmptySource
-  void shouldCountAllNonDraftAdminLtftsWhenFiltersEmpty(Set<LifecycleState> states) {
-    when(ltftRepository
-        .countByStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-            Set.of(DRAFT), Set.of(ADMIN_GROUP))).thenReturn(40L);
+  @Test
+  void shouldCountAdminLtfts() {
+    when(mongoTemplate.count(any(), eq(LtftForm.class))).thenReturn(40L);
 
-    long count = service.getAdminLtftCount(states);
+    long count = service.getAdminLtftCount(Map.of());
 
     assertThat("Unexpected count.", count, is(40L));
-    verify(ltftRepository, never()).count();
-    verify(ltftRepository, never())
-        .countByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(any(),
-            any());
   }
 
   @Test
-  void shouldCountFilteredAdminLtftsWhenFiltersNotEmpty() {
-    Set<LifecycleState> states = Set.of(SUBMITTED);
-    when(ltftRepository
-        .countByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(states,
-            Set.of(ADMIN_GROUP))).thenReturn(40L);
+  void shouldNotApplyPagingOrSortingWhenCountingAdminLtfts() {
+    service.getAdminLtftCount(Map.of());
 
-    long count = service.getAdminLtftCount(states);
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
 
-    assertThat("Unexpected count.", count, is(40L));
-    verify(ltftRepository, never()).count();
-    verify(ltftRepository, never())
-        .countByStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-            any(), any());
+    Query query = queryCaptor.getValue();
+    assertThat("Unexpected sorted flag.", query.isSorted(), is(false));
+    assertThat("Unexpected limited flag.", query.isLimited(), is(false));
   }
 
   @Test
-  void shouldNotCountDraftAdminLtftsWhenFiltersNotEmpty() {
-    Set<LifecycleState> states = Set.of(DRAFT, SUBMITTED);
+  void shouldExcludeNonSubmittedWhenCountingAdminLtfts() {
+    service.getAdminLtftCount(Map.of());
 
-    service.getAdminLtftCount(states);
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
 
-    ArgumentCaptor<Set<LifecycleState>> statesCaptor = ArgumentCaptor.captor();
-    verify(ltftRepository)
-        .countByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-            statesCaptor.capture(), any());
+    Query query = queryCaptor.getValue();
+    Document queryObject = query.getQueryObject();
+    assertThat("Unexpected filter count.", queryObject.keySet(), hasSize(2));
 
-    Set<LifecycleState> filteredStates = statesCaptor.getValue();
-    assertThat("Unexpected state count.", filteredStates, hasSize(1));
-    assertThat("Unexpected states.", filteredStates, hasItems(SUBMITTED));
+    Document submittedFilter = queryObject.get("status.submitted", Document.class);
+    assertThat("Unexpected filter key count.", submittedFilter.keySet(), hasSize(1));
+    assertThat("Unexpected filter key.", submittedFilter.keySet(), hasItem("$ne"));
+    assertThat("Unexpected filter value.", submittedFilter.get("$ne"), nullValue());
+  }
+
+  @Test
+  void shouldFilterByDbcWhenCountingAdminLtfts() {
+    service.getAdminLtftCount(Map.of());
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
+
+    Query query = queryCaptor.getValue();
+    Document queryObject = query.getQueryObject();
+    assertThat("Unexpected filter count.", queryObject.keySet(), hasSize(2));
+
+    Document dbcFilter = queryObject.get("content.programmeMembership.designatedBodyCode",
+        Document.class);
+    assertThat("Unexpected filter key count.", dbcFilter.keySet(), hasSize(1));
+    assertThat("Unexpected filter key.", dbcFilter.keySet(), hasItem("$in"));
+
+    Set<String> filteredDbcs = dbcFilter.get("$in", Set.class);
+    assertThat("Unexpected filter value count.", filteredDbcs, hasSize(1));
+    assertThat("Unexpected filter value.", filteredDbcs, hasItem(ADMIN_GROUP));
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      formRef | formRef
+      assignedAdmin.name | content.assignedAdmin.name
+      assignedAdmin.email | content.assignedAdmin.email
+      personalDetails.forenames | content.personalDetails.forenames
+      personalDetails.gdcNumber | content.personalDetails.gdcNumber
+      personalDetails.gmcNumber | content.personalDetails.gmcNumber
+      personalDetails.surname | content.personalDetails.surname
+      programmeName | content.programmeMembership.name
+      status | status.current.state
+      """)
+  void shouldApplySingleValueUserFiltersWhenCountingAdminLtfts(String external, String internal) {
+    service.getAdminLtftCount(Map.of(external, "filterValue"));
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
+
+    Query query = queryCaptor.getValue();
+    Document queryObject = query.getQueryObject();
+    assertThat("Unexpected filter count.", queryObject.keySet(), hasSize(3));
+
+    String userFilter = queryObject.getString(internal);
+    assertThat("Unexpected filter value.", userFilter, is("filterValue"));
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      formRef | formRef
+      assignedAdmin.name | content.assignedAdmin.name
+      assignedAdmin.email | content.assignedAdmin.email
+      personalDetails.forenames | content.personalDetails.forenames
+      personalDetails.gdcNumber | content.personalDetails.gdcNumber
+      personalDetails.gmcNumber | content.personalDetails.gmcNumber
+      personalDetails.surname | content.personalDetails.surname
+      programmeName | content.programmeMembership.name
+      status | status.current.state
+      """)
+  void shouldApplyMultiValueUserFiltersWhenCountingAdminLtfts(String external, String internal) {
+    service.getAdminLtftCount(Map.of(external, "filterValue1,filterValue2"));
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
+
+    Query query = queryCaptor.getValue();
+    Document queryObject = query.getQueryObject();
+    assertThat("Unexpected filter count.", queryObject.keySet(), hasSize(3));
+
+    Document userFilter = queryObject.get(internal, Document.class);
+    assertThat("Unexpected filter key count.", userFilter.keySet(), hasSize(1));
+    assertThat("Unexpected filter key.", userFilter.keySet(), hasItem("$in"));
+
+    List<String> filteredDbcs = userFilter.get("$in", List.class);
+    assertThat("Unexpected filter value count.", filteredDbcs, hasSize(2));
+    assertThat("Unexpected filter value.", filteredDbcs, hasItems("filterValue1", "filterValue2"));
+  }
+
+  @Test
+  void shouldApplyMultipleUserFiltersWhenCountingAdminLtfts() {
+    service.getAdminLtftCount(Map.of(
+        "programmeName", "filterValue1",
+        "status", "filterValue2"
+    ));
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
+
+    Query query = queryCaptor.getValue();
+    Document queryObject = query.getQueryObject();
+    assertThat("Unexpected filter count.", queryObject.keySet(), hasSize(4));
+
+    String programmeName = queryObject.getString("content.programmeMembership.name");
+    assertThat("Unexpected filter value.", programmeName, is("filterValue1"));
+
+    String status = queryObject.getString("status.current.state");
+    assertThat("Unexpected filter value.", status, is("filterValue2"));
   }
 
   @ParameterizedTest
   @NullAndEmptySource
-  void shouldGetAllNonDraftAdminLtftsWhenFiltersEmpty(Set<LifecycleState> states) {
-    PageRequest pageRequest = PageRequest.of(1, 1);
+  void shouldExcludeEmptyUserFiltersWhenCountingAdminLtfts(String filterValue) {
+    Map<String, String> filterParams = new HashMap<>();
+    filterParams.put("formRef", filterValue);
+    service.getAdminLtftCount(filterParams);
 
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
+
+    Query query = queryCaptor.getValue();
+    Document queryObject = query.getQueryObject();
+    assertThat("Unexpected filter count.", queryObject.keySet(), hasSize(2));
+    assertThat("Unexpected filter key.", queryObject.keySet(), not(hasItem("formRef")));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"abc", "shortNotice", "daysToStart", "reason"})
+  void shouldExcludeUnsupportedUserFiltersWhenCountingAdminLtfts(String field) {
+    service.getAdminLtftCount(Map.of(field, "filterValue"));
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
+
+    Query query = queryCaptor.getValue();
+    Document queryObject = query.getQueryObject();
+    assertThat("Unexpected filter count.", queryObject.keySet(), hasSize(2));
+    assertThat("Unexpected filter key.", queryObject.keySet(), not(hasItem(field)));
+  }
+
+  @Test
+  void shouldGetAdminLtftSummaries() {
     LtftForm entity1 = new LtftForm();
     UUID id1 = UUID.randomUUID();
     entity1.setId(id1);
@@ -270,81 +397,297 @@ class LtftServiceTest {
     UUID id2 = UUID.randomUUID();
     entity2.setId(id2);
 
-    when(ltftRepository
-        .findByStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-            Set.of(DRAFT), Set.of(ADMIN_GROUP), pageRequest))
-        .thenReturn(new PageImpl<>(List.of(entity1, entity2)));
+    when(mongoTemplate.find(any(), eq(LtftForm.class))).thenReturn(List.of(entity1, entity2));
+    when(mongoTemplate.count(any(), eq(LtftForm.class))).thenReturn(2L);
 
-    Page<LtftAdminSummaryDto> dtos = service.getAdminLtftSummaries(states, pageRequest);
-
-    assertThat("Unexpected total elements.", dtos.getTotalElements(), is(2L));
+    Page<LtftAdminSummaryDto> dtos = service.getAdminLtftSummaries(Map.of(), PageRequest.of(1, 1));
 
     List<LtftAdminSummaryDto> content = dtos.getContent();
     assertThat("Unexpected ID.", content.get(0).id(), is(id1));
     assertThat("Unexpected ID.", content.get(1).id(), is(id2));
-
-    verify(ltftRepository,
-        never()).findByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-        any(), any(), any());
   }
 
   @Test
-  void shouldGetFilteredAdminLtftsWhenFiltersNotEmpty() {
-    Set<LifecycleState> states = Set.of(SUBMITTED);
-    PageRequest pageRequest = PageRequest.of(1, 1);
+  void shouldGetPagedAdminLtftSummaries() {
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    when(mongoTemplate.find(queryCaptor.capture(), eq(LtftForm.class))).thenReturn(
+        List.of(new LtftForm(), new LtftForm()));
+    when(mongoTemplate.count(queryCaptor.capture(), eq(LtftForm.class))).thenReturn(2L);
 
-    LtftForm entity1 = new LtftForm();
-    UUID id1 = UUID.randomUUID();
-    entity1.setId(id1);
-
-    LtftForm entity2 = new LtftForm();
-    UUID id2 = UUID.randomUUID();
-    entity2.setId(id2);
-
-    when(ltftRepository
-        .findByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(states,
-            Set.of(ADMIN_GROUP), pageRequest))
-        .thenReturn(new PageImpl<>(List.of(entity1, entity2)));
-
-    Page<LtftAdminSummaryDto> dtos = service.getAdminLtftSummaries(states, pageRequest);
+    Page<LtftAdminSummaryDto> dtos = service.getAdminLtftSummaries(Map.of(), PageRequest.of(1, 1));
 
     assertThat("Unexpected total elements.", dtos.getTotalElements(), is(2L));
+    assertThat("Unexpected total pages.", dtos.getTotalPages(), is(2));
+    assertThat("Unexpected pageable.", dtos.getPageable().isPaged(), is(true));
+    assertThat("Unexpected page number.", dtos.getPageable().getPageNumber(), is(1));
+    assertThat("Unexpected page size.", dtos.getPageable().getPageSize(), is(1));
 
-    List<LtftAdminSummaryDto> content = dtos.getContent();
-    assertThat("Unexpected ID.", content.get(0).id(), is(id1));
-    assertThat("Unexpected ID.", content.get(1).id(), is(id2));
+    List<Query> queries = queryCaptor.getAllValues();
+    assertThat("Unexpected limited flag.", queries.get(0).isLimited(), is(true));
+    assertThat("Unexpected limit.", queries.get(0).getLimit(), is(1));
+    assertThat("Unexpected skip.", queries.get(0).getSkip(), is(1L));
 
-    verify(ltftRepository, never())
-        .findByStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-            any(), any(), any());
+    // The second query is the count, which is unpaged.
+    assertThat("Unexpected limited flag.", queries.get(1).isLimited(), is(false));
+    assertThat("Unexpected limit.", queries.get(1).getLimit(), is(0));
+    assertThat("Unexpected skip.", queries.get(1).getSkip(), is(-1L));
   }
 
   @Test
-  void shouldNotGetDraftAdminLtftsWhenFiltersNotEmpty() {
-    Set<LifecycleState> states = Set.of(DRAFT, SUBMITTED);
-    PageRequest pageRequest = PageRequest.of(1, 1);
+  void shouldGetUnpagedAdminLtftSummaries() {
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    when(mongoTemplate.find(queryCaptor.capture(), eq(LtftForm.class))).thenReturn(
+        List.of(new LtftForm(), new LtftForm()));
 
-    when(ltftRepository
-        .findByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(any(),
-            any(), any())).thenReturn(new PageImpl<>(List.of()));
+    Page<LtftAdminSummaryDto> dtos = service.getAdminLtftSummaries(Map.of(), Pageable.unpaged());
 
-    service.getAdminLtftSummaries(states, pageRequest);
+    assertThat("Unexpected total elements.", dtos.getTotalElements(), is(2L));
+    assertThat("Unexpected total pages.", dtos.getTotalPages(), is(1));
+    assertThat("Unexpected pageable.", dtos.getPageable().isPaged(), is(false));
 
-    ArgumentCaptor<Set<LifecycleState>> statesCaptor = ArgumentCaptor.captor();
-    verify(ltftRepository)
-        .findByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-            statesCaptor.capture(), any(), any());
+    Query query = queryCaptor.getValue();
+    assertThat("Unexpected limited flag.", query.isLimited(), is(false));
+    assertThat("Unexpected limit.", query.getLimit(), is(0));
+    assertThat("Unexpected skip.", query.getSkip(), is(0L));
 
-    Set<LifecycleState> filteredStates = statesCaptor.getValue();
-    assertThat("Unexpected state count.", filteredStates, hasSize(1));
-    assertThat("Unexpected states.", filteredStates, hasItems(SUBMITTED));
+    verify(mongoTemplate, never()).count(any(), eq(LtftForm.class));
+  }
+
+  @Test
+  void shouldExcludeNonSubmittedWhenGettingAdminLtftSummaries() {
+    service.getAdminLtftSummaries(Map.of(), PageRequest.of(1, 1));
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).find(queryCaptor.capture(), eq(LtftForm.class));
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
+
+    queryCaptor.getAllValues().forEach(query -> {
+      Document queryObject = query.getQueryObject();
+      assertThat("Unexpected filter count.", queryObject.keySet(), hasSize(2));
+
+      Document submittedFilter = queryObject.get("status.submitted", Document.class);
+      assertThat("Unexpected filter key count.", submittedFilter.keySet(), hasSize(1));
+      assertThat("Unexpected filter key.", submittedFilter.keySet(), hasItem("$ne"));
+      assertThat("Unexpected filter value.", submittedFilter.get("$ne"), nullValue());
+    });
+  }
+
+  @Test
+  void shouldFilterByDbcWhenGettingAdminLtftSummaries() {
+    service.getAdminLtftSummaries(Map.of(), PageRequest.of(1, 1));
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).find(queryCaptor.capture(), eq(LtftForm.class));
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
+
+    queryCaptor.getAllValues().forEach(query -> {
+      Document queryObject = query.getQueryObject();
+      assertThat("Unexpected filter count.", queryObject.keySet(), hasSize(2));
+
+      Document dbcFilter = queryObject.get("content.programmeMembership.designatedBodyCode",
+          Document.class);
+      assertThat("Unexpected filter key count.", dbcFilter.keySet(), hasSize(1));
+      assertThat("Unexpected filter key.", dbcFilter.keySet(), hasItem("$in"));
+
+      Set<String> filteredDbcs = dbcFilter.get("$in", Set.class);
+      assertThat("Unexpected filter value count.", filteredDbcs, hasSize(1));
+      assertThat("Unexpected filter value.", filteredDbcs, hasItem(ADMIN_GROUP));
+    });
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      formRef | formRef
+      assignedAdmin.name | content.assignedAdmin.name
+      assignedAdmin.email | content.assignedAdmin.email
+      personalDetails.forenames | content.personalDetails.forenames
+      personalDetails.gdcNumber | content.personalDetails.gdcNumber
+      personalDetails.gmcNumber | content.personalDetails.gmcNumber
+      personalDetails.surname | content.personalDetails.surname
+      programmeName | content.programmeMembership.name
+      status | status.current.state
+      """)
+  void shouldApplySingleValueUserFiltersWhenGettingAdminLtftSummaries(String external,
+      String internal) {
+    service.getAdminLtftSummaries(Map.of(external, "filterValue"), PageRequest.of(1, 1));
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).find(queryCaptor.capture(), eq(LtftForm.class));
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
+
+    queryCaptor.getAllValues().forEach(query -> {
+      Document queryObject = query.getQueryObject();
+      assertThat("Unexpected filter count.", queryObject.keySet(), hasSize(3));
+
+      String userFilter = queryObject.getString(internal);
+      assertThat("Unexpected filter value.", userFilter, is("filterValue"));
+    });
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      formRef | formRef
+      assignedAdmin.name | content.assignedAdmin.name
+      assignedAdmin.email | content.assignedAdmin.email
+      personalDetails.forenames | content.personalDetails.forenames
+      personalDetails.gdcNumber | content.personalDetails.gdcNumber
+      personalDetails.gmcNumber | content.personalDetails.gmcNumber
+      personalDetails.surname | content.personalDetails.surname
+      programmeName | content.programmeMembership.name
+      status | status.current.state
+      """)
+  void shouldApplyMultiValueUserFiltersWhenGettingAdminLtftSummaries(String external,
+      String internal) {
+    service.getAdminLtftSummaries(Map.of(
+        external, "filterValue1,filterValue2"
+    ), PageRequest.of(1, 1));
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).find(queryCaptor.capture(), eq(LtftForm.class));
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
+
+    queryCaptor.getAllValues().forEach(query -> {
+      Document queryObject = query.getQueryObject();
+      assertThat("Unexpected filter count.", queryObject.keySet(), hasSize(3));
+
+      Document userFilter = queryObject.get(internal, Document.class);
+      assertThat("Unexpected filter key count.", userFilter.keySet(), hasSize(1));
+      assertThat("Unexpected filter key.", userFilter.keySet(), hasItem("$in"));
+
+      List<String> filteredDbcs = userFilter.get("$in", List.class);
+      assertThat("Unexpected filter value count.", filteredDbcs, hasSize(2));
+      assertThat("Unexpected filter value.", filteredDbcs,
+          hasItems("filterValue1", "filterValue2"));
+    });
+  }
+
+  @Test
+  void shouldApplyMultipleUserFiltersWhenGettingAdminLtftSummaries() {
+    service.getAdminLtftSummaries(Map.of(
+        "programmeName", "filterValue1",
+        "status", "filterValue2"
+    ), PageRequest.of(1, 1));
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).find(queryCaptor.capture(), eq(LtftForm.class));
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
+
+    queryCaptor.getAllValues().forEach(query -> {
+      Document queryObject = query.getQueryObject();
+      assertThat("Unexpected filter count.", queryObject.keySet(), hasSize(4));
+
+      String programmeName = queryObject.getString("content.programmeMembership.name");
+      assertThat("Unexpected filter value.", programmeName, is("filterValue1"));
+
+      String status = queryObject.getString("status.current.state");
+      assertThat("Unexpected filter value.", status, is("filterValue2"));
+    });
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"abc", "shortNotice", "daysToStart", "reason"})
+  void shouldExcludeUnsupportedUserFiltersWhenGettingAdminLtftSummaries(String field) {
+    service.getAdminLtftSummaries(Map.of(field, "filterValue1,filterValue2"),
+        PageRequest.of(1, 1));
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).find(queryCaptor.capture(), eq(LtftForm.class));
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
+
+    queryCaptor.getAllValues().forEach(query -> {
+      Document queryObject = query.getQueryObject();
+      assertThat("Unexpected filter count.", queryObject.keySet(), hasSize(2));
+      assertThat("Unexpected filter key.", queryObject.keySet(), not(hasItem(field)));
+    });
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      formRef | formRef
+      daysToStart | content.change.startDate
+      proposedStartDate | content.change.startDate
+      submissionDate | status.submitted
+      """)
+  void shouldApplyUserSortWhenGettingPagedAdminLtftSummaries(String external, String internal) {
+    service.getAdminLtftSummaries(Map.of(), PageRequest.of(1, 1, Sort.by(Order.asc(external))));
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).find(queryCaptor.capture(), eq(LtftForm.class));
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
+
+    queryCaptor.getAllValues().forEach(query -> {
+      assertThat("Unexpected sorted flag.", query.isSorted(), is(true));
+
+      Document sortObject = query.getSortObject();
+      assertThat("Unexpected sort count.", sortObject.keySet(), hasSize(1));
+      assertThat("Unexpected sort direction.", sortObject.get(internal), is(1));
+    });
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      formRef | formRef
+      daysToStart | content.change.startDate
+      proposedStartDate | content.change.startDate
+      submissionDate | status.submitted
+      """)
+  void shouldApplyUserSortWhenGettingUnpagedAdminLtftSummaries(String external, String internal) {
+    service.getAdminLtftSummaries(Map.of(), Pageable.unpaged(Sort.by(Order.asc(external))));
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).find(queryCaptor.capture(), eq(LtftForm.class));
+
+    Query query = queryCaptor.getValue();
+    assertThat("Unexpected sorted flag.", query.isSorted(), is(true));
+
+    Document sortObject = query.getSortObject();
+    assertThat("Unexpected sort count.", sortObject.keySet(), hasSize(1));
+    assertThat("Unexpected sort direction.", sortObject.get(internal), is(1));
+
+    verify(mongoTemplate, never()).count(any(), eq(LtftForm.class));
+  }
+
+  @Test
+  void shouldApplyMultipleUserSortsWhenGettingPagedAdminLtftSummaries() {
+    PageRequest pageRequest = PageRequest.of(1, 1, Sort.by(
+        Order.asc("formRef"),
+        Order.desc("submissionDate")
+    ));
+
+    service.getAdminLtftSummaries(Map.of(), pageRequest);
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).find(queryCaptor.capture(), eq(LtftForm.class));
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
+
+    queryCaptor.getAllValues().forEach(query -> {
+      assertThat("Unexpected sorted flag.", query.isSorted(), is(true));
+
+      Document sortObject = query.getSortObject();
+      assertThat("Unexpected sort count.", sortObject.keySet(), hasSize(2));
+      assertThat("Unexpected sort direction.", sortObject.get("formRef"), is(1));
+      assertThat("Unexpected sort direction.", sortObject.get("status.submitted"), is(-1));
+    });
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"abc", "programmeName", "status"})
+  void shouldExcludeUnsupportedUserSortWhenGettingUnpagedAdminLtftSummaries(String field) {
+    service.getAdminLtftSummaries(Map.of(), PageRequest.of(1, 1, Sort.by(Order.asc(field))));
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).find(queryCaptor.capture(), eq(LtftForm.class));
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
+
+    queryCaptor.getAllValues()
+        .forEach(query -> assertThat("Unexpected sorted flag.", query.isSorted(), is(false)));
   }
 
   @Test
   void shouldGetAdminLtftDetailWithFormId() {
     service.getAdminLtftDetail(ID);
 
-    verify(ltftRepository)
+    verify(repository)
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             eq(ID), any(), any());
   }
@@ -353,7 +696,7 @@ class LtftServiceTest {
   void shouldGetAdminLtftDetailWithDraftExcluded() {
     service.getAdminLtftDetail(ID);
 
-    verify(ltftRepository)
+    verify(repository)
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), eq(Set.of(DRAFT)), any());
   }
@@ -362,14 +705,14 @@ class LtftServiceTest {
   void shouldGetAdminLtftDetailWithAdminDbcs() {
     service.getAdminLtftDetail(ID);
 
-    verify(ltftRepository)
+    verify(repository)
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), eq(Set.of(ADMIN_GROUP)));
   }
 
   @Test
   void shouldGetEmptyAdminLtftDetailWhenFormNotFound() {
-    when(ltftRepository
+    when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.empty());
 
@@ -393,7 +736,7 @@ class LtftServiceTest {
         .build();
     entity.setContent(content);
 
-    when(ltftRepository
+    when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
@@ -417,7 +760,7 @@ class LtftServiceTest {
     entity.setId(ID);
     entity.setContent(LtftContent.builder().build());
 
-    when(ltftRepository
+    when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
@@ -456,7 +799,7 @@ class LtftServiceTest {
         .build();
     entity.setContent(content);
 
-    when(ltftRepository
+    when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
@@ -489,7 +832,7 @@ class LtftServiceTest {
         .build();
     entity.setContent(content);
 
-    when(ltftRepository
+    when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
@@ -530,7 +873,7 @@ class LtftServiceTest {
         .build();
     entity.setContent(content);
 
-    when(ltftRepository
+    when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
@@ -558,7 +901,7 @@ class LtftServiceTest {
         .build();
     entity.setContent(content);
 
-    when(ltftRepository
+    when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
@@ -590,7 +933,7 @@ class LtftServiceTest {
         .build();
     entity.setContent(content);
 
-    when(ltftRepository
+    when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
@@ -615,7 +958,7 @@ class LtftServiceTest {
         .build();
     entity.setContent(content);
 
-    when(ltftRepository
+    when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
@@ -648,7 +991,7 @@ class LtftServiceTest {
         .build();
     entity.setContent(content);
 
-    when(ltftRepository
+    when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
@@ -683,7 +1026,7 @@ class LtftServiceTest {
         .build();
     entity.setContent(content);
 
-    when(ltftRepository
+    when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
@@ -719,7 +1062,7 @@ class LtftServiceTest {
         .build();
     entity.setContent(content);
 
-    when(ltftRepository
+    when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
@@ -748,7 +1091,7 @@ class LtftServiceTest {
         .build();
     entity.setContent(content);
 
-    when(ltftRepository
+    when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
@@ -780,7 +1123,7 @@ class LtftServiceTest {
         .build();
     entity.setContent(content);
 
-    when(ltftRepository
+    when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
@@ -807,7 +1150,7 @@ class LtftServiceTest {
         .build();
     entity.setContent(content);
 
-    when(ltftRepository
+    when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
@@ -835,7 +1178,7 @@ class LtftServiceTest {
         .build();
     entity.setContent(content);
 
-    when(ltftRepository
+    when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
@@ -860,7 +1203,7 @@ class LtftServiceTest {
         .build();
     entity.setContent(content);
 
-    when(ltftRepository
+    when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
@@ -925,7 +1268,7 @@ class LtftServiceTest {
         ))
         .build());
 
-    when(ltftRepository
+    when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
@@ -980,7 +1323,7 @@ class LtftServiceTest {
 
     entity.setStatus(Status.builder().build());
 
-    when(ltftRepository
+    when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             any(), any(), any())).thenReturn(Optional.of(entity));
 
@@ -998,7 +1341,7 @@ class LtftServiceTest {
   @EnumSource(LifecycleState.class)
   void shouldReturnEmptyUpdatingStatusWhenFormNotFound(LifecycleState state)
       throws MethodArgumentNotValidException {
-    when(ltftRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.empty());
 
     Optional<LtftFormDto> form = service.updateStatusAsAdmin(ID, state, null);
@@ -1013,7 +1356,7 @@ class LtftServiceTest {
     LtftForm form = new LtftForm();
     form.setLifecycleState(DRAFT);
 
-    when(ltftRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
 
     MethodArgumentNotValidException exception = assertThrows(MethodArgumentNotValidException.class,
@@ -1028,7 +1371,7 @@ class LtftServiceTest {
     assertThat("Unexpected message.", fieldError.getDefaultMessage(),
         is("can not be transitioned to " + targetState.name()));
 
-    verify(ltftRepository, never()).save(any());
+    verify(repository, never()).save(any());
   }
 
   @ParameterizedTest
@@ -1038,9 +1381,9 @@ class LtftServiceTest {
     LtftForm entity = new LtftForm();
     entity.setLifecycleState(DRAFT);
 
-    when(ltftRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(entity));
-    when(ltftRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     Optional<LtftFormDto> optionalDto = service.updateStatusAsAdmin(ID, targetState,
         LftfStatusInfoDetailDto.builder()
@@ -1081,7 +1424,7 @@ class LtftServiceTest {
     LtftForm form = new LtftForm();
     form.setLifecycleState(SUBMITTED);
 
-    when(ltftRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
 
     MethodArgumentNotValidException exception = assertThrows(MethodArgumentNotValidException.class,
@@ -1096,7 +1439,7 @@ class LtftServiceTest {
     assertThat("Unexpected message.", fieldError.getDefaultMessage(),
         is("can not be transitioned to " + targetState.name()));
 
-    verify(ltftRepository, never()).save(any());
+    verify(repository, never()).save(any());
   }
 
   @ParameterizedTest
@@ -1107,9 +1450,9 @@ class LtftServiceTest {
     LtftForm entity = new LtftForm();
     entity.setLifecycleState(SUBMITTED);
 
-    when(ltftRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(entity));
-    when(ltftRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     Optional<LtftFormDto> optionalDto = service.updateStatusAsAdmin(ID, targetState,
         LftfStatusInfoDetailDto.builder()
@@ -1149,7 +1492,7 @@ class LtftServiceTest {
     LtftForm form = new LtftForm();
     form.setLifecycleState(UNSUBMITTED);
 
-    when(ltftRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
 
     MethodArgumentNotValidException exception = assertThrows(MethodArgumentNotValidException.class,
@@ -1164,7 +1507,7 @@ class LtftServiceTest {
     assertThat("Unexpected message.", fieldError.getDefaultMessage(),
         is("can not be transitioned to " + targetState.name()));
 
-    verify(ltftRepository, never()).save(any());
+    verify(repository, never()).save(any());
   }
 
   @ParameterizedTest
@@ -1174,9 +1517,9 @@ class LtftServiceTest {
     LtftForm entity = new LtftForm();
     entity.setLifecycleState(UNSUBMITTED);
 
-    when(ltftRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(entity));
-    when(ltftRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     Optional<LtftFormDto> optionalDto = service.updateStatusAsAdmin(ID, targetState,
         LftfStatusInfoDetailDto.builder()
@@ -1216,7 +1559,7 @@ class LtftServiceTest {
     LtftForm form = new LtftForm();
     form.setLifecycleState(currentState);
 
-    when(ltftRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
 
     Arrays.stream(LifecycleState.values()).forEach(targetState -> {
@@ -1238,7 +1581,7 @@ class LtftServiceTest {
           is("can not be transitioned to " + targetState.name()));
     });
 
-    verify(ltftRepository, never()).save(any());
+    verify(repository, never()).save(any());
   }
 
   @ParameterizedTest
@@ -1251,9 +1594,9 @@ class LtftServiceTest {
     LtftForm form = new LtftForm();
     form.setLifecycleState(currentState);
 
-    when(ltftRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
-    when(ltftRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     assertDoesNotThrow(() -> service.updateStatusAsAdmin(ID, targetState, null));
   }
@@ -1268,9 +1611,9 @@ class LtftServiceTest {
     LtftForm form = new LtftForm();
     form.setLifecycleState(currentState);
 
-    when(ltftRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
-    when(ltftRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     assertDoesNotThrow(() -> service.updateStatusAsAdmin(ID, targetState,
         LftfStatusInfoDetailDto.builder().build()));
@@ -1283,7 +1626,7 @@ class LtftServiceTest {
     LtftForm form = new LtftForm();
     form.setLifecycleState(SUBMITTED);
 
-    when(ltftRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
 
     MethodArgumentNotValidException exception = assertThrows(MethodArgumentNotValidException.class,
@@ -1298,7 +1641,7 @@ class LtftServiceTest {
     assertThat("Unexpected message.", fieldError.getDefaultMessage(),
         is("must not be null when transitioning to " + targetState.name()));
 
-    verify(ltftRepository, never()).save(any());
+    verify(repository, never()).save(any());
   }
 
   @ParameterizedTest
@@ -1309,7 +1652,7 @@ class LtftServiceTest {
     LtftForm form = new LtftForm();
     form.setLifecycleState(SUBMITTED);
 
-    when(ltftRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
 
     MethodArgumentNotValidException exception = assertThrows(MethodArgumentNotValidException.class,
@@ -1325,29 +1668,29 @@ class LtftServiceTest {
     assertThat("Unexpected message.", fieldError.getDefaultMessage(),
         is("must not be null when transitioning to " + targetState.name()));
 
-    verify(ltftRepository, never()).save(any());
+    verify(repository, never()).save(any());
   }
 
   @Test
   void shouldReturnEmptyIfLtftFormNotFound() {
-    when(ltftRepository.findByTraineeTisIdAndId(any(), any())).thenReturn(Optional.empty());
+    when(repository.findByTraineeTisIdAndId(any(), any())).thenReturn(Optional.empty());
 
     Optional<LtftFormDto> formDtoOptional = service.getLtftForm(ID);
 
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
-    verify(ltftRepository).findByTraineeTisIdAndId(any(), eq(ID));
-    verifyNoMoreInteractions(ltftRepository);
+    verify(repository).findByTraineeTisIdAndId(any(), eq(ID));
+    verifyNoMoreInteractions(repository);
   }
 
   @Test
   void shouldReturnEmptyIfLtftFormForTraineeNotFound() {
-    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
 
     Optional<LtftFormDto> formDtoOptional = service.getLtftForm(ID);
 
     assertThat("Unexpected form returned.", formDtoOptional, is(Optional.empty()));
-    verify(ltftRepository).findByTraineeTisIdAndId(TRAINEE_ID, ID);
-    verifyNoMoreInteractions(ltftRepository);
+    verify(repository).findByTraineeTisIdAndId(TRAINEE_ID, ID);
+    verifyNoMoreInteractions(repository);
   }
 
   @Test
@@ -1356,13 +1699,13 @@ class LtftServiceTest {
     form.setId(ID);
     form.setTraineeTisId(TRAINEE_ID);
     form.setContent(LtftContent.builder().name("test").build());
-    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID))
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID))
         .thenReturn(Optional.of(form));
 
     Optional<LtftFormDto> formDtoOptional = service.getLtftForm(ID);
 
     assertThat("Unexpected empty form returned.", formDtoOptional.isPresent(), is(true));
-    verify(ltftRepository).findByTraineeTisIdAndId(TRAINEE_ID, ID);
+    verify(repository).findByTraineeTisIdAndId(TRAINEE_ID, ID);
     LtftFormDto returnedFormDto = formDtoOptional.get();
     assertThat("Unexpected returned LTFT form.", returnedFormDto, is(mapper.toDto(form)));
   }
@@ -1376,7 +1719,7 @@ class LtftServiceTest {
     Optional<LtftFormDto> formDtoOptional = service.saveLtftForm(dtoToSave);
 
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
-    verifyNoInteractions(ltftRepository);
+    verifyNoInteractions(repository);
   }
 
   @Test
@@ -1389,11 +1732,11 @@ class LtftServiceTest {
     existingForm.setId(ID);
     existingForm.setTraineeTisId(TRAINEE_ID);
     existingForm.setContent(LtftContent.builder().name("test").build());
-    when(ltftRepository.save(any())).thenReturn(existingForm);
+    when(repository.save(any())).thenReturn(existingForm);
 
     Optional<LtftFormDto> formDtoOptional = service.saveLtftForm(dtoToSave);
 
-    verify(ltftRepository).save(any());
+    verify(repository).save(any());
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
   }
 
@@ -1406,7 +1749,7 @@ class LtftServiceTest {
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
 
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
-    verifyNoInteractions(ltftRepository);
+    verifyNoInteractions(repository);
   }
 
   @Test
@@ -1420,7 +1763,7 @@ class LtftServiceTest {
         = service.updateLtftForm(UUID.randomUUID(), dtoToSave);
 
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
-    verifyNoInteractions(ltftRepository);
+    verifyNoInteractions(repository);
   }
 
   @Test
@@ -1433,7 +1776,7 @@ class LtftServiceTest {
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
 
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
-    verifyNoInteractions(ltftRepository);
+    verifyNoInteractions(repository);
   }
 
   @Test
@@ -1443,14 +1786,14 @@ class LtftServiceTest {
         .traineeTisId(TRAINEE_ID)
         .build();
 
-    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID))
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID))
         .thenReturn(Optional.empty());
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
 
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
-    verify(ltftRepository).findByTraineeTisIdAndId(TRAINEE_ID, ID);
-    verifyNoMoreInteractions(ltftRepository);
+    verify(repository).findByTraineeTisIdAndId(TRAINEE_ID, ID);
+    verifyNoMoreInteractions(repository);
   }
 
   @Test
@@ -1464,20 +1807,20 @@ class LtftServiceTest {
     existingForm.setId(ID);
     existingForm.setTraineeTisId(TRAINEE_ID);
     existingForm.setContent(LtftContent.builder().name("test").build());
-    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID))
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID))
         .thenReturn(Optional.of(existingForm));
-    when(ltftRepository.save(any())).thenReturn(existingForm);
+    when(repository.save(any())).thenReturn(existingForm);
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
 
     LtftForm formToSave = mapper.toEntity(dtoToSave);
-    verify(ltftRepository).save(formToSave);
+    verify(repository).save(formToSave);
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
   }
 
   @Test
   void shouldReturnEmptyWhenDeletingIfFormNotFound() {
-    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
 
     Optional<Boolean> result = service.deleteLtftForm(ID);
 
@@ -1493,7 +1836,7 @@ class LtftServiceTest {
     form.setTraineeTisId(TRAINEE_ID);
     form.setLifecycleState(lifecycleState);
 
-    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
 
     Optional<Boolean> result = service.deleteLtftForm(ID);
 
@@ -1509,19 +1852,19 @@ class LtftServiceTest {
     form.setTraineeTisId(TRAINEE_ID);
     form.setLifecycleState(DRAFT);
 
-    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
 
     Optional<Boolean> result = service.deleteLtftForm(ID);
 
     assertThat("Unexpected empty result when form is deleted.", result.isPresent(), is(true));
     assertThat("Expected true result when form is deleted.", result.get(), is(true));
-    verify(ltftRepository).deleteById(ID);
+    verify(repository).deleteById(ID);
   }
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, names = {"SUBMITTED", "UNSUBMITTED", "WITHDRAWN"})
   void shouldReturnEmptyWhenTransitionFormNotFound(LifecycleState targetState) {
-    when(ltftRepository.findByTraineeTisIdAndId(any(), any())).thenReturn(Optional.empty());
+    when(repository.findByTraineeTisIdAndId(any(), any())).thenReturn(Optional.empty());
     LftfStatusInfoDetailDto detail
         = new LftfStatusInfoDetailDto("reason", "message");
 
@@ -1539,7 +1882,7 @@ class LtftServiceTest {
     form.setContent(LtftContent.builder().name("test").build());
     LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
 
-    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
 
     Optional<LtftFormDto> result = service.changeLtftFormState(ID, detail, targetState);
     assertThat("Unexpected form transition.", result.isPresent(), is(false));
@@ -1554,12 +1897,12 @@ class LtftServiceTest {
     form.setLifecycleState(LifecycleState.SUBMITTED);
     form.setContent(LtftContent.builder().name("test").build());
 
-    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
 
     Optional<LtftFormDto> result = service.changeLtftFormState(ID, null, targetState);
 
     assertThat("Unexpected form transition without status detail.", result.isPresent(), is(false));
-    verify(ltftRepository, never()).save(any());
+    verify(repository, never()).save(any());
   }
 
   @ParameterizedTest
@@ -1573,13 +1916,13 @@ class LtftServiceTest {
     form.setContent(LtftContent.builder().name("test").build());
     LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto(null, "message");
 
-    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
 
     Optional<LtftFormDto> result = service.changeLtftFormState(ID, detail, targetState);
 
     assertThat("Unexpected form transition without status detail reason.", result.isPresent(),
         is(false));
-    verify(ltftRepository, never()).save(any());
+    verify(repository, never()).save(any());
   }
 
   @Test
@@ -1590,13 +1933,13 @@ class LtftServiceTest {
     form.setLifecycleState(DRAFT);
     form.setContent(LtftContent.builder().name("test").build());
 
-    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
-    when(ltftRepository.save(any())).thenReturn(form);
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+    when(repository.save(any())).thenReturn(form);
 
     Optional<LtftFormDto> result = service.submitLtftForm(ID, null);
 
     assertThat("Unexpected result when form is submitted.", result.isPresent(), is(true));
-    verify(ltftRepository).save(form);
+    verify(repository).save(form);
   }
 
   @Test
@@ -1610,8 +1953,8 @@ class LtftServiceTest {
 
     LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
 
-    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
-    when(ltftRepository.save(any())).thenReturn(form);
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+    when(repository.save(any())).thenReturn(form);
 
     Optional<LtftFormDto> result = service.submitLtftForm(ID, detail);
 
@@ -1626,7 +1969,7 @@ class LtftServiceTest {
     assertThat("Unexpected status modified timestamp.", newFormState.timestamp(),
         is(notNullValue()));
     assertThat("Unexpected form revision.", form.getRevision(), is(2));
-    verify(ltftRepository).save(form);
+    verify(repository).save(form);
   }
 
   @Test
@@ -1640,8 +1983,8 @@ class LtftServiceTest {
 
     LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
 
-    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
-    when(ltftRepository.save(any())).thenReturn(form);
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+    when(repository.save(any())).thenReturn(form);
 
     Optional<LtftFormDto> result = service.unsubmitLtftForm(ID, detail);
 
@@ -1656,7 +1999,7 @@ class LtftServiceTest {
     assertThat("Unexpected status modified timestamp.", newFormState.timestamp(),
         is(notNullValue()));
     assertThat("Unexpected form revision.", form.getRevision(), is(2));
-    verify(ltftRepository).save(form);
+    verify(repository).save(form);
   }
 
   @Test
@@ -1670,8 +2013,8 @@ class LtftServiceTest {
 
     LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
 
-    when(ltftRepository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
-    when(ltftRepository.save(any())).thenReturn(form);
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+    when(repository.save(any())).thenReturn(form);
 
     Optional<LtftFormDto> result = service.withdrawLtftForm(ID, detail);
 
@@ -1686,6 +2029,6 @@ class LtftServiceTest {
     assertThat("Unexpected status modified timestamp.", newFormState.timestamp(),
         is(notNullValue()));
     assertThat("Unexpected form revision.", form.getRevision(), is(2));
-    verify(ltftRepository).save(form);
+    verify(repository).save(form);
   }
 }
