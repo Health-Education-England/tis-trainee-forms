@@ -28,14 +28,22 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDR
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
 import jakarta.annotation.Nullable;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
@@ -64,7 +72,10 @@ public class LtftService {
 
   private final AdminIdentity adminIdentity;
   private final TraineeIdentity traineeIdentity;
+
   private final LtftFormRepository ltftFormRepository;
+  private final MongoTemplate mongoTemplate;
+
   private final LtftMapper mapper;
 
   /**
@@ -73,13 +84,15 @@ public class LtftService {
    * @param adminIdentity      The logged-in admin, for admin features.
    * @param traineeIdentity    The logged-in trainee, for trainee features.
    * @param ltftFormRepository The LTFT repository.
+   * @param mongoTemplate      The Mongo template.
    * @param mapper             The LTFT mapper.
    */
   public LtftService(AdminIdentity adminIdentity, TraineeIdentity traineeIdentity,
-      LtftFormRepository ltftFormRepository, LtftMapper mapper) {
+      LtftFormRepository ltftFormRepository, MongoTemplate mongoTemplate, LtftMapper mapper) {
     this.adminIdentity = adminIdentity;
     this.traineeIdentity = traineeIdentity;
     this.ltftFormRepository = ltftFormRepository;
+    this.mongoTemplate = mongoTemplate;
     this.mapper = mapper;
   }
 
@@ -102,53 +115,39 @@ public class LtftService {
   /**
    * Count all LTFT forms associated with the local offices of the calling admin.
    *
-   * @param states The states to include in the count.
+   * @param filterParams The parameters to filter results by.
    * @return The number of found LTFT forms.
    */
-  public long getAdminLtftCount(Set<LifecycleState> states) {
-    Set<String> groups = adminIdentity.getGroups();
-
-    if (states == null || states.isEmpty()) {
-      log.debug("No status filter provided, counting all LTFTs.");
-      return ltftFormRepository
-          .countByStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-              Set.of(DRAFT), groups);
-    }
-
-    states = states.stream().filter(s -> s != DRAFT).collect(Collectors.toSet());
-    return ltftFormRepository
-        .countByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(states,
-            groups);
+  public long getAdminLtftCount(Map<String, String> filterParams) {
+    Query query = buildAdminFilteredQuery(filterParams, Pageable.unpaged());
+    return mongoTemplate.count(query, LtftForm.class);
   }
 
   /**
    * Find all LTFT forms associated with the local offices of the calling admin.
    *
-   * @param states   The states to include in the count.
-   * @param pageable The page information to apply to the search.
+   * @param filterParams The parameters to filter results by.
+   * @param pageable     The page information to apply to the search.
    * @return A page of found LTFT forms.
    */
-  public Page<LtftAdminSummaryDto> getAdminLtftSummaries(Set<LifecycleState> states,
+  public Page<LtftAdminSummaryDto> getAdminLtftSummaries(Map<String, String> filterParams,
       Pageable pageable) {
     Set<String> groups = adminIdentity.getGroups();
-    log.info("Getting LTFT forms for admin {} with states {} and DBCs {}", adminIdentity.getEmail(),
-        states, groups);
+    log.info("Getting LTFT forms for admin {} with DBCs {}", adminIdentity.getEmail(), groups);
     Page<LtftForm> forms;
 
-    if (states == null || states.isEmpty()) {
-      log.debug("No status filter provided, searching all LTFTs.");
-      forms = ltftFormRepository
-          .findByStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-              Set.of(DRAFT), groups, pageable);
-    } else {
-      states = states.stream().filter(s -> s != DRAFT).collect(Collectors.toSet());
-      forms = ltftFormRepository
-          .findByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-              states, groups, pageable);
-    }
+    Query query = buildAdminFilteredQuery(filterParams, pageable);
+    List<LtftForm> formsList = mongoTemplate.find(query, LtftForm.class);
 
-    log.info("Found {} total LTFTs, returning page {} of {}", forms.getTotalElements(),
-        pageable.getPageNumber(), forms.getTotalPages());
+    forms = PageableExecutionUtils.getPage(formsList, pageable,
+        () -> mongoTemplate.count(Query.of(query).limit(-1).skip(-1), LtftForm.class));
+
+    if (pageable.isPaged()) {
+      log.info("Found {} total LTFTs, returning page {} of {}", forms.getTotalElements(),
+          pageable.getPageNumber(), forms.getTotalPages());
+    } else {
+      log.info("Found {} total LTFTs, returning all results", forms.getTotalElements());
+    }
     return forms.map(mapper::toAdminSummaryDto);
   }
 
@@ -405,5 +404,78 @@ public class LtftService {
         .build();
     form.setLifecycleState(targetState, detailEntity, modifiedBy, form.getRevision());
     return ltftFormRepository.save(form);
+  }
+
+  /**
+   * Build a filtered query for admin users, which excludes DRAFT results and applies DBC filters.
+   *
+   * @param filterParams The user-supplied filters to apply, unsupported fields will be dropped.
+   * @param pageable     The paging and sorting to apply to the query.
+   * @return The build query.
+   */
+  private Query buildAdminFilteredQuery(Map<String, String> filterParams, Pageable pageable) {
+    // Translate sort field(s).
+    Sort sort = Sort.by(pageable.getSort().stream()
+        .map(order -> {
+          String property = switch (order.getProperty()) {
+            case "formRef" -> order.getProperty();
+            case "daysToStart", "proposedStartDate" -> "content.change.startDate";
+            case "submissionDate" -> "status.submitted";
+            default -> null;
+          };
+
+          return property == null ? null : order.withProperty(property);
+        })
+        .filter(Objects::nonNull)
+        .toList());
+
+    Query query;
+
+    if (pageable.isUnpaged()) {
+      query = new Query().with(sort);
+    } else {
+      pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
+      query = new Query().with(pageable);
+    }
+
+    // Restrict results to the user's DBCs.
+    query.addCriteria(
+        Criteria.where("content.programmeMembership.designatedBodyCode")
+            .in(adminIdentity.getGroups()));
+
+    // Remove DRAFT applications from the result using the submitted timestamp.
+    query.addCriteria(Criteria.where("status.submitted").ne(null));
+
+    // Translate user-supplied filter fields and add them to the query
+    filterParams.entrySet().stream()
+        .filter(e -> e.getValue() != null && !e.getValue().isBlank())
+        .map(e -> {
+          String property = switch (e.getKey()) {
+            case "formRef" -> e.getKey();
+            case "assignedAdmin.name" -> "content.assignedAdmin.name";
+            case "assignedAdmin.email" -> "content.assignedAdmin.email";
+            case "personalDetails.forenames" -> "content.personalDetails.forenames";
+            case "personalDetails.gdcNumber" -> "content.personalDetails.gdcNumber";
+            case "personalDetails.gmcNumber" -> "content.personalDetails.gmcNumber";
+            case "personalDetails.surname" -> "content.personalDetails.surname";
+            case "programmeName" -> "content.programmeMembership.name";
+            case "status" -> "status.current.state";
+            default -> null;
+          };
+          return property == null ? null : new SimpleEntry<>(property, e.getValue());
+        })
+        .filter(Objects::nonNull)
+        .forEach(e -> {
+          String key = e.getKey();
+          String value = e.getValue();
+
+          if (value.contains(",")) {
+            String[] values = value.split(",");
+            query.addCriteria(Criteria.where(key).in((Object[]) values));
+          } else {
+            query.addCriteria(Criteria.where(key).is(value));
+          }
+        });
+    return query;
   }
 }

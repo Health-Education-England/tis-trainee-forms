@@ -26,8 +26,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -38,26 +36,6 @@ import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
  */
 @Repository
 public interface LtftFormRepository extends MongoRepository<LtftForm, UUID> {
-
-  /**
-   * Count all LTFT forms with one of the given DBCs.
-   *
-   * @param states The states to exclude from the count.
-   * @param dbcs   The designated body codes to include in the count.
-   * @return The number of found LTFT forms.
-   */
-  long countByStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-      Set<LifecycleState> states, Set<String> dbcs);
-
-  /**
-   * Count all LTFT forms with one of the given current states and DBCs.
-   *
-   * @param states The states to include in the count.
-   * @param dbcs   The designated body codes to include in the count.
-   * @return The number of found LTFT forms.
-   */
-  long countByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-      Set<LifecycleState> states, Set<String> dbcs);
 
   /**
    * Find all LTFT forms belonging to the given trainee, ordered by last modified.
@@ -75,28 +53,6 @@ public interface LtftFormRepository extends MongoRepository<LtftForm, UUID> {
    * @return The LTFT form, or optional empty if not found (or does not belong to trainee).
    */
   Optional<LtftForm> findByTraineeTisIdAndId(String traineeId, UUID id);
-
-  /**
-   * Find all LTFT forms with one of the given DBCs.
-   *
-   * @param states   The states to exclude from the search.
-   * @param dbcs     The designated body codes to include in the search.
-   * @param pageable Page information to apply to the search.
-   * @return A page of found LTFT forms.
-   */
-  Page<LtftForm> findByStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-      Set<LifecycleState> states, Set<String> dbcs, Pageable pageable);
-
-  /**
-   * Find all LTFT forms with one of the given current states and DBCs.
-   *
-   * @param states   The states to include in the search.
-   * @param dbcs     The designated body codes to include in the search.
-   * @param pageable Page information to apply to the search.
-   * @return A page of found LTFT forms.
-   */
-  Page<LtftForm> findByStatus_Current_StateInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-      Set<LifecycleState> states, Set<String> dbcs, Pageable pageable);
 
   /**
    * Find the LTFT form with the given ID and one of the given DBCs.

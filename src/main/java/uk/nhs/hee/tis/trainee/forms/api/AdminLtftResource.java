@@ -25,8 +25,8 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROV
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -47,7 +47,6 @@ import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
-import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 
 /**
@@ -68,13 +67,13 @@ public class AdminLtftResource {
   /**
    * Get a count of LTFT applications associated with the admin's local office.
    *
-   * @param states The states to include in the count.
+   * @param params The query parameters, will be passed as filters.
    * @return The number of LTFT applications found meeting the criteria.
    */
   @GetMapping("/count")
   public ResponseEntity<String> getAdminLtftCount(
-      @RequestParam(value = "status", required = false) Set<LifecycleState> states) {
-    long count = service.getAdminLtftCount(states);
+      @RequestParam(required = false) Map<String, String> params) {
+    long count = service.getAdminLtftCount(params);
     return ResponseEntity.ok().contentType(MediaType.TEXT_PLAIN).body(String.valueOf(count));
   }
 
@@ -83,15 +82,15 @@ public class AdminLtftResource {
    *
    * @param pageable The desired paging and sorting details, defaults to all records sorted by
    *                 submission date.
+   * @param params   The query parameters, will be passed as filters.
    * @return A page of LTFT summaries meeting the criteria.
    */
   @GetMapping
   ResponseEntity<PagedModel<LtftAdminSummaryDto>> getLtftAdminSummaries(
-      @RequestParam(value = "status", required = false) Set<LifecycleState> states,
-      @PageableDefault(size = Integer.MAX_VALUE, sort = "content.change.startDate",
-          direction = Direction.ASC)
-      Pageable pageable) {
-    Page<LtftAdminSummaryDto> page = service.getAdminLtftSummaries(states, pageable);
+      @RequestParam(required = false) Map<String, String> params,
+      @PageableDefault(size = Integer.MAX_VALUE, sort = "proposedStartDate",
+          direction = Direction.ASC) Pageable pageable) {
+    Page<LtftAdminSummaryDto> page = service.getAdminLtftSummaries(params, pageable);
     return ResponseEntity.ok(new PagedModel<>(page));
   }
 
@@ -129,8 +128,8 @@ public class AdminLtftResource {
    * @throws MethodArgumentNotValidException When the state transition was not valid.
    */
   @PutMapping("/{id}/unsubmit")
-  ResponseEntity<LtftFormDto> unsubmitLtft(@PathVariable UUID id, @RequestBody
-      LftfStatusInfoDetailDto detail)
+  ResponseEntity<LtftFormDto> unsubmitLtft(@PathVariable UUID id,
+      @RequestBody LftfStatusInfoDetailDto detail)
       throws MethodArgumentNotValidException {
     Optional<LtftFormDto> form = service.updateStatusAsAdmin(id, UNSUBMITTED, detail);
     return ResponseEntity.of(form);

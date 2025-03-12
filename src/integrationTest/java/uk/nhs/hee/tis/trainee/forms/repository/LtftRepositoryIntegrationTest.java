@@ -82,8 +82,13 @@ class LtftRepositoryIntegrationTest {
       _id_                                           | _id
       traineeTisId                                   | traineeTisId
       formRef                                        | formRef
+      content.personalDetails.forenames              | content.personalDetails.forenames
+      content.personalDetails.gdcNumber              | content.personalDetails.gdcNumber
+      content.personalDetails.gmcNumber              | content.personalDetails.gmcNumber
+      content.personalDetails.surname                | content.personalDetails.surname
       content.programmeMembership.id                 | content.programmeMembership.id
       content.programmeMembership.designatedBodyCode | content.programmeMembership.designatedBodyCode
+      content.programmeMembership.name               | content.programmeMembership.name
       status.current.state                           | status.current.state
       status.history.state                           | status.history.state
        """)
@@ -91,7 +96,7 @@ class LtftRepositoryIntegrationTest {
     IndexOperations indexOperations = template.indexOps(LtftForm.class);
     List<IndexInfo> indexes = indexOperations.getIndexInfo();
 
-    assertThat("Unexpected index count.", indexes, hasSize(7));
+    assertThat("Unexpected index count.", indexes, hasSize(12));
 
     IndexInfo index = indexes.stream()
         .filter(i -> i.getName().equals(indexName))

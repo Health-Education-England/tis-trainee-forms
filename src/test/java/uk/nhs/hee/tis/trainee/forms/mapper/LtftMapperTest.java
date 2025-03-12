@@ -24,8 +24,6 @@ package uk.nhs.hee.tis.trainee.forms.mapper;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.when;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -87,9 +85,21 @@ class LtftMapperTest {
   }
 
   @Test
+  void shouldReturnNullShortNoticeWhenStatusNull() {
+    LtftForm entity = new LtftForm();
+    entity.setStatus(null);
+
+    Boolean isShortNotice = mapper.isShortNotice(entity);
+
+    assertThat("Unexpected short notice value.", isShortNotice, nullValue());
+  }
+
+  @Test
   void shouldReturnNullShortNoticeWhenSubmittedNull() {
-    LtftForm entity = spy(new LtftForm());
-    when(entity.getSubmitted()).thenReturn(null);
+    LtftForm entity = new LtftForm();
+    entity.setStatus(Status.builder()
+        .submitted(null)
+        .build());
 
     Boolean isShortNotice = mapper.isShortNotice(entity);
 
@@ -98,12 +108,10 @@ class LtftMapperTest {
 
   @Test
   void shouldReturnNullShortNoticeWhenContentNull() {
-    LtftForm entity = spy(new LtftForm());
-    when(entity.getSubmitted()).thenReturn(Instant.now());
-
+    LtftForm entity = new LtftForm();
     entity.setStatus(Status.builder()
-        .current(StatusInfo.builder()
-            .build())
+        .current(StatusInfo.builder().build())
+        .submitted(Instant.now())
         .build());
 
     entity.setContent(null);
@@ -115,12 +123,10 @@ class LtftMapperTest {
 
   @Test
   void shouldReturnNullShortNoticeWhenChangeNull() {
-    LtftForm entity = spy(new LtftForm());
-    when(entity.getSubmitted()).thenReturn(Instant.now());
-
+    LtftForm entity = new LtftForm();
     entity.setStatus(Status.builder()
-        .current(StatusInfo.builder()
-            .build())
+        .current(StatusInfo.builder().build())
+        .submitted(Instant.now())
         .build());
 
     entity.setContent(LtftContent.builder()
@@ -134,12 +140,10 @@ class LtftMapperTest {
 
   @Test
   void shouldReturnNullShortNoticeWhenStartDateNull() {
-    LtftForm entity = spy(new LtftForm());
-    when(entity.getSubmitted()).thenReturn(Instant.now());
-
+    LtftForm entity = new LtftForm();
     entity.setStatus(Status.builder()
-        .current(StatusInfo.builder()
-            .build())
+        .current(StatusInfo.builder().build())
+        .submitted(Instant.now())
         .build());
 
     entity.setContent(LtftContent.builder()
@@ -156,12 +160,10 @@ class LtftMapperTest {
   @ParameterizedTest
   @ValueSource(ints = {0, 111})
   void shouldReturnTrueShortNoticeWhenSubmissionWithinNoticePeriod(int days) {
-    LtftForm entity = spy(new LtftForm());
-    when(entity.getSubmitted()).thenReturn(Instant.now());
-
+    LtftForm entity = new LtftForm();
     entity.setStatus(Status.builder()
-        .current(StatusInfo.builder()
-            .build())
+        .current(StatusInfo.builder().build())
+        .submitted(Instant.now())
         .build());
 
     entity.setContent(LtftContent.builder()
@@ -178,12 +180,10 @@ class LtftMapperTest {
   @ParameterizedTest
   @ValueSource(ints = {112, 113})
   void shouldReturnFalseShortNoticeWhenSubmissionOutsideOrEqualToNoticePeriod(int days) {
-    LtftForm entity = spy(new LtftForm());
-    when(entity.getSubmitted()).thenReturn(Instant.now());
-
+    LtftForm entity = new LtftForm();
     entity.setStatus(Status.builder()
-        .current(StatusInfo.builder()
-            .build())
+        .current(StatusInfo.builder().build())
+        .submitted(Instant.now())
         .build());
 
     entity.setContent(LtftContent.builder()
@@ -200,13 +200,12 @@ class LtftMapperTest {
   @ParameterizedTest
   @ValueSource(ints = {0, 111})
   void shouldReturnUseCurrentDateForShortNoticeWhenCurrentStatusUnsubmitted(int days) {
-    LtftForm entity = spy(new LtftForm());
-    when(entity.getSubmitted()).thenReturn(Instant.now().minus(Duration.ofDays(120)));
-
+    LtftForm entity = new LtftForm();
     entity.setStatus(Status.builder()
         .current(StatusInfo.builder()
             .state(LifecycleState.UNSUBMITTED)
             .build())
+        .submitted(Instant.now().minus(Duration.ofDays(120)))
         .build());
 
     entity.setContent(LtftContent.builder()

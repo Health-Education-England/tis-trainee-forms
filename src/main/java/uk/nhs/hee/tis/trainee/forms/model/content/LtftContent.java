@@ -68,12 +68,16 @@ public record LtftContent(
   @Builder
   public record PersonalDetails(
       String title,
+      @Indexed
       String forenames,
+      @Indexed
       String surname,
       String email,
       String telephoneNumber,
       String mobileNumber,
+      @Indexed
       String gmcNumber,
+      @Indexed
       String gdcNumber,
       Boolean skilledWorkerVisaHolder) {
 
@@ -94,6 +98,7 @@ public record LtftContent(
       @Indexed
       @Field("id")
       UUID id,
+      @Indexed
       String name,
       @Indexed
       String designatedBodyCode,
