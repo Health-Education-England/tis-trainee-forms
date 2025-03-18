@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.service;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.sameInstance;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -61,6 +62,7 @@ import org.thymeleaf.context.Context;
 import software.amazon.awssdk.services.s3.S3Client;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoining;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.GoldGuideVersion;
 import uk.nhs.hee.tis.trainee.forms.event.ConditionsOfJoiningPublishedEvent;
 
@@ -147,7 +149,7 @@ class PdfServiceTest {
 
     Set<String> variableNames = context.getVariableNames();
     assertThat("Unexpected variable count.", variableNames.size(), is(2));
-    assertThat("Unexpected event value.", context.getVariable("var"), is(request));
+    assertThat("Unexpected event value.", context.getVariable("var"), sameInstance(request));
     assertThat("Unexpected timezone value.", context.getVariable("timezone"), is(TIMEZONE.getId()));
   }
 
@@ -255,5 +257,72 @@ class PdfServiceTest {
     Resource resource = service.generateConditionsOfJoining(request, false);
 
     assertThat("Unexpected content.", resource.getContentAsByteArray(), is(contentBytes));
+  }
+
+  @Test
+  void shouldGenerateLtftFromTemplate() throws IOException {
+    LtftFormDto dto = LtftFormDto.builder()
+        .id(UUID.randomUUID())
+        .build();
+
+    service.generatePdf(dto, "admin");
+
+    ArgumentCaptor<TemplateSpec> templateCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.captor();
+    verify(templateEngine).process(templateCaptor.capture(), contextCaptor.capture());
+
+    TemplateSpec templateSpec = templateCaptor.getValue();
+    assertThat("Unexpected template.", templateSpec.getTemplate(),
+        is("ltft" + File.separatorChar + "admin.html"));
+    assertThat("Unexpected template selectors.", templateSpec.getTemplateSelectors(), nullValue());
+    assertThat("Unexpected template mode.", templateSpec.getTemplateMode(), is(HTML));
+    assertThat("Unexpected template resolution attributes.",
+        templateSpec.getTemplateResolutionAttributes(), nullValue());
+
+    Context context = contextCaptor.getValue();
+    assertThat("Unexpected locale.", context.getLocale(), is(Locale.ENGLISH));
+
+    Set<String> variableNames = context.getVariableNames();
+    assertThat("Unexpected variable count.", variableNames.size(), is(2));
+    assertThat("Unexpected event value.", context.getVariable("var"), sameInstance(dto));
+    assertThat("Unexpected timezone value.", context.getVariable("timezone"), is(TIMEZONE.getId()));
+  }
+
+  @Test
+  void shouldReturnGeneratedLtft() throws IOException {
+    LtftFormDto dto = LtftFormDto.builder().build();
+
+    String content = "<html>test content</html>";
+    when(templateEngine.process(any(TemplateSpec.class), any())).thenReturn(content);
+
+    byte[] bytes = service.generatePdf(dto, "admin");
+
+    PDDocument pdf = PDDocument.load(bytes);
+    String pdfText = new PDFTextStripper().getText(pdf);
+    assertThat("Unexpected content.", pdfText, is("test content" + System.lineSeparator()));
+  }
+
+  @Test
+  void shouldNotUploadGeneratedLtft() throws IOException {
+    LtftFormDto dto = LtftFormDto.builder().build();
+
+    when(templateEngine.process(any(TemplateSpec.class), any()))
+        .thenReturn("<html>test content</html>");
+
+    service.generatePdf(dto, "admin");
+
+    verifyNoInteractions(s3Template);
+  }
+
+  @Test
+  void shouldNotSendNotificationOfGeneratedLtft() throws IOException {
+    LtftFormDto dto = LtftFormDto.builder().build();
+
+    when(templateEngine.process(any(TemplateSpec.class), any()))
+        .thenReturn("<html>test content</html>");
+
+    service.generatePdf(dto, "admin");
+
+    verifyNoInteractions(snsTemplate);
   }
 }

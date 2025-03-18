@@ -30,14 +30,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.OK;
+import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
 import static org.springframework.http.MediaType.TEXT_PLAIN;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROVED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -56,16 +59,19 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
+import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
 class AdminLtftResourceTest {
 
   private AdminLtftResource controller;
   private LtftService service;
+  private PdfService pdfService;
 
   @BeforeEach
   void setUp() {
     service = mock(LtftService.class);
-    controller = new AdminLtftResource(service);
+    pdfService = mock(PdfService.class);
+    controller = new AdminLtftResource(service, pdfService);
   }
 
   @Test
@@ -147,7 +153,7 @@ class AdminLtftResourceTest {
   }
 
   @Test
-  void shouldNotGetDetailWhenFormNotFound() {
+  void shouldNotGetDetailJsonWhenFormNotFound() {
     UUID id = UUID.randomUUID();
     when(service.getAdminLtftDetail(id)).thenReturn(Optional.empty());
 
@@ -158,7 +164,7 @@ class AdminLtftResourceTest {
   }
 
   @Test
-  void shouldGetDetailWhenFormFound() {
+  void shouldGetDetailJsonWhenFormFound() {
     UUID id = UUID.randomUUID();
     LtftFormDto dto = LtftFormDto.builder().id(id).build();
     when(service.getAdminLtftDetail(id)).thenReturn(Optional.of(dto));
@@ -167,6 +173,48 @@ class AdminLtftResourceTest {
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), sameInstance(dto));
+  }
+
+  @Test
+  void shouldNotGetDetailPdfWhenFormNotFound() {
+    UUID id = UUID.randomUUID();
+    when(service.getAdminLtftDetail(id)).thenReturn(Optional.empty());
+
+    ResponseEntity<byte[]> response = controller.getLtftAdminDetailPdf(id);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(NOT_FOUND));
+    assertThat("Unexpected response body.", response.getBody(), nullValue());
+
+    verifyNoInteractions(pdfService);
+  }
+
+  @Test
+  void shouldNotGetDetailPdfWhenPdfGenerationFails() throws IOException {
+    UUID id = UUID.randomUUID();
+    LtftFormDto dto = LtftFormDto.builder().id(id).build();
+    when(service.getAdminLtftDetail(id)).thenReturn(Optional.of(dto));
+
+    when(pdfService.generatePdf(dto, "admin")).thenThrow(IOException.class);
+
+    ResponseEntity<byte[]> response = controller.getLtftAdminDetailPdf(id);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(UNPROCESSABLE_ENTITY));
+    assertThat("Unexpected response body.", response.getBody(), nullValue());
+  }
+
+  @Test
+  void shouldGetDetailPdfWhenFormFound() throws IOException {
+    UUID id = UUID.randomUUID();
+    LtftFormDto dto = LtftFormDto.builder().id(id).build();
+    when(service.getAdminLtftDetail(id)).thenReturn(Optional.of(dto));
+
+    byte[] body = "body".getBytes();
+    when(pdfService.generatePdf(dto, "admin")).thenReturn(body);
+
+    ResponseEntity<byte[]> response = controller.getLtftAdminDetailPdf(id);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), sameInstance(body));
   }
 
   @Test

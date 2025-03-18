@@ -25,6 +25,7 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROV
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
+import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -48,6 +49,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
+import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
 /**
  * A controller for admin facing Less Than Full-time (LTFT) endpoints.
@@ -59,9 +61,11 @@ import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 public class AdminLtftResource {
 
   private final LtftService service;
+  private final PdfService pdfService;
 
-  public AdminLtftResource(LtftService service) {
+  public AdminLtftResource(LtftService service, PdfService pdfService) {
     this.service = service;
+    this.pdfService = pdfService;
   }
 
   /**
@@ -100,10 +104,35 @@ public class AdminLtftResource {
    * @param id The ID of the form.
    * @return The found form details, empty if not found.
    */
-  @GetMapping("/{id}")
+  @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
   ResponseEntity<LtftFormDto> getLtftAdminDetail(@PathVariable UUID id) {
     Optional<LtftFormDto> formDetail = service.getAdminLtftDetail(id);
     return ResponseEntity.of(formDetail);
+  }
+
+  /**
+   * Get a PDF of a form with a particular ID associated with the admin's local office.
+   *
+   * @param id The ID of the form.
+   * @return The generated PDF
+   */
+  @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_PDF_VALUE)
+  ResponseEntity<byte[]> getLtftAdminDetailPdf(@PathVariable UUID id) {
+    log.info("PDF requested for LTFT '{}'", id);
+    Optional<LtftFormDto> formDetail = service.getAdminLtftDetail(id);
+
+    if (formDetail.isPresent()) {
+      LtftFormDto ltft = formDetail.get();
+
+      try {
+        byte[] pdf = pdfService.generatePdf(ltft, "admin");
+        return ResponseEntity.ok(pdf);
+      } catch (IOException e) {
+        return ResponseEntity.unprocessableEntity().build();
+      }
+    }
+
+    return ResponseEntity.notFound().build();
   }
 
   /**
