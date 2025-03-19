@@ -446,7 +446,7 @@ class LtftResourceIntegrationTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
-  void shouldSubmitLtftForm(LifecycleState state) throws Exception {
+  void shouldSubmitExistingLtftForm(LifecycleState state) throws Exception {
     LtftForm ltft = new LtftForm();
     ltft.setId(ID);
     ltft.setTraineeTisId(TRAINEE_ID);
@@ -454,14 +454,41 @@ class LtftResourceIntegrationTest {
     ltft.setContent(LtftContent.builder().name("test").build());
     template.insert(ltft);
 
-    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
-        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
-    String detailJson = mapper.writeValueAsString(detail);
+    LtftForm form = new LtftForm();
+    form.setTraineeTisId(TRAINEE_ID);
+    LtftForm formSaved = template.save(form);
+
+    LtftFormDto.DeclarationsDto declarationsDto = LtftFormDto.DeclarationsDto.builder()
+        .discussedWithTpd(true)
+        .informationIsCorrect(true)
+        .notGuaranteed(true)
+        .build();
+    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detailsDto = LtftFormDto.StatusDto.LftfStatusInfoDetailDto.builder()
+        .reason("reason")
+        .message("message")
+        .build();
+    LtftFormDto.StatusDto.StatusInfoDto currentDto = LtftFormDto.StatusDto.StatusInfoDto.builder()
+        .detail(detailsDto)
+        .state(LifecycleState.DRAFT)
+        .build();
+    LtftFormDto.StatusDto statusDto = LtftFormDto.StatusDto.builder()
+        .current(currentDto)
+        .history(List.of(currentDto))
+        .build();
+    LtftFormDto formToSubmit = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .status(statusDto)
+        .declarations(declarationsDto)
+        .name("submit name")
+        .build();
+
+    String formToSubmitJson = mapper.writeValueAsString(formToSubmit);
     String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID, "email", "given", "family");
     mockMvc.perform(put("/api/ltft/{id}/submit", ID)
             .header(HttpHeaders.AUTHORIZATION, token)
             .contentType(MediaType.APPLICATION_JSON)
-            .content(detailJson))
+            .content(formToSubmitJson))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(ID.toString()))
         .andExpect(jsonPath("$.traineeTisId").value(TRAINEE_ID))
@@ -471,7 +498,59 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.current.modifiedBy.name").value("given family"))
         .andExpect(jsonPath("$.status.current.modifiedBy.email").value("email"))
         .andExpect(jsonPath("$.status.current.modifiedBy.role").value("TRAINEE"))
-        .andExpect(jsonPath("$.status.submitted", notNullValue()));
+        .andExpect(jsonPath("$.status.submitted", notNullValue()))
+        .andExpect(jsonPath("$.declarations.discussedWithTpd").value(true))
+        .andExpect(jsonPath("$.declarations.informationIsCorrect").value(true))
+        .andExpect(jsonPath("$.declarations.notGuaranteed").value(true))
+        .andExpect(jsonPath("$.name").value("submit name"));
+  }
+
+  @Test
+  void shouldSubmitNewLtftForm() throws Exception {
+    LtftFormDto.DeclarationsDto declarationsDto = LtftFormDto.DeclarationsDto.builder()
+        .discussedWithTpd(true)
+        .informationIsCorrect(true)
+        .notGuaranteed(true)
+        .build();
+    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detailsDto = LtftFormDto.StatusDto.LftfStatusInfoDetailDto.builder()
+        .reason("reason")
+        .message("message")
+        .build();
+    LtftFormDto.StatusDto.StatusInfoDto currentDto = LtftFormDto.StatusDto.StatusInfoDto.builder()
+        .detail(detailsDto)
+        .state(LifecycleState.DRAFT)
+        .build();
+    LtftFormDto.StatusDto statusDto = LtftFormDto.StatusDto.builder()
+        .current(currentDto)
+        .history(List.of(currentDto))
+        .build();
+    LtftFormDto formToSubmit = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .status(statusDto)
+        .declarations(declarationsDto)
+        .name("submit name")
+        .build();
+
+    String formToSubmitJson = mapper.writeValueAsString(formToSubmit);
+    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID, "email", "given", "family");
+    mockMvc.perform(post("/api/ltft/submit")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToSubmitJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id", notNullValue()))
+        .andExpect(jsonPath("$.traineeTisId").value(TRAINEE_ID))
+        .andExpect(jsonPath("$.status.current.state").value(LifecycleState.SUBMITTED.name()))
+        .andExpect(jsonPath("$.status.current.detail.reason").value("reason"))
+        .andExpect(jsonPath("$.status.current.detail.message").value("message"))
+        .andExpect(jsonPath("$.status.current.modifiedBy.name").value("given family"))
+        .andExpect(jsonPath("$.status.current.modifiedBy.email").value("email"))
+        .andExpect(jsonPath("$.status.current.modifiedBy.role").value("TRAINEE"))
+        .andExpect(jsonPath("$.status.submitted", notNullValue()))
+        .andExpect(jsonPath("$.declarations.discussedWithTpd").value(true))
+        .andExpect(jsonPath("$.declarations.informationIsCorrect").value(true))
+        .andExpect(jsonPath("$.declarations.notGuaranteed").value(true))
+        .andExpect(jsonPath("$.name").value("submit name"));
   }
 
   @ParameterizedTest

@@ -38,8 +38,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
-import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
-import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 
@@ -102,7 +100,7 @@ public class LtftResource {
       @RequestBody @Validated(Create.class) LtftFormDto dto) {
     log.info("Request to POST submit new LTFT form: {}", dto);
     Optional<LtftFormDto> optionalSavedLtft = service.saveLtftForm(dto);
-    Optional<LtftFormDto> submittedLtft = null;
+    Optional<LtftFormDto> submittedLtft = Optional.empty();
     if (optionalSavedLtft.isPresent()) {
       LtftFormDto savedLtft = optionalSavedLtft.get();
       submittedLtft = service.submitLtftForm(savedLtft.id(), savedLtft.status().current().detail());
@@ -138,10 +136,9 @@ public class LtftResource {
   @PutMapping("/{formId}/submit")
   public ResponseEntity<LtftFormDto> submitLtft(@PathVariable UUID formId,
       @RequestBody @Validated LtftFormDto dto) {
-    log.info("Request to submit an existing LTFT form {} with reason {}.",
-        formId, dto.status().current().detail());
+    log.info("Request to submit an existing LTFT form: {}", formId);
     Optional<LtftFormDto> optionalSavedLtft = service.updateLtftForm(formId, dto);
-    Optional<LtftFormDto> submittedLtft = null;
+    Optional<LtftFormDto> submittedLtft = Optional.empty();
     if (optionalSavedLtft.isPresent()) {
       LtftFormDto savedLtft = optionalSavedLtft.get();
       submittedLtft = service.submitLtftForm(formId, savedLtft.status().current().detail());

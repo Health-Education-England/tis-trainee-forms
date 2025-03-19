@@ -38,6 +38,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 
@@ -204,27 +207,69 @@ class LtftResourceTest {
   }
 
   @Test
-  void shouldReturnBadRequestWhenServiceWontSubmitLtftForm() {
-    when(service.submitLtftForm(any(), any())).thenReturn(Optional.empty());
+  void postShouldReturnBadRequestWhenServiceFailToSaveLtftWhenSubmitForm() {
+    LtftFormDto formDto = buildLtftFormDto();
+    when(service.saveLtftForm(any())).thenReturn(Optional.empty());
 
-    ResponseEntity<LtftFormDto> response = controller.submitLtft(ID, null);
+    ResponseEntity<LtftFormDto> response = controller.submitNewLtft(formDto);
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(BAD_REQUEST));
   }
 
   @Test
-  void shouldReturnSubmittedLtftFormWhenSubmitted() {
-    LtftFormDto form = LtftFormDto.builder()
-        .id(ID)
-        .traineeTisId("some trainee")
-        .build();
-    when(service.submitLtftForm(any(), any())).thenReturn(Optional.of(form));
+  void postShouldReturnBadRequestWhenServiceFailToSubmitLtftForm() {
+    LtftFormDto formDto = buildLtftFormDto();
+    when(service.submitLtftForm(any(), any())).thenReturn(Optional.empty());
 
-    ResponseEntity<LtftFormDto> response = controller.submitLtft(ID, null);
+    ResponseEntity<LtftFormDto> response = controller.submitNewLtft(formDto);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(BAD_REQUEST));
+  }
+
+  @Test
+  void postShouldReturnSubmittedLtftFormWhenSubmitted() {
+    LtftFormDto formDto = buildLtftFormDto();
+    when(service.saveLtftForm(any())).thenReturn(Optional.of(formDto));
+    when(service.submitLtftForm(any(), any())).thenReturn(Optional.of(formDto));
+
+    ResponseEntity<LtftFormDto> response = controller.submitNewLtft(formDto);
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     LtftFormDto responseDto = response.getBody();
-    assertThat("Unexpected response body.", responseDto, is(form));
+    assertThat("Unexpected response body.", responseDto, is(formDto));
+  }
+
+  @Test
+  void putShouldReturnBadRequestWhenServiceFailToUpdateLtftWhenSubmitForm() {
+    LtftFormDto existingForm = buildLtftFormDto();
+    when(service.updateLtftForm(any(), any())).thenReturn(Optional.empty());
+
+    ResponseEntity<LtftFormDto> response = controller.submitLtft(ID, existingForm);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(BAD_REQUEST));
+  }
+
+  @Test
+  void putShouldReturnBadRequestWhenServiceFailToSubmitLtftForm() {
+    LtftFormDto existingForm = buildLtftFormDto();
+    when(service.submitLtftForm(any(), any())).thenReturn(Optional.empty());
+
+    ResponseEntity<LtftFormDto> response = controller.submitLtft(ID, existingForm);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(BAD_REQUEST));
+  }
+
+  @Test
+  void putShouldReturnSubmittedLtftFormWhenSubmitted() {
+    LtftFormDto existingForm = buildLtftFormDto();
+    when(service.updateLtftForm(any(), any())).thenReturn(Optional.of(existingForm));
+    when(service.submitLtftForm(any(), any())).thenReturn(Optional.of(existingForm));
+
+    ResponseEntity<LtftFormDto> response = controller.submitLtft(ID, existingForm);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    LtftFormDto responseDto = response.getBody();
+    assertThat("Unexpected response body.", responseDto, is(existingForm));
   }
 
   @Test
@@ -273,5 +318,24 @@ class LtftResourceTest {
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     LtftFormDto responseDto = response.getBody();
     assertThat("Unexpected response body.", responseDto, is(form));
+  }
+
+  private LtftFormDto buildLtftFormDto() {
+    LftfStatusInfoDetailDto detailsDto = LftfStatusInfoDetailDto.builder()
+        .reason("some reason")
+        .message("some message")
+        .build();
+    StatusInfoDto currentDto = StatusInfoDto.builder()
+        .detail(detailsDto)
+        .build();
+    StatusDto statusDto = StatusDto.builder()
+        .current(currentDto)
+        .build();
+    LtftFormDto formDto = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId("some trainee")
+        .status(statusDto)
+        .build();
+    return formDto;
   }
 }

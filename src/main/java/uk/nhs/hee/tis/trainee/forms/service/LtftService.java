@@ -306,7 +306,7 @@ public class LtftService {
    * @return The DTO of the form after the state change, or empty if form not found or could not be
    *     changed to the target state.
    */
-  public Optional<LtftFormDto> changeLtftFormState(UUID formId, LftfStatusInfoDetailDto detail,
+  protected Optional<LtftFormDto> changeLtftFormState(UUID formId, LftfStatusInfoDetailDto detail,
       LifecycleState targetState) {
     String traineeId = traineeIdentity.getTraineeId();
     Optional<LtftForm> formOptional = ltftFormRepository.findByTraineeTisIdAndId(traineeId, formId);
