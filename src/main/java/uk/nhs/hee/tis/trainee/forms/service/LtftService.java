@@ -195,7 +195,7 @@ public class LtftService {
     log.info("Saving LTFT form for trainee [{}]: {}", traineeId, dto);
     LtftForm form = mapper.toEntity(dto);
     if (!form.getTraineeTisId().equals(traineeId)) {
-      log.warn("Could not save form since it does belong to the logged-in trainee {}: {}",
+      log.warn("Could not save form since it does not belong to the logged-in trainee {}: {}",
           traineeId, dto);
       return Optional.empty();
     }
@@ -306,7 +306,7 @@ public class LtftService {
    * @return The DTO of the form after the state change, or empty if form not found or could not be
    *     changed to the target state.
    */
-  protected Optional<LtftFormDto> changeLtftFormState(UUID formId, LftfStatusInfoDetailDto detail,
+  public Optional<LtftFormDto> changeLtftFormState(UUID formId, LftfStatusInfoDetailDto detail,
       LifecycleState targetState) {
     String traineeId = traineeIdentity.getTraineeId();
     Optional<LtftForm> formOptional = ltftFormRepository.findByTraineeTisIdAndId(traineeId, formId);

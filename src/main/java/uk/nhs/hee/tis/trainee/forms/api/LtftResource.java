@@ -39,6 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 
@@ -90,6 +91,28 @@ public class LtftResource {
   }
 
   /**
+   * Allow a trainee to submit a new LTFT form.
+   *
+   * @param dto The DTO of the new LTFT form to submit (which should not have an id).
+   *
+   * @return The DTO of the submitted form, or a bad request if the form could not be submitted.
+   */
+  @PostMapping("/submit")
+  public ResponseEntity<LtftFormDto> submitNewLtft(
+      @RequestBody @Validated(Create.class) LtftFormDto dto) {
+    log.info("Request to POST submit new LTFT form: {}", dto);
+    Optional<LtftFormDto> optionalSavedLtft = service.saveLtftForm(dto);
+    Optional<LtftFormDto> submittedLtft = null;
+    if (optionalSavedLtft.isPresent()) {
+      LtftFormDto savedLtft = optionalSavedLtft.get();
+      submittedLtft = service.changeLtftFormState(
+          savedLtft.id(), savedLtft.status().current().detail(), SUBMITTED);
+    }
+    return submittedLtft.map(ResponseEntity::ok)
+        .orElseGet(() -> ResponseEntity.badRequest().build());
+  }
+
+  /**
    * Update an existing LTFT form.
    *
    * @param formId The id of the LTFT form to update.
@@ -115,7 +138,7 @@ public class LtftResource {
   @PutMapping("/{formId}/submit")
   public ResponseEntity<LtftFormDto> submitLtft(@PathVariable UUID formId,
       @RequestBody LtftFormDto.StatusDto.LftfStatusInfoDetailDto reason) {
-    log.info("Request to submit LTFT form {} with reason {}.", formId, reason);
+    log.info("Request to submit an existing LTFT form {} with reason {}.", formId, reason);
     Optional<LtftFormDto> submittedLtft = service.submitLtftForm(formId, reason);
     return submittedLtft.map(ResponseEntity::ok)
         .orElseGet(() -> ResponseEntity.badRequest().build());
