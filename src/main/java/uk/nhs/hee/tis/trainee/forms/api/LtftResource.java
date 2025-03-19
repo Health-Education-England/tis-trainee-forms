@@ -105,8 +105,7 @@ public class LtftResource {
     Optional<LtftFormDto> submittedLtft = null;
     if (optionalSavedLtft.isPresent()) {
       LtftFormDto savedLtft = optionalSavedLtft.get();
-      submittedLtft = service.changeLtftFormState(
-          savedLtft.id(), savedLtft.status().current().detail(), SUBMITTED);
+      submittedLtft = service.submitLtftForm(savedLtft.id(), savedLtft.status().current().detail());
     }
     return submittedLtft.map(ResponseEntity::ok)
         .orElseGet(() -> ResponseEntity.badRequest().build());
@@ -131,15 +130,22 @@ public class LtftResource {
   /**
    * Allow a trainee to submit an existing LTFT form.
    *
-   * @param formId The id of the LTFT form to submit.
+   * @param formId  The id of the LTFT form to submit.
+   * @param dto     The DTO of the form.
    *
    * @return The DTO of the submitted form, or a bad request if the form could not be submitted.
    */
   @PutMapping("/{formId}/submit")
   public ResponseEntity<LtftFormDto> submitLtft(@PathVariable UUID formId,
-      @RequestBody LtftFormDto.StatusDto.LftfStatusInfoDetailDto reason) {
-    log.info("Request to submit an existing LTFT form {} with reason {}.", formId, reason);
-    Optional<LtftFormDto> submittedLtft = service.submitLtftForm(formId, reason);
+      @RequestBody @Validated LtftFormDto dto) {
+    log.info("Request to submit an existing LTFT form {} with reason {}.",
+        formId, dto.status().current().detail());
+    Optional<LtftFormDto> optionalSavedLtft = service.updateLtftForm(formId, dto);
+    Optional<LtftFormDto> submittedLtft = null;
+    if (optionalSavedLtft.isPresent()) {
+      LtftFormDto savedLtft = optionalSavedLtft.get();
+      submittedLtft = service.submitLtftForm(formId, savedLtft.status().current().detail());
+    }
     return submittedLtft.map(ResponseEntity::ok)
         .orElseGet(() -> ResponseEntity.badRequest().build());
   }
