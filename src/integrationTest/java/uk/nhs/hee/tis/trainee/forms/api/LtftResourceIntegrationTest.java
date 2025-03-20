@@ -65,6 +65,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.DeclarationsDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
@@ -458,20 +462,20 @@ class LtftResourceIntegrationTest {
     form.setTraineeTisId(TRAINEE_ID);
     LtftForm formSaved = template.save(form);
 
-    LtftFormDto.DeclarationsDto declarationsDto = LtftFormDto.DeclarationsDto.builder()
+    DeclarationsDto declarationsDto = DeclarationsDto.builder()
         .discussedWithTpd(true)
         .informationIsCorrect(true)
         .notGuaranteed(true)
         .build();
-    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detailsDto = LtftFormDto.StatusDto.LftfStatusInfoDetailDto.builder()
+    LftfStatusInfoDetailDto detailsDto = LftfStatusInfoDetailDto.builder()
         .reason("reason")
         .message("message")
         .build();
-    LtftFormDto.StatusDto.StatusInfoDto currentDto = LtftFormDto.StatusDto.StatusInfoDto.builder()
+    StatusInfoDto currentDto = StatusInfoDto.builder()
         .detail(detailsDto)
         .state(LifecycleState.DRAFT)
         .build();
-    LtftFormDto.StatusDto statusDto = LtftFormDto.StatusDto.builder()
+    StatusDto statusDto = StatusDto.builder()
         .current(currentDto)
         .history(List.of(currentDto))
         .build();
@@ -507,20 +511,20 @@ class LtftResourceIntegrationTest {
 
   @Test
   void shouldSubmitNewLtftForm() throws Exception {
-    LtftFormDto.DeclarationsDto declarationsDto = LtftFormDto.DeclarationsDto.builder()
+    DeclarationsDto declarationsDto = DeclarationsDto.builder()
         .discussedWithTpd(true)
         .informationIsCorrect(true)
         .notGuaranteed(true)
         .build();
-    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detailsDto = LtftFormDto.StatusDto.LftfStatusInfoDetailDto.builder()
+    LftfStatusInfoDetailDto detailsDto = LftfStatusInfoDetailDto.builder()
         .reason("reason")
         .message("message")
         .build();
-    LtftFormDto.StatusDto.StatusInfoDto currentDto = LtftFormDto.StatusDto.StatusInfoDto.builder()
+    StatusInfoDto currentDto = StatusInfoDto.builder()
         .detail(detailsDto)
         .state(LifecycleState.DRAFT)
         .build();
-    LtftFormDto.StatusDto statusDto = LtftFormDto.StatusDto.builder()
+    StatusDto statusDto = StatusDto.builder()
         .current(currentDto)
         .history(List.of(currentDto))
         .build();

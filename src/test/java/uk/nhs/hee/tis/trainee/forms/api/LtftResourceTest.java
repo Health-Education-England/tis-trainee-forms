@@ -39,8 +39,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto;
-import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 
@@ -331,11 +331,10 @@ class LtftResourceTest {
     StatusDto statusDto = StatusDto.builder()
         .current(currentDto)
         .build();
-    LtftFormDto formDto = LtftFormDto.builder()
+    return LtftFormDto.builder()
         .id(ID)
         .traineeTisId("some trainee")
         .status(statusDto)
         .build();
-    return formDto;
   }
 }
