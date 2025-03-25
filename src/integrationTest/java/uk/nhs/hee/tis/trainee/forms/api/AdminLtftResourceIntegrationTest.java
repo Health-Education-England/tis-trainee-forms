@@ -21,14 +21,19 @@
 
 package uk.nhs.hee.tis.trainee.forms.api;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.aMapWithSize;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.oneOf;
+import static org.hamcrest.Matchers.startsWith;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.http.MediaType.APPLICATION_PDF;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
@@ -45,9 +50,13 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -68,6 +77,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -80,6 +90,7 @@ import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Declarations;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Discussions;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.PersonalDetails;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ProgrammeMembership;
@@ -195,7 +206,7 @@ class AdminLtftResourceIntegrationTest {
     String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
     mockMvc.perform(request(method, uriTemplate, UUID.randomUUID())
             .header(HttpHeaders.AUTHORIZATION, token)
-            .contentType(MediaType.APPLICATION_JSON)
+            .contentType(APPLICATION_JSON)
             .content("{}")) // required by some endpoints
         .andExpect(status().isNotFound());
   }
@@ -214,7 +225,7 @@ class AdminLtftResourceIntegrationTest {
     String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
     mockMvc.perform(request(method, uriTemplate, form.getId())
             .header(HttpHeaders.AUTHORIZATION, token)
-            .contentType(MediaType.APPLICATION_JSON)
+            .contentType(APPLICATION_JSON)
             .content("{}")) // required by some endpoints
         .andExpect(status().isNotFound());
   }
@@ -349,7 +360,7 @@ class AdminLtftResourceIntegrationTest {
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", statusFilter))
         .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.content").isArray())
         .andExpect(jsonPath("$.content", hasSize(0)))
         .andExpect(jsonPath("$.page", aMapWithSize(4)))
@@ -369,7 +380,7 @@ class AdminLtftResourceIntegrationTest {
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", statusFilter))
         .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.content").isArray())
         .andExpect(jsonPath("$.content", hasSize(0)))
         .andExpect(jsonPath("$.page", aMapWithSize(4)))
@@ -389,7 +400,7 @@ class AdminLtftResourceIntegrationTest {
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", statusFilter))
         .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.content").isArray())
         .andExpect(jsonPath("$.content", hasSize(0)))
         .andExpect(jsonPath("$.page", aMapWithSize(4)))
@@ -449,7 +460,7 @@ class AdminLtftResourceIntegrationTest {
     mockMvc.perform(get("/api/admin/ltft")
             .header(HttpHeaders.AUTHORIZATION, token))
         .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.content").isArray())
         .andExpect(jsonPath("$.content", hasSize(1)))
         .andExpect(jsonPath("$.content[0].id", is(form.getId().toString())))
@@ -497,7 +508,7 @@ class AdminLtftResourceIntegrationTest {
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", statusFilter))
         .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.content").isArray())
         .andExpect(jsonPath("$.content", hasSize(expectedCount)))
         .andExpect(jsonPath("$.page", aMapWithSize(4)))
@@ -523,7 +534,7 @@ class AdminLtftResourceIntegrationTest {
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", status.toString()))
         .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.content").isArray())
         .andExpect(jsonPath("$.content", hasSize(1)))
         .andExpect(jsonPath("$.content[0].status", is(status.toString())))
@@ -550,7 +561,7 @@ class AdminLtftResourceIntegrationTest {
     mockMvc.perform(get("/api/admin/ltft")
             .header(HttpHeaders.AUTHORIZATION, token))
         .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.content").isArray())
         .andExpect(jsonPath("$.content", hasSize(expectedCount)))
         .andExpect(jsonPath("$.page", aMapWithSize(4)))
@@ -575,7 +586,7 @@ class AdminLtftResourceIntegrationTest {
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", statusFilter))
         .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.content").isArray())
         .andExpect(jsonPath("$.content", hasSize(3)))
         .andExpect(
@@ -609,7 +620,7 @@ class AdminLtftResourceIntegrationTest {
             .param("size", "1")
             .param("page", String.valueOf(pageNumber)))
         .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.content").isArray())
         .andExpect(jsonPath("$.content", hasSize(1)))
         .andExpect(jsonPath("$.page", aMapWithSize(4)))
@@ -675,7 +686,7 @@ class AdminLtftResourceIntegrationTest {
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("sort", sort))
         .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.content").isArray())
         .andExpect(jsonPath("$.content", hasSize(3)))
         .andExpect(jsonPath("$.content[0].id", is(form2.getId().toString())))
@@ -704,7 +715,7 @@ class AdminLtftResourceIntegrationTest {
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("sort", "proposedStartDate"))
         .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.content").isArray())
         .andExpect(jsonPath("$.content", hasSize(3)))
         .andExpect(jsonPath("$.content[0].id", is(form2.getId().toString())))
@@ -718,7 +729,7 @@ class AdminLtftResourceIntegrationTest {
   }
 
   @Test
-  void shouldReturnNotFoundGettingDetailWhenLtftWithMatchingDbcIsDraft() throws Exception {
+  void shouldReturnNotFoundGettingDetailJsonWhenLtftWithMatchingDbcIsDraft() throws Exception {
     LtftForm form = createLtftForm(DRAFT, DBC_1, null);
     form = template.save(form);
 
@@ -729,7 +740,7 @@ class AdminLtftResourceIntegrationTest {
   }
 
   @Test
-  void shouldGetDetailWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
+  void shouldGetDetailJsonWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
     LocalDate startDate = LocalDate.now().plusWeeks(20);
 
     LtftForm form = new LtftForm();
@@ -776,7 +787,7 @@ class AdminLtftResourceIntegrationTest {
     mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
             .header(HttpHeaders.AUTHORIZATION, token))
         .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.id", is(form.getId().toString())))
         .andExpect(jsonPath("$.traineeTisId", is("47165")))
         .andExpect(jsonPath("$.personalDetails.id", is("47165")))
@@ -793,6 +804,498 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.assignedAdmin.name", is("Ad Min")))
         .andExpect(jsonPath("$.assignedAdmin.email", is("ad.min@example.com")))
         .andExpect(jsonPath("$.assignedAdmin.role", is("ADMIN")));
+  }
+
+  @Test
+  void shouldReturnNotFoundGettingDetailPdfWhenLtftWithMatchingDbcIsDraft() throws Exception {
+    LtftForm form = createLtftForm(DRAFT, DBC_1, null);
+    form = template.save(form);
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
+            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void shouldGetDetailPdfFormDetailsWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
+    LtftForm form = new LtftForm();
+    form.setTraineeTisId("47165");
+    form.setFormRef("ltft_47165_001");
+
+    LtftContent content = LtftContent.builder()
+        .personalDetails(PersonalDetails.builder().build())
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(DBC_1)
+            .build())
+        .change(CctChange.builder().build())
+        .reasons(Reasons.builder().build())
+        .declarations(Declarations.builder().build())
+        .discussions(Discussions.builder().build())
+        .assignedAdmin(Person.builder().build())
+        .build();
+    form.setContent(content);
+
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+
+    StatusInfo statusInfo = StatusInfo.builder()
+        .state(SUBMITTED).timestamp(Instant.now())
+        .build();
+    form.setStatus(Status.builder()
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            StatusInfo.builder().state(SUBMITTED).timestamp(latestSubmitted).build()))
+        .build()
+    );
+
+    form = template.insert(form);
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    MvcResult result = mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
+            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_PDF))
+        .andReturn();
+
+    byte[] response = result.getResponse().getContentAsByteArray();
+    PDDocument pdf = PDDocument.load(response);
+    PDFTextStripper textStripper = new PDFTextStripper();
+    textStripper.setAddMoreFormatting(false);
+    String pdfText = textStripper.getText(pdf);
+
+    assertThat("Unexpected header.", pdfText,
+        startsWith("LTFT Application Detail" + System.lineSeparator()));
+    assertThat("Unexpected form ref.", pdfText,
+        containsString("Ref: ltft_47165_001" + System.lineSeparator()));
+    assertThat("Unexpected status.", pdfText,
+        containsString("Status: SUBMITTED" + System.lineSeparator()));
+
+    DateTimeFormatter datePattern = DateTimeFormatter.ofPattern("dd MMMM yyyy HH:mm (z)");
+    String createdString = ZonedDateTime.ofInstant(form.getCreated(), timezone).format(datePattern);
+    assertThat("Unexpected created timestamp.", pdfText,
+        containsString("Created: " + createdString + System.lineSeparator()));
+
+    String modifiedString = ZonedDateTime.ofInstant(form.getLastModified(), timezone)
+        .format(datePattern);
+    assertThat("Unexpected modified timestamp.", pdfText,
+        containsString("Modified: " + modifiedString + System.lineSeparator()));
+  }
+
+  @Test
+  void shouldGetDetailPdfPersonalDetailsWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
+    LtftForm form = new LtftForm();
+    form.setTraineeTisId("47165");
+
+    LtftContent content = LtftContent.builder()
+        .personalDetails(PersonalDetails.builder()
+            .title("Dr")
+            .forenames("Anthony")
+            .surname("Gilliam")
+            .email("anthony.gilliam@example.com")
+            .gmcNumber("1234567")
+            .gdcNumber("D123456")
+            .telephoneNumber("07700900000")
+            .mobileNumber("07700900001")
+            .skilledWorkerVisaHolder(true)
+            .build())
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(DBC_1)
+            .build())
+        .change(CctChange.builder().build())
+        .reasons(Reasons.builder().build())
+        .declarations(Declarations.builder().build())
+        .discussions(Discussions.builder().build())
+        .assignedAdmin(Person.builder().build())
+        .build();
+    form.setContent(content);
+
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+
+    StatusInfo statusInfo = StatusInfo.builder()
+        .state(SUBMITTED).timestamp(Instant.now())
+        .build();
+    form.setStatus(Status.builder()
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            StatusInfo.builder().state(SUBMITTED).timestamp(latestSubmitted).build()))
+        .build()
+    );
+
+    form = template.insert(form);
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    MvcResult result = mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
+            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_PDF))
+        .andReturn();
+
+    byte[] response = result.getResponse().getContentAsByteArray();
+    PDDocument pdf = PDDocument.load(response);
+    PDFTextStripper textStripper = new PDFTextStripper();
+    textStripper.setAddMoreFormatting(false);
+    String pdfText = textStripper.getText(pdf);
+
+    assertThat("Unexpected section header.", pdfText,
+        containsString("Personal Details" + System.lineSeparator()));
+    assertThat("Unexpected title.", pdfText,
+        containsString("Title" + System.lineSeparator() + "Dr"));
+    assertThat("Unexpected name.", pdfText,
+        containsString("Name" + System.lineSeparator() + "Anthony Gilliam"));
+    assertThat("Unexpected email.", pdfText,
+        containsString("E-Mail" + System.lineSeparator() + "anthony.gilliam@example.com"));
+    assertThat("Unexpected telephone.", pdfText,
+        containsString("Telephone" + System.lineSeparator() + "07700900000"));
+    assertThat("Unexpected mobile.", pdfText,
+        containsString("Mobile" + System.lineSeparator() + "07700900001"));
+    assertThat("Unexpected GMC.", pdfText,
+        containsString("GMC" + System.lineSeparator() + "1234567"));
+    assertThat("Unexpected GDC.", pdfText,
+        containsString("GDC" + System.lineSeparator() + "D123456"));
+    assertThat("Unexpected visa holder.", pdfText,
+        containsString("Holds a Skilled Worker visa" + System.lineSeparator() + "true"));
+  }
+
+  @Test
+  void shouldGetDetailPdfProgrammeDetailsWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
+    LtftForm form = new LtftForm();
+    form.setTraineeTisId("47165");
+
+    LocalDate startDate = LocalDate.now();
+    LocalDate endDate = startDate.plusYears(1);
+
+    LtftContent content = LtftContent.builder()
+        .personalDetails(PersonalDetails.builder().build())
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(DBC_1)
+            .name("General Practice")
+            .startDate(startDate)
+            .endDate(endDate)
+            .wte(0.75)
+            .build())
+        .change(CctChange.builder().build())
+        .reasons(Reasons.builder().build())
+        .declarations(Declarations.builder().build())
+        .discussions(Discussions.builder().build())
+        .assignedAdmin(Person.builder().build())
+        .build();
+    form.setContent(content);
+
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+
+    StatusInfo statusInfo = StatusInfo.builder()
+        .state(SUBMITTED).timestamp(Instant.now())
+        .build();
+    form.setStatus(Status.builder()
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            StatusInfo.builder().state(SUBMITTED).timestamp(latestSubmitted).build()))
+        .build()
+    );
+
+    form = template.insert(form);
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    MvcResult result = mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
+            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_PDF))
+        .andReturn();
+
+    byte[] response = result.getResponse().getContentAsByteArray();
+    PDDocument pdf = PDDocument.load(response);
+    PDFTextStripper textStripper = new PDFTextStripper();
+    textStripper.setAddMoreFormatting(false);
+    String pdfText = textStripper.getText(pdf);
+
+    assertThat("Unexpected section header.", pdfText,
+        containsString("Programme Membership" + System.lineSeparator()));
+    assertThat("Unexpected name.", pdfText,
+        containsString("Programme Name" + System.lineSeparator() + "General Practice"));
+    assertThat("Unexpected wte.", pdfText,
+        containsString("WTE (Current)" + System.lineSeparator() + "0.75"));
+
+    DateTimeFormatter datePattern = DateTimeFormatter.ofPattern("dd MMMM yyyy");
+    String startDateString = startDate.format(datePattern);
+    assertThat("Unexpected start date.", pdfText,
+        containsString("Start Date" + System.lineSeparator() + startDateString));
+
+    String endDateString = endDate.format(datePattern);
+    assertThat("Unexpected end date.", pdfText,
+        containsString("End Date" + System.lineSeparator() + endDateString));
+  }
+
+  @Test
+  void shouldGetDetailPdfChangeDetailsWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
+    LtftForm form = new LtftForm();
+    form.setTraineeTisId("47165");
+
+    LocalDate startDate = LocalDate.now();
+    LocalDate endDate = startDate.plusYears(1);
+    LocalDate cctDate = endDate.plusYears(1);
+
+    LtftContent content = LtftContent.builder()
+        .personalDetails(PersonalDetails.builder().build())
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(DBC_1)
+            .build())
+        .change(CctChange.builder()
+            .startDate(startDate)
+            .endDate(endDate)
+            .wte(0.75)
+            .cctDate(cctDate)
+            .build())
+        .reasons(Reasons.builder().build())
+        .declarations(Declarations.builder().build())
+        .discussions(Discussions.builder().build())
+        .assignedAdmin(Person.builder().build())
+        .build();
+    form.setContent(content);
+
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+
+    StatusInfo statusInfo = StatusInfo.builder()
+        .state(SUBMITTED).timestamp(Instant.now())
+        .build();
+    form.setStatus(Status.builder()
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            StatusInfo.builder().state(SUBMITTED).timestamp(latestSubmitted).build()))
+        .build()
+    );
+
+    form = template.insert(form);
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    MvcResult result = mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
+            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_PDF))
+        .andReturn();
+
+    byte[] response = result.getResponse().getContentAsByteArray();
+    PDDocument pdf = PDDocument.load(response);
+    PDFTextStripper textStripper = new PDFTextStripper();
+    textStripper.setAddMoreFormatting(false);
+    String pdfText = textStripper.getText(pdf);
+
+    assertThat("Unexpected section header.", pdfText,
+        containsString("Proposed Changes" + System.lineSeparator()));
+    assertThat("Unexpected wte.", pdfText, containsString("WTE" + System.lineSeparator() + "0.75"));
+
+    DateTimeFormatter datePattern = DateTimeFormatter.ofPattern("dd MMMM yyyy");
+    String startDateString = startDate.format(datePattern);
+    assertThat("Unexpected start date.", pdfText,
+        containsString("Start Date" + System.lineSeparator() + startDateString));
+
+    String endDateString = endDate.format(datePattern);
+    assertThat("Unexpected end date.", pdfText,
+        containsString("End Date" + System.lineSeparator() + endDateString));
+
+    String cctDateString = cctDate.format(datePattern);
+    assertThat("Unexpected CCT date.", pdfText,
+        containsString("Programme end date" + System.lineSeparator() + cctDateString));
+  }
+
+  @Test
+  void shouldGetDetailPdfReasonDetailsWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
+    LtftForm form = new LtftForm();
+    form.setTraineeTisId("47165");
+
+    LtftContent content = LtftContent.builder()
+        .personalDetails(PersonalDetails.builder().build())
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(DBC_1)
+            .build())
+        .change(CctChange.builder().build())
+        .reasons(Reasons.builder()
+            .selected(List.of("Test1", "Test2", "Other"))
+            .otherDetail("other-detail")
+            .build())
+        .declarations(Declarations.builder().build())
+        .discussions(Discussions.builder().build())
+        .assignedAdmin(Person.builder().build())
+        .build();
+    form.setContent(content);
+
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+
+    StatusInfo statusInfo = StatusInfo.builder()
+        .state(SUBMITTED).timestamp(Instant.now())
+        .build();
+    form.setStatus(Status.builder()
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            StatusInfo.builder().state(SUBMITTED).timestamp(latestSubmitted).build()))
+        .build()
+    );
+
+    form = template.insert(form);
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    MvcResult result = mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
+            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_PDF))
+        .andReturn();
+
+    byte[] response = result.getResponse().getContentAsByteArray();
+    PDDocument pdf = PDDocument.load(response);
+    PDFTextStripper textStripper = new PDFTextStripper();
+    textStripper.setAddMoreFormatting(false);
+    String pdfText = textStripper.getText(pdf);
+
+    assertThat("Unexpected section header.", pdfText,
+        containsString("Reasons" + System.lineSeparator()));
+    assertThat("Unexpected selected.", pdfText,
+        containsString("Selected" + System.lineSeparator() + "Test1<br>Test2<br>Other"));
+    assertThat("Unexpected other reason.", pdfText,
+        containsString("Other Reason" + System.lineSeparator() + "other-detail"));
+  }
+
+  @Test
+  void shouldGetDetailPdfDeclarationDetailsWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
+    LtftForm form = new LtftForm();
+    form.setTraineeTisId("47165");
+
+    LtftContent content = LtftContent.builder()
+        .personalDetails(PersonalDetails.builder().build())
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(DBC_1)
+            .build())
+        .change(CctChange.builder().build())
+        .reasons(Reasons.builder().build())
+        .declarations(Declarations.builder()
+            .discussedWithTpd(true)
+            .informationIsCorrect(true)
+            .notGuaranteed(true)
+            .build())
+        .discussions(Discussions.builder().build())
+        .assignedAdmin(Person.builder().build())
+        .build();
+    form.setContent(content);
+
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+
+    StatusInfo statusInfo = StatusInfo.builder()
+        .state(SUBMITTED).timestamp(Instant.now())
+        .build();
+    form.setStatus(Status.builder()
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            StatusInfo.builder().state(SUBMITTED).timestamp(latestSubmitted).build()))
+        .build()
+    );
+
+    form = template.insert(form);
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    MvcResult result = mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
+            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_PDF))
+        .andReturn();
+
+    byte[] response = result.getResponse().getContentAsByteArray();
+    PDDocument pdf = PDDocument.load(response);
+    PDFTextStripper textStripper = new PDFTextStripper();
+    textStripper.setAddMoreFormatting(false);
+    String pdfText = textStripper.getText(pdf);
+
+    assertThat("Unexpected section header.", pdfText,
+        containsString("Declarations" + System.lineSeparator()));
+    assertThat("Unexpected declaration.", pdfText,
+        containsString("Information is correct" + System.lineSeparator() + "true"));
+    assertThat("Unexpected declaration.", pdfText,
+        containsString("Discussed with TPD" + System.lineSeparator() + "true"));
+    assertThat("Unexpected declaration.", pdfText,
+        containsString("Not guaranteed" + System.lineSeparator() + "true"));
+  }
+
+  @Test
+  void shouldGetDetailPdfDiscussionsDetailsWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
+    LtftForm form = new LtftForm();
+    form.setTraineeTisId("47165");
+
+    LtftContent content = LtftContent.builder()
+        .personalDetails(PersonalDetails.builder().build())
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(DBC_1)
+            .build())
+        .change(CctChange.builder().build())
+        .reasons(Reasons.builder().build())
+        .declarations(Declarations.builder().build())
+        .discussions(Discussions.builder()
+            .tpdName("Tee Pee-Dee")
+            .tpdEmail("tpd@example.com")
+            .other(List.of(
+                Person.builder()
+                    .name("Ed Super")
+                    .email("ed.super@example.com")
+                    .role("Educational Supervisor")
+                    .build(),
+                Person.builder()
+                    .name("Person Two")
+                    .email("person.2@example.com")
+                    .role("Test Data")
+                    .build()
+            ))
+            .build())
+        .assignedAdmin(Person.builder().build())
+        .build();
+    form.setContent(content);
+
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+
+    StatusInfo statusInfo = StatusInfo.builder()
+        .state(SUBMITTED).timestamp(Instant.now())
+        .build();
+    form.setStatus(Status.builder()
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            StatusInfo.builder().state(SUBMITTED).timestamp(latestSubmitted).build()))
+        .build()
+    );
+
+    form = template.insert(form);
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    MvcResult result = mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
+            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_PDF))
+        .andReturn();
+
+    byte[] response = result.getResponse().getContentAsByteArray();
+    PDDocument pdf = PDDocument.load(response);
+    PDFTextStripper textStripper = new PDFTextStripper();
+    textStripper.setAddMoreFormatting(false);
+    String pdfText = textStripper.getText(pdf);
+
+    assertThat("Unexpected section header.", pdfText,
+        containsString("Discussions" + System.lineSeparator()));
+    assertThat("Unexpected TPD name.", pdfText,
+        containsString("TPD name" + System.lineSeparator() + "Tee Pee-Dee"));
+    assertThat("Unexpected TPD email.", pdfText,
+        containsString("TPD email" + System.lineSeparator() + "tpd@example.com"));
+    assertThat("Unexpected other discussions.", pdfText, containsString(
+        "Other" + System.lineSeparator() + "Ed Super, ed.super@example.com (Educational Supervisor)"
+            + System.lineSeparator() + "Person Two, person.2@example.com (Test Data)"));
   }
 
   @ParameterizedTest
@@ -851,7 +1354,7 @@ class AdminLtftResourceIntegrationTest {
     String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
     mockMvc.perform(put("/api/admin/ltft/{id}/unsubmit", form.getId())
             .header(HttpHeaders.AUTHORIZATION, token)
-            .contentType(MediaType.APPLICATION_JSON)
+            .contentType(APPLICATION_JSON)
             .content("""
                 {
                   "reason": "test reason"
@@ -880,7 +1383,7 @@ class AdminLtftResourceIntegrationTest {
     String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
     mockMvc.perform(put("/api/admin/ltft/{id}/unsubmit", form.getId())
             .header(HttpHeaders.AUTHORIZATION, token)
-            .contentType(MediaType.APPLICATION_JSON)
+            .contentType(APPLICATION_JSON)
             .content("""
                 {
                   "reason": null
@@ -909,7 +1412,7 @@ class AdminLtftResourceIntegrationTest {
     String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
     mockMvc.perform(put("/api/admin/ltft/{id}/unsubmit", form.getId())
             .header(HttpHeaders.AUTHORIZATION, token)
-            .contentType(MediaType.APPLICATION_JSON)
+            .contentType(APPLICATION_JSON)
             .content("""
                 {
                   "reason": "test reason",

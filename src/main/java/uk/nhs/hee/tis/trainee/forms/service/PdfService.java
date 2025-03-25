@@ -31,12 +31,14 @@ import io.awspring.cloud.sns.core.SnsNotification;
 import io.awspring.cloud.sns.core.SnsTemplate;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.helper.W3CDom;
@@ -47,7 +49,9 @@ import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.TemplateSpec;
 import org.thymeleaf.context.Context;
+import org.thymeleaf.templatemode.TemplateMode;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PublishedPdf;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.GoldGuideVersion;
 import uk.nhs.hee.tis.trainee.forms.event.ConditionsOfJoiningPublishedEvent;
@@ -141,6 +145,23 @@ public class PdfService {
     }
 
     return uploaded;
+  }
+
+  /**
+   * Generate a PDF for a {@link LtftFormDto}.
+   *
+   * @param dto              The data object to convert to a PDF.
+   * @param templateFileName The name of the template file to use.
+   * @return The bytes of the generated PDF.
+   * @throws IOException If a valid PDF could not be created.
+   */
+  public byte[] generatePdf(LtftFormDto dto, String templateFileName) throws IOException {
+    log.info("Generating a PDF for LTFT '{}' modified '{}'", dto.formRef(), dto.lastModified());
+
+    TemplateSpec templateSpec = new TemplateSpec(
+        "ltft" + File.separatorChar + templateFileName + ".html",
+        Set.of(), TemplateMode.HTML, null);
+    return generatePdf(templateSpec, Map.of("var", dto));
   }
 
   /**
