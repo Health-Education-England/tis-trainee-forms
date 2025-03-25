@@ -38,6 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.awspring.cloud.sns.core.SnsTemplate;
 import java.net.URI;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -50,6 +51,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
@@ -90,6 +92,9 @@ class LtftResourceIntegrationTest {
 
   @Autowired
   private MockMvc mockMvc;
+
+  @MockBean
+  SnsTemplate snsTemplate;
 
   @Autowired
   private MongoTemplate template;
