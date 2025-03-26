@@ -146,7 +146,7 @@
               <dt class="nhsuk-summary-list__key">Other</dt>
               <dd class="nhsuk-summary-list__value">
                 <th:block th:each="person,iter: ${discussions.other}">
-                  <th:block th:text="|${person.name}, ${person.email} (${person.role})|"/><th:block th:if="${!iter.last}"><br></th:block>
+                  <th:block th:text="|${person.name}, ${person.email}|"/><br><th:block th:text="|(${person.role})|"/><br th:if="${!iter.last}">
                 </th:block>
               </dd>
             </div>

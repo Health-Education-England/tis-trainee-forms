@@ -870,19 +870,19 @@ class AdminLtftResourceIntegrationTest {
     assertThat("Unexpected header.", pdfText,
         startsWith("LTFT Application Detail" + System.lineSeparator()));
     assertThat("Unexpected form ref.", pdfText,
-        containsString("Ref: ltft_47165_001" + System.lineSeparator()));
+        containsString("Reference ltft_47165_001" + System.lineSeparator()));
     assertThat("Unexpected status.", pdfText,
-        containsString("Status: SUBMITTED" + System.lineSeparator()));
+        containsString("Status SUBMITTED" + System.lineSeparator()));
 
     DateTimeFormatter datePattern = DateTimeFormatter.ofPattern("dd MMMM yyyy HH:mm (z)");
     String createdString = ZonedDateTime.ofInstant(form.getCreated(), timezone).format(datePattern);
     assertThat("Unexpected created timestamp.", pdfText,
-        containsString("Created: " + createdString + System.lineSeparator()));
+        containsString("Created " + createdString + System.lineSeparator()));
 
     String modifiedString = ZonedDateTime.ofInstant(form.getLastModified(), timezone)
         .format(datePattern);
     assertThat("Unexpected modified timestamp.", pdfText,
-        containsString("Modified: " + modifiedString + System.lineSeparator()));
+        containsString("Modified " + modifiedString + System.lineSeparator()));
   }
 
   @Test
@@ -944,22 +944,20 @@ class AdminLtftResourceIntegrationTest {
 
     assertThat("Unexpected section header.", pdfText,
         containsString("Personal Details" + System.lineSeparator()));
-    assertThat("Unexpected title.", pdfText,
-        containsString("Title" + System.lineSeparator() + "Dr"));
     assertThat("Unexpected name.", pdfText,
-        containsString("Name" + System.lineSeparator() + "Anthony Gilliam"));
+        containsString("Name Dr Anthony Gilliam" + System.lineSeparator()));
     assertThat("Unexpected email.", pdfText,
-        containsString("E-Mail" + System.lineSeparator() + "anthony.gilliam@example.com"));
+        containsString("E-Mail anthony.gilliam@example.com" + System.lineSeparator()));
     assertThat("Unexpected telephone.", pdfText,
-        containsString("Telephone" + System.lineSeparator() + "07700900000"));
+        containsString("Telephone 07700900000" + System.lineSeparator()));
     assertThat("Unexpected mobile.", pdfText,
-        containsString("Mobile" + System.lineSeparator() + "07700900001"));
+        containsString("Mobile 07700900001" + System.lineSeparator()));
     assertThat("Unexpected GMC.", pdfText,
-        containsString("GMC" + System.lineSeparator() + "1234567"));
+        containsString("GMC 1234567" + System.lineSeparator()));
     assertThat("Unexpected GDC.", pdfText,
-        containsString("GDC" + System.lineSeparator() + "D123456"));
+        containsString("GDC D123456" + System.lineSeparator()));
     assertThat("Unexpected visa holder.", pdfText,
-        containsString("Holds a Skilled Worker visa" + System.lineSeparator() + "true"));
+        containsString("Holds a Skilled Worker visa true" + System.lineSeparator()));
   }
 
   @Test
@@ -1017,20 +1015,20 @@ class AdminLtftResourceIntegrationTest {
     String pdfText = textStripper.getText(pdf);
 
     assertThat("Unexpected section header.", pdfText,
-        containsString("Programme Membership" + System.lineSeparator()));
+        containsString("Programme Details" + System.lineSeparator()));
     assertThat("Unexpected name.", pdfText,
-        containsString("Programme Name" + System.lineSeparator() + "General Practice"));
+        containsString("Programme Name General Practice" + System.lineSeparator()));
     assertThat("Unexpected wte.", pdfText,
-        containsString("WTE (Current)" + System.lineSeparator() + "0.75"));
+        containsString("WTE (Current) 0.75" + System.lineSeparator()));
 
     DateTimeFormatter datePattern = DateTimeFormatter.ofPattern("dd MMMM yyyy");
     String startDateString = startDate.format(datePattern);
     assertThat("Unexpected start date.", pdfText,
-        containsString("Start Date" + System.lineSeparator() + startDateString));
+        containsString("Start Date " + startDateString + System.lineSeparator()));
 
     String endDateString = endDate.format(datePattern);
     assertThat("Unexpected end date.", pdfText,
-        containsString("End Date" + System.lineSeparator() + endDateString));
+        containsString("End Date " + endDateString + System.lineSeparator()));
   }
 
   @Test
@@ -1091,20 +1089,20 @@ class AdminLtftResourceIntegrationTest {
 
     assertThat("Unexpected section header.", pdfText,
         containsString("Proposed Changes" + System.lineSeparator()));
-    assertThat("Unexpected wte.", pdfText, containsString("WTE" + System.lineSeparator() + "0.75"));
+    assertThat("Unexpected wte.", pdfText, containsString("WTE 0.75" + System.lineSeparator()));
 
     DateTimeFormatter datePattern = DateTimeFormatter.ofPattern("dd MMMM yyyy");
     String startDateString = startDate.format(datePattern);
     assertThat("Unexpected start date.", pdfText,
-        containsString("Start Date" + System.lineSeparator() + startDateString));
+        containsString("Start Date " + startDateString + System.lineSeparator()));
 
     String endDateString = endDate.format(datePattern);
     assertThat("Unexpected end date.", pdfText,
-        containsString("End Date" + System.lineSeparator() + endDateString));
+        containsString("End Date " + endDateString + System.lineSeparator()));
 
     String cctDateString = cctDate.format(datePattern);
     assertThat("Unexpected CCT date.", pdfText,
-        containsString("Programme end date" + System.lineSeparator() + cctDateString));
+        containsString("Programme end date " + cctDateString + System.lineSeparator()));
   }
 
   @Test
@@ -1160,9 +1158,9 @@ class AdminLtftResourceIntegrationTest {
     assertThat("Unexpected section header.", pdfText,
         containsString("Reasons" + System.lineSeparator()));
     assertThat("Unexpected selected.", pdfText,
-        containsString("Selected" + System.lineSeparator() + "Test1<br>Test2<br>Other"));
+        containsString("Selected Test1<br>Test2<br>Other" + System.lineSeparator()));
     assertThat("Unexpected other reason.", pdfText,
-        containsString("Other Reason" + System.lineSeparator() + "other-detail"));
+        containsString("Other Reason other-detail" + System.lineSeparator()));
   }
 
   @Test
@@ -1219,11 +1217,11 @@ class AdminLtftResourceIntegrationTest {
     assertThat("Unexpected section header.", pdfText,
         containsString("Declarations" + System.lineSeparator()));
     assertThat("Unexpected declaration.", pdfText,
-        containsString("Information is correct" + System.lineSeparator() + "true"));
+        containsString("Information is correct true" + System.lineSeparator()));
     assertThat("Unexpected declaration.", pdfText,
-        containsString("Discussed with TPD" + System.lineSeparator() + "true"));
+        containsString("Discussed with TPD true" + System.lineSeparator()));
     assertThat("Unexpected declaration.", pdfText,
-        containsString("Not guaranteed" + System.lineSeparator() + "true"));
+        containsString("Not guaranteed true" + System.lineSeparator()));
   }
 
   @Test
@@ -1291,12 +1289,15 @@ class AdminLtftResourceIntegrationTest {
     assertThat("Unexpected section header.", pdfText,
         containsString("Discussions" + System.lineSeparator()));
     assertThat("Unexpected TPD name.", pdfText,
-        containsString("TPD name" + System.lineSeparator() + "Tee Pee-Dee"));
+        containsString("TPD name Tee Pee-Dee" + System.lineSeparator()));
     assertThat("Unexpected TPD email.", pdfText,
-        containsString("TPD email" + System.lineSeparator() + "tpd@example.com"));
+        containsString("TPD email tpd@example.com" + System.lineSeparator()));
     assertThat("Unexpected other discussions.", pdfText, containsString(
-        "Other" + System.lineSeparator() + "Ed Super, ed.super@example.com (Educational Supervisor)"
-            + System.lineSeparator() + "Person Two, person.2@example.com (Test Data)"));
+        "Other Ed Super, ed.super@example.com"
+            + System.lineSeparator() + "(Educational Supervisor)"
+            + System.lineSeparator() + "Person Two, person.2@example."
+            + System.lineSeparator() + "com" // Breaks awkwardly here, the layout may need tweaking.
+            + System.lineSeparator() + "(Test Data)" + System.lineSeparator()));
   }
 
   @ParameterizedTest
