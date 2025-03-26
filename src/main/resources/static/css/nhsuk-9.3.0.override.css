@@ -1,0 +1,30 @@
+/* Overrides for nhsuk 9.3.0 styles due to non-functional min-width media query */
+@media print {
+  .nhsuk-summary-list {
+		display: table;
+		table-layout: fixed;
+		width: 100%
+		margin-bottom: 40px;
+  }
+
+  .nhsuk-summary-list__row {
+    display: table-row;
+  }
+
+  .nhsuk-summary-list__key,
+  .nhsuk-summary-list__value {
+		border-bottom: 1px solid #d8dde0;
+		display: table-cell;
+		padding-bottom: 8px;
+		padding-right: 24px;
+		padding-top: 8px;
+  }
+
+  nhsuk-summary-list__key {
+    width: 30%;
+  }
+
+  .nhsuk-summary-list__value {
+    width: 50%;
+  }
+}
