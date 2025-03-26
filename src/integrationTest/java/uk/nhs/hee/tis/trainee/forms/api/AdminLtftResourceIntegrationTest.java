@@ -1158,7 +1158,8 @@ class AdminLtftResourceIntegrationTest {
     assertThat("Unexpected section header.", pdfText,
         containsString("Reasons" + System.lineSeparator()));
     assertThat("Unexpected selected.", pdfText,
-        containsString("Selected Test1<br>Test2<br>Other" + System.lineSeparator()));
+        containsString("Selected Test1" + System.lineSeparator() + "Test2"
+            + System.lineSeparator() + "Other" + System.lineSeparator()));
     assertThat("Unexpected other reason.", pdfText,
         containsString("Other Reason other-detail" + System.lineSeparator()));
   }
