@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.hee.tis.trainee"
-version = "0.36.0"
+version = "0.37.0"
 
 configurations {
   compileOnly {
@@ -30,7 +30,7 @@ dependencyManagement {
 
 val mapstructVersion = "1.5.5.Final"
 val mongockVersion = "5.4.4"
-val openHtmlToPdfVersion = "1.0.10"
+val openHtmlToPdfVersion = "1.1.24"
 
 dependencies {
   // Spring Boot starters
@@ -64,9 +64,9 @@ dependencies {
 
   implementation("commons-beanutils:commons-beanutils:1.9.4")
 
-  implementation("com.openhtmltopdf:openhtmltopdf-pdfbox:${openHtmlToPdfVersion}")
-  implementation("com.openhtmltopdf:openhtmltopdf-slf4j:${openHtmlToPdfVersion}")
-  implementation("org.jsoup:jsoup:1.17.2")
+  implementation("io.github.openhtmltopdf:openhtmltopdf-pdfbox:${openHtmlToPdfVersion}")
+  implementation("io.github.openhtmltopdf:openhtmltopdf-slf4j:${openHtmlToPdfVersion}")
+  implementation("org.jsoup:jsoup:1.19.1")
 }
 
 checkstyle {
