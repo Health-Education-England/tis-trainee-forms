@@ -290,7 +290,7 @@ public class LtftService {
    * @param formId The id of the LTFT form to unsubmit.
    * @param detail The status detail for the unsubmission.
    * @return The DTO of the unsubmitted form, or empty if form not found or could not be
-   * unsubmitted.
+   *     unsubmitted.
    */
   public Optional<LtftFormDto> unsubmitLtftForm(UUID formId, LftfStatusInfoDetailDto detail) {
     return changeLtftFormState(formId, detail, UNSUBMITTED);
