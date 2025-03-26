@@ -55,6 +55,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.AfterEach;
@@ -861,7 +862,7 @@ class AdminLtftResourceIntegrationTest {
         .andReturn();
 
     byte[] response = result.getResponse().getContentAsByteArray();
-    PDDocument pdf = PDDocument.load(response);
+    PDDocument pdf = Loader.loadPDF(response);
     PDFTextStripper textStripper = new PDFTextStripper();
     textStripper.setAddMoreFormatting(false);
     String pdfText = textStripper.getText(pdf);
@@ -936,7 +937,7 @@ class AdminLtftResourceIntegrationTest {
         .andReturn();
 
     byte[] response = result.getResponse().getContentAsByteArray();
-    PDDocument pdf = PDDocument.load(response);
+    PDDocument pdf = Loader.loadPDF(response);
     PDFTextStripper textStripper = new PDFTextStripper();
     textStripper.setAddMoreFormatting(false);
     String pdfText = textStripper.getText(pdf);
@@ -1010,7 +1011,7 @@ class AdminLtftResourceIntegrationTest {
         .andReturn();
 
     byte[] response = result.getResponse().getContentAsByteArray();
-    PDDocument pdf = PDDocument.load(response);
+    PDDocument pdf = Loader.loadPDF(response);
     PDFTextStripper textStripper = new PDFTextStripper();
     textStripper.setAddMoreFormatting(false);
     String pdfText = textStripper.getText(pdf);
@@ -1083,7 +1084,7 @@ class AdminLtftResourceIntegrationTest {
         .andReturn();
 
     byte[] response = result.getResponse().getContentAsByteArray();
-    PDDocument pdf = PDDocument.load(response);
+    PDDocument pdf = Loader.loadPDF(response);
     PDFTextStripper textStripper = new PDFTextStripper();
     textStripper.setAddMoreFormatting(false);
     String pdfText = textStripper.getText(pdf);
@@ -1151,7 +1152,7 @@ class AdminLtftResourceIntegrationTest {
         .andReturn();
 
     byte[] response = result.getResponse().getContentAsByteArray();
-    PDDocument pdf = PDDocument.load(response);
+    PDDocument pdf = Loader.loadPDF(response);
     PDFTextStripper textStripper = new PDFTextStripper();
     textStripper.setAddMoreFormatting(false);
     String pdfText = textStripper.getText(pdf);
@@ -1210,7 +1211,7 @@ class AdminLtftResourceIntegrationTest {
         .andReturn();
 
     byte[] response = result.getResponse().getContentAsByteArray();
-    PDDocument pdf = PDDocument.load(response);
+    PDDocument pdf = Loader.loadPDF(response);
     PDFTextStripper textStripper = new PDFTextStripper();
     textStripper.setAddMoreFormatting(false);
     String pdfText = textStripper.getText(pdf);
@@ -1282,7 +1283,7 @@ class AdminLtftResourceIntegrationTest {
         .andReturn();
 
     byte[] response = result.getResponse().getContentAsByteArray();
-    PDDocument pdf = PDDocument.load(response);
+    PDDocument pdf = Loader.loadPDF(response);
     PDFTextStripper textStripper = new PDFTextStripper();
     textStripper.setAddMoreFormatting(false);
     String pdfText = textStripper.getText(pdf);

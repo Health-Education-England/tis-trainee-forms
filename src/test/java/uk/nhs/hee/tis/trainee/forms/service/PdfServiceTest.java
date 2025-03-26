@@ -48,6 +48,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.io.RandomAccessReadBuffer;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.BeforeEach;
@@ -171,7 +173,7 @@ class PdfServiceTest {
     verify(s3Template).upload(eq(BUCKET_NAME), eq(key), contentCaptor.capture());
 
     ByteArrayInputStream contentIs = contentCaptor.getValue();
-    PDDocument pdf = PDDocument.load(contentIs);
+    PDDocument pdf = Loader.loadPDF(new RandomAccessReadBuffer(contentIs));
     String pdfText = new PDFTextStripper().getText(pdf);
 
     assertThat("Unexpected content.", pdfText, is("test content" + System.lineSeparator()));
@@ -297,7 +299,7 @@ class PdfServiceTest {
 
     byte[] bytes = service.generatePdf(dto, "admin");
 
-    PDDocument pdf = PDDocument.load(bytes);
+    PDDocument pdf = Loader.loadPDF(bytes);
     String pdfText = new PDFTextStripper().getText(pdf);
     assertThat("Unexpected content.", pdfText, is("test content" + System.lineSeparator()));
   }
