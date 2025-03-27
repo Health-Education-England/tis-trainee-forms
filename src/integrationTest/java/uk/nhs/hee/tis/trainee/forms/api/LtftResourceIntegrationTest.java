@@ -470,6 +470,7 @@ class LtftResourceIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(ID.toString()))
         .andExpect(jsonPath("$.traineeTisId").value(TRAINEE_ID))
+        .andExpect(jsonPath("$.formRef", notNullValue()))
         .andExpect(jsonPath("$.status.current.state").value(LifecycleState.SUBMITTED.name()))
         .andExpect(jsonPath("$.status.current.detail.reason").value("reason"))
         .andExpect(jsonPath("$.status.current.detail.message").value("message"))
