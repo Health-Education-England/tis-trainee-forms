@@ -55,6 +55,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import org.bson.Document;
@@ -1386,6 +1387,7 @@ class LtftServiceTest {
   void shouldUpdateStatusWhenTransitionFromDraftValid(
       LifecycleState targetState) throws MethodArgumentNotValidException {
     LtftForm entity = new LtftForm();
+    entity.setTraineeTisId(TRAINEE_ID);
     entity.setLifecycleState(DRAFT);
 
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
@@ -1402,6 +1404,7 @@ class LtftServiceTest {
     assertThat("Unexpected form presence.", optionalDto.isPresent(), is(true));
 
     LtftFormDto dto = optionalDto.get();
+    assertThat("Unexpected form ref.", dto.formRef(), is("ltft_" + TRAINEE_ID + "_001"));
 
     StatusInfoDto current = dto.status().current();
     assertThat("Unexpected current state.", current.state(), is(targetState));
@@ -1471,6 +1474,7 @@ class LtftServiceTest {
     assertThat("Unexpected form presence.", optionalDto.isPresent(), is(true));
 
     LtftFormDto dto = optionalDto.get();
+    assertThat("Unexpected form ref.", dto.formRef(), nullValue());
 
     StatusInfoDto current = dto.status().current();
     assertThat("Unexpected current state.", current.state(), is(targetState));
@@ -1522,6 +1526,7 @@ class LtftServiceTest {
   void shouldUpdateStatusWhenTransitionFromUnsubmittedValid(
       LifecycleState targetState) throws MethodArgumentNotValidException {
     LtftForm entity = new LtftForm();
+    entity.setFormRef("formRef_123");
     entity.setLifecycleState(UNSUBMITTED);
 
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
@@ -1538,6 +1543,7 @@ class LtftServiceTest {
     assertThat("Unexpected form presence.", optionalDto.isPresent(), is(true));
 
     LtftFormDto dto = optionalDto.get();
+    assertThat("Unexpected form ref.", dto.formRef(), is("formRef_123"));
 
     StatusInfoDto current = dto.status().current();
     assertThat("Unexpected current state.", current.state(), is(targetState));
@@ -1941,7 +1947,7 @@ class LtftServiceTest {
     form.setContent(LtftContent.builder().name("test").build());
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
-    when(repository.save(any())).thenReturn(form);
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     Optional<LtftFormDto> result = service.submitLtftForm(ID, null);
 
@@ -1961,7 +1967,7 @@ class LtftServiceTest {
     LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
-    when(repository.save(any())).thenReturn(form);
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     Optional<LtftFormDto> result = service.submitLtftForm(ID, detail);
 
@@ -1979,6 +1985,56 @@ class LtftServiceTest {
     verify(repository).save(form);
   }
 
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      0 | _001
+      1 | _002
+      10 | _011
+      100 | _101
+      1000 | _1001
+      """)
+  void shouldPopulateFormRefWhenSubmittingForm(int previousFormCount, String refSuffix) {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(DRAFT);
+    form.setContent(LtftContent.builder().name("test").build());
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+    when(repository.countByTraineeTisIdAndStatus_SubmittedIsNotNull(TRAINEE_ID))
+        .thenReturn(previousFormCount);
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> result = service.submitLtftForm(ID, null);
+
+    assertThat("Unexpected result when form is submitted.", result.isPresent(), is(true));
+    assertThat("Unexpected form ref.", form.getFormRef(), is("ltft_" + TRAINEE_ID + refSuffix));
+    verify(repository).save(form);
+  }
+
+  @Test
+  void shouldNotUpdateFormRefWhenResubmittingForm() {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(DRAFT);
+    form.setContent(LtftContent.builder().name("test").build());
+
+    String formRef = "ltft_" + TRAINEE_ID + "_123";
+    form.setFormRef(formRef);
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+    when(repository.countByTraineeTisIdAndStatus_SubmittedIsNotNull(TRAINEE_ID))
+        .thenReturn(new Random().nextInt());
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> result = service.submitLtftForm(ID, null);
+
+    assertThat("Unexpected result when form is submitted.", result.isPresent(), is(true));
+    assertThat("Unexpected form ref.", form.getFormRef(), is(formRef));
+    verify(repository).save(form);
+  }
+
   @Test
   void shouldUnsubmitFormWithStatusDetail() {
     LtftForm form = new LtftForm();
@@ -1987,11 +2043,12 @@ class LtftServiceTest {
     form.setTraineeTisId(TRAINEE_ID);
     form.setLifecycleState(LifecycleState.SUBMITTED);
     form.setContent(LtftContent.builder().name("test").build());
+    form.setFormRef("formRef_001");
 
     LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
-    when(repository.save(any())).thenReturn(form);
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     Optional<LtftFormDto> result = service.unsubmitLtftForm(ID, detail);
 
@@ -2006,6 +2063,7 @@ class LtftServiceTest {
     assertThat("Unexpected status modified timestamp.", newFormState.timestamp(),
         is(notNullValue()));
     assertThat("Unexpected form revision.", form.getRevision(), is(2));
+    assertThat("Unexpected form ref.", form.getFormRef(), is("formRef_001"));
     verify(repository).save(form);
   }
 
@@ -2017,11 +2075,12 @@ class LtftServiceTest {
     form.setTraineeTisId(TRAINEE_ID);
     form.setLifecycleState(LifecycleState.SUBMITTED);
     form.setContent(LtftContent.builder().name("test").build());
+    form.setFormRef("formRef_001");
 
     LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
-    when(repository.save(any())).thenReturn(form);
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     Optional<LtftFormDto> result = service.withdrawLtftForm(ID, detail);
 
@@ -2036,6 +2095,8 @@ class LtftServiceTest {
     assertThat("Unexpected status modified timestamp.", newFormState.timestamp(),
         is(notNullValue()));
     assertThat("Unexpected form revision.", form.getRevision(), is(2));
+    assertThat("Unexpected form revision.", form.getRevision(), is(2));
+    assertThat("Unexpected form ref.", form.getFormRef(), is("formRef_001"));
     verify(repository).save(form);
   }
 

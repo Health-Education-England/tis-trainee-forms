@@ -38,6 +38,14 @@ import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 public interface LtftFormRepository extends MongoRepository<LtftForm, UUID> {
 
   /**
+   * Count the number of LTFT forms belonging to the given trainee.
+   *
+   * @param traineeId The ID of the trainee.
+   * @return The number of found LTFT forms.
+   */
+  int countByTraineeTisIdAndStatus_SubmittedIsNotNull(String traineeId);
+
+  /**
    * Find all LTFT forms belonging to the given trainee, ordered by last modified.
    *
    * @param traineeId The ID of the trainee.
