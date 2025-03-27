@@ -45,6 +45,7 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
+import io.awspring.cloud.sns.core.SnsTemplate;
 import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
@@ -69,6 +70,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
@@ -119,6 +121,9 @@ class AdminLtftResourceIntegrationTest {
 
   @Value("${application.timezone}")
   private ZoneId timezone;
+
+  @MockBean
+  SnsTemplate snsTemplate;
 
   @AfterEach
   void tearDown() {

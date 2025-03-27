@@ -27,6 +27,8 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBM
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
+import io.awspring.cloud.sns.core.SnsNotification;
+import io.awspring.cloud.sns.core.SnsTemplate;
 import jakarta.annotation.Nullable;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.List;
@@ -36,6 +38,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -78,6 +81,9 @@ public class LtftService {
 
   private final LtftMapper mapper;
 
+  private final SnsTemplate snsTemplate;
+  private final String ltftStatusUpdateTopic;
+
   /**
    * Instantiate the LTFT form service.
    *
@@ -88,12 +94,16 @@ public class LtftService {
    * @param mapper             The LTFT mapper.
    */
   public LtftService(AdminIdentity adminIdentity, TraineeIdentity traineeIdentity,
-      LtftFormRepository ltftFormRepository, MongoTemplate mongoTemplate, LtftMapper mapper) {
+      LtftFormRepository ltftFormRepository, MongoTemplate mongoTemplate, LtftMapper mapper,
+      SnsTemplate snsTemplate,
+      @Value("${application.aws.sns.ltft-status-updated}") String ltftStatusUpdateTopic) {
     this.adminIdentity = adminIdentity;
     this.traineeIdentity = traineeIdentity;
     this.ltftFormRepository = ltftFormRepository;
     this.mongoTemplate = mongoTemplate;
     this.mapper = mapper;
+    this.snsTemplate = snsTemplate;
+    this.ltftStatusUpdateTopic = ltftStatusUpdateTopic;
   }
 
   /**
@@ -403,7 +413,11 @@ public class LtftService {
         .role(identity.getRole())
         .build();
     form.setLifecycleState(targetState, detailEntity, modifiedBy, form.getRevision());
-    return ltftFormRepository.save(form);
+
+    LtftForm savedForm = ltftFormRepository.save(form);
+    publishStatusUpdateNotification(savedForm);
+
+    return savedForm;
   }
 
   /**
@@ -477,5 +491,20 @@ public class LtftService {
           }
         });
     return query;
+  }
+
+  /**
+   * Publish LTFT status update notification.
+   *
+   * @param form The updated LTFT form
+   */
+  private void publishStatusUpdateNotification(LtftForm form) {
+    log.info("Published status update notification for LTFT form {}", form.getId());
+    String groupId = form.getId() == null ? UUID.randomUUID().toString() : form.getId().toString();
+    SnsNotification<LtftForm> notification = SnsNotification.builder(form)
+        .groupId(groupId)
+        .build();
+
+    snsTemplate.sendNotification(ltftStatusUpdateTopic, notification);
   }
 }
