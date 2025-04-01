@@ -414,6 +414,16 @@ public class LtftService {
         .build();
     form.setLifecycleState(targetState, detailEntity, modifiedBy, form.getRevision());
 
+    // Generate a form reference when submitting for the first time.
+    if (form.getFormRef() == null && targetState == SUBMITTED) {
+      String traineeId = form.getTraineeTisId();
+      int previousFormCount = ltftFormRepository
+          .countByTraineeTisIdAndStatus_SubmittedIsNotNull(traineeId);
+      String formRef = "ltft_%s_%03d".formatted(form.getTraineeTisId(), previousFormCount + 1);
+      log.info("Assigning form reference {} to LTFT {}", formRef, form.getId());
+      form.setFormRef(formRef);
+    }
+
     LtftForm savedForm = ltftFormRepository.save(form);
     publishStatusUpdateNotification(savedForm);
 
