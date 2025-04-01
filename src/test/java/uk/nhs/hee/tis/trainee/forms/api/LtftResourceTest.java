@@ -96,7 +96,7 @@ class LtftResourceTest {
 
   @Test
   void shouldReturnBadRequestWhenServiceWontSaveLtftForm() {
-    when(service.saveLtftForm(any())).thenReturn(Optional.empty());
+    when(service.createLtftForm(any())).thenReturn(Optional.empty());
 
     ResponseEntity<LtftFormDto> response = controller.createLtft(LtftFormDto.builder().build());
 
@@ -127,7 +127,7 @@ class LtftResourceTest {
         .id(ID)
         .traineeTisId("some trainee")
         .build();
-    when(service.saveLtftForm(any())).thenReturn(Optional.of(savedForm));
+    when(service.createLtftForm(any())).thenReturn(Optional.of(savedForm));
 
     LtftFormDto newForm = LtftFormDto.builder()
         .traineeTisId("some trainee")

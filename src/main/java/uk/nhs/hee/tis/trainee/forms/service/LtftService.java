@@ -200,10 +200,19 @@ public class LtftService {
    * @param dto The LTFT DTO to save.
    * @return The saved form DTO.
    */
-  public Optional<LtftFormDto> saveLtftForm(LtftFormDto dto) {
+  public Optional<LtftFormDto> createLtftForm(LtftFormDto dto) {
     String traineeId = traineeIdentity.getTraineeId();
     log.info("Saving LTFT form for trainee [{}]: {}", traineeId, dto);
     LtftForm form = mapper.toEntity(dto);
+
+    // Set initial DRAFT status.
+    Person modifiedBy = Person.builder()
+        .name(traineeIdentity.getName())
+        .email(traineeIdentity.getEmail())
+        .role(traineeIdentity.getRole())
+        .build();
+    form.setLifecycleState(DRAFT, null, modifiedBy, 0);
+
     if (!form.getTraineeTisId().equals(traineeId)) {
       log.warn("Could not save form since it does belong to the logged-in trainee {}: {}",
           traineeId, dto);
