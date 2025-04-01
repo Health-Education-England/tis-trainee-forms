@@ -27,7 +27,6 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 
 import io.awspring.cloud.sns.core.SnsTemplate;
-import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,9 +42,6 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
-import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto;
-import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
-import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 
@@ -85,18 +81,9 @@ class LtftServiceIntegrationTest {
 
   @Test
   void shouldNotGenerateFormRefForDrafts() {
-    // TODO: stop manually setting DRAFT status once it is set by the backend.
-    StatusInfoDto draftStatus = StatusInfoDto.builder()
-        .state(LifecycleState.DRAFT)
-        .build();
-
     LtftFormDto dto = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("my test form")
-        .status(StatusDto.builder()
-            .current(draftStatus)
-            .history(List.of(draftStatus))
-            .build())
         .build();
 
     LtftFormDto saved = service.createLtftForm(dto).orElseThrow();
@@ -105,18 +92,9 @@ class LtftServiceIntegrationTest {
 
   @Test
   void shouldNotCountDraftsWhenGeneratingFormRefSuffix() {
-    // TODO: stop manually setting DRAFT status once it is set by the backend.
-    StatusInfoDto draftStatus = StatusInfoDto.builder()
-        .state(LifecycleState.DRAFT)
-        .build();
-
     LtftFormDto dto = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("my test form")
-        .status(StatusDto.builder()
-            .current(draftStatus)
-            .history(List.of(draftStatus))
-            .build())
         .build();
 
     LtftFormDto draft1 = service.createLtftForm(dto).orElseThrow();
@@ -130,18 +108,9 @@ class LtftServiceIntegrationTest {
 
   @Test
   void shouldCountSubmittedWhenGeneratingFormRefSuffix() {
-    // TODO: stop manually setting DRAFT status once it is set by the backend.
-    StatusInfoDto draftStatus = StatusInfoDto.builder()
-        .state(LifecycleState.DRAFT)
-        .build();
-
     LtftFormDto dto = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("my test form")
-        .status(StatusDto.builder()
-            .current(draftStatus)
-            .history(List.of(draftStatus))
-            .build())
         .build();
 
     LtftFormDto draft1 = service.createLtftForm(dto).orElseThrow();

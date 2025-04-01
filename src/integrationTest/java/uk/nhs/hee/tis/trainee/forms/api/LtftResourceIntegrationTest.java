@@ -507,6 +507,7 @@ class LtftResourceIntegrationTest {
   void shouldUpdateLtftFormForTrainee() throws Exception {
     LtftForm form = new LtftForm();
     form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(LifecycleState.DRAFT);
     LtftForm formSaved = template.save(form);
 
     UUID savedId = formSaved.getId();
@@ -540,6 +541,44 @@ class LtftResourceIntegrationTest {
         is(TRAINEE_ID));
     assertThat("Unexpected saved record id.", savedRecords.get(0).getId(),
         is(formSaved.getId()));
+  }
+
+  @Test
+  void shouldIgnoreReadOnlyFieldsWhenUpdatingLtftFormForTrainee() throws Exception {
+    LtftForm form = new LtftForm();
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(LifecycleState.DRAFT);
+    LtftForm formSaved = template.save(form);
+
+    UUID savedId = formSaved.getId();
+    LtftFormDto formToUpdate = LtftFormDto.builder()
+        .id(savedId)
+        .traineeTisId(TRAINEE_ID)
+        .formRef("ref_123")
+        .revision(3)
+        .assignedAdmin(PersonDto.builder().name("Ad Min").build())
+        .status(StatusDto.builder().build())
+        .created(Instant.EPOCH)
+        .lastModified(Instant.EPOCH)
+        .build();
+
+    String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(put("/api/ltft/" + savedId)
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToUpdateJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(savedId.toString()))
+        .andExpect(jsonPath("$.traineeTisId").value(TRAINEE_ID))
+        .andExpect(jsonPath("$.formRef", nullValue()))
+        .andExpect(jsonPath("$.revision").value(0))
+        .andExpect(jsonPath("$.assignedAdmin", nullValue()))
+        .andExpect(jsonPath("$.status.current.state", is("DRAFT")))
+        .andExpect(jsonPath("$.created").value(
+            formSaved.getCreated().truncatedTo(ChronoUnit.MILLIS).toString()))
+        .andExpect(jsonPath("$.lastModified",
+            greaterThan(formSaved.getLastModified().toString())));
   }
 
   @Test

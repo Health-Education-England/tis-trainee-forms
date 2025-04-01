@@ -41,6 +41,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROVED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
@@ -97,6 +98,7 @@ import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.mapper.TemporalMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
@@ -1799,8 +1801,7 @@ class LtftServiceTest {
         .traineeTisId(TRAINEE_ID)
         .build();
 
-    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID))
-        .thenReturn(Optional.empty());
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
 
@@ -1822,8 +1823,7 @@ class LtftServiceTest {
     existingForm.setTraineeTisId(TRAINEE_ID);
     existingForm.setLifecycleState(state);
     existingForm.setContent(LtftContent.builder().name("test").build());
-    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID))
-        .thenReturn(Optional.of(existingForm));
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
 
@@ -1834,7 +1834,7 @@ class LtftServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
-  void shouldSaveIfUpdatingLtftFormForTrainee(LifecycleState state) {
+  void shouldSaveIfUpdatingEditableLtftFormForTrainee(LifecycleState state) {
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .id(ID)
         .traineeTisId(TRAINEE_ID)
@@ -1845,15 +1845,626 @@ class LtftServiceTest {
     existingForm.setTraineeTisId(TRAINEE_ID);
     existingForm.setLifecycleState(state);
     existingForm.setContent(LtftContent.builder().name("test").build());
-    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID))
-        .thenReturn(Optional.of(existingForm));
-    when(repository.save(any())).thenReturn(existingForm);
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
 
-    LtftForm formToSave = mapper.toEntity(dtoToSave);
-    verify(repository).save(formToSave);
+    verify(repository).save(existingForm);
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldNotUpdateFormRefWhenUpdatingLtftFormForTrainee(LifecycleState state) {
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .formRef("new ref")
+        .build();
+
+    LtftForm existingForm = new LtftForm();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId(TRAINEE_ID);
+    existingForm.setLifecycleState(state);
+    existingForm.setFormRef("ltft_id_001");
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
+
+    LtftFormDto formDto = formDtoOptional.get();
+
+    assertThat("Unexpected form reference.", formDto.formRef(), is("ltft_id_001"));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldNotUpdateRevisionWhenUpdatingLtftFormForTrainee(LifecycleState state) {
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .revision(2)
+        .build();
+
+    LtftForm existingForm = new LtftForm();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId(TRAINEE_ID);
+    existingForm.setLifecycleState(state);
+    existingForm.setRevision(1);
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
+
+    LtftFormDto formDto = formDtoOptional.get();
+
+    assertThat("Unexpected revision.", formDto.revision(), is(1));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldUpdateNameWhenUpdatingLtftFormForTrainee(LifecycleState state) {
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .name("new name")
+        .build();
+
+    LtftForm existingForm = new LtftForm();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId(TRAINEE_ID);
+    existingForm.setLifecycleState(state);
+    existingForm.setContent(LtftContent.builder()
+        .name("existing name")
+        .build());
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
+
+    LtftFormDto formDto = formDtoOptional.get();
+
+    assertThat("Unexpected name.", formDto.name(), is("new name"));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldUpdatePersonalDetailsWhenUpdatingLtftFormForTrainee(LifecycleState state) {
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .personalDetails(PersonalDetailsDto.builder()
+            .title("Rev")
+            .forenames("Trey")
+            .surname("Knee")
+            .email("trey.knee@example.com")
+            .gmcNumber("7654321")
+            .gdcNumber("D654321")
+            .telephoneNumber("07700 900999")
+            .mobileNumber("07700 900998")
+            .skilledWorkerVisaHolder(true)
+            .build())
+        .build();
+
+    LtftForm existingForm = new LtftForm();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId(TRAINEE_ID);
+    existingForm.setLifecycleState(state);
+    existingForm.setContent(LtftContent.builder()
+        .personalDetails(PersonalDetails.builder()
+            .title("Dr")
+            .forenames("Anthony")
+            .surname("Gilliam")
+            .email("anthony.gilliam@example.com")
+            .gmcNumber("1234567")
+            .gdcNumber("D123456")
+            .telephoneNumber("07700 900000")
+            .mobileNumber("07700 900001")
+            .skilledWorkerVisaHolder(false)
+            .build())
+        .build());
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
+
+    LtftFormDto formDto = formDtoOptional.get();
+    PersonalDetailsDto personalDetails = formDto.personalDetails();
+
+    assertThat("Unexpected title.", personalDetails.title(), is("Rev"));
+    assertThat("Unexpected forenames.", personalDetails.forenames(), is("Trey"));
+    assertThat("Unexpected surname.", personalDetails.surname(), is("Knee"));
+    assertThat("Unexpected email.", personalDetails.email(), is("trey.knee@example.com"));
+    assertThat("Unexpected GMC number.", personalDetails.gmcNumber(), is("7654321"));
+    assertThat("Unexpected GDC number.", personalDetails.gdcNumber(), is("D654321"));
+    assertThat("Unexpected telephone number.", personalDetails.telephoneNumber(),
+        is("07700 900999"));
+    assertThat("Unexpected mobile number.", personalDetails.mobileNumber(), is("07700 900998"));
+    assertThat("Unexpected visa holder.", personalDetails.skilledWorkerVisaHolder(), is(true));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldUpdateProgrammeMembershipWhenUpdatingLtftFormForTrainee(LifecycleState state) {
+    UUID newId = UUID.randomUUID();
+    LocalDate newStartDate = LocalDate.now();
+    LocalDate newEndDate = newStartDate.plusYears(1);
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(newId)
+            .name("new programme")
+            .designatedBodyCode("new DBC")
+            .startDate(newStartDate)
+            .endDate(newEndDate)
+            .wte(0.5)
+            .build())
+        .build();
+
+    LtftForm existingForm = new LtftForm();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId(TRAINEE_ID);
+    existingForm.setLifecycleState(state);
+    existingForm.setContent(LtftContent.builder()
+        .programmeMembership(ProgrammeMembership.builder()
+            .id(UUID.randomUUID())
+            .name("existing programme")
+            .designatedBodyCode("existing DBC")
+            .startDate(LocalDate.MIN)
+            .endDate(LocalDate.MAX)
+            .wte(1.0)
+            .build())
+        .build());
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
+
+    LtftFormDto formDto = formDtoOptional.get();
+    ProgrammeMembershipDto programmeMembership = formDto.programmeMembership();
+
+    assertThat("Unexpected ID.", programmeMembership.id(), is(newId));
+    assertThat("Unexpected name.", programmeMembership.name(), is("new programme"));
+    assertThat("Unexpected DBC.", programmeMembership.designatedBodyCode(), is("new DBC"));
+    assertThat("Unexpected start date.", programmeMembership.startDate(), is(newStartDate));
+    assertThat("Unexpected end date.", programmeMembership.endDate(), is(newEndDate));
+    assertThat("Unexpected WTE.", programmeMembership.wte(), is(0.5));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldUpdateDeclarationsWhenUpdatingLtftFormForTrainee(LifecycleState state) {
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .declarations(DeclarationsDto.builder()
+            .discussedWithTpd(true)
+            .informationIsCorrect(true)
+            .notGuaranteed(true)
+            .build())
+        .build();
+
+    LtftForm existingForm = new LtftForm();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId(TRAINEE_ID);
+    existingForm.setLifecycleState(state);
+    existingForm.setContent(LtftContent.builder()
+        .declarations(Declarations.builder()
+            .discussedWithTpd(false)
+            .informationIsCorrect(false)
+            .notGuaranteed(false)
+            .build())
+        .build());
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
+
+    LtftFormDto formDto = formDtoOptional.get();
+    DeclarationsDto declarations = formDto.declarations();
+
+    assertThat("Unexpected declaration.", declarations.discussedWithTpd(), is(true));
+    assertThat("Unexpected declaration.", declarations.informationIsCorrect(), is(true));
+    assertThat("Unexpected declaration.", declarations.notGuaranteed(), is(true));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldUpdateDiscussionsWhenUpdatingLtftFormForTrainee(LifecycleState state) {
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .discussions(DiscussionsDto.builder()
+            .tpdName("new TPD")
+            .tpdEmail("new.tpd@example.com")
+            .other(List.of(PersonDto.builder()
+                    .name("new other 1")
+                    .email("new.other1@example.com")
+                    .role("new role 1")
+                    .build(),
+                PersonDto.builder()
+                    .name("new other 2")
+                    .email("new.other2@example.com")
+                    .role("new role 2")
+                    .build()))
+            .build())
+        .build();
+
+    LtftForm existingForm = new LtftForm();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId(TRAINEE_ID);
+    existingForm.setLifecycleState(state);
+    existingForm.setContent(LtftContent.builder()
+        .discussions(Discussions.builder()
+            .tpdName("existing TPD")
+            .tpdEmail("existing.tpd@example.com")
+            .other(List.of(Person.builder()
+                .name("existing other")
+                .email("existing.other@example.com")
+                .role("existing role")
+                .build()))
+            .build())
+        .build());
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
+
+    LtftFormDto formDto = formDtoOptional.get();
+    DiscussionsDto discussions = formDto.discussions();
+
+    assertThat("Unexpected TPD name.", discussions.tpdName(), is("new TPD"));
+    assertThat("Unexpected TPD email.", discussions.tpdEmail(), is("new.tpd@example.com"));
+
+    List<PersonDto> other = discussions.other();
+    assertThat("Unexpected other discussion count.", other, hasSize(2));
+
+    PersonDto other1 = other.get(0);
+    assertThat("Unexpected name.", other1.name(), is("new other 1"));
+    assertThat("Unexpected email.", other1.email(), is("new.other1@example.com"));
+    assertThat("Unexpected role.", other1.role(), is("new role 1"));
+
+    PersonDto other2 = other.get(1);
+    assertThat("Unexpected name.", other2.name(), is("new other 2"));
+    assertThat("Unexpected email.", other2.email(), is("new.other2@example.com"));
+    assertThat("Unexpected role.", other2.role(), is("new role 2"));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldUpdateChangeWhenUpdatingLtftFormForTrainee(LifecycleState state) {
+    UUID newChangeId = UUID.randomUUID();
+    UUID newCalculationId = UUID.randomUUID();
+    LocalDate newStartDate = LocalDate.now();
+    LocalDate newEndDate = newStartDate.plusYears(1);
+    LocalDate newCctDate = newStartDate.plusYears(2);
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .change(CctChangeDto.builder()
+            .id(newChangeId)
+            .calculationId(newCalculationId)
+            .type(CctChangeType.LTFT)
+            .wte(0.5)
+            .startDate(newStartDate)
+            .endDate(newEndDate)
+            .cctDate(newCctDate)
+            .build())
+        .build();
+
+    LtftForm existingForm = new LtftForm();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId(TRAINEE_ID);
+    existingForm.setLifecycleState(state);
+    existingForm.setContent(LtftContent.builder()
+        .change(CctChange.builder()
+            .id(UUID.randomUUID())
+            .calculationId(UUID.randomUUID())
+            .type(CctChangeType.LTFT)
+            .wte(1.0)
+            .startDate(LocalDate.MIN)
+            .endDate(LocalDate.EPOCH)
+            .cctDate(LocalDate.MAX)
+            .build())
+        .build());
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
+
+    LtftFormDto formDto = formDtoOptional.get();
+    CctChangeDto change = formDto.change();
+
+    assertThat("Unexpected change ID.", change.id(), is(newChangeId));
+    assertThat("Unexpected calculation ID.", change.calculationId(), is(newCalculationId));
+    assertThat("Unexpected CCT type.", change.type(), is(CctChangeType.LTFT));
+    assertThat("Unexpected WTE.", change.wte(), is(0.5));
+    assertThat("Unexpected start date.", change.startDate(), is(newStartDate));
+    assertThat("Unexpected end date.", change.endDate(), is(newEndDate));
+    assertThat("Unexpected CCT date.", change.cctDate(), is(newCctDate));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldUpdateReasonsWhenUpdatingLtftFormForTrainee(LifecycleState state) {
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .reasons(ReasonsDto.builder()
+            .selected(List.of("new reason 1", "new reason 2"))
+            .otherDetail("new other detail")
+            .build())
+        .build();
+
+    LtftForm existingForm = new LtftForm();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId(TRAINEE_ID);
+    existingForm.setLifecycleState(state);
+    existingForm.setContent(LtftContent.builder()
+        .reasons(Reasons.builder()
+            .selected(List.of("existing reason 1"))
+            .otherDetail("existing other detail")
+            .build())
+        .build());
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
+
+    LtftFormDto formDto = formDtoOptional.get();
+    ReasonsDto reasons = formDto.reasons();
+
+    assertThat("Unexpected reason count.", reasons.selected(), hasSize(2));
+    assertThat("Unexpected reason.", reasons.selected().get(0), is("new reason 1"));
+    assertThat("Unexpected reason.", reasons.selected().get(1), is("new reason 2"));
+    assertThat("Unexpected other detail.", reasons.otherDetail(), is("new other detail"));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldNotUpdateAssignedAdminWhenUpdatingLtftFormForTraineeAndNoExistingContent(
+      LifecycleState state) {
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .assignedAdmin(PersonDto.builder()
+            .name("new admin")
+            .email("new.admin@example.com")
+            .role("NEW_ADMIN")
+            .build())
+        .build();
+
+    LtftForm existingForm = new LtftForm();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId(TRAINEE_ID);
+    existingForm.setLifecycleState(state);
+    existingForm.setContent(null);
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
+
+    LtftFormDto formDto = formDtoOptional.get();
+    assertThat("Unexpected assigned admin.", formDto.assignedAdmin(), nullValue());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldNotUpdateAssignedAdminWhenUpdatingLtftFormForTraineeAndNoExistingAdmin(
+      LifecycleState state) {
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .assignedAdmin(PersonDto.builder()
+            .name("new admin")
+            .email("new.admin@example.com")
+            .role("NEW_ADMIN")
+            .build())
+        .build();
+
+    LtftForm existingForm = new LtftForm();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId(TRAINEE_ID);
+    existingForm.setLifecycleState(state);
+    existingForm.setContent(LtftContent.builder().build());
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
+
+    LtftFormDto formDto = formDtoOptional.get();
+    assertThat("Unexpected assigned admin.", formDto.assignedAdmin(), nullValue());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldNotUpdateAssignedAdminWhenUpdatingLtftFormForTraineeAndExistingAdmin(
+      LifecycleState state) {
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .assignedAdmin(PersonDto.builder()
+            .name("new admin")
+            .email("new.admin@example.com")
+            .role("NEW_ADMIN")
+            .build())
+        .build();
+
+    LtftForm existingForm = new LtftForm();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId(TRAINEE_ID);
+    existingForm.setLifecycleState(state);
+    existingForm.setContent(LtftContent.builder()
+        .assignedAdmin(Person.builder()
+            .name("Ad Min")
+            .email("ad.min@example.com")
+            .role("ADMIN")
+            .build())
+        .build());
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
+
+    LtftFormDto formDto = formDtoOptional.get();
+    PersonDto assignedAdmin = formDto.assignedAdmin();
+
+    assertThat("Unexpected assigned admin name.", assignedAdmin.name(), is("Ad Min"));
+    assertThat("Unexpected assigned admin email.", assignedAdmin.email(), is("ad.min@example.com"));
+    assertThat("Unexpected assigned admin role.", assignedAdmin.role(), is("ADMIN"));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldNotUpdateStatusWhenUpdatingLtftFormForTrainee(LifecycleState state) {
+    StatusInfoDto newStatus = StatusInfoDto.builder()
+        .state(SUBMITTED)
+        .revision(2)
+        .detail(LftfStatusInfoDetailDto.builder()
+            .reason("new reason")
+            .message("new message")
+            .build())
+        .timestamp(Instant.now())
+        .modifiedBy(PersonDto.builder()
+            .name("Trey Knee")
+            .email("trey.knee@example.com")
+            .role("new role")
+            .build())
+        .build();
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .status(StatusDto.builder()
+            .current(newStatus)
+            .history(List.of(newStatus, StatusInfoDto.builder().build()))
+            .submitted(Instant.now())
+            .build())
+        .build();
+
+    StatusInfo existingStatus = StatusInfo.builder()
+        .state(state)
+        .revision(1)
+        .detail(StatusDetail.builder()
+            .reason("existing reason")
+            .message("existing message")
+            .build())
+        .timestamp(Instant.EPOCH)
+        .modifiedBy(Person.builder()
+            .name("Anthony Gilliam")
+            .email("anthony.gilliam@example.com")
+            .role("TRAINEE")
+            .build())
+        .build();
+    LtftForm existingForm = new LtftForm();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId(TRAINEE_ID);
+    existingForm.setStatus(Status.builder()
+        .current(existingStatus)
+        .history(List.of(existingStatus))
+        .submitted(Instant.EPOCH)
+        .build());
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
+
+    LtftFormDto formDto = formDtoOptional.get();
+    StatusDto status = formDto.status();
+    StatusInfoDto current = status.current();
+
+    assertThat("Unexpected state.", current.state(), is(state));
+    assertThat("Unexpected revision.", current.revision(), is(1));
+    assertThat("Unexpected reason.", current.detail().reason(), is("existing reason"));
+    assertThat("Unexpected message.", current.detail().message(), is("existing message"));
+    assertThat("Unexpected timestamp.", current.timestamp(), is(Instant.EPOCH));
+    assertThat("Unexpected modified name.", current.modifiedBy().name(), is("Anthony Gilliam"));
+    assertThat("Unexpected modified email.", current.modifiedBy().email(),
+        is("anthony.gilliam@example.com"));
+    assertThat("Unexpected modified role.", current.modifiedBy().role(), is("TRAINEE"));
+
+    assertThat("Unexpected history count.", status.history(), hasSize(1));
+    StatusInfoDto historical = status.history().get(0);
+    assertThat("Unexpected history.", historical, is(current));
+
+    assertThat("Unexpected submitted timestamp.", status.submitted(), is(Instant.EPOCH));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldNotUpdateCreatedWhenUpdatingLtftFormForTrainee(LifecycleState state) {
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .created(Instant.now())
+        .build();
+
+    LtftForm existingForm = new LtftForm();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId(TRAINEE_ID);
+    existingForm.setLifecycleState(state);
+    existingForm.setCreated(Instant.EPOCH);
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
+
+    LtftFormDto formDto = formDtoOptional.get();
+    assertThat("Unexpected created timestamp.", formDto.created(), is(Instant.EPOCH));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldNotUpdateLastModifiedWhenUpdatingLtftFormForTrainee(LifecycleState state) {
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .lastModified(Instant.now())
+        .build();
+
+    LtftForm existingForm = new LtftForm();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId(TRAINEE_ID);
+    existingForm.setLifecycleState(state);
+    existingForm.setLastModified(Instant.EPOCH);
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
+
+    LtftFormDto formDto = formDtoOptional.get();
+    assertThat("Unexpected last modified timestamp.", formDto.lastModified(), is(Instant.EPOCH));
   }
 
   @Test
@@ -1916,7 +2527,7 @@ class LtftServiceTest {
     LtftForm form = new LtftForm();
     form.setId(ID);
     form.setTraineeTisId(TRAINEE_ID);
-    form.setLifecycleState(LifecycleState.APPROVED); //cannot transition to any of the given states
+    form.setLifecycleState(APPROVED); //cannot transition to any of the given states
     form.setContent(LtftContent.builder().name("test").build());
     LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
 
@@ -2188,7 +2799,7 @@ class LtftServiceTest {
     LtftForm form = new LtftForm();
     form.setId(ID);
     form.setTraineeTisId(TRAINEE_ID);
-    form.setLifecycleState(LifecycleState.APPROVED); //cannot transition to any other state
+    form.setLifecycleState(APPROVED); //cannot transition to any other state
     form.setContent(LtftContent.builder().name("test").build());
 
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(any(), any()))
@@ -2206,7 +2817,7 @@ class LtftServiceTest {
     LtftForm form = new LtftForm();
     form.setId(ID);
     form.setTraineeTisId(TRAINEE_ID);
-    form.setLifecycleState(LifecycleState.APPROVED); //cannot transition to any other state
+    form.setLifecycleState(APPROVED); //cannot transition to any other state
     form.setContent(LtftContent.builder().name("test").build());
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));

@@ -63,6 +63,7 @@ import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 
 /**
@@ -259,8 +260,13 @@ public class LtftService {
       return Optional.empty();
     }
 
-    form.setCreated(existingForm.getCreated()); //explicitly set otherwise form saved as 'new'
-    LtftForm savedForm = ltftFormRepository.save(form);
+    // Merge the new content in to the existing form.
+    Person assignedAdmin =
+        existingForm.getContent() != null ? existingForm.getContent().assignedAdmin() : null;
+    LtftContent updatedContent = form.getContent().withAssignedAdmin(assignedAdmin);
+    existingForm.setContent(updatedContent);
+
+    LtftForm savedForm = ltftFormRepository.save(existingForm);
     return Optional.of(mapper.toDto(savedForm));
   }
 
