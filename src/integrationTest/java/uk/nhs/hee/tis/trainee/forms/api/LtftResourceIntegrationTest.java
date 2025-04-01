@@ -726,12 +726,13 @@ class LtftResourceIntegrationTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"SUBMITTED"})
-  void shouldUnsubmitLtftForm(LifecycleState state) throws Exception {
+  void shouldUnsubmitLtftFormAndIncrementRevision(LifecycleState state) throws Exception {
     LtftForm ltft = new LtftForm();
     ltft.setId(ID);
     ltft.setTraineeTisId(TRAINEE_ID);
     ltft.setLifecycleState(state);
     ltft.setContent(LtftContent.builder().name("test").build());
+    ltft.setRevision(0);
     template.insert(ltft);
 
     LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
@@ -745,7 +746,9 @@ class LtftResourceIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(ID.toString()))
         .andExpect(jsonPath("$.traineeTisId").value(TRAINEE_ID))
+        .andExpect(jsonPath("$.revision").value("1"))
         .andExpect(jsonPath("$.status.current.state").value(LifecycleState.UNSUBMITTED.name()))
+        .andExpect(jsonPath("$.status.current.revision").value("1"))
         .andExpect(jsonPath("$.status.current.detail.reason").value("reason"))
         .andExpect(jsonPath("$.status.current.detail.message").value("message"))
         .andExpect(jsonPath("$.status.current.modifiedBy.name").value("given family"))
