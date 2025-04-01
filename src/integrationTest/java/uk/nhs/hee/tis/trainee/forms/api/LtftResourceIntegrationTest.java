@@ -26,6 +26,7 @@ import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -40,9 +41,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.sns.core.SnsTemplate;
 import java.net.URI;
+import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
+import org.hamcrest.Description;
+import org.hamcrest.Matcher;
+import org.hamcrest.TypeSafeMatcher;
+import org.hamcrest.number.IsCloseTo;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -67,6 +73,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
+import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
@@ -292,6 +302,153 @@ class LtftResourceIntegrationTest {
     assertThat("Unexpected saved record trainee id.", savedRecords.get(0).getTraineeTisId(),
         is(TRAINEE_ID));
     assertThat("Unexpected saved record id.", savedRecords.get(0).getId(), is(notNullValue()));
+  }
+
+  @Test
+  void shouldIgnoreFormRefWhenCreatingLtftFormForTrainee() throws Exception {
+    LtftFormDto formToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .name("test")
+        .formRef("test-ref")
+        .build();
+    String formToSaveJson = mapper.writeValueAsString(formToSave);
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(post("/api/ltft")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToSaveJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.formRef", nullValue()));
+  }
+
+  @Test
+  void shouldIgnoreRevisionWhenCreatingLtftFormForTrainee() throws Exception {
+    LtftFormDto formToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .name("test")
+        .revision(123)
+        .build();
+    String formToSaveJson = mapper.writeValueAsString(formToSave);
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(post("/api/ltft")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToSaveJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.revision", is(0)));
+  }
+
+  @Test
+  void shouldIgnoreAssignedAdminWhenCreatingLtftFormForTrainee() throws Exception {
+    LtftFormDto formToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .name("test")
+        .assignedAdmin(PersonDto.builder()
+            .name("Ad Min")
+            .email("ad.min@example.com")
+            .role("ADMIN")
+            .build())
+        .build();
+    String formToSaveJson = mapper.writeValueAsString(formToSave);
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(post("/api/ltft")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToSaveJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.assignedAdmin", nullValue()));
+  }
+
+  @Test
+  void shouldIgnoreStatusWhenCreatingLtftFormForTrainee() throws Exception {
+    StatusInfoDto approved = StatusInfoDto.builder()
+        .state(LifecycleState.APPROVED)
+        .revision(123)
+        .detail(LftfStatusInfoDetailDto.builder()
+            .reason("test reason")
+            .message("test message")
+            .build())
+        .timestamp(Instant.EPOCH)
+        .modifiedBy(PersonDto.builder()
+            .name("Trey Knee")
+            .email("trey.knee@example.com")
+            .role("test role")
+            .build())
+        .build();
+
+    LtftFormDto formToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .name("test")
+        .status(StatusDto.builder()
+            .current(approved)
+            .submitted(Instant.EPOCH)
+            .history(List.of(approved))
+            .build())
+        .build();
+    String formToSaveJson = mapper.writeValueAsString(formToSave);
+    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID, "anthony.gilliam@example.com",
+        "Anthony", "Gilliam");
+    mockMvc.perform(post("/api/ltft")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToSaveJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status.current.state", is("DRAFT")))
+        .andExpect(jsonPath("$.status.current.detail", nullValue()))
+        .andExpect(jsonPath("$.status.current.modifiedBy.name", is("Anthony Gilliam")))
+        .andExpect(jsonPath("$.status.current.modifiedBy.email", is("anthony.gilliam@example.com")))
+        .andExpect(jsonPath("$.status.current.modifiedBy.role", is("TRAINEE")))
+        .andExpect(jsonPath("$.status.current.timestamp",
+            TimestampCloseTo.closeTo(Instant.now().getEpochSecond(), 1)))
+        .andExpect(jsonPath("$.status.current.revision", is(0)))
+        .andExpect(jsonPath("$.status.history", hasSize(1)))
+        .andExpect(jsonPath("$.status.history[0].state", is("DRAFT")))
+        .andExpect(jsonPath("$.status.history[0].detail", nullValue()))
+        .andExpect(jsonPath("$.status.history[0].modifiedBy.name", is("Anthony Gilliam")))
+        .andExpect(
+            jsonPath("$.status.history[0].modifiedBy.email", is("anthony.gilliam@example.com")))
+        .andExpect(jsonPath("$.status.history[0].modifiedBy.role", is("TRAINEE")))
+        .andExpect(jsonPath("$.status.history[0].timestamp",
+            TimestampCloseTo.closeTo(Instant.now().getEpochSecond(), 1)))
+        .andExpect(jsonPath("$.status.history[0].revision", is(0)))
+        .andExpect(jsonPath("$.status.submitted", nullValue()))
+        .andReturn();
+  }
+
+  @Test
+  void shouldIgnoreCreatedWhenCreatingLtftFormForTrainee() throws Exception {
+    LtftFormDto formToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .name("test")
+        .created(Instant.EPOCH)
+        .build();
+    String formToSaveJson = mapper.writeValueAsString(formToSave);
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(post("/api/ltft")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToSaveJson))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$.created", TimestampCloseTo.closeTo(Instant.now().getEpochSecond(), 1)));
+  }
+
+  @Test
+  void shouldIgnoreLastModifiedWhenCreatingLtftFormForTrainee() throws Exception {
+    LtftFormDto formToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .name("test")
+        .lastModified(Instant.EPOCH)
+        .build();
+    String formToSaveJson = mapper.writeValueAsString(formToSave);
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(post("/api/ltft")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToSaveJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.lastModified",
+            TimestampCloseTo.closeTo(Instant.now().getEpochSecond(), 1)));
   }
 
   @Test
@@ -608,5 +765,45 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.current.modifiedBy.name").value("given family"))
         .andExpect(jsonPath("$.status.current.modifiedBy.email").value("email"))
         .andExpect(jsonPath("$.status.current.modifiedBy.role").value("TRAINEE"));
+  }
+
+  /**
+   * A custom matcher which wraps {@link IsCloseTo} to allow easier use with string timestamps.
+   */
+  private static class TimestampCloseTo extends TypeSafeMatcher<String> {
+
+    private final IsCloseTo isCloseTo;
+
+    /**
+     * Construct a matcher that matches when a timestamp value is equal, within the error range.
+     *
+     * @param value The expected value of matching doubles after conversion.
+     * @param error The delta (+/-) within which matches will be allowed.
+     */
+    TimestampCloseTo(double value, double error) {
+      isCloseTo = new IsCloseTo(value, error);
+    }
+
+    @Override
+    protected boolean matchesSafely(String timestamp) {
+      Instant parsed = Instant.parse(timestamp);
+      return isCloseTo.matchesSafely((double) parsed.getEpochSecond());
+    }
+
+    @Override
+    public void describeTo(Description description) {
+      isCloseTo.describeTo(description);
+    }
+
+    /**
+     * Get an instance of the closeTo matcher.
+     *
+     * @param operand The expected value of matching doubles after conversion.
+     * @param error   The delta (+/-) within which matches will be allowed.
+     * @return the matcher instance.
+     */
+    public static Matcher<String> closeTo(double operand, double error) {
+      return new TimestampCloseTo(operand, error);
+    }
   }
 }

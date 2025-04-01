@@ -22,6 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
+import com.fasterxml.jackson.annotation.JsonView;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,8 +39,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
-import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
+import uk.nhs.hee.tis.trainee.forms.dto.views.Trainee;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 
 /**
@@ -83,9 +84,9 @@ public class LtftResource {
    */
   @PostMapping
   public ResponseEntity<LtftFormDto> createLtft(
-      @RequestBody @Validated(Create.class) LtftFormDto dto) {
+      @RequestBody @JsonView(Trainee.Write.class) @Validated(Create.class) LtftFormDto dto) {
     log.info("Request to save new LTFT form: {}", dto);
-    Optional<LtftFormDto> savedLtft = service.saveLtftForm(dto);
+    Optional<LtftFormDto> savedLtft = service.createLtftForm(dto);
     return savedLtft.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.badRequest().build());
   }
 

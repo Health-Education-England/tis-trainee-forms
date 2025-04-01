@@ -99,7 +99,7 @@ class LtftServiceIntegrationTest {
             .build())
         .build();
 
-    LtftFormDto saved = service.saveLtftForm(dto).orElseThrow();
+    LtftFormDto saved = service.createLtftForm(dto).orElseThrow();
     assertThat("Unexpected form ref.", saved.formRef(), nullValue());
   }
 
@@ -119,8 +119,8 @@ class LtftServiceIntegrationTest {
             .build())
         .build();
 
-    LtftFormDto draft1 = service.saveLtftForm(dto).orElseThrow();
-    LtftFormDto draft2 = service.saveLtftForm(dto).orElseThrow();
+    LtftFormDto draft1 = service.createLtftForm(dto).orElseThrow();
+    LtftFormDto draft2 = service.createLtftForm(dto).orElseThrow();
     assertThat("Unexpected form ID.", draft1.id(), not(draft2.id()));
 
     LtftFormDto submitted1 = service.submitLtftForm(draft1.id(), null).orElseThrow();
@@ -144,8 +144,8 @@ class LtftServiceIntegrationTest {
             .build())
         .build();
 
-    LtftFormDto draft1 = service.saveLtftForm(dto).orElseThrow();
-    LtftFormDto draft2 = service.saveLtftForm(dto).orElseThrow();
+    LtftFormDto draft1 = service.createLtftForm(dto).orElseThrow();
+    LtftFormDto draft2 = service.createLtftForm(dto).orElseThrow();
     assertThat("Unexpected form ID.", draft1.id(), not(draft2.id()));
 
     LtftFormDto submitted1 = service.submitLtftForm(draft1.id(), null).orElseThrow();

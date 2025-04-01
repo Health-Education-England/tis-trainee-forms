@@ -1729,7 +1729,7 @@ class LtftServiceTest {
         .traineeTisId("another trainee")
         .build();
 
-    Optional<LtftFormDto> formDtoOptional = service.saveLtftForm(dtoToSave);
+    Optional<LtftFormDto> formDtoOptional = service.createLtftForm(dtoToSave);
 
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
     verifyNoInteractions(repository);
@@ -1747,7 +1747,7 @@ class LtftServiceTest {
     existingForm.setContent(LtftContent.builder().name("test").build());
     when(repository.save(any())).thenReturn(existingForm);
 
-    Optional<LtftFormDto> formDtoOptional = service.saveLtftForm(dtoToSave);
+    Optional<LtftFormDto> formDtoOptional = service.createLtftForm(dtoToSave);
 
     verify(repository).save(any());
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));

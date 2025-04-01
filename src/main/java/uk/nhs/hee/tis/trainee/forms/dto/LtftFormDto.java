@@ -21,6 +21,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.dto;
 
+import com.fasterxml.jackson.annotation.JsonView;
 import jakarta.validation.constraints.Null;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -29,6 +30,7 @@ import java.util.UUID;
 import lombok.Builder;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
+import uk.nhs.hee.tis.trainee.forms.dto.views.ReadOnly;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChangeType;
 
 /**
@@ -55,8 +57,14 @@ public record LtftFormDto(
     @Null(groups = Create.class)
     UUID id,
     String traineeTisId,
+
+    @JsonView(ReadOnly.class)
+    @Null(groups = Create.class)
     String formRef,
-    int revision,
+
+    @JsonView(ReadOnly.class)
+    @Null(groups = Create.class)
+    Integer revision,
     String name,
     PersonalDetailsDto personalDetails,
     ProgrammeMembershipDto programmeMembership,
@@ -64,10 +72,21 @@ public record LtftFormDto(
     DiscussionsDto discussions,
     CctChangeDto change,
     ReasonsDto reasons,
+
+    @JsonView(ReadOnly.class)
+    @Null(groups = Create.class)
     PersonDto assignedAdmin,
+
+    @JsonView(ReadOnly.class)
+    @Null(groups = Create.class)
     StatusDto status,
 
+    @JsonView(ReadOnly.class)
+    @Null(groups = Create.class)
     Instant created,
+
+    @JsonView(ReadOnly.class)
+    @Null(groups = Create.class)
     Instant lastModified) {
 
   /**
