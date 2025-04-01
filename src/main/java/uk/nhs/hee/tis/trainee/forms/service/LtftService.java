@@ -243,13 +243,23 @@ public class LtftService {
           traineeId, dto);
       return Optional.empty();
     }
-    Optional<LtftForm> existingForm = ltftFormRepository.findByTraineeTisIdAndId(traineeId, formId);
-    if (existingForm.isEmpty()) {
+    Optional<LtftForm> foundForm = ltftFormRepository.findByTraineeTisIdAndId(traineeId, formId);
+    if (foundForm.isEmpty()) {
       log.warn("Could not update form {} since no existing form with this id for trainee {}",
           formId, traineeId);
       return Optional.empty();
     }
-    form.setCreated(existingForm.get().getCreated()); //explicitly set otherwise form saved as 'new'
+
+    LtftForm existingForm = foundForm.get();
+    LifecycleState existingState = existingForm.getLifecycleState();
+
+    if (existingState != DRAFT && existingState != UNSUBMITTED) {
+      log.warn("Could not update form {} for trainee {} since state {} is not editable",
+          formId, traineeId, existingState);
+      return Optional.empty();
+    }
+
+    form.setCreated(existingForm.getCreated()); //explicitly set otherwise form saved as 'new'
     LtftForm savedForm = ltftFormRepository.save(form);
     return Optional.of(mapper.toDto(savedForm));
   }

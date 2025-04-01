@@ -1809,8 +1809,9 @@ class LtftServiceTest {
     verifyNoMoreInteractions(repository);
   }
 
-  @Test
-  void shouldSaveIfUpdatingLtftFormForTrainee() {
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldNotUpdateFormIfNotEditableState(LifecycleState state) {
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .id(ID)
         .traineeTisId(TRAINEE_ID)
@@ -1819,6 +1820,30 @@ class LtftServiceTest {
     LtftForm existingForm = new LtftForm();
     existingForm.setId(ID);
     existingForm.setTraineeTisId(TRAINEE_ID);
+    existingForm.setLifecycleState(state);
+    existingForm.setContent(LtftContent.builder().name("test").build());
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID))
+        .thenReturn(Optional.of(existingForm));
+
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
+
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
+    verify(repository).findByTraineeTisIdAndId(TRAINEE_ID, ID);
+    verifyNoMoreInteractions(repository);
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldSaveIfUpdatingLtftFormForTrainee(LifecycleState state) {
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .build();
+
+    LtftForm existingForm = new LtftForm();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId(TRAINEE_ID);
+    existingForm.setLifecycleState(state);
     existingForm.setContent(LtftContent.builder().name("test").build());
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID))
         .thenReturn(Optional.of(existingForm));
