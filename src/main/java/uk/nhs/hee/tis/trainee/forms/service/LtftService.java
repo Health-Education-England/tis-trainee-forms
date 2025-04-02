@@ -430,6 +430,10 @@ public class LtftService {
       throw new MethodArgumentNotValidException(null, result);
     }
 
+    if (targetState.isIncrementsRevision()) {
+      form.setRevision(form.getRevision() + 1);
+    }
+
     StatusDetail detailEntity = mapper.toStatusDetail(detail);
 
     Person modifiedBy = Person.builder()

@@ -1413,8 +1413,8 @@ class AdminLtftResourceIntegrationTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = "SUBMITTED")
-  void shouldUnsubmitLtftWhenStateTransitionAllowedAndReasonGiven(LifecycleState currentState)
-      throws Exception {
+  void shouldUnsubmitLtftAndIncrementRevisionWhenStateTransitionAllowedAndReasonGiven(
+      LifecycleState currentState) throws Exception {
     LtftForm form = template.insert(createLtftForm(currentState, DBC_1, null));
 
     String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
@@ -1432,17 +1432,18 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.current.modifiedBy.name", is("Ad Min")))
         .andExpect(jsonPath("$.status.current.modifiedBy.email", is("ad.min@example.com")))
         .andExpect(jsonPath("$.status.current.modifiedBy.role", is("ADMIN")))
-        .andExpect(jsonPath("$.status.current.revision", is(0)))
+        .andExpect(jsonPath("$.status.current.revision", is(1)))
         .andExpect(jsonPath("$.status.current.timestamp", notNullValue()))
         .andExpect(jsonPath("$.status.history[0].state", is(currentState.toString())))
+        .andExpect(jsonPath("$.status.history[0].revision", is(0)))
         .andExpect(jsonPath("$.status.history[1].state", is(UNSUBMITTED.toString())))
         .andExpect(jsonPath("$.status.history[1].detail.reason", is("test reason")))
         .andExpect(jsonPath("$.status.history[1].detail.message", is("test message")))
         .andExpect(jsonPath("$.status.history[1].modifiedBy.name", is("Ad Min")))
         .andExpect(jsonPath("$.status.history[1].modifiedBy.email", is("ad.min@example.com")))
         .andExpect(jsonPath("$.status.history[1].modifiedBy.role", is("ADMIN")))
-        .andExpect(jsonPath("$.status.current.revision", is(0)))
-        .andExpect(jsonPath("$.status.current.timestamp", notNullValue()));
+        .andExpect(jsonPath("$.status.history[1].revision", is(1)))
+        .andExpect(jsonPath("$.status.history[1].timestamp", notNullValue()));
   }
 
   /**
@@ -1464,10 +1465,12 @@ class AdminLtftResourceIntegrationTest {
             .build())
         .build();
     ltft.setContent(content);
+    ltft.setRevision(0);
 
     StatusInfo statusInfo = StatusInfo.builder()
         .state(state)
         .timestamp(Instant.now())
+        .revision(0)
         .build();
     ltft.setStatus(Status.builder()
         .current(statusInfo)

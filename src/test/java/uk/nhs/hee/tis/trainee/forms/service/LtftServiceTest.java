@@ -43,8 +43,10 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROVED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.REJECTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
 
 import io.awspring.cloud.sns.core.SnsNotification;
 import io.awspring.cloud.sns.core.SnsTemplate;
@@ -59,12 +61,15 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
@@ -1480,7 +1485,6 @@ class LtftServiceTest {
 
     StatusInfoDto current = dto.status().current();
     assertThat("Unexpected current state.", current.state(), is(targetState));
-    assertThat("Unexpected current revision.", current.revision(), is(0));
     assertThat("Unexpected current timestamp.", current.timestamp(), notNullValue());
 
     LftfStatusInfoDetailDto detail = current.detail();
@@ -2672,7 +2676,7 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldUnsubmitFormWithStatusDetail() {
+  void shouldUnsubmitFormWithStatusDetailAndIncrementRevision() {
     LtftForm form = new LtftForm();
     form.setId(ID);
     form.setRevision(2);
@@ -2698,7 +2702,7 @@ class LtftServiceTest {
         is(expectedModifiedBy));
     assertThat("Unexpected status modified timestamp.", newFormState.timestamp(),
         is(notNullValue()));
-    assertThat("Unexpected form revision.", form.getRevision(), is(2));
+    assertThat("Unexpected form revision.", form.getRevision(), is(3));
     assertThat("Unexpected form ref.", form.getFormRef(), is("formRef_001"));
     verify(repository).save(form);
   }
@@ -2826,5 +2830,55 @@ class LtftServiceTest {
     service.changeLtftFormState(ID, detail, SUBMITTED);
 
     verifyNoInteractions(snsTemplate);
+  }
+
+
+  @ParameterizedTest
+  @MethodSource("provideValidLtftLifecycleStateTransitions")
+  void shouldIncrementRevisionIffTransitionsToStateThatIncrementsRevision(
+      LifecycleState currentState, LifecycleState targetState)
+      throws MethodArgumentNotValidException {
+    LtftForm entity = new LtftForm();
+    entity.setLifecycleState(currentState);
+    entity.setRevision(0);
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(entity));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> optionalDto = service.updateStatusAsAdmin(ID, targetState,
+        LftfStatusInfoDetailDto.builder()
+            .reason("detail reason")
+            .message("detail message")
+            .build()
+    );
+
+    assertThat("Unexpected form presence.", optionalDto.isPresent(), is(true));
+
+    StatusInfoDto current = optionalDto.get().status().current();
+    int expectedRevision = targetState.isIncrementsRevision() ? 1 : 0;
+    assertThat("Unexpected revision.", current.revision(), is(expectedRevision));
+  }
+
+  /**
+   * A helper function to provide valid LTFT lifecycle state transitions.
+   *
+   * @return pairs of valid lifecycle state transitions.
+   */
+  private static Stream<Arguments> provideValidLtftLifecycleStateTransitions() {
+    return Stream.of(
+        // From DRAFT
+        Arguments.of(DRAFT, SUBMITTED),
+
+        // From SUBMITTED
+        Arguments.of(SUBMITTED, APPROVED),
+        Arguments.of(SUBMITTED, REJECTED),
+        Arguments.of(SUBMITTED, UNSUBMITTED),
+        Arguments.of(SUBMITTED, WITHDRAWN),
+
+        // From UNSUBMITTED
+        Arguments.of(UNSUBMITTED, SUBMITTED),
+        Arguments.of(UNSUBMITTED, WITHDRAWN)
+    );
   }
 }

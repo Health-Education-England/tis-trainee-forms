@@ -40,6 +40,8 @@ public enum LifecycleState {
   private Set<LifecycleState> allowedTransitions;
   @Getter
   private boolean requiresDetails; //requires details to enter this state
+  @Getter
+  private boolean incrementsRevision; //increments revision no. when transitioning to this state
 
   // NOTE: allowedFormTypes can effectively disallow specific allowedTransitions.
   // Example:
@@ -49,30 +51,37 @@ public enum LifecycleState {
     APPROVED.allowedTransitions = Set.of();
     APPROVED.allowedFormTypes = Set.of(LtftForm.class);
     APPROVED.requiresDetails = false;
+    APPROVED.incrementsRevision = false;
 
     DELETED.allowedTransitions = Set.of();
     DELETED.allowedFormTypes = Set.of(AbstractFormR.class);
     DELETED.requiresDetails = false;
+    DELETED.incrementsRevision = false;
 
     DRAFT.allowedTransitions = Set.of(SUBMITTED);
     DRAFT.allowedFormTypes = Set.of(AbstractForm.class);
     DRAFT.requiresDetails = false;
+    DRAFT.incrementsRevision = false;
 
     REJECTED.allowedTransitions = Set.of();
     REJECTED.allowedFormTypes = Set.of(LtftForm.class);
     REJECTED.requiresDetails = true;
+    REJECTED.incrementsRevision = false;
 
     SUBMITTED.allowedTransitions = Set.of(APPROVED, DELETED, REJECTED, UNSUBMITTED, WITHDRAWN);
     SUBMITTED.allowedFormTypes = Set.of(AbstractForm.class);
     SUBMITTED.requiresDetails = false;
+    SUBMITTED.incrementsRevision = false;
 
     UNSUBMITTED.allowedTransitions = Set.of(SUBMITTED, WITHDRAWN);
     UNSUBMITTED.allowedFormTypes = Set.of(AbstractForm.class);
     UNSUBMITTED.requiresDetails = true;
+    UNSUBMITTED.incrementsRevision = true;
 
     WITHDRAWN.allowedTransitions = Set.of();
     WITHDRAWN.allowedFormTypes = Set.of(LtftForm.class);
     WITHDRAWN.requiresDetails = true;
+    WITHDRAWN.incrementsRevision = false;
   }
 
   /**
