@@ -1183,15 +1183,11 @@ class LtftServiceTest {
   void shouldGetAdminLtftAssignedAdminDetailWhenFormFound() {
     LtftForm entity = new LtftForm();
     entity.setId(ID);
-
-    LtftContent content = LtftContent.builder()
-        .assignedAdmin(Person.builder()
-            .name(ADMIN_NAME)
-            .email(ADMIN_EMAIL)
-            .role("ADMIN")
-            .build())
-        .build();
-    entity.setContent(content);
+    entity.setAssignedAdmin(Person.builder()
+        .name(ADMIN_NAME)
+        .email(ADMIN_EMAIL)
+        .role("ADMIN")
+        .build());
 
     when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
@@ -1212,11 +1208,7 @@ class LtftServiceTest {
   void shouldGetAdminLtftAssignedAdminDetailWithDefaultValuesWhenFormFoundWithNullValues() {
     LtftForm entity = new LtftForm();
     entity.setId(ID);
-
-    LtftContent content = LtftContent.builder()
-        .assignedAdmin(Person.builder().build())
-        .build();
-    entity.setContent(content);
+    entity.setAssignedAdmin(Person.builder().build());
 
     when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
@@ -1365,9 +1357,7 @@ class LtftServiceTest {
   @Test
   void shouldReturnAssignedFormWhenFormFoundAndNoPreviousAdmin() {
     LtftForm form = new LtftForm();
-    form.setContent(LtftContent.builder()
-        .assignedAdmin(null)
-        .build());
+    form.setAssignedAdmin(null);
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -1390,12 +1380,10 @@ class LtftServiceTest {
   @Test
   void shouldReturnAssignedFormWhenFormFoundAndHasPreviousAdmin() {
     LtftForm form = new LtftForm();
-    form.setContent(LtftContent.builder()
-        .assignedAdmin(Person.builder()
-            .name("current admin")
-            .email("current.admin@example.com")
-            .role("current role")
-            .build())
+    form.setAssignedAdmin(Person.builder()
+        .name("current admin")
+        .email("current.admin@example.com")
+        .role("current role")
         .build());
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
@@ -2387,12 +2375,10 @@ class LtftServiceTest {
     existingForm.setId(ID);
     existingForm.setTraineeTisId(TRAINEE_ID);
     existingForm.setLifecycleState(state);
-    existingForm.setContent(LtftContent.builder()
-        .assignedAdmin(Person.builder()
-            .name("Ad Min")
-            .email("ad.min@example.com")
-            .role("ADMIN")
-            .build())
+    existingForm.setAssignedAdmin(Person.builder()
+        .name("Ad Min")
+        .email("ad.min@example.com")
+        .role("ADMIN")
         .build());
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));

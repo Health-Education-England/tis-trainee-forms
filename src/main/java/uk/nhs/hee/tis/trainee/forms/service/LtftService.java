@@ -262,10 +262,7 @@ public class LtftService {
     }
 
     // Merge the new content in to the existing form.
-    Person assignedAdmin =
-        existingForm.getContent() != null ? existingForm.getContent().assignedAdmin() : null;
-    LtftContent updatedContent = form.getContent().withAssignedAdmin(assignedAdmin);
-    existingForm.setContent(updatedContent);
+    existingForm.setContent(form.getContent());
 
     LtftForm savedForm = ltftFormRepository.save(existingForm);
     return Optional.of(mapper.toDto(savedForm));
@@ -383,8 +380,7 @@ public class LtftService {
     if (form.isPresent()) {
       LtftForm ltftForm = form.get();
       Person adminEntity = mapper.toEntity(admin).withRole("ADMIN");
-      LtftContent updatedContent = ltftForm.getContent().withAssignedAdmin(adminEntity);
-      ltftForm.setContent(updatedContent);
+      ltftForm.setAssignedAdmin(adminEntity);
       LtftForm updatedForm = ltftFormRepository.save(ltftForm);
       return Optional.of(mapper.toDto(updatedForm));
     } else {
