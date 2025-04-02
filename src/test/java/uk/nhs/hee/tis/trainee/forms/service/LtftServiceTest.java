@@ -193,6 +193,20 @@ class LtftServiceTest {
             .build())
         .build();
     entity1.setContent(content1);
+
+    Status status1 = Status.builder()
+        .current(StatusInfo.builder()
+            .state(UNSUBMITTED)
+            .detail(StatusDetail.builder()
+                .reason("Unsubmit reason")
+                .message("Unsubmit message")
+                .build())
+            .modifiedBy(Person.builder()
+                .role(ADMIN_NAME)
+                .build())
+            .build())
+        .build();
+    entity1.setStatus(status1);
     entity1.setCreated(created1);
     entity1.setLastModified(lastModified1);
 
@@ -212,6 +226,13 @@ class LtftServiceTest {
             .build())
         .build();
     entity2.setContent(content2);
+
+    Status status2 = Status.builder()
+        .current(StatusInfo.builder()
+            .state(SUBMITTED)
+            .build())
+        .build();
+    entity2.setStatus(status2);
     entity2.setCreated(created2);
     entity2.setLastModified(lastModified2);
 
@@ -226,6 +247,10 @@ class LtftServiceTest {
     assertThat("Unexpected LTFT form ID.", dto1.id(), is(ltftId1));
     assertThat("Unexpected LTFT name.", dto1.name(), is("Test LTFT form 1"));
     assertThat("Unexpected PM ID.", dto1.programmeMembershipId(), is(pmId1));
+    assertThat("Unexpected status.", dto1.status(), is(UNSUBMITTED));
+    assertThat("Unexpected status reason.", dto1.statusReason(), is("Unsubmit reason"));
+    assertThat("Unexpected status message.", dto1.statusMessage(), is("Unsubmit message"));
+    assertThat("Unexpected status modified by role.", dto1.modifiedByRole(), is(ADMIN_NAME));
     assertThat("Unexpected created timestamp.", dto1.created(), is(created1));
     assertThat("Unexpected last modified timestamp.", dto1.lastModified(), is(lastModified1));
 
@@ -233,6 +258,7 @@ class LtftServiceTest {
     assertThat("Unexpected LTFT form ID.", dto2.id(), is(ltftId2));
     assertThat("Unexpected LTFT name.", dto2.name(), is("Test LTFT form 2"));
     assertThat("Unexpected PM ID.", dto2.programmeMembershipId(), is(pmId2));
+    assertThat("Unexpected status.", dto2.status(), is(SUBMITTED));
     assertThat("Unexpected created timestamp.", dto2.created(), is(created2));
     assertThat("Unexpected last modified timestamp.", dto2.lastModified(), is(lastModified2));
   }

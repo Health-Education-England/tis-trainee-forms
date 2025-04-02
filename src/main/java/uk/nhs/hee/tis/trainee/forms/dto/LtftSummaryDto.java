@@ -36,6 +36,9 @@ public record LtftSummaryDto(
     String name,
     UUID programmeMembershipId,
     LifecycleState status,  //assumption: same as for FormR forms.
+    String statusReason,
+    String statusMessage,
+    String modifiedByRole,
     Instant created,
     Instant lastModified) {
 
