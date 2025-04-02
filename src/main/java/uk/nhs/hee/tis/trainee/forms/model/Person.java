@@ -22,6 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.model;
 
 import lombok.Builder;
+import lombok.With;
 
 /**
  * Details of a person and their role.
@@ -34,6 +35,7 @@ import lombok.Builder;
 public record Person(
     String name,
     String email,
+    @With
     String role) {
 
 }

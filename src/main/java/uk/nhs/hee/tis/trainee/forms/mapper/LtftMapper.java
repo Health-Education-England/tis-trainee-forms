@@ -43,9 +43,11 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto.LtftAdminPersonalDet
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
+import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
+import uk.nhs.hee.tis.trainee.forms.model.Person;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 
@@ -149,6 +151,14 @@ public abstract class LtftMapper {
   @InheritInverseConfiguration
   @Mapping(target = "content", source = "dto")
   public abstract LtftForm toEntity(LtftFormDto dto);
+
+  /**
+   * Convert a {@link PersonDto} DTO to a {@link Person}.
+   *
+   * @param dto The DTO to convert.
+   * @return The equivalent Person entity.
+   */
+  public abstract Person toEntity(PersonDto dto);
 
   /**
    * Convert a {@link LftfStatusInfoDetailDto} to a {@link StatusDetail}.
