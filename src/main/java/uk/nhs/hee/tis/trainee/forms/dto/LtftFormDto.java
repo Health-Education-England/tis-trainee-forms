@@ -30,6 +30,7 @@ import java.util.UUID;
 import lombok.Builder;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
+import uk.nhs.hee.tis.trainee.forms.dto.validation.Update;
 import uk.nhs.hee.tis.trainee.forms.dto.views.ReadOnly;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChangeType;
 
@@ -59,11 +60,11 @@ public record LtftFormDto(
     String traineeTisId,
 
     @JsonView(ReadOnly.class)
-    @Null(groups = Create.class)
+    @Null(groups = {Create.class, Update.class})
     String formRef,
 
     @JsonView(ReadOnly.class)
-    @Null(groups = Create.class)
+    @Null(groups = {Create.class, Update.class})
     Integer revision,
     String name,
     PersonalDetailsDto personalDetails,
@@ -74,19 +75,19 @@ public record LtftFormDto(
     ReasonsDto reasons,
 
     @JsonView(ReadOnly.class)
-    @Null(groups = Create.class)
+    @Null(groups = {Create.class, Update.class})
     PersonDto assignedAdmin,
 
     @JsonView(ReadOnly.class)
-    @Null(groups = Create.class)
+    @Null(groups = {Create.class, Update.class})
     StatusDto status,
 
     @JsonView(ReadOnly.class)
-    @Null(groups = Create.class)
+    @Null(groups = {Create.class, Update.class})
     Instant created,
 
     @JsonView(ReadOnly.class)
-    @Null(groups = Create.class)
+    @Null(groups = {Create.class, Update.class})
     Instant lastModified) {
 
   /**

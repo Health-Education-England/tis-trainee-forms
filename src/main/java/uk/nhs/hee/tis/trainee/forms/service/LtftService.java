@@ -63,6 +63,7 @@ import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 
 /**
@@ -243,14 +244,29 @@ public class LtftService {
           traineeId, dto);
       return Optional.empty();
     }
-    Optional<LtftForm> existingForm = ltftFormRepository.findByTraineeTisIdAndId(traineeId, formId);
-    if (existingForm.isEmpty()) {
+    Optional<LtftForm> foundForm = ltftFormRepository.findByTraineeTisIdAndId(traineeId, formId);
+    if (foundForm.isEmpty()) {
       log.warn("Could not update form {} since no existing form with this id for trainee {}",
           formId, traineeId);
       return Optional.empty();
     }
-    form.setCreated(existingForm.get().getCreated()); //explicitly set otherwise form saved as 'new'
-    LtftForm savedForm = ltftFormRepository.save(form);
+
+    LtftForm existingForm = foundForm.get();
+    LifecycleState existingState = existingForm.getLifecycleState();
+
+    if (existingState != DRAFT && existingState != UNSUBMITTED) {
+      log.warn("Could not update form {} for trainee {} since state {} is not editable",
+          formId, traineeId, existingState);
+      return Optional.empty();
+    }
+
+    // Merge the new content in to the existing form.
+    Person assignedAdmin =
+        existingForm.getContent() != null ? existingForm.getContent().assignedAdmin() : null;
+    LtftContent updatedContent = form.getContent().withAssignedAdmin(assignedAdmin);
+    existingForm.setContent(updatedContent);
+
+    LtftForm savedForm = ltftFormRepository.save(existingForm);
     return Optional.of(mapper.toDto(savedForm));
   }
 
