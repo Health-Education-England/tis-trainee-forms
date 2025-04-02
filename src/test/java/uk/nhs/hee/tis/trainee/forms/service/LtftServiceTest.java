@@ -136,6 +136,7 @@ class LtftServiceTest {
   private MongoTemplate mongoTemplate;
   private LtftMapper mapper;
   private SnsTemplate snsTemplate;
+  private LtftSubmissionHistoryService ltftSubmissionHistoryService;
 
   @BeforeEach
   void setUp() {
@@ -152,10 +153,11 @@ class LtftServiceTest {
     repository = mock(LtftFormRepository.class);
     mongoTemplate = mock(MongoTemplate.class);
     snsTemplate = mock(SnsTemplate.class);
+    ltftSubmissionHistoryService = mock(LtftSubmissionHistoryService.class);
 
     mapper = new LtftMapperImpl(new TemporalMapperImpl());
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, mapper,
-        snsTemplate, LTFT_STATUS_UPDATE_TOPIC);
+        snsTemplate, LTFT_STATUS_UPDATE_TOPIC, ltftSubmissionHistoryService);
   }
 
   @Test
@@ -1484,6 +1486,8 @@ class LtftServiceTest {
     assertThat("Unexpected history count.", history, hasSize(2));
     assertThat("Unexpected history state.", history.get(0).state(), is(DRAFT));
     assertThat("Unexpected history state.", history.get(1).state(), is(targetState));
+
+    verify(ltftSubmissionHistoryService).takeSnapshot(entity);
   }
 
   @ParameterizedTest
@@ -1553,6 +1557,8 @@ class LtftServiceTest {
     assertThat("Unexpected history count.", history, hasSize(2));
     assertThat("Unexpected history state.", history.get(0).state(), is(SUBMITTED));
     assertThat("Unexpected history state.", history.get(1).state(), is(targetState));
+
+    verifyNoInteractions(ltftSubmissionHistoryService);
   }
 
   @ParameterizedTest
@@ -2674,6 +2680,7 @@ class LtftServiceTest {
         is(notNullValue()));
     assertThat("Unexpected form revision.", form.getRevision(), is(2));
     verify(repository).save(form);
+    verify(ltftSubmissionHistoryService).takeSnapshot(form);
   }
 
   @ParameterizedTest
@@ -2701,6 +2708,7 @@ class LtftServiceTest {
     assertThat("Unexpected result when form is submitted.", result.isPresent(), is(true));
     assertThat("Unexpected form ref.", form.getFormRef(), is("ltft_" + TRAINEE_ID + refSuffix));
     verify(repository).save(form);
+    verify(ltftSubmissionHistoryService).takeSnapshot(form);
   }
 
   @Test
@@ -2724,6 +2732,7 @@ class LtftServiceTest {
     assertThat("Unexpected result when form is submitted.", result.isPresent(), is(true));
     assertThat("Unexpected form ref.", form.getFormRef(), is(formRef));
     verify(repository).save(form);
+    verify(ltftSubmissionHistoryService).takeSnapshot(form);
   }
 
   @Test
@@ -2756,6 +2765,7 @@ class LtftServiceTest {
     assertThat("Unexpected form revision.", form.getRevision(), is(3));
     assertThat("Unexpected form ref.", form.getFormRef(), is("formRef_001"));
     verify(repository).save(form);
+    verifyNoInteractions(ltftSubmissionHistoryService);
   }
 
   @Test
@@ -2789,6 +2799,7 @@ class LtftServiceTest {
     assertThat("Unexpected form revision.", form.getRevision(), is(2));
     assertThat("Unexpected form ref.", form.getFormRef(), is("formRef_001"));
     verify(repository).save(form);
+    verifyNoInteractions(ltftSubmissionHistoryService);
   }
 
   @Test

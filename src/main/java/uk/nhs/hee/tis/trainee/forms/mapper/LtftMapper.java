@@ -47,6 +47,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
+import uk.nhs.hee.tis.trainee.forms.model.LtftSubmissionHistory;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
@@ -142,6 +143,17 @@ public abstract class LtftMapper {
   @Mapping(target = "reasons", source = "content.reasons")
   @Mapping(target = "assignedAdmin", source = "assignedAdmin")
   public abstract LtftFormDto toDto(LtftForm entity);
+
+  /**
+   * Convert a {@link LtftForm} to a {@link LtftSubmissionHistory} entity.
+   *
+   * @param entity The form to convert.
+   * @return The equivalent submission history.
+   */
+  @Mapping(target = "id", ignore = true)
+  @Mapping(target = "created", ignore = true)
+  @Mapping(target = "lastModified", ignore = true)
+  public abstract LtftSubmissionHistory toSubmissionHistory(LtftForm entity);
 
   /**
    * Convert a {@link LtftFormDto} DTO to a {@link LtftForm}.
