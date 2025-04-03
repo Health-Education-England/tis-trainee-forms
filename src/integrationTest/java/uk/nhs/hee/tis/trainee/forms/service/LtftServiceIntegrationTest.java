@@ -21,12 +21,15 @@
 
 package uk.nhs.hee.tis.trainee.forms.service;
 
+import static java.util.Collections.sort;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 
 import io.awspring.cloud.sns.core.SnsTemplate;
+import java.util.Collections;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,6 +37,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.test.context.ActiveProfiles;
@@ -126,5 +130,51 @@ class LtftServiceIntegrationTest {
     LtftFormDto submitted2 = service.submitLtftForm(draft2.id(), null).orElseThrow();
     assertThat("Unexpected form ID.", submitted2.id(), is(draft2.id()));
     assertThat("Unexpected form ref.", submitted2.formRef(), is("ltft_" + TRAINEE_ID + "_002"));
+  }
+
+  @Test
+  void shouldIncrementRevisionWhenUnsubmittedNotChangeFormRefAndTakeSnapshotsOnEachSubmission() {
+    LtftFormDto dto = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .name("my test form")
+        .build();
+
+    LtftFormDto draft = service.createLtftForm(dto).orElseThrow();
+
+    LtftFormDto submitted = service.submitLtftForm(draft.id(), null).orElseThrow();
+    assertThat("Unexpected form ID.", submitted.id(), is(draft.id()));
+    assertThat("Unexpected form ref.", submitted.formRef(), is("ltft_" + TRAINEE_ID + "_001"));
+
+    LtftFormDto.StatusDto.LftfStatusInfoDetailDto reason
+        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+    LtftFormDto unsubmitted = service.unsubmitLtftForm(submitted.id(), reason).orElseThrow();
+    assertThat("Unexpected form ID.", unsubmitted.id(), is(submitted.id()));
+    assertThat("Unexpected form ref.", unsubmitted.formRef(), is(submitted.formRef()));
+
+    LtftFormDto resubmitted = service.submitLtftForm(draft.id(), null).orElseThrow();
+    assertThat("Unexpected form ID.", resubmitted.id(), is(draft.id()));
+    assertThat("Unexpected form ref.", resubmitted.formRef(), is("ltft_" + TRAINEE_ID + "_001"));
+
+    Query query = new Query().with(Sort.by(Sort.Direction.ASC, "revision"));
+    List<LtftSubmissionHistory> savedSubmissionHistories = template.find(query, LtftSubmissionHistory.class);
+
+    assertThat("Unexpected number of submission histories.",
+        savedSubmissionHistories.size(), is(2));
+    assertThat("Unexpected history revision.", savedSubmissionHistories.get(0).getRevision(),
+        is(0));
+    assertThat("Unexpected history revision.", savedSubmissionHistories.get(1).getRevision(),
+        is(1));
+    assertThat("Unexpected history form ref.", savedSubmissionHistories.get(0).getFormRef(),
+        is(submitted.formRef()));
+    assertThat("Unexpected history form ref.", savedSubmissionHistories.get(1).getFormRef(),
+        is(submitted.formRef()));
+
+    List<LtftForm> savedLtftForms = template.findAll(LtftForm.class);
+    assertThat("Unexpected number of ltft forms.", savedLtftForms.size(),
+        is(1));
+    assertThat("Unexpected ltft revision.", savedLtftForms.get(0).getRevision(),
+        is(1));
+    assertThat("Unexpected ltft form ref.", savedLtftForms.get(0).getFormRef(),
+        is(submitted.formRef()));
   }
 }

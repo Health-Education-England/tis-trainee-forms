@@ -23,12 +23,12 @@ package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 
 import io.awspring.cloud.sns.core.SnsTemplate;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -65,11 +65,6 @@ class LtftSubmissionHistoryServiceIntegrationTest {
   @MockBean
   private SnsTemplate snsTemplate;
 
-  @BeforeEach
-  void setUp() {
-
-  }
-
   @AfterEach
   void tearDown() {
     template.remove(new Query(), LtftSubmissionHistory.class);
@@ -90,7 +85,7 @@ class LtftSubmissionHistoryServiceIntegrationTest {
     assert savedSubmissionHistory != null;
 
     assertThat("Unexpected saved submission ID.",
-        savedSubmissionHistory.getId().equals(form.getId()), is(false));
+        savedSubmissionHistory.getId(), not(form.getId()));
     assertThat("Unexpected saved submission created.",
         savedSubmissionHistory.getCreated(), notNullValue());
     assertThat("Unexpected saved submission last modified.",
