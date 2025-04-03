@@ -123,6 +123,7 @@ class LtftServiceTest {
   private static final String TRAINEE_EMAIL = "email";
   private static final String TRAINEE_NAME = "name";
   private static final String TRAINEE_ROLE = "TRAINEE";
+  private static final String FORM_REF = "formRef";
 
   private static final String ADMIN_NAME = "Ad Min";
   private static final String ADMIN_EMAIL = "ad.min@example.com";
@@ -207,6 +208,7 @@ class LtftServiceTest {
             .build())
         .build();
     entity1.setStatus(status1);
+    entity1.setFormRef(FORM_REF);
     entity1.setCreated(created1);
     entity1.setLastModified(lastModified1);
 
@@ -245,6 +247,7 @@ class LtftServiceTest {
 
     LtftSummaryDto dto1 = result.get(0);
     assertThat("Unexpected LTFT form ID.", dto1.id(), is(ltftId1));
+    assertThat("Unexpected LTFT form ref.", dto1.formRef(), is(FORM_REF));
     assertThat("Unexpected LTFT name.", dto1.name(), is("Test LTFT form 1"));
     assertThat("Unexpected PM ID.", dto1.programmeMembershipId(), is(pmId1));
     assertThat("Unexpected status.", dto1.status(), is(UNSUBMITTED));

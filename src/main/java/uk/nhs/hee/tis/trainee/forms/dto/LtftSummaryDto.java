@@ -32,6 +32,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 @Builder
 public record LtftSummaryDto(
     UUID id,
+    String formRef,
 
     String name,
     UUID programmeMembershipId,
