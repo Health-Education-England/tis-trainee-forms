@@ -86,19 +86,25 @@ public class LtftService {
   private final SnsTemplate snsTemplate;
   private final String ltftStatusUpdateTopic;
 
+  private final LtftSubmissionHistoryService ltftSubmissionHistoryService;
+
   /**
    * Instantiate the LTFT form service.
    *
-   * @param adminIdentity      The logged-in admin, for admin features.
-   * @param traineeIdentity    The logged-in trainee, for trainee features.
-   * @param ltftFormRepository The LTFT repository.
-   * @param mongoTemplate      The Mongo template.
-   * @param mapper             The LTFT mapper.
+   * @param adminIdentity                The logged-in admin, for admin features.
+   * @param traineeIdentity              The logged-in trainee, for trainee features.
+   * @param ltftFormRepository           The LTFT repository.
+   * @param mongoTemplate                The Mongo template.
+   * @param mapper                       The LTFT mapper.
+   * @param snsTemplate                  The SNS template.
+   * @param ltftStatusUpdateTopic        The SNS topic for LTFT status updates.
+   * @param ltftSubmissionHistoryService The service for LTFT submission history.
    */
   public LtftService(AdminIdentity adminIdentity, TraineeIdentity traineeIdentity,
       LtftFormRepository ltftFormRepository, MongoTemplate mongoTemplate, LtftMapper mapper,
       SnsTemplate snsTemplate,
-      @Value("${application.aws.sns.ltft-status-updated}") String ltftStatusUpdateTopic) {
+      @Value("${application.aws.sns.ltft-status-updated}") String ltftStatusUpdateTopic,
+      LtftSubmissionHistoryService ltftSubmissionHistoryService) {
     this.adminIdentity = adminIdentity;
     this.traineeIdentity = traineeIdentity;
     this.ltftFormRepository = ltftFormRepository;
@@ -106,6 +112,7 @@ public class LtftService {
     this.mapper = mapper;
     this.snsTemplate = snsTemplate;
     this.ltftStatusUpdateTopic = ltftStatusUpdateTopic;
+    this.ltftSubmissionHistoryService = ltftSubmissionHistoryService;
   }
 
   /**
@@ -481,6 +488,10 @@ public class LtftService {
     }
 
     LtftForm savedForm = ltftFormRepository.save(form);
+    if (targetState == SUBMITTED) {
+      ltftSubmissionHistoryService.takeSnapshot(savedForm);
+    }
+
     publishStatusUpdateNotification(savedForm);
 
     return savedForm;
