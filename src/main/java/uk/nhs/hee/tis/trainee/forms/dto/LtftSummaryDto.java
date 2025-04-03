@@ -32,10 +32,14 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 @Builder
 public record LtftSummaryDto(
     UUID id,
+    String formRef,
 
     String name,
     UUID programmeMembershipId,
     LifecycleState status,  //assumption: same as for FormR forms.
+    String statusReason,
+    String statusMessage,
+    String modifiedByRole,
     Instant created,
     Instant lastModified) {
 

@@ -116,6 +116,9 @@ public abstract class LtftMapper {
   @Mapping(target = "name", source = "content.name")
   @Mapping(target = "programmeMembershipId", source = "content.programmeMembership.id")
   @Mapping(target = "status", source = "status.current.state")
+  @Mapping(target = "statusReason", source = "status.current.detail.reason")
+  @Mapping(target = "statusMessage", source = "status.current.detail.message")
+  @Mapping(target = "modifiedByRole", source = "status.current.modifiedBy.role")
   public abstract LtftSummaryDto toSummaryDto(LtftForm entity);
 
   /**
