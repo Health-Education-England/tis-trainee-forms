@@ -98,7 +98,7 @@ public record LtftContent(
       UUID id,
       @Indexed
       String name,
-      @Indexed
+      @Indexed(name = "dbc")
       String designatedBodyCode,
       LocalDate startDate,
       LocalDate endDate,
