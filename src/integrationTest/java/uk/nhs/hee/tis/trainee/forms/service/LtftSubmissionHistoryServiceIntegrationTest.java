@@ -23,10 +23,10 @@ package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.notNullValue;
 
 import io.awspring.cloud.sns.core.SnsTemplate;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,15 +41,13 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
-import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
-import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.LtftSubmissionHistory;
 
 @SpringBootTest
 @ActiveProfiles("test")
 @Testcontainers
-class LtftServiceIntegrationTest {
+class LtftSubmissionHistoryServiceIntegrationTest {
 
   private static final String TRAINEE_ID = "47165";
 
@@ -59,10 +57,7 @@ class LtftServiceIntegrationTest {
       DockerImageNames.MONGO);
 
   @Autowired
-  private LtftService service;
-
-  @Autowired
-  private TraineeIdentity traineeIdentity;
+  private LtftSubmissionHistoryService service;
 
   @Autowired
   private MongoTemplate template;
@@ -72,59 +67,40 @@ class LtftServiceIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    traineeIdentity.setTraineeId(TRAINEE_ID);
+
   }
 
   @AfterEach
   void tearDown() {
-    template.findAllAndRemove(new Query(), LtftForm.class);
-    template.findAllAndRemove(new Query(), LtftSubmissionHistory.class);
+    template.remove(new Query(), LtftSubmissionHistory.class);
   }
 
   @Test
-  void shouldNotGenerateFormRefForDrafts() {
-    LtftFormDto dto = LtftFormDto.builder()
-        .traineeTisId(TRAINEE_ID)
-        .name("my test form")
-        .build();
+  void shouldSaveLtftSubmissionHistory() {
+    LtftForm form = new LtftForm();
+    form.setId(UUID.randomUUID());
+    form.setRevision(1);
+    form.setFormRef("LTFT-12345");
+    form.setTraineeTisId(TRAINEE_ID);
 
-    LtftFormDto saved = service.createLtftForm(dto).orElseThrow();
-    assertThat("Unexpected form ref.", saved.formRef(), nullValue());
-  }
+    service.takeSnapshot(form);
 
-  @Test
-  void shouldNotCountDraftsWhenGeneratingFormRefSuffix() {
-    LtftFormDto dto = LtftFormDto.builder()
-        .traineeTisId(TRAINEE_ID)
-        .name("my test form")
-        .build();
+    var savedSubmissionHistory = template.findOne(new Query(), LtftSubmissionHistory.class);
 
-    LtftFormDto draft1 = service.createLtftForm(dto).orElseThrow();
-    LtftFormDto draft2 = service.createLtftForm(dto).orElseThrow();
-    assertThat("Unexpected form ID.", draft1.id(), not(draft2.id()));
+    assert savedSubmissionHistory != null;
 
-    LtftFormDto submitted1 = service.submitLtftForm(draft1.id(), null).orElseThrow();
-    assertThat("Unexpected form ID.", submitted1.id(), is(draft1.id()));
-    assertThat("Unexpected form ref.", submitted1.formRef(), is("ltft_" + TRAINEE_ID + "_001"));
-  }
+    assertThat("Unexpected saved submission ID.",
+        savedSubmissionHistory.getId().equals(form.getId()), is(false));
+    assertThat("Unexpected saved submission created.",
+        savedSubmissionHistory.getCreated(), notNullValue());
+    assertThat("Unexpected saved submission last modified.",
+        savedSubmissionHistory.getLastModified(), notNullValue());
 
-  @Test
-  void shouldCountSubmittedWhenGeneratingFormRefSuffix() {
-    LtftFormDto dto = LtftFormDto.builder()
-        .traineeTisId(TRAINEE_ID)
-        .name("my test form")
-        .build();
-
-    LtftFormDto draft1 = service.createLtftForm(dto).orElseThrow();
-    LtftFormDto draft2 = service.createLtftForm(dto).orElseThrow();
-    assertThat("Unexpected form ID.", draft1.id(), not(draft2.id()));
-
-    LtftFormDto submitted1 = service.submitLtftForm(draft1.id(), null).orElseThrow();
-    assertThat("Unexpected form ID.", submitted1.id(), is(draft1.id()));
-    assertThat("Unexpected form ref.", submitted1.formRef(), is("ltft_" + TRAINEE_ID + "_001"));
-
-    LtftFormDto submitted2 = service.submitLtftForm(draft2.id(), null).orElseThrow();
-    assertThat("Unexpected form ID.", submitted2.id(), is(draft2.id()));
-    assertThat("Unexpected form ref.", submitted2.formRef(), is("ltft_" + TRAINEE_ID + "_002"));
+    assertThat("Unexpected saved submission form ref.",
+        savedSubmissionHistory.getFormRef(), is(form.getFormRef()));
+    assertThat("Unexpected saved submission revision.",
+        savedSubmissionHistory.getRevision(), is(form.getRevision()));
+    assertThat("Unexpected saved submission trainee TIS ID.",
+        savedSubmissionHistory.getTraineeTisId(), is(form.getTraineeTisId()));
   }
 }

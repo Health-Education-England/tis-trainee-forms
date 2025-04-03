@@ -79,6 +79,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
+import uk.nhs.hee.tis.trainee.forms.model.LtftSubmissionHistory;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Discussions;
@@ -112,6 +113,7 @@ class LtftResourceIntegrationTest {
   @AfterEach
   void tearDown() {
     template.findAllAndRemove(new Query(), LtftForm.class);
+    template.findAllAndRemove(new Query(), LtftSubmissionHistory.class);
   }
 
 
