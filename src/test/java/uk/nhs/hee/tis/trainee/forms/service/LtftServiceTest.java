@@ -1183,15 +1183,11 @@ class LtftServiceTest {
   void shouldGetAdminLtftAssignedAdminDetailWhenFormFound() {
     LtftForm entity = new LtftForm();
     entity.setId(ID);
-
-    LtftContent content = LtftContent.builder()
-        .assignedAdmin(Person.builder()
-            .name(ADMIN_NAME)
-            .email(ADMIN_EMAIL)
-            .role("ADMIN")
-            .build())
-        .build();
-    entity.setContent(content);
+    entity.setAssignedAdmin(Person.builder()
+        .name(ADMIN_NAME)
+        .email(ADMIN_EMAIL)
+        .role("ADMIN")
+        .build());
 
     when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
@@ -1212,11 +1208,7 @@ class LtftServiceTest {
   void shouldGetAdminLtftAssignedAdminDetailWithDefaultValuesWhenFormFoundWithNullValues() {
     LtftForm entity = new LtftForm();
     entity.setId(ID);
-
-    LtftContent content = LtftContent.builder()
-        .assignedAdmin(Person.builder().build())
-        .build();
-    entity.setContent(content);
+    entity.setAssignedAdmin(Person.builder().build());
 
     when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
@@ -1350,6 +1342,67 @@ class LtftServiceTest {
     StatusDto status = dto.status();
     assertThat("Unexpected state.", status.current(), nullValue());
     assertThat("Unexpected history count.", status.history(), nullValue());
+  }
+
+  @Test
+  void shouldReturnEmptyAssigningAdminWhenFormNotFound() {
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.empty());
+
+    Optional<LtftFormDto> form = service.assignAdmin(ID, PersonDto.builder().build());
+
+    assertThat("Unexpected form presence.", form.isPresent(), is(false));
+  }
+
+  @Test
+  void shouldReturnAssignedFormWhenFormFoundAndNoPreviousAdmin() {
+    LtftForm form = new LtftForm();
+    form.setAssignedAdmin(null);
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    PersonDto admin = PersonDto.builder()
+        .name("Ad Min")
+        .email("ad.min@example.com")
+        .build();
+
+    Optional<LtftFormDto> optionalForm = service.assignAdmin(ID, admin);
+
+    assertThat("Unexpected form presence.", optionalForm.isPresent(), is(true));
+
+    PersonDto assignedAdmin = optionalForm.get().assignedAdmin();
+    assertThat("Unexpected admin name.", assignedAdmin.name(), is("Ad Min"));
+    assertThat("Unexpected admin email.", assignedAdmin.email(), is("ad.min@example.com"));
+    assertThat("Unexpected admin role.", assignedAdmin.role(), is("ADMIN"));
+  }
+
+  @Test
+  void shouldReturnAssignedFormWhenFormFoundAndHasPreviousAdmin() {
+    LtftForm form = new LtftForm();
+    form.setAssignedAdmin(Person.builder()
+        .name("current admin")
+        .email("current.admin@example.com")
+        .role("current role")
+        .build());
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    PersonDto admin = PersonDto.builder()
+        .name("new admin")
+        .email("new.admin@example.com")
+        .role("new role")
+        .build();
+
+    Optional<LtftFormDto> optionalForm = service.assignAdmin(ID, admin);
+
+    assertThat("Unexpected form presence.", optionalForm.isPresent(), is(true));
+
+    PersonDto assignedAdmin = optionalForm.get().assignedAdmin();
+    assertThat("Unexpected admin name.", assignedAdmin.name(), is("new admin"));
+    assertThat("Unexpected admin email.", assignedAdmin.email(), is("new.admin@example.com"));
+    assertThat("Unexpected admin role.", assignedAdmin.role(), is("ADMIN"));
   }
 
   @ParameterizedTest
@@ -2322,12 +2375,10 @@ class LtftServiceTest {
     existingForm.setId(ID);
     existingForm.setTraineeTisId(TRAINEE_ID);
     existingForm.setLifecycleState(state);
-    existingForm.setContent(LtftContent.builder()
-        .assignedAdmin(Person.builder()
-            .name("Ad Min")
-            .email("ad.min@example.com")
-            .role("ADMIN")
-            .build())
+    existingForm.setAssignedAdmin(Person.builder()
+        .name("Ad Min")
+        .email("ad.min@example.com")
+        .role("ADMIN")
         .build());
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));

@@ -30,6 +30,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
+import lombok.With;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.domain.Persistable;
@@ -56,6 +57,7 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
 
   private T content;
   private Status status;
+  private Person assignedAdmin;
 
   @CreatedDate
   private Instant created;

@@ -58,6 +58,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
+import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
@@ -215,6 +216,31 @@ class AdminLtftResourceTest {
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), sameInstance(body));
+  }
+
+  @Test
+  void shouldReturnNotFoundWhenAssignAdminFormNotFound() {
+    UUID id = UUID.randomUUID();
+    PersonDto admin = PersonDto.builder().name("Ad Min").email("ad.min@example.com").build();
+    when(service.assignAdmin(id, admin)).thenReturn(Optional.empty());
+
+    ResponseEntity<LtftFormDto> response = controller.assignAdmin(id, admin);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(NOT_FOUND));
+    assertThat("Unexpected response body.", response.getBody(), nullValue());
+  }
+
+  @Test
+  void shouldReturnAssignedFormWhenFormAdminAssigned() {
+    UUID id = UUID.randomUUID();
+    PersonDto admin = PersonDto.builder().name("Ad Min").email("ad.min@example.com").build();
+    LtftFormDto dto = LtftFormDto.builder().id(id).build();
+    when(service.assignAdmin(id, admin)).thenReturn(Optional.of(dto));
+
+    ResponseEntity<LtftFormDto> response = controller.assignAdmin(id, admin);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), sameInstance(dto));
   }
 
   @Test

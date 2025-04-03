@@ -422,6 +422,9 @@ class AdminLtftResourceIntegrationTest {
 
     LtftForm form = new LtftForm();
     form.setTraineeTisId("47165");
+    form.setAssignedAdmin(Person.builder()
+        .name("Ad Min").email("ad.min@example.com").role("ADMIN")
+        .build());
 
     LtftContent content = LtftContent.builder()
         .personalDetails(PersonalDetails.builder()
@@ -438,9 +441,6 @@ class AdminLtftResourceIntegrationTest {
             .build())
         .discussions(Discussions.builder()
             .tpdEmail("tpd@example.com")
-            .build())
-        .assignedAdmin(Person.builder()
-            .name("Ad Min").email("ad.min@example.com").role("ADMIN")
             .build())
         .build();
     form.setContent(content);
@@ -751,6 +751,9 @@ class AdminLtftResourceIntegrationTest {
 
     LtftForm form = new LtftForm();
     form.setTraineeTisId("47165");
+    form.setAssignedAdmin(Person.builder()
+        .name("Ad Min").email("ad.min@example.com").role("ADMIN")
+        .build());
 
     LtftContent content = LtftContent.builder()
         .personalDetails(PersonalDetails.builder()
@@ -767,9 +770,6 @@ class AdminLtftResourceIntegrationTest {
             .build())
         .discussions(Discussions.builder()
             .tpdEmail("tpd@example.com")
-            .build())
-        .assignedAdmin(Person.builder()
-            .name("Ad Min").email("ad.min@example.com").role("ADMIN")
             .build())
         .build();
     form.setContent(content);
@@ -829,6 +829,7 @@ class AdminLtftResourceIntegrationTest {
     LtftForm form = new LtftForm();
     form.setTraineeTisId("47165");
     form.setFormRef("ltft_47165_001");
+    form.setAssignedAdmin(Person.builder().build());
 
     LtftContent content = LtftContent.builder()
         .personalDetails(PersonalDetails.builder().build())
@@ -839,7 +840,6 @@ class AdminLtftResourceIntegrationTest {
         .reasons(Reasons.builder().build())
         .declarations(Declarations.builder().build())
         .discussions(Discussions.builder().build())
-        .assignedAdmin(Person.builder().build())
         .build();
     form.setContent(content);
 
@@ -894,6 +894,7 @@ class AdminLtftResourceIntegrationTest {
   void shouldGetDetailPdfPersonalDetailsWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
     LtftForm form = new LtftForm();
     form.setTraineeTisId("47165");
+    form.setAssignedAdmin(Person.builder().build());
 
     LtftContent content = LtftContent.builder()
         .personalDetails(PersonalDetails.builder()
@@ -914,7 +915,6 @@ class AdminLtftResourceIntegrationTest {
         .reasons(Reasons.builder().build())
         .declarations(Declarations.builder().build())
         .discussions(Discussions.builder().build())
-        .assignedAdmin(Person.builder().build())
         .build();
     form.setContent(content);
 
@@ -969,6 +969,7 @@ class AdminLtftResourceIntegrationTest {
   void shouldGetDetailPdfProgrammeDetailsWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
     LtftForm form = new LtftForm();
     form.setTraineeTisId("47165");
+    form.setAssignedAdmin(Person.builder().build());
 
     LocalDate startDate = LocalDate.now();
     LocalDate endDate = startDate.plusYears(1);
@@ -986,7 +987,6 @@ class AdminLtftResourceIntegrationTest {
         .reasons(Reasons.builder().build())
         .declarations(Declarations.builder().build())
         .discussions(Discussions.builder().build())
-        .assignedAdmin(Person.builder().build())
         .build();
     form.setContent(content);
 
@@ -1040,6 +1040,7 @@ class AdminLtftResourceIntegrationTest {
   void shouldGetDetailPdfChangeDetailsWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
     LtftForm form = new LtftForm();
     form.setTraineeTisId("47165");
+    form.setAssignedAdmin(Person.builder().build());
 
     LocalDate startDate = LocalDate.now();
     LocalDate endDate = startDate.plusYears(1);
@@ -1059,7 +1060,6 @@ class AdminLtftResourceIntegrationTest {
         .reasons(Reasons.builder().build())
         .declarations(Declarations.builder().build())
         .discussions(Discussions.builder().build())
-        .assignedAdmin(Person.builder().build())
         .build();
     form.setContent(content);
 
@@ -1114,6 +1114,7 @@ class AdminLtftResourceIntegrationTest {
   void shouldGetDetailPdfReasonDetailsWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
     LtftForm form = new LtftForm();
     form.setTraineeTisId("47165");
+    form.setAssignedAdmin(Person.builder().build());
 
     LtftContent content = LtftContent.builder()
         .personalDetails(PersonalDetails.builder().build())
@@ -1127,7 +1128,6 @@ class AdminLtftResourceIntegrationTest {
             .build())
         .declarations(Declarations.builder().build())
         .discussions(Discussions.builder().build())
-        .assignedAdmin(Person.builder().build())
         .build();
     form.setContent(content);
 
@@ -1173,6 +1173,7 @@ class AdminLtftResourceIntegrationTest {
   void shouldGetDetailPdfDeclarationDetailsWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
     LtftForm form = new LtftForm();
     form.setTraineeTisId("47165");
+    form.setAssignedAdmin(Person.builder().build());
 
     LtftContent content = LtftContent.builder()
         .personalDetails(PersonalDetails.builder().build())
@@ -1187,7 +1188,6 @@ class AdminLtftResourceIntegrationTest {
             .notGuaranteed(true)
             .build())
         .discussions(Discussions.builder().build())
-        .assignedAdmin(Person.builder().build())
         .build();
     form.setContent(content);
 
@@ -1234,6 +1234,7 @@ class AdminLtftResourceIntegrationTest {
   void shouldGetDetailPdfDiscussionsDetailsWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
     LtftForm form = new LtftForm();
     form.setTraineeTisId("47165");
+    form.setAssignedAdmin(Person.builder().build());
 
     LtftContent content = LtftContent.builder()
         .personalDetails(PersonalDetails.builder().build())
@@ -1259,7 +1260,6 @@ class AdminLtftResourceIntegrationTest {
                     .build()
             ))
             .build())
-        .assignedAdmin(Person.builder().build())
         .build();
     form.setContent(content);
 

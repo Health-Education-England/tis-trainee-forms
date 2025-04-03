@@ -55,6 +55,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
+import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
@@ -261,10 +262,7 @@ public class LtftService {
     }
 
     // Merge the new content in to the existing form.
-    Person assignedAdmin =
-        existingForm.getContent() != null ? existingForm.getContent().assignedAdmin() : null;
-    LtftContent updatedContent = form.getContent().withAssignedAdmin(assignedAdmin);
-    existingForm.setContent(updatedContent);
+    existingForm.setContent(form.getContent());
 
     LtftForm savedForm = ltftFormRepository.save(existingForm);
     return Optional.of(mapper.toDto(savedForm));
@@ -359,6 +357,35 @@ public class LtftService {
       LtftForm updatedForm = updateStatus(form, targetState, traineeIdentity, detail);
       return Optional.of(mapper.toDto(updatedForm));
     } catch (MethodArgumentNotValidException e) {
+      return Optional.empty();
+    }
+  }
+
+  /**
+   * Assign an admin to the LTFT application.
+   *
+   * @param formId The ID of the LTFT application.
+   * @param admin The admin to assign to the application.
+   * @return The updated LTFT, empty if the form did not exist or did not belong to the admin's
+   *     local office.
+   */
+  public Optional<LtftFormDto> assignAdmin(UUID formId, PersonDto admin) {
+    log.info("Assigning admin {} to LTFT form {}", admin.email(), formId);
+
+    Set<String> dbcs = adminIdentity.getGroups();
+    Optional<LtftForm> form =
+        ltftFormRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(formId,
+            dbcs);
+
+    if (form.isPresent()) {
+      LtftForm ltftForm = form.get();
+      Person adminEntity = mapper.toEntity(admin).withRole("ADMIN");
+      ltftForm.setAssignedAdmin(adminEntity);
+      LtftForm updatedForm = ltftFormRepository.save(ltftForm);
+      return Optional.of(mapper.toDto(updatedForm));
+    } else {
+      log.warn("Could not assign admin to form {} since no form exists with this ID for DBCs [{}]",
+          formId, dbcs);
       return Optional.empty();
     }
   }

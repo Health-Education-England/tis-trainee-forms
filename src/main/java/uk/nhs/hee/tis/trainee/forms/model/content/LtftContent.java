@@ -25,7 +25,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
-import lombok.With;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Field;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
@@ -40,7 +39,6 @@ import uk.nhs.hee.tis.trainee.forms.model.Person;
  * @param discussions         Discussions which took place as part of the LTFT process.
  * @param change              The calculated LTFT change.
  * @param reasons             The reasons for applying for LTFT.
- * @param assignedAdmin       The administration assigned to the LTFT application.
  */
 @Builder
 public record LtftContent(
@@ -50,9 +48,7 @@ public record LtftContent(
     Declarations declarations,
     Discussions discussions,
     CctChange change,
-    Reasons reasons,
-    @With
-    Person assignedAdmin) implements FormContent {
+    Reasons reasons) implements FormContent {
 
   /**
    * The trainee's personal details.
