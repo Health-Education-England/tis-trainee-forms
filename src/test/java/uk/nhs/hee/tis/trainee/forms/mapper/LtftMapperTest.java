@@ -218,4 +218,25 @@ class LtftMapperTest {
 
     assertThat("Unexpected short notice value.", isShortNotice, is(true));
   }
+
+  @Test
+  void shouldReturnStatusDetailDtoWhenStatusDetailNotNull() {
+    var statusDetail = Status.StatusDetail.builder()
+        .reason("reason")
+        .message("message")
+        .build();
+
+    var dto = mapper.toStatusDetailDto(statusDetail);
+
+    assertThat("Unexpected status detail DTO.", dto.reason(), is("reason"));
+    assertThat("Unexpected status detail DTO.", dto.message(), is("message"));
+  }
+
+  @Test
+  void shouldReturnEmptyStatusDetailDtoWhenStatusDetailNull() {
+    var dto = mapper.toStatusDetailDto(null);
+
+    assertThat("Unexpected status detail DTO.", dto.reason(), nullValue());
+    assertThat("Unexpected status detail DTO.", dto.message(), nullValue());
+  }
 }
