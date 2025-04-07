@@ -28,6 +28,7 @@ import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.oneOf;
 import static org.hamcrest.Matchers.startsWith;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
@@ -1345,7 +1346,8 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.current.timestamp", notNullValue()))
         .andExpect(jsonPath("$.status.history[0].state", is(currentState.toString())))
         .andExpect(jsonPath("$.status.history[1].state", is(APPROVED.toString())))
-        .andExpect(jsonPath("$.status.history[1].detail").doesNotExist())
+        .andExpect(jsonPath("$.status.history[1].detail.reason", nullValue()))
+        .andExpect(jsonPath("$.status.history[1].detail.message", nullValue()))
         .andExpect(jsonPath("$.status.history[1].modifiedBy.name", is("Ad Min")))
         .andExpect(jsonPath("$.status.history[1].modifiedBy.email", is("ad.min@example.com")))
         .andExpect(jsonPath("$.status.history[1].modifiedBy.role", is("ADMIN")))

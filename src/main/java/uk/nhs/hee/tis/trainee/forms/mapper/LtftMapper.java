@@ -55,12 +55,12 @@ import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 /**
  * A mapper to convert between LTFT related entities and DTOs.
  */
+@Getter
 @Mapper(componentModel = SPRING, uses = TemporalMapper.class, injectionStrategy = CONSTRUCTOR)
 public abstract class LtftMapper {
 
   private static final int NOTICE_PERIOD_DAYS = 112; // 16 weeks.
 
-  @Getter
   @Setter(onMethod_ = @Autowired)
   TemporalMapper temporalMapper;
 
@@ -183,6 +183,22 @@ public abstract class LtftMapper {
    * @return The equivalent status detail.
    */
   public abstract StatusDetail toStatusDetail(LftfStatusInfoDetailDto dto);
+
+  /**
+   * Convert a {@link StatusDetail} to a {@link LftfStatusInfoDetailDto}.
+   *
+   * @param detail The status detail to convert.
+   * @return The equivalent status detail DTO, or an empty DTO if input is null.
+   */
+  public LftfStatusInfoDetailDto toStatusDetailDto(StatusDetail detail) {
+    if (detail == null) {
+      return LftfStatusInfoDetailDto.builder().build();
+    }
+    return LftfStatusInfoDetailDto.builder()
+        .reason(detail.reason())
+        .message(detail.message())
+        .build();
+  }
 
   /**
    * Joins a list of strings with a comma, sorted alphabetically for consistency.
