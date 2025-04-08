@@ -1126,6 +1126,7 @@ class AdminLtftResourceIntegrationTest {
         .reasons(Reasons.builder()
             .selected(List.of("Test1", "Test2", "Other"))
             .otherDetail("other-detail")
+            .supportingInformation("supporting-information")
             .build())
         .declarations(Declarations.builder().build())
         .discussions(Discussions.builder().build())
@@ -1168,6 +1169,8 @@ class AdminLtftResourceIntegrationTest {
             + System.lineSeparator() + "Other" + System.lineSeparator()));
     assertThat("Unexpected other reason.", pdfText,
         containsString("Other Reason other-detail" + System.lineSeparator()));
+    assertThat("Unexpected supporting information.", pdfText,
+        containsString("Supporting Information supporting-information" + System.lineSeparator()));
   }
 
   @Test

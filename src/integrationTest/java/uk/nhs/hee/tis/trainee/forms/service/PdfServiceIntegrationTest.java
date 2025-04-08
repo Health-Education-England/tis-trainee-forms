@@ -125,6 +125,7 @@ class PdfServiceIntegrationTest {
         .reasons(ReasonsDto.builder()
             .selected(List.of("Caring Responsibilities", "Other"))
             .otherDetail("A trainee described reason detail")
+            .supportingInformation("Trainee supplied supporting information")
             .build())
         .discussions(DiscussionsDto.builder()
             .tpdName("Tee Pee-Dee")

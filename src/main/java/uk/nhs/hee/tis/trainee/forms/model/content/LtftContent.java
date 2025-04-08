@@ -139,13 +139,15 @@ public record LtftContent(
   /**
    * Reasons for applying for LTFT.
    *
-   * @param selected    A list of selected reasons.
-   * @param otherDetail Additional details if required.
+   * @param selected              A list of selected reasons.
+   * @param otherDetail           Additional details if "Other" reason was selected.
+   * @param supportingInformation Supporting information for the application.
    */
   @Builder
   public record Reasons(
       List<String> selected,
-      String otherDetail) {
+      String otherDetail,
+      String supportingInformation) {
 
   }
 }
