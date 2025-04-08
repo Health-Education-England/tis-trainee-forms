@@ -1165,6 +1165,7 @@ class LtftServiceTest {
         .reasons(Reasons.builder()
             .selected(List.of("Test Reason 2", "Test Reason 1", "Test Reason 3"))
             .otherDetail("Other Detail")
+            .supportingInformation("Supporting Information")
             .build())
         .build();
     entity.setContent(content);
@@ -1183,7 +1184,9 @@ class LtftServiceTest {
     assertThat("Unexpected reason.", reasons.selected().get(0), is("Test Reason 2"));
     assertThat("Unexpected reason.", reasons.selected().get(1), is("Test Reason 1"));
     assertThat("Unexpected reason.", reasons.selected().get(2), is("Test Reason 3"));
-    assertThat("Unexpected reason detail.", reasons.otherDetail(), is("Other Detail"));
+    assertThat("Unexpected other detail.", reasons.otherDetail(), is("Other Detail"));
+    assertThat("Unexpected supporting information.", reasons.supportingInformation(),
+        is("Supporting Information"));
   }
 
   @Test
@@ -1207,7 +1210,9 @@ class LtftServiceTest {
     LtftFormDto dto = optionalDto.get();
     ReasonsDto reasons = dto.reasons();
     assertThat("Unexpected reason count.", reasons.selected(), nullValue());
-    assertThat("Unexpected reason detail.", reasons.otherDetail(), nullValue());
+    assertThat("Unexpected other detail.", reasons.otherDetail(), nullValue());
+    assertThat("Unexpected supporting information detail.", reasons.supportingInformation(),
+        nullValue());
   }
 
   @Test
@@ -2303,6 +2308,7 @@ class LtftServiceTest {
         .reasons(ReasonsDto.builder()
             .selected(List.of("new reason 1", "new reason 2"))
             .otherDetail("new other detail")
+            .supportingInformation("new supporting information")
             .build())
         .build();
 
@@ -2314,6 +2320,7 @@ class LtftServiceTest {
         .reasons(Reasons.builder()
             .selected(List.of("existing reason 1"))
             .otherDetail("existing other detail")
+            .supportingInformation("existing supporting information")
             .build())
         .build());
 
@@ -2330,6 +2337,8 @@ class LtftServiceTest {
     assertThat("Unexpected reason.", reasons.selected().get(0), is("new reason 1"));
     assertThat("Unexpected reason.", reasons.selected().get(1), is("new reason 2"));
     assertThat("Unexpected other detail.", reasons.otherDetail(), is("new other detail"));
+    assertThat("Unexpected supporting information.", reasons.supportingInformation(),
+        is("new supporting information"));
   }
 
   @ParameterizedTest
