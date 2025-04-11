@@ -345,10 +345,14 @@ class LtftResourceIntegrationTest {
     LtftFormDto formToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("test")
-        .assignedAdmin(PersonDto.builder()
-            .name("Ad Min")
-            .email("ad.min@example.com")
-            .role("ADMIN")
+        .status(StatusDto.builder()
+            .current(StatusInfoDto.builder()
+                .assignedAdmin(PersonDto.builder()
+                    .name("Ad Min")
+                    .email("ad.min@example.com")
+                    .role("ADMIN")
+                    .build())
+                .build())
             .build())
         .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
@@ -358,7 +362,7 @@ class LtftResourceIntegrationTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToSaveJson))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.assignedAdmin", nullValue()));
+        .andExpect(jsonPath("$.status.current.assignedAdmin", nullValue()));
   }
 
   @Test
@@ -560,8 +564,11 @@ class LtftResourceIntegrationTest {
         .traineeTisId(TRAINEE_ID)
         .formRef("ref_123")
         .revision(3)
-        .assignedAdmin(PersonDto.builder().name("Ad Min").build())
-        .status(StatusDto.builder().build())
+        .status(StatusDto.builder()
+            .current(StatusInfoDto.builder()
+                .assignedAdmin(PersonDto.builder().name("Ad Min").build())
+                .build())
+            .build())
         .created(Instant.EPOCH)
         .lastModified(Instant.EPOCH)
         .build();
@@ -577,8 +584,8 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.traineeTisId").value(TRAINEE_ID))
         .andExpect(jsonPath("$.formRef", nullValue()))
         .andExpect(jsonPath("$.revision").value(0))
-        .andExpect(jsonPath("$.assignedAdmin", nullValue()))
         .andExpect(jsonPath("$.status.current.state", is("DRAFT")))
+        .andExpect(jsonPath("$.status.current.assignedAdmin", nullValue()))
         .andExpect(jsonPath("$.created").value(
             formSaved.getCreated().truncatedTo(ChronoUnit.MILLIS).toString()))
         .andExpect(jsonPath("$.lastModified",

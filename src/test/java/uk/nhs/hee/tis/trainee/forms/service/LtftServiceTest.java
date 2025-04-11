@@ -328,8 +328,8 @@ class LtftServiceTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       formRef | formRef
-      assignedAdmin.name | content.assignedAdmin.name
-      assignedAdmin.email | content.assignedAdmin.email
+      assignedAdmin.name | status.current.assignedAdmin.name
+      assignedAdmin.email | status.current.assignedAdmin.email
       personalDetails.forenames | content.personalDetails.forenames
       personalDetails.gdcNumber | content.personalDetails.gdcNumber
       personalDetails.gmcNumber | content.personalDetails.gmcNumber
@@ -354,8 +354,8 @@ class LtftServiceTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       formRef | formRef
-      assignedAdmin.name | content.assignedAdmin.name
-      assignedAdmin.email | content.assignedAdmin.email
+      assignedAdmin.name | status.current.assignedAdmin.name
+      assignedAdmin.email | status.current.assignedAdmin.email
       personalDetails.forenames | content.personalDetails.forenames
       personalDetails.gdcNumber | content.personalDetails.gdcNumber
       personalDetails.gmcNumber | content.personalDetails.gmcNumber
@@ -544,8 +544,8 @@ class LtftServiceTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       formRef | formRef
-      assignedAdmin.name | content.assignedAdmin.name
-      assignedAdmin.email | content.assignedAdmin.email
+      assignedAdmin.name | status.current.assignedAdmin.name
+      assignedAdmin.email | status.current.assignedAdmin.email
       personalDetails.forenames | content.personalDetails.forenames
       personalDetails.gdcNumber | content.personalDetails.gdcNumber
       personalDetails.gmcNumber | content.personalDetails.gmcNumber
@@ -573,8 +573,8 @@ class LtftServiceTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       formRef | formRef
-      assignedAdmin.name | content.assignedAdmin.name
-      assignedAdmin.email | content.assignedAdmin.email
+      assignedAdmin.name | status.current.assignedAdmin.name
+      assignedAdmin.email | status.current.assignedAdmin.email
       personalDetails.forenames | content.personalDetails.forenames
       personalDetails.gdcNumber | content.personalDetails.gdcNumber
       personalDetails.gmcNumber | content.personalDetails.gmcNumber
@@ -1219,11 +1219,14 @@ class LtftServiceTest {
   void shouldGetAdminLtftAssignedAdminDetailWhenFormFound() {
     LtftForm entity = new LtftForm();
     entity.setId(ID);
-    entity.setAssignedAdmin(Person.builder()
-        .name(ADMIN_NAME)
-        .email(ADMIN_EMAIL)
-        .role("ADMIN")
-        .build());
+    entity.setAssignedAdmin(
+        Person.builder()
+            .name(ADMIN_NAME)
+            .email(ADMIN_EMAIL)
+            .role("ADMIN")
+            .build(),
+        Person.builder().build()
+    );
 
     when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
@@ -1234,7 +1237,7 @@ class LtftServiceTest {
     assertThat("Unexpected dto presence.", optionalDto.isPresent(), is(true));
 
     LtftFormDto dto = optionalDto.get();
-    PersonDto assignedAdmin = dto.assignedAdmin();
+    PersonDto assignedAdmin = dto.status().current().assignedAdmin();
     assertThat("Unexpected admin name.", assignedAdmin.name(), is(ADMIN_NAME));
     assertThat("Unexpected admin email.", assignedAdmin.email(), is(ADMIN_EMAIL));
     assertThat("Unexpected admin role.", assignedAdmin.role(), is("ADMIN"));
@@ -1244,7 +1247,7 @@ class LtftServiceTest {
   void shouldGetAdminLtftAssignedAdminDetailWithDefaultValuesWhenFormFoundWithNullValues() {
     LtftForm entity = new LtftForm();
     entity.setId(ID);
-    entity.setAssignedAdmin(Person.builder().build());
+    entity.setAssignedAdmin(Person.builder().build(), null);
 
     when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
@@ -1255,7 +1258,7 @@ class LtftServiceTest {
     assertThat("Unexpected dto presence.", optionalDto.isPresent(), is(true));
 
     LtftFormDto dto = optionalDto.get();
-    PersonDto assignedAdmin = dto.assignedAdmin();
+    PersonDto assignedAdmin = dto.status().current().assignedAdmin();
     assertThat("Unexpected admin name.", assignedAdmin.name(), nullValue());
     assertThat("Unexpected admin email.", assignedAdmin.email(), nullValue());
     assertThat("Unexpected admin role.", assignedAdmin.role(), nullValue());
@@ -1393,7 +1396,7 @@ class LtftServiceTest {
   @Test
   void shouldReturnAssignedFormWhenFormFoundAndNoPreviousAdmin() {
     LtftForm form = new LtftForm();
-    form.setAssignedAdmin(null);
+    form.setAssignedAdmin(null, null);
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -1407,7 +1410,7 @@ class LtftServiceTest {
 
     assertThat("Unexpected form presence.", optionalForm.isPresent(), is(true));
 
-    PersonDto assignedAdmin = optionalForm.get().assignedAdmin();
+    PersonDto assignedAdmin = optionalForm.get().status().current().assignedAdmin();
     assertThat("Unexpected admin name.", assignedAdmin.name(), is("Ad Min"));
     assertThat("Unexpected admin email.", assignedAdmin.email(), is("ad.min@example.com"));
     assertThat("Unexpected admin role.", assignedAdmin.role(), is("ADMIN"));
@@ -1416,11 +1419,14 @@ class LtftServiceTest {
   @Test
   void shouldReturnAssignedFormWhenFormFoundAndHasPreviousAdmin() {
     LtftForm form = new LtftForm();
-    form.setAssignedAdmin(Person.builder()
-        .name("current admin")
-        .email("current.admin@example.com")
-        .role("current role")
-        .build());
+    form.setAssignedAdmin(
+        Person.builder()
+            .name(ADMIN_NAME)
+            .email(ADMIN_EMAIL)
+            .role("ADMIN")
+            .build(),
+        null
+    );
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -1435,7 +1441,7 @@ class LtftServiceTest {
 
     assertThat("Unexpected form presence.", optionalForm.isPresent(), is(true));
 
-    PersonDto assignedAdmin = optionalForm.get().assignedAdmin();
+    PersonDto assignedAdmin = optionalForm.get().status().current().assignedAdmin();
     assertThat("Unexpected admin name.", assignedAdmin.name(), is("new admin"));
     assertThat("Unexpected admin email.", assignedAdmin.email(), is("new.admin@example.com"));
     assertThat("Unexpected admin role.", assignedAdmin.role(), is("ADMIN"));
@@ -2348,10 +2354,14 @@ class LtftServiceTest {
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .id(ID)
         .traineeTisId(TRAINEE_ID)
-        .assignedAdmin(PersonDto.builder()
-            .name("new admin")
-            .email("new.admin@example.com")
-            .role("NEW_ADMIN")
+        .status(StatusDto.builder()
+            .current(StatusInfoDto.builder()
+                .assignedAdmin(PersonDto.builder()
+                    .name("new admin")
+                    .email("new.admin@example.com")
+                    .role("NEW_ADMIN")
+                    .build())
+                .build())
             .build())
         .build();
 
@@ -2368,7 +2378,8 @@ class LtftServiceTest {
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
 
     LtftFormDto formDto = formDtoOptional.get();
-    assertThat("Unexpected assigned admin.", formDto.assignedAdmin(), nullValue());
+    assertThat("Unexpected assigned admin.", formDto.status().current().assignedAdmin(),
+        nullValue());
   }
 
   @ParameterizedTest
@@ -2378,10 +2389,14 @@ class LtftServiceTest {
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .id(ID)
         .traineeTisId(TRAINEE_ID)
-        .assignedAdmin(PersonDto.builder()
-            .name("new admin")
-            .email("new.admin@example.com")
-            .role("NEW_ADMIN")
+        .status(StatusDto.builder()
+            .current(StatusInfoDto.builder()
+                .assignedAdmin(PersonDto.builder()
+                    .name("new admin")
+                    .email("new.admin@example.com")
+                    .role("NEW_ADMIN")
+                    .build())
+                .build())
             .build())
         .build();
 
@@ -2398,7 +2413,8 @@ class LtftServiceTest {
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
 
     LtftFormDto formDto = formDtoOptional.get();
-    assertThat("Unexpected assigned admin.", formDto.assignedAdmin(), nullValue());
+    assertThat("Unexpected assigned admin.", formDto.status().current().assignedAdmin(),
+        nullValue());
   }
 
   @ParameterizedTest
@@ -2408,10 +2424,14 @@ class LtftServiceTest {
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .id(ID)
         .traineeTisId(TRAINEE_ID)
-        .assignedAdmin(PersonDto.builder()
-            .name("new admin")
-            .email("new.admin@example.com")
-            .role("NEW_ADMIN")
+        .status(StatusDto.builder()
+            .current(StatusInfoDto.builder()
+                .assignedAdmin(PersonDto.builder()
+                    .name("new admin")
+                    .email("new.admin@example.com")
+                    .role("NEW_ADMIN")
+                    .build())
+                .build())
             .build())
         .build();
 
@@ -2419,11 +2439,14 @@ class LtftServiceTest {
     existingForm.setId(ID);
     existingForm.setTraineeTisId(TRAINEE_ID);
     existingForm.setLifecycleState(state);
-    existingForm.setAssignedAdmin(Person.builder()
-        .name("Ad Min")
-        .email("ad.min@example.com")
-        .role("ADMIN")
-        .build());
+    existingForm.setAssignedAdmin(
+        Person.builder()
+            .name("Ad Min")
+            .email("ad.min@example.com")
+            .role("ADMIN")
+            .build(),
+        null
+    );
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -2432,7 +2455,7 @@ class LtftServiceTest {
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
 
     LtftFormDto formDto = formDtoOptional.get();
-    PersonDto assignedAdmin = formDto.assignedAdmin();
+    PersonDto assignedAdmin = formDto.status().current().assignedAdmin();
 
     assertThat("Unexpected assigned admin name.", assignedAdmin.name(), is("Ad Min"));
     assertThat("Unexpected assigned admin email.", assignedAdmin.email(), is("ad.min@example.com"));
