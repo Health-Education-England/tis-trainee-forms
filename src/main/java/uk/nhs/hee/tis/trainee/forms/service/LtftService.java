@@ -578,7 +578,8 @@ public class LtftService {
   private void publishStatusUpdateNotification(LtftForm form) {
     log.info("Published status update notification for LTFT form {}", form.getId());
     String groupId = form.getId() == null ? UUID.randomUUID().toString() : form.getId().toString();
-    SnsNotification<LtftForm> notification = SnsNotification.builder(form)
+    LtftFormDto dto = mapper.toDto(form);
+    SnsNotification<LtftFormDto> notification = SnsNotification.builder(dto)
         .groupId(groupId)
         .build();
 
