@@ -387,6 +387,14 @@ public class LtftService {
       LtftForm ltftForm = form.get();
 
       Person assignedAdmin = mapper.toEntity(admin).withRole("ADMIN");
+
+      if (ltftForm.getStatus() != null && ltftForm.getStatus().current() != null
+          && Objects.equals(ltftForm.getStatus().current().assignedAdmin(), assignedAdmin)) {
+        log.info("Skipping assigning admin {} to LTFT form {}, as they are already assigned.",
+            admin.email(), formId);
+        return Optional.of(mapper.toDto(ltftForm));
+      }
+
       Person modifiedBy = Person.builder()
           .name(adminIdentity.getName())
           .email(adminIdentity.getEmail())

@@ -1447,6 +1447,39 @@ class LtftServiceTest {
     assertThat("Unexpected admin role.", assignedAdmin.role(), is("ADMIN"));
   }
 
+  @Test
+  void shouldReturnExistingFormWhenFormFoundAndAdminAlreadyAssigned() {
+    LtftForm form = new LtftForm();
+    form.setAssignedAdmin(
+        Person.builder()
+            .name(ADMIN_NAME)
+            .email(ADMIN_EMAIL)
+            .role("ADMIN")
+            .build(),
+        null
+    );
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    PersonDto admin = PersonDto.builder()
+        .name(ADMIN_NAME)
+        .email(ADMIN_EMAIL)
+        .role("ADMIN")
+        .build();
+
+    Optional<LtftFormDto> optionalForm = service.assignAdmin(ID, admin);
+
+    assertThat("Unexpected form presence.", optionalForm.isPresent(), is(true));
+
+    PersonDto assignedAdmin = optionalForm.get().status().current().assignedAdmin();
+    assertThat("Unexpected admin name.", assignedAdmin.name(), is(ADMIN_NAME));
+    assertThat("Unexpected admin email.", assignedAdmin.email(), is(ADMIN_EMAIL));
+    assertThat("Unexpected admin role.", assignedAdmin.role(), is("ADMIN"));
+
+    verify(repository, never()).save(any());
+  }
+
   @ParameterizedTest
   @EnumSource(LifecycleState.class)
   void shouldReturnEmptyUpdatingStatusWhenFormNotFound(LifecycleState state)
