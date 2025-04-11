@@ -130,7 +130,8 @@ class LtftServiceTest {
   private static final String ADMIN_GROUP = "abc-123";
   private static final UUID ID = UUID.randomUUID();
 
-  private static final String LTFT_STATUS_UPDATE_TOPIC = "update/topic";
+  private static final String LTFT_ASSIGNMENT_UPDATE_TOPIC = "update/topic/assignment";
+  private static final String LTFT_STATUS_UPDATE_TOPIC = "update/topic/status";
 
   private LtftService service;
   private LtftFormRepository repository;
@@ -158,7 +159,8 @@ class LtftServiceTest {
 
     mapper = new LtftMapperImpl(new TemporalMapperImpl());
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, mapper,
-        snsTemplate, LTFT_STATUS_UPDATE_TOPIC, ltftSubmissionHistoryService);
+        snsTemplate, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
+        ltftSubmissionHistoryService);
   }
 
   @Test
@@ -2897,6 +2899,62 @@ class LtftServiceTest {
   }
 
   @Test
+  void shouldPublishNotificationWhenAssignedAdminUpdated() {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(SUBMITTED);
+    form.setFormRef("LTFT_123");
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    PersonDto admin = PersonDto.builder().name(ADMIN_NAME).email(ADMIN_EMAIL).role("ADMIN").build();
+
+    service.assignAdmin(ID, admin);
+
+    ArgumentCaptor<SnsNotification<LtftForm>> snsNotificationCaptor = ArgumentCaptor.captor();
+    verify(snsTemplate).sendNotification(eq(LTFT_ASSIGNMENT_UPDATE_TOPIC),
+        snsNotificationCaptor.capture());
+
+    var notification = snsNotificationCaptor.getValue();
+    var payload = notification.getPayload();
+
+    assertThat("Unexpected form ID.", payload.getId(), is(ID));
+    assertThat("Unexpected trainee ID.", payload.getTraineeTisId(), is(TRAINEE_ID));
+    assertThat("Unexpected form reference.", payload.getFormRef(), is("LTFT_123"));
+    assertThat("Unexpected lifecycle state.", payload.getLifecycleState(), is(SUBMITTED));
+    assertThat("Unexpected group ID.", notification.getGroupId(), is(ID.toString()));
+
+    Person payloadAdmin = payload.getStatus().current().assignedAdmin();
+    assertThat("Unexpected assigned admin name.", payloadAdmin.name(), is(ADMIN_NAME));
+    assertThat("Unexpected assigned admin email.", payloadAdmin.email(), is(ADMIN_EMAIL));
+    assertThat("Unexpected assigned admin role.", payloadAdmin.role(), is("ADMIN"));
+  }
+
+  @Test
+  void shouldNotPublishNotificationWhenAssignAdminUpdateFails() {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(SUBMITTED);
+    form.setFormRef("LTFT_123");
+
+    Person admin = Person.builder().name(ADMIN_NAME).email(ADMIN_EMAIL).role("ADMIN").build();
+    form.setAssignedAdmin(admin, null);
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(any(), any()))
+        .thenReturn(Optional.of(form));
+
+    PersonDto adminDto  = PersonDto.builder().name(ADMIN_NAME).email(ADMIN_EMAIL).role("ADMIN")
+        .build();
+    service.assignAdmin(ID, adminDto);
+
+    verifyNoInteractions(snsTemplate);
+  }
+
+  @Test
   void shouldPublishNotificationWhenStatusUpdatedAsAdmin() throws MethodArgumentNotValidException {
     LtftForm form = new LtftForm();
     form.setId(ID);
@@ -2909,35 +2967,6 @@ class LtftServiceTest {
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     service.updateStatusAsAdmin(ID, SUBMITTED, null);
-
-    ArgumentCaptor<SnsNotification<LtftForm>> snsNotificationCaptor
-        = ArgumentCaptor.forClass(SnsNotification.class);
-    verify(snsTemplate).sendNotification(eq(LTFT_STATUS_UPDATE_TOPIC),
-        snsNotificationCaptor.capture());
-
-    var notification = snsNotificationCaptor.getValue();
-    var payload = notification.getPayload();
-
-    assertThat("Unexpected form ID.", payload.getId(), is(ID));
-    assertThat("Unexpected trainee ID.", payload.getTraineeTisId(), is(TRAINEE_ID));
-    assertThat("Unexpected form reference.", payload.getFormRef(), is("LTFT_123"));
-    assertThat("Unexpected lifecycle state.", payload.getLifecycleState(), is(SUBMITTED));
-    assertThat("Unexpected group ID.", notification.getGroupId(), is(ID.toString()));
-  }
-
-  @Test
-  void shouldPublishNotificationWhenStatusChangedByTrainee() {
-    LtftForm form = new LtftForm();
-    form.setId(ID);
-    form.setTraineeTisId(TRAINEE_ID);
-    form.setLifecycleState(DRAFT);
-    form.setFormRef("LTFT_123");
-
-    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
-    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-
-    LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
-    service.changeLtftFormState(ID, detail, SUBMITTED);
 
     ArgumentCaptor<SnsNotification<LtftForm>> snsNotificationCaptor
         = ArgumentCaptor.forClass(SnsNotification.class);
@@ -2970,6 +2999,35 @@ class LtftServiceTest {
         () -> service.updateStatusAsAdmin(ID, SUBMITTED, detail));
 
     verifyNoInteractions(snsTemplate);
+  }
+
+  @Test
+  void shouldPublishNotificationWhenStatusChangedByTrainee() {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(DRAFT);
+    form.setFormRef("LTFT_123");
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
+    service.changeLtftFormState(ID, detail, SUBMITTED);
+
+    ArgumentCaptor<SnsNotification<LtftForm>> snsNotificationCaptor
+        = ArgumentCaptor.forClass(SnsNotification.class);
+    verify(snsTemplate).sendNotification(eq(LTFT_STATUS_UPDATE_TOPIC),
+        snsNotificationCaptor.capture());
+
+    var notification = snsNotificationCaptor.getValue();
+    var payload = notification.getPayload();
+
+    assertThat("Unexpected form ID.", payload.getId(), is(ID));
+    assertThat("Unexpected trainee ID.", payload.getTraineeTisId(), is(TRAINEE_ID));
+    assertThat("Unexpected form reference.", payload.getFormRef(), is("LTFT_123"));
+    assertThat("Unexpected lifecycle state.", payload.getLifecycleState(), is(SUBMITTED));
+    assertThat("Unexpected group ID.", notification.getGroupId(), is(ID.toString()));
   }
 
   @Test
