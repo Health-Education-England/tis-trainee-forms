@@ -2854,7 +2854,7 @@ class LtftServiceTest {
 
     service.updateStatusAsAdmin(ID, SUBMITTED, null);
 
-    ArgumentCaptor<SnsNotification<LtftForm>> snsNotificationCaptor
+    ArgumentCaptor<SnsNotification<LtftFormDto>> snsNotificationCaptor
         = ArgumentCaptor.forClass(SnsNotification.class);
     verify(snsTemplate).sendNotification(eq(LTFT_STATUS_UPDATE_TOPIC),
         snsNotificationCaptor.capture());
@@ -2862,10 +2862,10 @@ class LtftServiceTest {
     var notification = snsNotificationCaptor.getValue();
     var payload = notification.getPayload();
 
-    assertThat("Unexpected form ID.", payload.getId(), is(ID));
-    assertThat("Unexpected trainee ID.", payload.getTraineeTisId(), is(TRAINEE_ID));
-    assertThat("Unexpected form reference.", payload.getFormRef(), is("LTFT_123"));
-    assertThat("Unexpected lifecycle state.", payload.getLifecycleState(), is(SUBMITTED));
+    assertThat("Unexpected form ID.", payload.id(), is(ID));
+    assertThat("Unexpected trainee ID.", payload.traineeTisId(), is(TRAINEE_ID));
+    assertThat("Unexpected form reference.", payload.formRef(), is("LTFT_123"));
+    assertThat("Unexpected lifecycle state.", payload.status().current().state(), is(SUBMITTED));
     assertThat("Unexpected group ID.", notification.getGroupId(), is(ID.toString()));
   }
 
@@ -2883,7 +2883,7 @@ class LtftServiceTest {
     LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
     service.changeLtftFormState(ID, detail, SUBMITTED);
 
-    ArgumentCaptor<SnsNotification<LtftForm>> snsNotificationCaptor
+    ArgumentCaptor<SnsNotification<LtftFormDto>> snsNotificationCaptor
         = ArgumentCaptor.forClass(SnsNotification.class);
     verify(snsTemplate).sendNotification(eq(LTFT_STATUS_UPDATE_TOPIC),
         snsNotificationCaptor.capture());
@@ -2891,10 +2891,10 @@ class LtftServiceTest {
     var notification = snsNotificationCaptor.getValue();
     var payload = notification.getPayload();
 
-    assertThat("Unexpected form ID.", payload.getId(), is(ID));
-    assertThat("Unexpected trainee ID.", payload.getTraineeTisId(), is(TRAINEE_ID));
-    assertThat("Unexpected form reference.", payload.getFormRef(), is("LTFT_123"));
-    assertThat("Unexpected lifecycle state.", payload.getLifecycleState(), is(SUBMITTED));
+    assertThat("Unexpected form ID.", payload.id(), is(ID));
+    assertThat("Unexpected trainee ID.", payload.traineeTisId(), is(TRAINEE_ID));
+    assertThat("Unexpected form reference.", payload.formRef(), is("LTFT_123"));
+    assertThat("Unexpected lifecycle state.", payload.status().current().state(), is(SUBMITTED));
     assertThat("Unexpected group ID.", notification.getGroupId(), is(ID.toString()));
   }
 
