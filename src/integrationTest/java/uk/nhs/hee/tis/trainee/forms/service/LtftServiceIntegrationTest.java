@@ -21,14 +21,12 @@
 
 package uk.nhs.hee.tis.trainee.forms.service;
 
-import static java.util.Collections.sort;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 
 import io.awspring.cloud.sns.core.SnsTemplate;
-import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -156,7 +154,8 @@ class LtftServiceIntegrationTest {
     assertThat("Unexpected form ref.", resubmitted.formRef(), is("ltft_" + TRAINEE_ID + "_001"));
 
     Query query = new Query().with(Sort.by(Sort.Direction.ASC, "revision"));
-    List<LtftSubmissionHistory> savedSubmissionHistories = template.find(query, LtftSubmissionHistory.class);
+    List<LtftSubmissionHistory> savedSubmissionHistories = template.find(query,
+        LtftSubmissionHistory.class);
 
     assertThat("Unexpected number of submission histories.",
         savedSubmissionHistories.size(), is(2));

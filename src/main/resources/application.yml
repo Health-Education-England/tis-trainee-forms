@@ -6,6 +6,7 @@ application:
   aws:
     sns:
       pdf-generated: ${PDF_GENERATED_TOPIC:}
+      ltft-assignment-updated: ${LTFT_ASSIGNMENT_UPDATE_TOPIC:}
       ltft-status-updated: ${LTFT_STATUS_UPDATE_TOPIC:}
     sqs:
       coj-received: ${COJ_RECEIVED_QUEUE:}
