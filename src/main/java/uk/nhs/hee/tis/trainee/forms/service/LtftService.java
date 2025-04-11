@@ -64,7 +64,6 @@ import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
-import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 
 /**
@@ -372,7 +371,7 @@ public class LtftService {
    * Assign an admin to the LTFT application.
    *
    * @param formId The ID of the LTFT application.
-   * @param admin The admin to assign to the application.
+   * @param admin  The admin to assign to the application.
    * @return The updated LTFT, empty if the form did not exist or did not belong to the admin's
    *     local office.
    */
@@ -386,8 +385,15 @@ public class LtftService {
 
     if (form.isPresent()) {
       LtftForm ltftForm = form.get();
-      Person adminEntity = mapper.toEntity(admin).withRole("ADMIN");
-      ltftForm.setAssignedAdmin(adminEntity);
+
+      Person assignedAdmin = mapper.toEntity(admin).withRole("ADMIN");
+      Person modifiedBy = Person.builder()
+          .name(adminIdentity.getName())
+          .email(adminIdentity.getEmail())
+          .role(adminIdentity.getRole())
+          .build();
+
+      ltftForm.setAssignedAdmin(assignedAdmin, modifiedBy);
       LtftForm updatedForm = ltftFormRepository.save(ltftForm);
       return Optional.of(mapper.toDto(updatedForm));
     } else {
@@ -543,8 +549,8 @@ public class LtftService {
         .map(e -> {
           String property = switch (e.getKey()) {
             case "formRef" -> e.getKey();
-            case "assignedAdmin.name" -> "content.assignedAdmin.name";
-            case "assignedAdmin.email" -> "content.assignedAdmin.email";
+            case "assignedAdmin.name" -> "status.current.assignedAdmin.name";
+            case "assignedAdmin.email" -> "status.current.assignedAdmin.email";
             case "personalDetails.forenames" -> "content.personalDetails.forenames";
             case "personalDetails.gdcNumber" -> "content.personalDetails.gdcNumber";
             case "personalDetails.gmcNumber" -> "content.personalDetails.gmcNumber";

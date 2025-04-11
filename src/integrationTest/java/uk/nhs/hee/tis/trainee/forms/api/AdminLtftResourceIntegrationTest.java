@@ -423,9 +423,6 @@ class AdminLtftResourceIntegrationTest {
 
     LtftForm form = new LtftForm();
     form.setTraineeTisId("47165");
-    form.setAssignedAdmin(Person.builder()
-        .name("Ad Min").email("ad.min@example.com").role("ADMIN")
-        .build());
 
     LtftContent content = LtftContent.builder()
         .personalDetails(PersonalDetails.builder()
@@ -450,7 +447,10 @@ class AdminLtftResourceIntegrationTest {
     LocalDate latestSubmittedDate = LocalDate.ofInstant(latestSubmitted, timezone);
 
     StatusInfo statusInfo = StatusInfo.builder()
-        .state(SUBMITTED).timestamp(Instant.now())
+        .state(SUBMITTED)
+        .assignedAdmin(
+            Person.builder().name("Ad Min").email("ad.min@example.com").role("ADMIN").build())
+        .timestamp(Instant.now())
         .build();
     form.setStatus(Status.builder()
         .current(statusInfo)
@@ -752,9 +752,6 @@ class AdminLtftResourceIntegrationTest {
 
     LtftForm form = new LtftForm();
     form.setTraineeTisId("47165");
-    form.setAssignedAdmin(Person.builder()
-        .name("Ad Min").email("ad.min@example.com").role("ADMIN")
-        .build());
 
     LtftContent content = LtftContent.builder()
         .personalDetails(PersonalDetails.builder()
@@ -778,7 +775,10 @@ class AdminLtftResourceIntegrationTest {
     Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
 
     StatusInfo statusInfo = StatusInfo.builder()
-        .state(SUBMITTED).timestamp(Instant.now())
+        .state(SUBMITTED)
+        .assignedAdmin(
+            Person.builder().name("Ad Min").email("ad.min@example.com").role("ADMIN").build())
+        .timestamp(Instant.now())
         .build();
     form.setStatus(Status.builder()
         .current(statusInfo)
@@ -808,9 +808,9 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.reasons.selected", hasItems("Caring responsibilities", "Other")))
         .andExpect(jsonPath("$.discussions.tpdEmail", is("tpd@example.com")))
         .andExpect(jsonPath("$.status.current.state", is(SUBMITTED.name())))
-        .andExpect(jsonPath("$.assignedAdmin.name", is("Ad Min")))
-        .andExpect(jsonPath("$.assignedAdmin.email", is("ad.min@example.com")))
-        .andExpect(jsonPath("$.assignedAdmin.role", is("ADMIN")));
+        .andExpect(jsonPath("$.status.current.assignedAdmin.name", is("Ad Min")))
+        .andExpect(jsonPath("$.status.current.assignedAdmin.email", is("ad.min@example.com")))
+        .andExpect(jsonPath("$.status.current.assignedAdmin.role", is("ADMIN")));
   }
 
   @Test
@@ -830,7 +830,6 @@ class AdminLtftResourceIntegrationTest {
     LtftForm form = new LtftForm();
     form.setTraineeTisId("47165");
     form.setFormRef("ltft_47165_001");
-    form.setAssignedAdmin(Person.builder().build());
 
     LtftContent content = LtftContent.builder()
         .personalDetails(PersonalDetails.builder().build())
@@ -847,7 +846,9 @@ class AdminLtftResourceIntegrationTest {
     Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
 
     StatusInfo statusInfo = StatusInfo.builder()
-        .state(SUBMITTED).timestamp(Instant.now())
+        .state(SUBMITTED)
+        .assignedAdmin(Person.builder().build())
+        .timestamp(Instant.now())
         .build();
     form.setStatus(Status.builder()
         .current(statusInfo)
@@ -895,7 +896,6 @@ class AdminLtftResourceIntegrationTest {
   void shouldGetDetailPdfPersonalDetailsWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
     LtftForm form = new LtftForm();
     form.setTraineeTisId("47165");
-    form.setAssignedAdmin(Person.builder().build());
 
     LtftContent content = LtftContent.builder()
         .personalDetails(PersonalDetails.builder()
@@ -922,7 +922,9 @@ class AdminLtftResourceIntegrationTest {
     Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
 
     StatusInfo statusInfo = StatusInfo.builder()
-        .state(SUBMITTED).timestamp(Instant.now())
+        .state(SUBMITTED)
+        .assignedAdmin(Person.builder().build())
+        .timestamp(Instant.now())
         .build();
     form.setStatus(Status.builder()
         .current(statusInfo)
@@ -970,7 +972,7 @@ class AdminLtftResourceIntegrationTest {
   void shouldGetDetailPdfProgrammeDetailsWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
     LtftForm form = new LtftForm();
     form.setTraineeTisId("47165");
-    form.setAssignedAdmin(Person.builder().build());
+    form.setAssignedAdmin(Person.builder().build(), null);
 
     LocalDate startDate = LocalDate.now();
     LocalDate endDate = startDate.plusYears(1);
@@ -1041,7 +1043,7 @@ class AdminLtftResourceIntegrationTest {
   void shouldGetDetailPdfChangeDetailsWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
     LtftForm form = new LtftForm();
     form.setTraineeTisId("47165");
-    form.setAssignedAdmin(Person.builder().build());
+    form.setAssignedAdmin(Person.builder().build(), null);
 
     LocalDate startDate = LocalDate.now();
     LocalDate endDate = startDate.plusYears(1);
@@ -1115,7 +1117,7 @@ class AdminLtftResourceIntegrationTest {
   void shouldGetDetailPdfReasonDetailsWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
     LtftForm form = new LtftForm();
     form.setTraineeTisId("47165");
-    form.setAssignedAdmin(Person.builder().build());
+    form.setAssignedAdmin(Person.builder().build(), null);
 
     LtftContent content = LtftContent.builder()
         .personalDetails(PersonalDetails.builder().build())
@@ -1177,7 +1179,7 @@ class AdminLtftResourceIntegrationTest {
   void shouldGetDetailPdfDeclarationDetailsWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
     LtftForm form = new LtftForm();
     form.setTraineeTisId("47165");
-    form.setAssignedAdmin(Person.builder().build());
+    form.setAssignedAdmin(Person.builder().build(), null);
 
     LtftContent content = LtftContent.builder()
         .personalDetails(PersonalDetails.builder().build())
@@ -1238,7 +1240,6 @@ class AdminLtftResourceIntegrationTest {
   void shouldGetDetailPdfDiscussionsDetailsWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
     LtftForm form = new LtftForm();
     form.setTraineeTisId("47165");
-    form.setAssignedAdmin(Person.builder().build());
 
     LtftContent content = LtftContent.builder()
         .personalDetails(PersonalDetails.builder().build())
@@ -1270,7 +1271,9 @@ class AdminLtftResourceIntegrationTest {
     Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
 
     StatusInfo statusInfo = StatusInfo.builder()
-        .state(SUBMITTED).timestamp(Instant.now())
+        .state(SUBMITTED)
+        .assignedAdmin(Person.builder().build())
+        .timestamp(Instant.now())
         .build();
     form.setStatus(Status.builder()
         .current(statusInfo)

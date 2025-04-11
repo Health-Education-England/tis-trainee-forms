@@ -30,12 +30,12 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
-import lombok.With;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.domain.Persistable;
 import org.springframework.data.mongodb.core.index.Indexed;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
 import uk.nhs.hee.tis.trainee.forms.model.content.FormContent;
 
@@ -57,7 +57,6 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
 
   private T content;
   private Status status;
-  private Person assignedAdmin;
 
   @CreatedDate
   private Instant created;
@@ -80,10 +79,29 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
   }
 
   /**
+   * Set the current assigned admin of the form, appending to the status history.
+   *
+   * @param admin      The new assigned admin.
+   * @param modifiedBy The Person who assigned the new admin.
+   */
+  public void setAssignedAdmin(Person admin, Person modifiedBy) {
+    StatusInfo statusInfo = StatusInfo.builder()
+        .state(getLifecycleState())
+        .detail(status == null || status.current == null ? null : status.current.detail)
+        .assignedAdmin(admin)
+        .modifiedBy(modifiedBy)
+        .timestamp(Instant.now())
+        .revision(status == null || status.current == null ? null : status.current.revision)
+        .build();
+
+    updateStatusInfo(statusInfo);
+  }
+
+  /**
    * Set the current lifecycle state of the form, appending to the status history.
    *
-   * @param lifecycleState The new lifecycle state.
-   *                       The current revision number will be used and other details set to null.
+   * @param lifecycleState The new lifecycle state. The current revision number will be used and
+   *                       other details set to null.
    */
   @Override
   public void setLifecycleState(LifecycleState lifecycleState) {
@@ -99,26 +117,36 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
    * @param modifiedBy     The Person who made this status change.
    * @param revision       The revision number associated with this status change.
    */
-  public void setLifecycleState(LifecycleState lifecycleState, Status.StatusDetail detail,
+  public void setLifecycleState(LifecycleState lifecycleState, StatusDetail detail,
       Person modifiedBy, int revision) {
-    Status.StatusInfo statusInfo
-        = StatusInfo.builder()
+    StatusInfo statusInfo = StatusInfo.builder()
         .state(lifecycleState)
         .detail(detail)
+        .assignedAdmin(
+            status == null || status.current == null ? null : status.current.assignedAdmin)
         .modifiedBy(modifiedBy)
         .timestamp(Instant.now())
         .revision(revision)
         .build();
 
+    updateStatusInfo(statusInfo);
+  }
+
+  /**
+   * Update the form's current and historical status to include in given {@link StatusInfo}.
+   *
+   * @param statusInfo The status info to add to the form.
+   */
+  private void updateStatusInfo(StatusInfo statusInfo) {
     Instant submitted;
 
-    if (lifecycleState == LifecycleState.SUBMITTED) {
+    if (statusInfo.state == LifecycleState.SUBMITTED) {
       submitted = statusInfo.timestamp;
     } else {
       submitted = status != null ? status.submitted : null;
     }
 
-    if (status == null || status.current == null) {
+    if (status == null || status.history == null) {
       setStatus(new Status(statusInfo, submitted, List.of(statusInfo)));
     } else {
       List<StatusInfo> newHistory = new ArrayList<>(status.history);
@@ -150,11 +178,12 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
     /**
      * Form status information.
      *
-     * @param state      The lifecycle state of the form.
-     * @param detail     Any status reason detail.
-     * @param modifiedBy The Person who made this status change.
-     * @param timestamp  The timestamp of the status change.
-     * @param revision   The revision number associated with this status change.
+     * @param state         The lifecycle state of the form.
+     * @param detail        Any status reason detail.
+     * @param assignedAdmin The admin who is assigned to process the form.
+     * @param modifiedBy    The Person who made this status change.
+     * @param timestamp     The timestamp of the status change.
+     * @param revision      The revision number associated with this status change.
      */
     @Builder
     public record StatusInfo(
@@ -162,6 +191,7 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
         @Indexed
         LifecycleState state,
         StatusDetail detail,
+        Person assignedAdmin,
         Person modifiedBy,
         Instant timestamp,
         Integer revision

@@ -82,8 +82,8 @@ public abstract class LtftMapper {
   @Mapping(target = "tpd.email", source = "content.discussions.tpdEmail")
   @Mapping(target = "tpd.emailStatus", constant = "UNKNOWN") // TODO: not yet available (TIS21-7022)
   @Mapping(target = "status", source = "status.current.state")
-  @Mapping(target = "assignedAdmin.name", source = "assignedAdmin.name")
-  @Mapping(target = "assignedAdmin.email", source = "assignedAdmin.email")
+  @Mapping(target = "assignedAdmin.name", source = "status.current.assignedAdmin.name")
+  @Mapping(target = "assignedAdmin.email", source = "status.current.assignedAdmin.email")
   @Mapping(target = "assignedAdmin.role", ignore = true)
   public abstract LtftAdminSummaryDto toAdminSummaryDto(LtftForm entity);
 
@@ -144,7 +144,6 @@ public abstract class LtftMapper {
   @Mapping(target = "discussions", source = "content.discussions")
   @Mapping(target = "change", source = "content.change")
   @Mapping(target = "reasons", source = "content.reasons")
-  @Mapping(target = "assignedAdmin", source = "assignedAdmin")
   public abstract LtftFormDto toDto(LtftForm entity);
 
   /**

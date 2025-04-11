@@ -48,7 +48,6 @@ import uk.nhs.hee.tis.trainee.forms.model.content.CctChangeType;
  * @param discussions         Discussions which took place as part of the LTFT process.
  * @param change              The calculated LTFT change.
  * @param reasons             The reasons for applying for LTFT.
- * @param assignedAdmin       The administration assigned to the LTFT application.
  * @param status              The status of the LTFT application, both current and audit history.
  * @param created             When the LTFT application was first created.
  * @param lastModified        When the LTFT application was last modified.
@@ -73,10 +72,6 @@ public record LtftFormDto(
     DiscussionsDto discussions,
     CctChangeDto change,
     ReasonsDto reasons,
-
-    @JsonView(ReadOnly.class)
-    @Null(groups = {Create.class, Update.class})
-    PersonDto assignedAdmin,
 
     @JsonView(ReadOnly.class)
     @Null(groups = {Create.class, Update.class})
@@ -181,17 +176,19 @@ public record LtftFormDto(
     /**
      * Form status information.
      *
-     * @param state      The lifecycle state of the form.
-     * @param detail     Status reason detail.
-     * @param modifiedBy The Person who made this status change.
-     * @param timestamp  The timestamp of the status change.
-     * @param revision   The revision number associated with this status change.
+     * @param state         The lifecycle state of the form.
+     * @param detail        Status reason detail.
+     * @param assignedAdmin The admin who is assigned to process the form.
+     * @param modifiedBy    The Person who made this status change.
+     * @param timestamp     The timestamp of the status change.
+     * @param revision      The revision number associated with this status change.
      */
     @Builder
     public record StatusInfoDto(
 
         LifecycleState state,
         LftfStatusInfoDetailDto detail,
+        PersonDto assignedAdmin,
         PersonDto modifiedBy,
         Instant timestamp,
         Integer revision
