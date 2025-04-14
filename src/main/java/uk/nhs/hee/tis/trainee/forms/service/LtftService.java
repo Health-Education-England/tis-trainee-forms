@@ -83,6 +83,7 @@ public class LtftService {
   private final LtftMapper mapper;
 
   private final SnsTemplate snsTemplate;
+  private final String ltftAssignmentUpdateTopic;
   private final String ltftStatusUpdateTopic;
 
   private final LtftSubmissionHistoryService ltftSubmissionHistoryService;
@@ -96,12 +97,14 @@ public class LtftService {
    * @param mongoTemplate                The Mongo template.
    * @param mapper                       The LTFT mapper.
    * @param snsTemplate                  The SNS template.
+   * @param ltftAssignmentUpdateTopic    The SNS topic for LTFT assignment updates.
    * @param ltftStatusUpdateTopic        The SNS topic for LTFT status updates.
    * @param ltftSubmissionHistoryService The service for LTFT submission history.
    */
   public LtftService(AdminIdentity adminIdentity, TraineeIdentity traineeIdentity,
       LtftFormRepository ltftFormRepository, MongoTemplate mongoTemplate, LtftMapper mapper,
       SnsTemplate snsTemplate,
+      @Value("${application.aws.sns.ltft-assignment-updated}") String ltftAssignmentUpdateTopic,
       @Value("${application.aws.sns.ltft-status-updated}") String ltftStatusUpdateTopic,
       LtftSubmissionHistoryService ltftSubmissionHistoryService) {
     this.adminIdentity = adminIdentity;
@@ -110,6 +113,7 @@ public class LtftService {
     this.mongoTemplate = mongoTemplate;
     this.mapper = mapper;
     this.snsTemplate = snsTemplate;
+    this.ltftAssignmentUpdateTopic = ltftAssignmentUpdateTopic;
     this.ltftStatusUpdateTopic = ltftStatusUpdateTopic;
     this.ltftSubmissionHistoryService = ltftSubmissionHistoryService;
   }
@@ -387,6 +391,14 @@ public class LtftService {
       LtftForm ltftForm = form.get();
 
       Person assignedAdmin = mapper.toEntity(admin).withRole("ADMIN");
+
+      if (ltftForm.getStatus() != null && ltftForm.getStatus().current() != null
+          && Objects.equals(ltftForm.getStatus().current().assignedAdmin(), assignedAdmin)) {
+        log.info("Skipping assigning admin {} to LTFT form {}, as they are already assigned.",
+            admin.email(), formId);
+        return Optional.of(mapper.toDto(ltftForm));
+      }
+
       Person modifiedBy = Person.builder()
           .name(adminIdentity.getName())
           .email(adminIdentity.getEmail())
@@ -395,6 +407,9 @@ public class LtftService {
 
       ltftForm.setAssignedAdmin(assignedAdmin, modifiedBy);
       LtftForm updatedForm = ltftFormRepository.save(ltftForm);
+
+      publishUpdateNotification(updatedForm, ltftAssignmentUpdateTopic);
+
       return Optional.of(mapper.toDto(updatedForm));
     } else {
       log.warn("Could not assign admin to form {} since no form exists with this ID for DBCs [{}]",
@@ -498,7 +513,7 @@ public class LtftService {
       ltftSubmissionHistoryService.takeSnapshot(savedForm);
     }
 
-    publishStatusUpdateNotification(savedForm);
+    publishUpdateNotification(savedForm, ltftStatusUpdateTopic);
 
     return savedForm;
   }
@@ -581,13 +596,13 @@ public class LtftService {
    *
    * @param form The updated LTFT form
    */
-  private void publishStatusUpdateNotification(LtftForm form) {
-    log.info("Published status update notification for LTFT form {}", form.getId());
+  private void publishUpdateNotification(LtftForm form, String topic) {
+    log.info("Published update notification for LTFT form {}", form.getId());
     String groupId = form.getId() == null ? UUID.randomUUID().toString() : form.getId().toString();
     SnsNotification<LtftForm> notification = SnsNotification.builder(form)
         .groupId(groupId)
         .build();
 
-    snsTemplate.sendNotification(ltftStatusUpdateTopic, notification);
+    snsTemplate.sendNotification(topic, notification);
   }
 }
