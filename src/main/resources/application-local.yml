@@ -3,9 +3,12 @@ application:
   file-store:
     bucket: tis-trainee-documents-upload-local
   aws:
+    sns:
+      PDF_GENERATED_TOPIC: arn:aws:sns:eu-west-2:${local.account-id}:tis-trainee-pdf-generated
+      LTFT_STATUS_UPDATE_TOPIC: arn:aws:sns:eu-west-2:${local.account-id}:tis-trainee-update-form-event
     sqs:
-      coj-received: ${local.sqs-path}/tis-trainee-local-form-coj-received
-      delete-event: ${local.sqs-path}/tis-trainee-local-form-delete-event
+      coj-received: ${local.sqs-path}/tis-trainee-forms-local-coj-received
+      delete-event: ${local.sqs-path}/tis-trainee-forms-local-delete-event
   signature:
     secret-key: ${SIGNATURE_SECRET_KEY:not-very-secret-plain-text-value}
 
