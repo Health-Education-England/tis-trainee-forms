@@ -100,6 +100,7 @@ public record LtftContent(
       String name,
       @Indexed(name = "dbc")
       String designatedBodyCode,
+      String managingDeanery,
       LocalDate startDate,
       LocalDate endDate,
       Double wte) {
