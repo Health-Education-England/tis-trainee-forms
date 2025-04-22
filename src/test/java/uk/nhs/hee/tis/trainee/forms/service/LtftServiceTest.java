@@ -914,6 +914,7 @@ class LtftServiceTest {
             .id(pmId)
             .name("Test PM")
             .designatedBodyCode("1-1DBC")
+            .managingDeanery("Test Deanery")
             .startDate(LocalDate.MIN)
             .endDate(LocalDate.MAX)
             .wte(0.75)
@@ -934,6 +935,7 @@ class LtftServiceTest {
     assertThat("Unexpected PM ID.", programmeMembership.id(), is(pmId));
     assertThat("Unexpected PM name.", programmeMembership.name(), is("Test PM"));
     assertThat("Unexpected PM DBC.", programmeMembership.designatedBodyCode(), is("1-1DBC"));
+    assertThat("Unexpected PM deanery.", programmeMembership.managingDeanery(), is("Test Deanery"));
     assertThat("Unexpected PM start date.", programmeMembership.startDate(), is(LocalDate.MIN));
     assertThat("Unexpected PM end date.", programmeMembership.endDate(), is(LocalDate.MAX));
     assertThat("Unexpected PM wte.", programmeMembership.wte(), is(0.75));
@@ -962,6 +964,7 @@ class LtftServiceTest {
     assertThat("Unexpected PM ID.", programmeMembership.id(), nullValue());
     assertThat("Unexpected PM name.", programmeMembership.name(), nullValue());
     assertThat("Unexpected PM DBC.", programmeMembership.designatedBodyCode(), nullValue());
+    assertThat("Unexpected PM deanery.", programmeMembership.managingDeanery(), nullValue());
     assertThat("Unexpected PM start date.", programmeMembership.startDate(), nullValue());
     assertThat("Unexpected PM end date.", programmeMembership.endDate(), nullValue());
     assertThat("Unexpected PM wte.", programmeMembership.wte(), nullValue());
@@ -2143,6 +2146,7 @@ class LtftServiceTest {
             .id(newId)
             .name("new programme")
             .designatedBodyCode("new DBC")
+            .managingDeanery("new deanery")
             .startDate(newStartDate)
             .endDate(newEndDate)
             .wte(0.5)
@@ -2158,6 +2162,7 @@ class LtftServiceTest {
             .id(UUID.randomUUID())
             .name("existing programme")
             .designatedBodyCode("existing DBC")
+            .managingDeanery("existing deanery")
             .startDate(LocalDate.MIN)
             .endDate(LocalDate.MAX)
             .wte(1.0)
@@ -2176,6 +2181,7 @@ class LtftServiceTest {
     assertThat("Unexpected ID.", programmeMembership.id(), is(newId));
     assertThat("Unexpected name.", programmeMembership.name(), is("new programme"));
     assertThat("Unexpected DBC.", programmeMembership.designatedBodyCode(), is("new DBC"));
+    assertThat("Unexpected deanery.", programmeMembership.managingDeanery(), is("new deanery"));
     assertThat("Unexpected start date.", programmeMembership.startDate(), is(newStartDate));
     assertThat("Unexpected end date.", programmeMembership.endDate(), is(newEndDate));
     assertThat("Unexpected WTE.", programmeMembership.wte(), is(0.5));

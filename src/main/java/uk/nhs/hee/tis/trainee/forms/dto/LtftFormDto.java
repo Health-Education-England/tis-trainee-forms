@@ -138,6 +138,7 @@ public record LtftFormDto(
       UUID id,
       String name,
       String designatedBodyCode,
+      String managingDeanery,
       LocalDate startDate,
       LocalDate endDate,
       Double wte) {
