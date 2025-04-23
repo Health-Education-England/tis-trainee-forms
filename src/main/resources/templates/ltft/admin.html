@@ -108,7 +108,7 @@
             </div>
             <div class="nhsuk-summary-list__row">
               <dt class="nhsuk-summary-list__key">End Date</dt>
-              <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(change?.endDate, 'dd MMMM yyyy')} ?: _">Not Given</dd>
+              <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(change?.cctDate, 'dd MMMM yyyy')} ?: _">Not Given</dd>
             </div>
             <div class="nhsuk-summary-list__row">
               <dt class="nhsuk-summary-list__key">Programme end date</dt>

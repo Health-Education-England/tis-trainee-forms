@@ -1104,11 +1104,9 @@ class AdminLtftResourceIntegrationTest {
     assertThat("Unexpected start date.", pdfText,
         containsString("Start Date " + startDateString + System.lineSeparator()));
 
-    String endDateString = endDate.format(datePattern);
-    assertThat("Unexpected end date.", pdfText,
-        containsString("End Date " + endDateString + System.lineSeparator()));
-
     String cctDateString = cctDate.format(datePattern);
+    assertThat("Unexpected end date.", pdfText,
+        containsString("End Date " + cctDateString + System.lineSeparator()));
     assertThat("Unexpected CCT date.", pdfText,
         containsString("Programme end date " + cctDateString + System.lineSeparator()));
   }
