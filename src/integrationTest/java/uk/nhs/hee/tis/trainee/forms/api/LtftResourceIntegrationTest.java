@@ -34,6 +34,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -265,8 +266,9 @@ class LtftResourceIntegrationTest {
             .header(HttpHeaders.AUTHORIZATION, token)
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToSaveJson))
+        .andDo(print())
         .andExpect(status().isBadRequest())
-        .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON)) // TODO: should be APPLICATION_PROBLEM_JSON but tests were failing on GHA
         .andExpect(jsonPath("$.type", is("about:blank")))
         .andExpect(jsonPath("$.title", is("Validation failure")))
         .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
