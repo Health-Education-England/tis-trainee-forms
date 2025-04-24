@@ -20,6 +20,7 @@ configurations {
 
 dependencyManagement {
   imports {
+    mavenBom(libs.spring.cloud.dependencies.core.get().toString())
     mavenBom(libs.spring.cloud.dependencies.aws.get().toString())
   }
 }
@@ -87,6 +88,7 @@ testing {
         dependencies {
           implementation(project())
           implementation("org.springframework.boot:spring-boot-starter-test")
+          implementation("org.springframework.cloud:spring-cloud-starter-bootstrap")
         }
       }
     }
