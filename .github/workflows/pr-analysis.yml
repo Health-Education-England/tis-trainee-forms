@@ -3,7 +3,7 @@ name: PR Analysis
 on:
   pull_request:
     branches:
-      - validationfailure-worflowchange
+      - main
 
 jobs:
   analyse:
