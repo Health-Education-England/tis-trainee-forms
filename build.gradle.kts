@@ -1,16 +1,16 @@
 plugins {
   java
-  id("org.springframework.boot") version "3.3.2"
-  id("io.spring.dependency-management") version "1.1.6"
+  alias(libs.plugins.spring.boot)
+  alias(libs.plugins.spring.dependency.management)
 
-  // Code quality plugins
+  // Code Quality
   checkstyle
   jacoco
-  id("org.sonarqube") version "5.1.0.4882"
+  alias(libs.plugins.sonarqube)
 }
 
 group = "uk.nhs.hee.tis.trainee"
-version = "0.44.1"
+version = "0.45.0"
 
 configurations {
   compileOnly {
@@ -18,55 +18,43 @@ configurations {
   }
 }
 
-repositories {
-  mavenCentral()
-}
-
 dependencyManagement {
   imports {
-    mavenBom("io.awspring.cloud:spring-cloud-aws-dependencies:3.1.1")
+    mavenBom(libs.spring.cloud.dependencies.aws.get().toString())
   }
 }
 
-val mapstructVersion = "1.5.5.Final"
-val mongockVersion = "5.4.4"
-val openHtmlToPdfVersion = "1.1.24"
-
 dependencies {
-  // Spring Boot starters
+  // Spring Boot
   implementation("org.springframework.boot:spring-boot-starter-actuator")
   implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
   implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
   implementation("org.springframework.boot:spring-boot-starter-web")
   implementation("org.springframework.boot:spring-boot-starter-validation")
 
-  // AWS-XRay
-  implementation("com.amazonaws:aws-xray-recorder-sdk-spring:2.15.1")
-
   // Lombok
   compileOnly("org.projectlombok:lombok")
   annotationProcessor("org.projectlombok:lombok")
 
-  // MapStruct
-  implementation("org.mapstruct:mapstruct:${mapstructVersion}")
-  annotationProcessor("org.mapstruct:mapstruct-processor:${mapstructVersion}")
+  // Mapstruct
+  implementation(libs.mapstruct.core)
+  annotationProcessor(libs.mapstruct.processor)
 
-  implementation("io.mongock:mongock-springboot-v3:${mongockVersion}")
-  implementation("io.mongock:mongodb-springdata-v4-driver:${mongockVersion}")
+  implementation(libs.bundles.mongock)
 
   // Sentry reporting
-  implementation("io.sentry:sentry-spring-boot-starter-jakarta:7.14.0")
+  implementation(libs.sentry.core)
 
-  // SQS
+  // AWS
   implementation("io.awspring.cloud:spring-cloud-aws-starter-s3")
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sqs")
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sns")
+  implementation(libs.aws.xray)
 
   implementation("commons-beanutils:commons-beanutils:1.9.4")
 
-  implementation("io.github.openhtmltopdf:openhtmltopdf-pdfbox:${openHtmlToPdfVersion}")
-  implementation("io.github.openhtmltopdf:openhtmltopdf-slf4j:${openHtmlToPdfVersion}")
-  implementation("org.jsoup:jsoup:1.19.1")
+  // PDF
+  implementation(libs.bundles.pdf.publishing)
 }
 
 checkstyle {
@@ -105,7 +93,7 @@ testing {
 
     val test by getting(JvmTestSuite::class) {
       dependencies {
-        annotationProcessor("org.mapstruct:mapstruct-processor:${mapstructVersion}")
+        annotationProcessor(libs.mapstruct.processor)
       }
     }
 
