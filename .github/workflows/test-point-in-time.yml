@@ -1,0 +1,27 @@
+name: Test Point In Time
+
+on:
+  push:
+
+jobs:
+  analyse:
+    name: Run Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: cc6a96bd30aa3c427a1375addff8b18555415b4e
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4.0.0
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build
+        run: ./gradlew integrationTest
