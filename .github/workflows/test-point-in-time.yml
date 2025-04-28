@@ -22,6 +22,10 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          build-scan-publish: ${{ runner.debug == '1' }}
+          build-scan-terms-of-use-url: https://gradle.com/terms-of-service
+          build-scan-terms-of-use-agree: yes
 
       - name: Build
         run: ./gradlew integrationTest
