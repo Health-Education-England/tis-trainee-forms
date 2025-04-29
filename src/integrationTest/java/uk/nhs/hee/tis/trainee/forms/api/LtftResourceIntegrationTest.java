@@ -50,7 +50,6 @@ import org.hamcrest.Matcher;
 import org.hamcrest.TypeSafeMatcher;
 import org.hamcrest.number.IsCloseTo;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -253,7 +252,6 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.discussions.other[0].name").value("other person"));
   }
 
-  @Disabled("Suddenly getting unhandled error response in workflows, unable to reproduce/resolve")
   @Test
   void shouldBeBadRequestWhenCreatingLtftFormWithId() throws Exception {
     LtftFormDto formToSave = LtftFormDto.builder()
@@ -460,7 +458,6 @@ class LtftResourceIntegrationTest {
             TimestampCloseTo.closeTo(Instant.now().getEpochSecond(), 1)));
   }
 
-  @Disabled("Suddenly getting unhandled error response in workflows, unable to reproduce/resolve")
   @Test
   void shouldBeBadRequestWhenUpdatingLtftFormWithoutId() throws Exception {
     LtftFormDto formToUpdate = LtftFormDto.builder()

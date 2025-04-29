@@ -30,11 +30,16 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
+import uk.nhs.hee.tis.trainee.forms.api.ConditionsOfJoiningResource;
+import uk.nhs.hee.tis.trainee.forms.api.FormRPartAResource;
+import uk.nhs.hee.tis.trainee.forms.api.FormRPartBResource;
 
 /**
  * Controller advice to translate the server side exceptions to client-friendly json structures.
  */
-@ControllerAdvice
+// TODO: migrate all controllers to use Problem Detail (application/problem_json) responses.
+@ControllerAdvice(assignableTypes = {ConditionsOfJoiningResource.class, FormRPartAResource.class,
+    FormRPartBResource.class})
 public class ExceptionTranslator {
 
   /**
