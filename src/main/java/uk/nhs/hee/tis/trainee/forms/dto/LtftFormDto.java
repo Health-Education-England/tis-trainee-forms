@@ -31,6 +31,7 @@ import lombok.Builder;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Update;
+import uk.nhs.hee.tis.trainee.forms.dto.views.Exclude;
 import uk.nhs.hee.tis.trainee.forms.dto.views.ReadOnly;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChangeType;
 
@@ -69,6 +70,7 @@ public record LtftFormDto(
     PersonalDetailsDto personalDetails,
     ProgrammeMembershipDto programmeMembership,
     DeclarationsDto declarations,
+    @JsonView(Exclude.class)
     DiscussionsDto discussions,
     CctChangeDto change,
     ReasonsDto reasons,
