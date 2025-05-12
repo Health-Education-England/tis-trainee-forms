@@ -55,6 +55,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -656,7 +657,8 @@ class LtftServiceTest {
       proposedStartDate | content.change.startDate
       submissionDate | status.submitted
       """)
-  void shouldApplyUserSortWhenGettingPagedAdminLtftSummaries(String external, String internal) {
+  void shouldAppendIdToUserSortWhenGettingPagedAdminLtftSummaries(String external,
+      String internal) {
     service.getAdminLtftSummaries(Map.of(), PageRequest.of(1, 1, Sort.by(Order.asc(external))));
 
     ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
@@ -667,8 +669,13 @@ class LtftServiceTest {
       assertThat("Unexpected sorted flag.", query.isSorted(), is(true));
 
       Document sortObject = query.getSortObject();
-      assertThat("Unexpected sort count.", sortObject.keySet(), hasSize(1));
+      assertThat("Unexpected sort count.", sortObject.keySet(), hasSize(2));
+
+      Iterator<String> sortKeyIterator = sortObject.keySet().iterator();
+      assertThat("Unexpected sort key.", sortKeyIterator.next(), is(internal));
       assertThat("Unexpected sort direction.", sortObject.get(internal), is(1));
+      assertThat("Unexpected sort key.", sortKeyIterator.next(), is("id"));
+      assertThat("Unexpected sort direction.", sortObject.get("id"), is(1));
     });
   }
 
@@ -712,20 +719,27 @@ class LtftServiceTest {
       assertThat("Unexpected sorted flag.", query.isSorted(), is(true));
 
       Document sortObject = query.getSortObject();
-      assertThat("Unexpected sort count.", sortObject.keySet(), hasSize(2));
+      assertThat("Unexpected sort count.", sortObject.keySet(), hasSize(3));
+
+      Iterator<String> sortKeyIterator = sortObject.keySet().iterator();
+      assertThat("Unexpected sort key.", sortKeyIterator.next(), is("formRef"));
       assertThat("Unexpected sort direction.", sortObject.get("formRef"), is(1));
+
+      assertThat("Unexpected sort key.", sortKeyIterator.next(), is("status.submitted"));
       assertThat("Unexpected sort direction.", sortObject.get("status.submitted"), is(-1));
+
+      assertThat("Unexpected sort key.", sortKeyIterator.next(), is("id"));
+      assertThat("Unexpected sort direction.", sortObject.get("id"), is(1));
     });
   }
 
   @ParameterizedTest
   @ValueSource(strings = {"abc", "programmeName", "status"})
   void shouldExcludeUnsupportedUserSortWhenGettingUnpagedAdminLtftSummaries(String field) {
-    service.getAdminLtftSummaries(Map.of(), PageRequest.of(1, 1, Sort.by(Order.asc(field))));
+    service.getAdminLtftSummaries(Map.of(), Pageable.unpaged(Sort.by(Order.asc(field))));
 
     ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
     verify(mongoTemplate).find(queryCaptor.capture(), eq(LtftForm.class));
-    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
 
     queryCaptor.getAllValues()
         .forEach(query -> assertThat("Unexpected sorted flag.", query.isSorted(), is(false)));
