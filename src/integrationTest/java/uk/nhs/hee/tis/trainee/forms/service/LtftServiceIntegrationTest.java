@@ -22,12 +22,18 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 
 import io.awspring.cloud.sns.core.SnsTemplate;
+import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,6 +41,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
@@ -43,10 +51,16 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.LtftSubmissionHistory;
+import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ProgrammeMembership;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -62,6 +76,9 @@ class LtftServiceIntegrationTest {
 
   @Autowired
   private LtftService service;
+
+  @Autowired
+  private AdminIdentity adminIdentity;
 
   @Autowired
   private TraineeIdentity traineeIdentity;
@@ -175,5 +192,39 @@ class LtftServiceIntegrationTest {
         is(1));
     assertThat("Unexpected ltft form ref.", savedLtftForms.get(0).getFormRef(),
         is(submitted.formRef()));
+  }
+
+  @Test
+  void shouldReturnConsistentAdminSummariesWhenPagedAndSortedOnNonUniqueField() {
+    String dbc = UUID.randomUUID().toString();
+    adminIdentity.setGroups(Set.of(dbc));
+
+    for (int i = 0; i < 10; i++) {
+      LtftForm ltft = new LtftForm();
+      ltft.setId(UUID.randomUUID());
+      ltft.setContent(LtftContent.builder()
+          .change(CctChange.builder()
+              .startDate(LocalDate.now())
+              .build())
+          .programmeMembership(ProgrammeMembership.builder()
+              .designatedBodyCode(dbc)
+              .build())
+          .build());
+      ltft.setLifecycleState(LifecycleState.SUBMITTED);
+
+      template.save(ltft);
+    }
+
+    Set<UUID> ids = new HashSet<>();
+    Sort sort = Sort.by("daysToStart");
+
+    for (int i = 0; i < 10; i++) {
+      PageRequest pageable = PageRequest.of(i, 1, sort);
+      Page<LtftAdminSummaryDto> summaries = service.getAdminLtftSummaries(Map.of(), pageable);
+      LtftAdminSummaryDto summary = summaries.getContent().get(0);
+      ids.add(summary.id());
+    }
+
+    assertThat("Unexpected ID count.", ids, hasSize(10));
   }
 }

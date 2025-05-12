@@ -546,6 +546,8 @@ public class LtftService {
     if (pageable.isUnpaged()) {
       query = new Query().with(sort);
     } else {
+      // Add ID sort to ensure consistent paged ordering when the sort field has duplicated values.
+      sort = sort.and(Sort.by("id"));
       pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
       query = new Query().with(pageable);
     }
