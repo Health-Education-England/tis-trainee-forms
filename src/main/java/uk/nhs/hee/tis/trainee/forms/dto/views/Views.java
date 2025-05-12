@@ -22,14 +22,33 @@
 package uk.nhs.hee.tis.trainee.forms.dto.views;
 
 /**
- * A JSON view for trainees.
+ * Json Views for designating properties for fields in forms
  */
-public interface Trainee {
+public interface Views {
 
   /**
-   * A JSON view for trainee write access.
+   * A JSON view for read-only properties.
    */
-  interface Write {
+  public interface ReadOnly {
+
+  }
+
+  /**
+   * A JSON view for trainees.
+   */
+  public class Trainee {
+    /**
+     * A JSON view for trainee write access.
+     */
+    public interface Write {
+
+    }
+  }
+
+  /**
+   * A JSON view for admins.
+   */
+  public class Admin {
 
   }
 }

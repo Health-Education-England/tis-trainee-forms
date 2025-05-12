@@ -41,7 +41,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Update;
-import uk.nhs.hee.tis.trainee.forms.dto.views.Trainee;
+import uk.nhs.hee.tis.trainee.forms.dto.views.Views;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 
 /**
@@ -85,7 +85,7 @@ public class LtftResource {
    */
   @PostMapping
   public ResponseEntity<LtftFormDto> createLtft(
-      @RequestBody @JsonView(Trainee.Write.class) @Validated(Create.class) LtftFormDto dto) {
+      @RequestBody @JsonView(Views.Trainee.Write.class) @Validated(Create.class) LtftFormDto dto) {
     log.info("Request to save new LTFT form: {}", dto);
     Optional<LtftFormDto> savedLtft = service.createLtftForm(dto);
     return savedLtft.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.badRequest().build());
@@ -101,7 +101,7 @@ public class LtftResource {
    */
   @PutMapping("/{formId}")
   public ResponseEntity<LtftFormDto> updateLtft(@PathVariable UUID formId,
-      @RequestBody @JsonView(Trainee.Write.class) @Validated(Update.class) LtftFormDto dto) {
+      @RequestBody @JsonView(Views.Trainee.Write.class) @Validated(Update.class) LtftFormDto dto) {
     log.info("Request to update LTFT form {}: {}", formId, dto);
     Optional<LtftFormDto> savedLtft = service.updateLtftForm(formId, dto);
     return savedLtft.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.badRequest().build());
