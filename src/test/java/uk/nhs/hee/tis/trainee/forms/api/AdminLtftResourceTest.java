@@ -27,6 +27,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.sameInstance;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -40,6 +41,7 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROV
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -57,8 +59,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.DiscussionsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
+import uk.nhs.hee.tis.trainee.forms.dto.views.Views;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
@@ -216,6 +220,40 @@ class AdminLtftResourceTest {
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), sameInstance(body));
+  }
+
+  @Test
+  void shouldIncludeDiscussionsInAdminDetailLtftForm() throws IOException {
+    UUID id = UUID.randomUUID();
+
+    DiscussionsDto discussions = DiscussionsDto.builder()
+        .tpdName("Dr. Smith")
+        .tpdEmail("dr.smith@example.com")
+        .other(List.of())
+        .build();
+
+    LtftFormDto dto = LtftFormDto.builder()
+        .id(id)
+        .discussions(discussions)
+        .build();
+
+    when(service.getAdminLtftDetail(id)).thenReturn(Optional.of(dto));
+
+    byte[] body = "body".getBytes();
+    when(pdfService.generatePdf(dto, "admin")).thenReturn(body);
+
+    ResponseEntity<byte[]> response = controller.getLtftAdminDetailPdf(id);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), sameInstance(body));
+
+    ObjectMapper mapper = new ObjectMapper();
+    String form = mapper
+        .writerWithView(Views.Admin.class)
+        .writeValueAsString(dto);
+
+    assertTrue(form.contains("discussions"), "Discussions should be serialized in the admin view");
+    assertTrue(form.contains("Dr. Smith"), "TPD name should be present in serialized JSON");
   }
 
   @Test

@@ -24,13 +24,16 @@ package uk.nhs.hee.tis.trainee.forms.api;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.OK;
+import static org.springframework.test.util.AssertionErrors.assertNotNull;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,7 +41,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.DiscussionsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
+import uk.nhs.hee.tis.trainee.forms.dto.views.Views;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 
 class LtftResourceTest {
@@ -174,6 +179,36 @@ class LtftResourceTest {
     LtftFormDto responseDto = response.getBody();
     assert responseDto != null;
     assertThat("Unexpected response body.", responseDto.equals(existingForm), is(true));
+  }
+
+    @Test
+  void shouldNotSerialiseDiscussionsForTraineeLtftFormWhenFound2() throws Exception {
+    DiscussionsDto discussions = DiscussionsDto.builder()
+        .tpdName("Dr. Smith")
+        .tpdEmail("dr.smith@example.com")
+        .other(List.of())
+        .build();
+
+    LtftFormDto existingForm = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId("some trainee")
+        .discussions(discussions)
+        .build();
+
+    when(service.getLtftForm(ID)).thenReturn(Optional.of(existingForm));
+
+    ResponseEntity<LtftFormDto> response = controller.getLtft(ID);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    LtftFormDto responseDto = response.getBody();
+    assertNotNull("Response body should not be null", responseDto);
+
+    ObjectMapper mapper = new ObjectMapper();
+    String form = mapper
+        .writerWithView(Views.Trainee.Write.class)
+        .writeValueAsString(responseDto);
+
+    assertFalse(form.contains("discussions"), "Discussions should not be serialized for the trainee view");
   }
 
   @Test
