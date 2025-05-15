@@ -27,7 +27,6 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.sameInstance;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -252,8 +251,8 @@ class AdminLtftResourceTest {
         .writerWithView(Views.Admin.class)
         .writeValueAsString(dto);
 
-    assertTrue(form.contains("discussions"), "Discussions should be serialized in the admin view");
-    assertTrue(form.contains("Dr. Smith"), "TPD name should be present in serialized JSON");
+    assertThat("Discussions should be serialized in the admin view", form.contains("discussions"));
+    assertThat("TPD name should be present in serialized JSON", form.contains("Dr. Smith"));
   }
 
   @Test

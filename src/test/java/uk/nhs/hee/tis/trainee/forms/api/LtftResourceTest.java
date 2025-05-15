@@ -22,16 +22,17 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.core.IsNot.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.OK;
-import static org.springframework.test.util.AssertionErrors.assertNotNull;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
@@ -201,14 +202,15 @@ class LtftResourceTest {
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     LtftFormDto responseDto = response.getBody();
-    assertNotNull("Response body should not be null", responseDto);
+    assertThat("Response body should not be null", response.getBody(), is(notNullValue()));
 
     ObjectMapper mapper = new ObjectMapper();
     String form = mapper
         .writerWithView(Views.Trainee.Write.class)
         .writeValueAsString(responseDto);
 
-    assertFalse(form.contains("discussions"), "Discussions should not be serialized for the trainee view");
+      assertThat("Discussions should not be serialized for the trainee view",
+          form, not(containsString("discussions")));
   }
 
   @Test
