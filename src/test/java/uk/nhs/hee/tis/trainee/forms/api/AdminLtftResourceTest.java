@@ -22,6 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
@@ -40,6 +41,7 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROV
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +61,8 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.dto.views.Views;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
@@ -216,6 +220,53 @@ class AdminLtftResourceTest {
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), sameInstance(body));
+  }
+  @Test
+  void shouldIncludeIdentifyingFieldsInAdminDetailLtftForm() throws IOException {
+    UUID id = UUID.randomUUID();
+
+    PersonDto person = PersonDto.builder()
+        .name("John")
+        .email("john.doe@nhs.net")
+        .build();
+
+    LtftFormDto.StatusDto.StatusInfoDto statusInfo = LtftFormDto.StatusDto.StatusInfoDto.builder()
+        .state(LifecycleState.WITHDRAWN)
+        .assignedAdmin(person)
+        .modifiedBy(person)
+        .revision(1)
+        .build();
+
+    LtftFormDto.StatusDto status = LtftFormDto.StatusDto.builder()
+        .current(statusInfo)
+        .history(List.of())
+        .build();
+
+    LtftFormDto dto = LtftFormDto.builder()
+        .id(id)
+        .traineeTisId("some trainee")
+        .status(status)
+        .build();
+
+    when(service.getAdminLtftDetail(id)).thenReturn(Optional.of(dto));
+
+    byte[] body = "body".getBytes();
+    when(pdfService.generatePdf(dto, "admin")).thenReturn(body);
+
+    ResponseEntity<byte[]> response = controller.getLtftAdminDetailPdf(id);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), sameInstance(body));
+
+    ObjectMapper mapper = new ObjectMapper();
+    String formJson = mapper
+        .writerWithView(Views.Admin.class)
+        .writeValueAsString(dto);
+
+    assertThat("TPD name should be present in serialized JSON", formJson, containsString("John"));
+    assertThat("assignedAdmin should be present in serialized JSON", formJson, containsString("assignedAdmin"));
+    assertThat("modifiedBy should be present in serialized JSON", formJson, containsString("modifiedBy"));
+    assertThat("Admin email should be present in serialized JSON", formJson, containsString("john.doe@nhs.net"));
   }
 
   @Test

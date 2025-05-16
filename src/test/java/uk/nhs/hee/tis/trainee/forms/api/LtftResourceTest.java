@@ -22,8 +22,11 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.core.IsNot.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -31,6 +34,8 @@ import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.OK;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,7 +43,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.DiscussionsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
+import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.dto.views.Views;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 
 class LtftResourceTest {
@@ -174,6 +183,55 @@ class LtftResourceTest {
     LtftFormDto responseDto = response.getBody();
     assert responseDto != null;
     assertThat("Unexpected response body.", responseDto.equals(existingForm), is(true));
+  }
+
+  @Test
+  void shouldNotIncludeIdentifyingFieldsInTraineeDetailLtftForm() throws Exception {
+      PersonDto person = PersonDto.builder()
+        .name("John")
+        .email("john.doe@nhs.net")
+        .build();
+
+    LtftFormDto.StatusDto.StatusInfoDto statusInfo = LtftFormDto.StatusDto.StatusInfoDto.builder()
+        .state(LifecycleState.WITHDRAWN)
+        .assignedAdmin(person)
+        .modifiedBy(person)
+        .timestamp(Instant.now())
+        .revision(1)
+        .build();
+
+    LtftFormDto.StatusDto status = LtftFormDto.StatusDto.builder()
+        .current(statusInfo)
+        .history(List.of())
+        .build();
+
+    LtftFormDto existingForm = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId("some trainee")
+        .status(status)
+        .build();
+
+    when(service.getLtftForm(ID)).thenReturn(Optional.of(existingForm));
+
+    ResponseEntity<LtftFormDto> response = controller.getLtft(ID);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    LtftFormDto responseDto = response.getBody();
+    assertThat("Response body should not be null", responseDto, is(notNullValue()));
+
+    ObjectMapper mapper = new ObjectMapper();
+    String formJson = mapper
+        .writerWithView(Views.Trainee.Write.class)
+        .writeValueAsString(responseDto);
+
+    assertThat("assignedAdmin should not be serialized for the trainee view",
+        formJson, not(containsString("assignedAdmin")));
+
+    assertThat("modifiedBy should not be serialized for the trainee view",
+        formJson, not(containsString("modifiedBy")));
+
+    assertThat("Email should not be serialized for the trainee view",
+        formJson, not(containsString("john.doe@nhs.net")));
   }
 
   @Test
