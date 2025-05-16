@@ -22,6 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
@@ -58,9 +59,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
-import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.DiscussionsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.views.Views;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
@@ -220,20 +221,31 @@ class AdminLtftResourceTest {
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), sameInstance(body));
   }
-
   @Test
-  void shouldIncludeDiscussionsInAdminDetailLtftForm() throws IOException {
+  void shouldIncludeIdentifyingFieldsInAdminDetailLtftForm() throws IOException {
     UUID id = UUID.randomUUID();
 
-    DiscussionsDto discussions = DiscussionsDto.builder()
-        .tpdName("Dr. Smith")
-        .tpdEmail("dr.smith@example.com")
-        .other(List.of())
+    PersonDto person = PersonDto.builder()
+        .name("John")
+        .email("john.doe@nhs.net")
+        .build();
+
+    LtftFormDto.StatusDto.StatusInfoDto statusInfo = LtftFormDto.StatusDto.StatusInfoDto.builder()
+        .state(LifecycleState.WITHDRAWN)
+        .assignedAdmin(person)
+        .modifiedBy(person)
+        .revision(1)
+        .build();
+
+    LtftFormDto.StatusDto status = LtftFormDto.StatusDto.builder()
+        .current(statusInfo)
+        .history(List.of())
         .build();
 
     LtftFormDto dto = LtftFormDto.builder()
         .id(id)
-        .discussions(discussions)
+        .traineeTisId("some trainee")
+        .status(status)
         .build();
 
     when(service.getAdminLtftDetail(id)).thenReturn(Optional.of(dto));
@@ -247,12 +259,14 @@ class AdminLtftResourceTest {
     assertThat("Unexpected response body.", response.getBody(), sameInstance(body));
 
     ObjectMapper mapper = new ObjectMapper();
-    String form = mapper
+    String formJson = mapper
         .writerWithView(Views.Admin.class)
         .writeValueAsString(dto);
 
-    assertThat("Discussions should be serialized in the admin view", form.contains("discussions"));
-    assertThat("TPD name should be present in serialized JSON", form.contains("Dr. Smith"));
+    assertThat("TPD name should be present in serialized JSON", formJson, containsString("John"));
+    assertThat("assignedAdmin should be present in serialized JSON", formJson, containsString("assignedAdmin"));
+    assertThat("modifiedBy should be present in serialized JSON", formJson, containsString("modifiedBy"));
+    assertThat("Admin email should be present in serialized JSON", formJson, containsString("john.doe@nhs.net"));
   }
 
   @Test

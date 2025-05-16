@@ -58,31 +58,30 @@ public record LtftFormDto(
     UUID id,
     String traineeTisId,
 
-    @JsonView(Views.ReadOnly.class)
+    @JsonView({Views.ReadOnly.class, Views.Admin.class, Views.Trainee.class})
     @Null(groups = {Create.class, Update.class})
     String formRef,
 
-    @JsonView(Views.ReadOnly.class)
+    @JsonView({Views.ReadOnly.class, Views.Admin.class, Views.Trainee.class})
     @Null(groups = {Create.class, Update.class})
     Integer revision,
     String name,
     PersonalDetailsDto personalDetails,
     ProgrammeMembershipDto programmeMembership,
     DeclarationsDto declarations,
-    @JsonView(Views.Admin.class)
     DiscussionsDto discussions,
     CctChangeDto change,
     ReasonsDto reasons,
 
-    @JsonView(Views.ReadOnly.class)
+    @JsonView({Views.ReadOnly.class, Views.Admin.class, Views.Trainee.class})
     @Null(groups = {Create.class, Update.class})
     StatusDto status,
 
-    @JsonView(Views.ReadOnly.class)
+    @JsonView({Views.ReadOnly.class, Views.Admin.class, Views.Trainee.class})
     @Null(groups = {Create.class, Update.class})
     Instant created,
 
-    @JsonView(Views.ReadOnly.class)
+    @JsonView({Views.ReadOnly.class, Views.Admin.class, Views.Trainee.class})
     @Null(groups = {Create.class, Update.class})
     Instant lastModified) {
 
@@ -190,7 +189,9 @@ public record LtftFormDto(
 
         LifecycleState state,
         LftfStatusInfoDetailDto detail,
+        @JsonView(Views.Admin.class)
         PersonDto assignedAdmin,
+        @JsonView(Views.Admin.class)
         PersonDto modifiedBy,
         Instant timestamp,
         Integer revision

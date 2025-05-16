@@ -35,6 +35,7 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.OK;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -44,6 +45,8 @@ import org.springframework.http.ResponseEntity;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.DiscussionsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
+import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.views.Views;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 
@@ -182,18 +185,30 @@ class LtftResourceTest {
     assertThat("Unexpected response body.", responseDto.equals(existingForm), is(true));
   }
 
-    @Test
-  void shouldNotSerialiseDiscussionsForTraineeLtftFormWhenFound2() throws Exception {
-    DiscussionsDto discussions = DiscussionsDto.builder()
-        .tpdName("Dr. Smith")
-        .tpdEmail("dr.smith@example.com")
-        .other(List.of())
+  @Test
+  void shouldNotIncludeIdentifyingFieldsInTraineeDetailLtftForm() throws Exception {
+      PersonDto person = PersonDto.builder()
+        .name("John")
+        .email("john.doe@nhs.net")
+        .build();
+
+    LtftFormDto.StatusDto.StatusInfoDto statusInfo = LtftFormDto.StatusDto.StatusInfoDto.builder()
+        .state(LifecycleState.WITHDRAWN)
+        .assignedAdmin(person)
+        .modifiedBy(person)
+        .timestamp(Instant.now())
+        .revision(1)
+        .build();
+
+    LtftFormDto.StatusDto status = LtftFormDto.StatusDto.builder()
+        .current(statusInfo)
+        .history(List.of())
         .build();
 
     LtftFormDto existingForm = LtftFormDto.builder()
         .id(ID)
         .traineeTisId("some trainee")
-        .discussions(discussions)
+        .status(status)
         .build();
 
     when(service.getLtftForm(ID)).thenReturn(Optional.of(existingForm));
@@ -202,15 +217,21 @@ class LtftResourceTest {
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     LtftFormDto responseDto = response.getBody();
-    assertThat("Response body should not be null", response.getBody(), is(notNullValue()));
+    assertThat("Response body should not be null", responseDto, is(notNullValue()));
 
     ObjectMapper mapper = new ObjectMapper();
-    String form = mapper
+    String formJson = mapper
         .writerWithView(Views.Trainee.Write.class)
         .writeValueAsString(responseDto);
 
-      assertThat("Discussions should not be serialized for the trainee view",
-          form, not(containsString("discussions")));
+    assertThat("assignedAdmin should not be serialized for the trainee view",
+        formJson, not(containsString("assignedAdmin")));
+
+    assertThat("modifiedBy should not be serialized for the trainee view",
+        formJson, not(containsString("modifiedBy")));
+
+    assertThat("Email should not be serialized for the trainee view",
+        formJson, not(containsString("john.doe@nhs.net")));
   }
 
   @Test
