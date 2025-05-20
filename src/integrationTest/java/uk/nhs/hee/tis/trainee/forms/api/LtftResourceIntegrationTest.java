@@ -253,6 +253,33 @@ class LtftResourceIntegrationTest {
   }
 
   @Test
+  void shouldExcludeAdminDetailsWhenLtftFormFound() throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setId(ID);
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setContent(LtftContent.builder().name("name").build());
+
+    Person admin = Person.builder()
+        .name("assigned admin")
+        .email("assigned.admin@example.com")
+        .role("ADMIN")
+        .build();
+    ltft.setAssignedAdmin(admin, admin);
+    template.insert(ltft);
+
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(get("/api/ltft/" + ID)
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.id", is(ID.toString())))
+        .andExpect(jsonPath("$.status.current.assignedAdmin").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].assignedAdmin").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].modifiedBy").doesNotExist());
+  }
+
+  @Test
   void shouldBeBadRequestWhenCreatingLtftFormWithId() throws Exception {
     LtftFormDto formToSave = LtftFormDto.builder()
         .id(ID)
@@ -341,17 +368,22 @@ class LtftResourceIntegrationTest {
 
   @Test
   void shouldIgnoreAssignedAdminWhenCreatingLtftFormForTrainee() throws Exception {
+    PersonDto admin = PersonDto.builder()
+        .name("assigned admin")
+        .email("assigned.admin@example.com")
+        .role("ADMIN")
+        .build();
+    StatusInfoDto current = StatusInfoDto.builder()
+        .assignedAdmin(admin)
+        .modifiedBy(admin)
+        .build();
+
     LtftFormDto formToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("test")
         .status(StatusDto.builder()
-            .current(StatusInfoDto.builder()
-                .assignedAdmin(PersonDto.builder()
-                    .name("Ad Min")
-                    .email("ad.min@example.com")
-                    .role("ADMIN")
-                    .build())
-                .build())
+            .current(current)
+            .history(List.of(current))
             .build())
         .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
@@ -361,7 +393,10 @@ class LtftResourceIntegrationTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToSaveJson))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status.current.assignedAdmin", nullValue()));
+        .andExpect(jsonPath("$.status.current.assignedAdmin").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].assignedAdmin").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].modifiedBy").doesNotExist());
   }
 
   @Test
@@ -438,6 +473,40 @@ class LtftResourceIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(
             jsonPath("$.created", TimestampCloseTo.closeTo(Instant.now().getEpochSecond(), 1)));
+  }
+
+  @Test
+  void shouldExcludeAdminDetailsWhenLtftFormCreated() throws Exception {
+    PersonDto admin = PersonDto.builder()
+        .name("assigned admin")
+        .email("assigned.admin@example.com")
+        .role("ADMIN")
+        .build();
+    StatusInfoDto current = StatusInfoDto.builder()
+        .assignedAdmin(admin)
+        .modifiedBy(admin)
+        .build();
+
+    LtftFormDto formToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .name("test")
+        .status(StatusDto.builder()
+            .current(current)
+            .history(List.of(current))
+            .build())
+        .build();
+    String formToSaveJson = mapper.writeValueAsString(formToSave);
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(post("/api/ltft")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToSaveJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.name").value("test"))
+        .andExpect(jsonPath("$.status.current.assignedAdmin").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].assignedAdmin").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].modifiedBy").doesNotExist());
   }
 
   @Test
@@ -557,6 +626,16 @@ class LtftResourceIntegrationTest {
     form.setLifecycleState(LifecycleState.DRAFT);
     LtftForm formSaved = template.save(form);
 
+    PersonDto admin = PersonDto.builder()
+        .name("assigned admin")
+        .email("assigned.admin@example.com")
+        .role("ADMIN")
+        .build();
+    StatusInfoDto current = StatusInfoDto.builder()
+        .assignedAdmin(admin)
+        .modifiedBy(admin)
+        .build();
+
     UUID savedId = formSaved.getId();
     LtftFormDto formToUpdate = LtftFormDto.builder()
         .id(savedId)
@@ -564,9 +643,8 @@ class LtftResourceIntegrationTest {
         .formRef("ref_123")
         .revision(3)
         .status(StatusDto.builder()
-            .current(StatusInfoDto.builder()
-                .assignedAdmin(PersonDto.builder().name("Ad Min").build())
-                .build())
+            .current(current)
+            .history(List.of(current))
             .build())
         .created(Instant.EPOCH)
         .lastModified(Instant.EPOCH)
@@ -584,11 +662,46 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.formRef", nullValue()))
         .andExpect(jsonPath("$.revision").value(0))
         .andExpect(jsonPath("$.status.current.state", is("DRAFT")))
-        .andExpect(jsonPath("$.status.current.assignedAdmin", nullValue()))
+        .andExpect(jsonPath("$.status.current.assignedAdmin").doesNotExist())
         .andExpect(jsonPath("$.created").value(
             formSaved.getCreated().truncatedTo(ChronoUnit.MILLIS).toString()))
         .andExpect(jsonPath("$.lastModified",
             greaterThan(formSaved.getLastModified().toString())));
+  }
+
+  @Test
+  void shouldExcludeAdminDetailsWhenLtftFormUpdated() throws Exception {
+    LtftForm form = new LtftForm();
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(LifecycleState.DRAFT);
+
+    Person admin = Person.builder()
+        .name("assigned admin")
+        .email("assigned.admin@example.com")
+        .role("ADMIN")
+        .build();
+    form.setAssignedAdmin(admin, admin);
+    LtftForm formSaved = template.save(form);
+
+    UUID savedId = formSaved.getId();
+    LtftFormDto formToUpdate = LtftFormDto.builder()
+        .id(savedId)
+        .traineeTisId(TRAINEE_ID)
+        .name("updated")
+        .build();
+
+    String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(put("/api/ltft/" + savedId)
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToUpdateJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(savedId.toString()))
+        .andExpect(jsonPath("$.status.current.assignedAdmin").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].assignedAdmin").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].modifiedBy").doesNotExist());
   }
 
   @Test
@@ -686,6 +799,38 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.submitted", notNullValue()));
   }
 
+  @Test
+  void shouldExcludeAdminDetailsWhenLtftFormSubmitted() throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setId(ID);
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setLifecycleState(LifecycleState.DRAFT);
+    ltft.setContent(LtftContent.builder().name("test").build());
+
+    Person admin = Person.builder()
+        .name("assigned admin")
+        .email("assigned.admin@example.com")
+        .role("ADMIN")
+        .build();
+    ltft.setAssignedAdmin(admin, admin);
+    template.insert(ltft);
+
+    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
+        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+    String detailJson = mapper.writeValueAsString(detail);
+    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID, "email", "given", "family");
+    mockMvc.perform(put("/api/ltft/{id}/submit", ID)
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(detailJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(ID.toString()))
+        .andExpect(jsonPath("$.status.current.assignedAdmin").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].assignedAdmin").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].modifiedBy").doesNotExist());
+  }
+
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       PUT  | /api/ltft/ec5c8db7-9848-419b-85ce-c5b53b1e3794/unsubmit
@@ -766,6 +911,40 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.current.modifiedBy.role").value("TRAINEE"));
   }
 
+  @Test
+  void shouldExcludeAdminDetailsWhenLtftFormUnsubmitted() throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setId(ID);
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setLifecycleState(LifecycleState.SUBMITTED);
+    ltft.setContent(LtftContent.builder().name("test").build());
+    ltft.setRevision(0);
+
+    Person admin = Person.builder()
+        .name("assigned admin")
+        .email("assigned.admin@example.com")
+        .role("ADMIN")
+        .build();
+    ltft.setAssignedAdmin(admin, admin);
+    template.insert(ltft);
+
+    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
+        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+    String detailJson = mapper.writeValueAsString(detail);
+    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID, "email", "given", "family");
+    mockMvc.perform(put("/api/ltft/{id}/unsubmit", ID)
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(detailJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(ID.toString()))
+        .andExpect(jsonPath("$.status.current.assignedAdmin").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].assignedAdmin").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].modifiedBy").doesNotExist());
+  }
+
+
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = {"SUBMITTED", "UNSUBMITTED"})
   void shouldReturnBadRequestWhenWithdrawingLtftFormInInvalidState(LifecycleState state)
@@ -817,6 +996,38 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.current.modifiedBy.name").value("given family"))
         .andExpect(jsonPath("$.status.current.modifiedBy.email").value("email"))
         .andExpect(jsonPath("$.status.current.modifiedBy.role").value("TRAINEE"));
+  }
+
+  @Test
+  void shouldExcludeAdminDetailsWhenLtftFormWithdrawn() throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setId(ID);
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setLifecycleState(LifecycleState.SUBMITTED);
+    ltft.setContent(LtftContent.builder().name("test").build());
+
+    Person admin = Person.builder()
+        .name("assigned admin")
+        .email("assigned.admin@example.com")
+        .role("ADMIN")
+        .build();
+    ltft.setAssignedAdmin(admin, admin);
+    template.insert(ltft);
+
+    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
+        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+    String detailJson = mapper.writeValueAsString(detail);
+    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID, "email", "given", "family");
+    mockMvc.perform(put("/api/ltft/{id}/withdraw", ID)
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(detailJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(ID.toString()))
+        .andExpect(jsonPath("$.status.current.assignedAdmin").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].assignedAdmin").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].modifiedBy").doesNotExist());
   }
 
   /**
