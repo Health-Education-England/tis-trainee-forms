@@ -27,6 +27,9 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBM
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.awspring.cloud.sns.core.SnsNotification;
 import io.awspring.cloud.sns.core.SnsTemplate;
 import jakarta.annotation.Nullable;
@@ -60,6 +63,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.UserIdentity;
+import uk.nhs.hee.tis.trainee.forms.dto.views.Views;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
@@ -181,12 +185,28 @@ public class LtftService {
    */
   public Optional<LtftFormDto> getAdminLtftDetail(UUID formId) {
     Set<String> groups = adminIdentity.getGroups();
-    log.info("Getting LTFT form {} for admin {} with DBCs [{}]", formId, adminIdentity.getEmail(),
-        groups);
+    log.info("Getting LTFT form {} for admin {} with DBCs [{}]", formId, adminIdentity.getEmail(), groups);
+
     Optional<LtftForm> form = ltftFormRepository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-            formId, Set.of(DRAFT), adminIdentity.getGroups());
-    return form.map(mapper::toDto);
+            formId, Set.of(DRAFT), groups);
+
+    if (form.isEmpty()) {
+      return Optional.empty();
+    }
+
+    LtftFormDto dto = mapper.toDto(form.get());
+    ObjectMapper objectMapper = new ObjectMapper()
+        .registerModule(new JavaTimeModule());
+
+    try {
+      String json = objectMapper.writerWithView(Views.Admin.class)
+          .writeValueAsString(dto);
+      return Optional.ofNullable(objectMapper.readValue(json, LtftFormDto.class));
+    } catch (JsonProcessingException e) {
+      log.error("Failed to apply admin view to form {}", formId, e);
+      return Optional.of(dto);
+    }
   }
 
   /**
@@ -203,7 +223,18 @@ public class LtftService {
         value -> log.info("Found form {} for trainee [{}]", formId, traineeId),
         () -> log.info("Did not find form {} for trainee [{}]", formId, traineeId)
     );
-    return form.map(mapper::toDto);
+
+    LtftFormDto dto = mapper.toDto(form.get());
+    ObjectMapper objectMapper = new ObjectMapper()
+        .registerModule(new JavaTimeModule());
+    try {
+      String json = objectMapper.writerWithView(Views.Trainee.class)
+          .writeValueAsString(dto);
+      return Optional.ofNullable(objectMapper.readValue(json, LtftFormDto.class));
+    } catch (JsonProcessingException e) {
+      log.error("Failed to apply trainee write view to form {}", formId, e);
+      return Optional.ofNullable(dto);
+    }
   }
 
   /**
