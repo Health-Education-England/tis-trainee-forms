@@ -41,7 +41,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Update;
-import uk.nhs.hee.tis.trainee.forms.dto.views.Views;
+import uk.nhs.hee.tis.trainee.forms.dto.views.Trainee;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 
 /**
@@ -70,6 +70,7 @@ public class LtftResource {
    * @return The list of LTFT summaries, or an empty list if none found.
    */
   @GetMapping
+  @JsonView(Trainee.Read.class)
   public ResponseEntity<List<LtftSummaryDto>> getLtftSummaries() {
     log.info("Request to get summary list of LTFT records.");
     List<LtftSummaryDto> ltfts = service.getLtftSummaries();
@@ -84,8 +85,9 @@ public class LtftResource {
    * @return The DTO of the saved form (with an id).
    */
   @PostMapping
+  @JsonView(Trainee.Read.class)
   public ResponseEntity<LtftFormDto> createLtft(
-      @RequestBody @JsonView(Views.Trainee.Write.class) @Validated(Create.class) LtftFormDto dto) {
+      @RequestBody @JsonView(Trainee.Write.class) @Validated(Create.class) LtftFormDto dto) {
     log.info("Request to save new LTFT form: {}", dto);
     Optional<LtftFormDto> savedLtft = service.createLtftForm(dto);
     return savedLtft.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.badRequest().build());
@@ -100,8 +102,9 @@ public class LtftResource {
    * @return The DTO of the saved form.
    */
   @PutMapping("/{formId}")
+  @JsonView(Trainee.Read.class)
   public ResponseEntity<LtftFormDto> updateLtft(@PathVariable UUID formId,
-      @RequestBody @JsonView(Views.Trainee.Write.class) @Validated(Update.class) LtftFormDto dto) {
+      @RequestBody @JsonView(Trainee.Write.class) @Validated(Update.class) LtftFormDto dto) {
     log.info("Request to update LTFT form {}: {}", formId, dto);
     Optional<LtftFormDto> savedLtft = service.updateLtftForm(formId, dto);
     return savedLtft.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.badRequest().build());
@@ -115,6 +118,7 @@ public class LtftResource {
    * @return The DTO of the submitted form, or a bad request if the form could not be submitted.
    */
   @PutMapping("/{formId}/submit")
+  @JsonView(Trainee.Read.class)
   public ResponseEntity<LtftFormDto> submitLtft(@PathVariable UUID formId,
       @RequestBody LtftFormDto.StatusDto.LftfStatusInfoDetailDto reason) {
     log.info("Request to submit LTFT form {} with reason {}.", formId, reason);
@@ -131,6 +135,7 @@ public class LtftResource {
    * @return The DTO of the unsubmitted form, or a bad request if the form could not be unsubmitted.
    */
   @PutMapping("/{formId}/unsubmit")
+  @JsonView(Trainee.Read.class)
   public ResponseEntity<LtftFormDto> unsubmitLtft(@PathVariable UUID formId,
       @RequestBody LtftFormDto.StatusDto.LftfStatusInfoDetailDto reason) {
     log.info("Request to unsubmit LTFT form {} with reason {}.", formId, reason);
@@ -147,6 +152,7 @@ public class LtftResource {
    * @return The DTO of the withdrawn form, or a bad request if the form could not be withdrawn.
    */
   @PutMapping("/{formId}/withdraw")
+  @JsonView(Trainee.Read.class)
   public ResponseEntity<LtftFormDto> withdrawLtft(@PathVariable UUID formId,
       @RequestBody LtftFormDto.StatusDto.LftfStatusInfoDetailDto reason) {
     log.info("Request to withdraw LTFT form {} with reason {}.", formId, reason);
@@ -163,6 +169,7 @@ public class LtftResource {
    * @return The DTO of the saved form.
    */
   @GetMapping("/{formId}")
+  @JsonView(Trainee.Read.class)
   public ResponseEntity<LtftFormDto> getLtft(@PathVariable UUID formId) {
     log.info("Request to retrieve LTFT form {}.", formId);
     Optional<LtftFormDto> ltft = service.getLtftForm(formId);

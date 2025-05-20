@@ -22,7 +22,6 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
@@ -1862,93 +1861,6 @@ class LtftServiceTest {
     assertThat("Unexpected form returned.", formDtoOptional, is(Optional.empty()));
     verify(repository).findByTraineeTisIdAndId(TRAINEE_ID, ID);
     verifyNoMoreInteractions(repository);
-  }
-
-  @Test
-  void shouldnotFilterAdminDetailsForLtftUsingAdminView() {
-    LtftForm form = new LtftForm();
-
-    PersonDto person = PersonDto.builder()
-        .name("Tray Knee")
-        .email("tray.knee@nhs.net")
-        .build();
-
-    form.setAssignedAdmin(
-        Person.builder()
-            .name("Ad Min")
-            .email("ad.min@example.com")
-            .role("ADMIN")
-            .build(),
-        null
-    );
-
-    form.setId(ID);
-    form.setTraineeTisId(TRAINEE_ID);
-    form.setContent(LtftContent.builder().name("test").build());
-
-    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID))
-        .thenReturn(Optional.of(form));
-
-    when(repository.
-        findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-            any(),any(),any() ))
-        .thenReturn(Optional.of(form));
-
-    Optional<LtftFormDto> formDtoOptional = service.getAdminLtftDetail(ID);
-
-    System.out.println(formDtoOptional);
-    assertThat("Unexpected empty form returned.", formDtoOptional.isPresent(),
-        is(true));
-    verify(repository)
-        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-            any(),any(),any());
-    LtftFormDto returnedFormDto = formDtoOptional.get();
-
-    String dtoAsString = returnedFormDto.toString();
-    assertThat("DTO should contain admin email.", dtoAsString,
-        containsString("ad.min@example.com"));
-    assertThat("DTO should contain admin name.", dtoAsString,
-        containsString("Ad Min"));
-  }
-
-  @Test
-  void shouldFilterLtftUsingTraineeView() {
-    LtftForm form = new LtftForm();
-
-    PersonDto person = PersonDto.builder()
-        .name("Tray Knee")
-        .email("tray.knee@nhs.net")
-        .build();
-
-    form.setAssignedAdmin(
-        Person.builder()
-            .name("Ad Min")
-            .email("ad.min@example.com")
-            .role("ADMIN")
-            .build(),
-        null
-    );
-
-    form.setId(ID);
-    form.setTraineeTisId(TRAINEE_ID);
-    form.setContent(LtftContent.builder().name("test").build());
-    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID))
-        .thenReturn(Optional.of(form));
-
-    Optional<LtftFormDto> formDtoOptional = service.getLtftForm(ID);
-
-    System.out.println(formDtoOptional);
-    assertThat("Unexpected empty form returned.", formDtoOptional.isPresent(),
-        is(true));
-    verify(repository).findByTraineeTisIdAndId(TRAINEE_ID, ID);
-    LtftFormDto returnedFormDto = formDtoOptional.get();
-
-    String dtoAsString = returnedFormDto.toString();
-    assertThat("DTO should not contain admin email.", dtoAsString,
-        not(containsString("ad.min@example.com")));
-    assertThat("DTO should not contain admin name.", dtoAsString,
-        not(containsString("Ad Min")));
-
   }
 
   @Test

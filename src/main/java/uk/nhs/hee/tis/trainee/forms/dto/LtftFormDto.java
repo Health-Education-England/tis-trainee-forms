@@ -31,7 +31,8 @@ import lombok.Builder;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Update;
-import uk.nhs.hee.tis.trainee.forms.dto.views.Views;
+import uk.nhs.hee.tis.trainee.forms.dto.views.Admin;
+import uk.nhs.hee.tis.trainee.forms.dto.views.ReadOnly;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChangeType;
 
 /**
@@ -58,11 +59,11 @@ public record LtftFormDto(
     UUID id,
     String traineeTisId,
 
-    @JsonView({Views.ReadOnly.class, Views.Admin.class, Views.Trainee.class})
+    @JsonView(ReadOnly.class)
     @Null(groups = {Create.class, Update.class})
     String formRef,
 
-    @JsonView({Views.ReadOnly.class, Views.Admin.class, Views.Trainee.class})
+    @JsonView(ReadOnly.class)
     @Null(groups = {Create.class, Update.class})
     Integer revision,
     String name,
@@ -73,15 +74,15 @@ public record LtftFormDto(
     CctChangeDto change,
     ReasonsDto reasons,
 
-    @JsonView({Views.ReadOnly.class, Views.Admin.class, Views.Trainee.class})
+    @JsonView(ReadOnly.class)
     @Null(groups = {Create.class, Update.class})
     StatusDto status,
 
-    @JsonView({Views.ReadOnly.class, Views.Admin.class, Views.Trainee.class})
+    @JsonView(ReadOnly.class)
     @Null(groups = {Create.class, Update.class})
     Instant created,
 
-    @JsonView({Views.ReadOnly.class, Views.Admin.class, Views.Trainee.class})
+    @JsonView(ReadOnly.class)
     @Null(groups = {Create.class, Update.class})
     Instant lastModified) {
 
@@ -189,9 +190,9 @@ public record LtftFormDto(
 
         LifecycleState state,
         LftfStatusInfoDetailDto detail,
-        @JsonView(Views.Admin.class)
+        @JsonView(Admin.Read.class)
         PersonDto assignedAdmin,
-        @JsonView(Views.Admin.class)
+        @JsonView(Admin.Read.class)
         PersonDto modifiedBy,
         Instant timestamp,
         Integer revision

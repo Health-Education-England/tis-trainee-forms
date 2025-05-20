@@ -409,11 +409,6 @@ class LtftResourceIntegrationTest {
             .message("test message")
             .build())
         .timestamp(Instant.EPOCH)
-        .modifiedBy(PersonDto.builder()
-            .name("Trey Knee")
-            .email("trey.knee@example.com")
-            .role("test role")
-            .build())
         .build();
 
     LtftFormDto formToSave = LtftFormDto.builder()
@@ -436,9 +431,6 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.current.state", is("DRAFT")))
         .andExpect(jsonPath("$.status.current.detail.reason", nullValue()))
         .andExpect(jsonPath("$.status.current.detail.message", nullValue()))
-        .andExpect(jsonPath("$.status.current.modifiedBy.name", is("Anthony Gilliam")))
-        .andExpect(jsonPath("$.status.current.modifiedBy.email", is("anthony.gilliam@example.com")))
-        .andExpect(jsonPath("$.status.current.modifiedBy.role", is("TRAINEE")))
         .andExpect(jsonPath("$.status.current.timestamp",
             TimestampCloseTo.closeTo(Instant.now().getEpochSecond(), 1)))
         .andExpect(jsonPath("$.status.current.revision", is(0)))
@@ -446,10 +438,6 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.history[0].state", is("DRAFT")))
         .andExpect(jsonPath("$.status.history[0].detail.reason", nullValue()))
         .andExpect(jsonPath("$.status.history[0].detail.message", nullValue()))
-        .andExpect(jsonPath("$.status.history[0].modifiedBy.name", is("Anthony Gilliam")))
-        .andExpect(
-            jsonPath("$.status.history[0].modifiedBy.email", is("anthony.gilliam@example.com")))
-        .andExpect(jsonPath("$.status.history[0].modifiedBy.role", is("TRAINEE")))
         .andExpect(jsonPath("$.status.history[0].timestamp",
             TimestampCloseTo.closeTo(Instant.now().getEpochSecond(), 1)))
         .andExpect(jsonPath("$.status.history[0].revision", is(0)))
@@ -793,9 +781,6 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.current.state").value(LifecycleState.SUBMITTED.name()))
         .andExpect(jsonPath("$.status.current.detail.reason").value("reason"))
         .andExpect(jsonPath("$.status.current.detail.message").value("message"))
-        .andExpect(jsonPath("$.status.current.modifiedBy.name").value("given family"))
-        .andExpect(jsonPath("$.status.current.modifiedBy.email").value("email"))
-        .andExpect(jsonPath("$.status.current.modifiedBy.role").value("TRAINEE"))
         .andExpect(jsonPath("$.status.submitted", notNullValue()));
   }
 
@@ -905,10 +890,7 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.current.state").value(LifecycleState.UNSUBMITTED.name()))
         .andExpect(jsonPath("$.status.current.revision").value("1"))
         .andExpect(jsonPath("$.status.current.detail.reason").value("reason"))
-        .andExpect(jsonPath("$.status.current.detail.message").value("message"))
-        .andExpect(jsonPath("$.status.current.modifiedBy.name").value("given family"))
-        .andExpect(jsonPath("$.status.current.modifiedBy.email").value("email"))
-        .andExpect(jsonPath("$.status.current.modifiedBy.role").value("TRAINEE"));
+        .andExpect(jsonPath("$.status.current.detail.message").value("message"));
   }
 
   @Test
@@ -992,10 +974,7 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.traineeTisId").value(TRAINEE_ID))
         .andExpect(jsonPath("$.status.current.state").value(LifecycleState.WITHDRAWN.name()))
         .andExpect(jsonPath("$.status.current.detail.reason").value("reason"))
-        .andExpect(jsonPath("$.status.current.detail.message").value("message"))
-        .andExpect(jsonPath("$.status.current.modifiedBy.name").value("given family"))
-        .andExpect(jsonPath("$.status.current.modifiedBy.email").value("email"))
-        .andExpect(jsonPath("$.status.current.modifiedBy.role").value("TRAINEE"));
+        .andExpect(jsonPath("$.status.current.detail.message").value("message"));
   }
 
   @Test
