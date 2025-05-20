@@ -217,23 +217,21 @@ public class LtftService {
   public Optional<LtftFormDto> getLtftForm(UUID formId) {
     String traineeId = traineeIdentity.getTraineeId();
     log.info("Getting LTFT form {} for trainee [{}]", formId, traineeId);
-    Optional<LtftForm> form = ltftFormRepository.findByTraineeTisIdAndId(traineeId, formId);
-    form.ifPresentOrElse(
-        value -> log.info("Found form {} for trainee [{}]", formId, traineeId),
-        () -> log.info("Did not find form {} for trainee [{}]", formId, traineeId)
-    );
 
-    LtftFormDto dto = mapper.toDto(form.get());
-    ObjectMapper objectMapper = new ObjectMapper()
-        .registerModule(new JavaTimeModule());
-    try {
-      String json = objectMapper.writerWithView(Views.Trainee.class)
-          .writeValueAsString(dto);
-      return Optional.ofNullable(objectMapper.readValue(json, LtftFormDto.class));
-    } catch (JsonProcessingException e) {
-      log.error("Failed to apply trainee write view to form {}", formId, e);
-      return Optional.ofNullable(dto);
-    }
+    Optional<LtftForm> form = ltftFormRepository.findByTraineeTisIdAndId(traineeId, formId);
+
+    return form.map(f -> {
+      log.info("Found form {} for trainee [{}]", formId, traineeId);
+      LtftFormDto dto = mapper.toDto(f);
+      ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+      try {
+        String json = objectMapper.writerWithView(Views.Trainee.class).writeValueAsString(dto);
+        return objectMapper.readValue(json, LtftFormDto.class);
+      } catch (JsonProcessingException e) {
+        log.error("Failed to apply trainee write view to form {}", formId, e);
+        return dto;
+      }
+    });
   }
 
   /**
