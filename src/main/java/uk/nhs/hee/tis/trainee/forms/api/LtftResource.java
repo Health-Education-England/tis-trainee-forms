@@ -38,6 +38,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LtftStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Update;
@@ -116,7 +117,7 @@ public class LtftResource {
    */
   @PutMapping("/{formId}/submit")
   public ResponseEntity<LtftFormDto> submitLtft(@PathVariable UUID formId,
-      @RequestBody LtftFormDto.StatusDto.LftfStatusInfoDetailDto reason) {
+      @RequestBody LtftStatusInfoDetailDto reason) {
     log.info("Request to submit LTFT form {} with reason {}.", formId, reason);
     Optional<LtftFormDto> submittedLtft = service.submitLtftForm(formId, reason);
     return submittedLtft.map(ResponseEntity::ok)
@@ -132,7 +133,7 @@ public class LtftResource {
    */
   @PutMapping("/{formId}/unsubmit")
   public ResponseEntity<LtftFormDto> unsubmitLtft(@PathVariable UUID formId,
-      @RequestBody LtftFormDto.StatusDto.LftfStatusInfoDetailDto reason) {
+      @RequestBody LtftStatusInfoDetailDto reason) {
     log.info("Request to unsubmit LTFT form {} with reason {}.", formId, reason);
     Optional<LtftFormDto> unsubmittedLtft = service.unsubmitLtftForm(formId, reason);
     return unsubmittedLtft.map(ResponseEntity::ok)
@@ -148,7 +149,7 @@ public class LtftResource {
    */
   @PutMapping("/{formId}/withdraw")
   public ResponseEntity<LtftFormDto> withdrawLtft(@PathVariable UUID formId,
-      @RequestBody LtftFormDto.StatusDto.LftfStatusInfoDetailDto reason) {
+      @RequestBody LtftStatusInfoDetailDto reason) {
     log.info("Request to withdraw LTFT form {} with reason {}.", formId, reason);
     Optional<LtftFormDto> withdrawnLtft = service.withdrawLtftForm(formId, reason);
     return withdrawnLtft.map(ResponseEntity::ok)

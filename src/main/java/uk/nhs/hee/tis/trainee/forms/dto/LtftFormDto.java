@@ -188,7 +188,7 @@ public record LtftFormDto(
     public record StatusInfoDto(
 
         LifecycleState state,
-        LftfStatusInfoDetailDto detail,
+        LtftStatusInfoDetailDto detail,
         PersonDto assignedAdmin,
         PersonDto modifiedBy,
         Instant timestamp,
@@ -204,7 +204,7 @@ public record LtftFormDto(
      * @param message A message associated with the state change.
      */
     @Builder
-    public record LftfStatusInfoDetailDto(
+    public record LtftStatusInfoDetailDto(
 
         String reason,
         String message) {

@@ -57,7 +57,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
-import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LtftStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
@@ -278,7 +278,7 @@ class AdminLtftResourceTest {
   @Test
   void shouldThrowExceptionWhenUnsubmitNotValid() throws MethodArgumentNotValidException {
     UUID id = UUID.randomUUID();
-    LftfStatusInfoDetailDto detail = LftfStatusInfoDetailDto.builder().reason("reason").build();
+    LtftStatusInfoDetailDto detail = LtftStatusInfoDetailDto.builder().reason("reason").build();
     when(service.updateStatusAsAdmin(id, UNSUBMITTED, detail)).thenThrow(
         MethodArgumentNotValidException.class);
 
@@ -288,7 +288,7 @@ class AdminLtftResourceTest {
   @Test
   void shouldReturnNotFoundWhenUnsubmitFormNotFound() throws MethodArgumentNotValidException {
     UUID id = UUID.randomUUID();
-    LftfStatusInfoDetailDto detail = LftfStatusInfoDetailDto.builder().reason("reason").build();
+    LtftStatusInfoDetailDto detail = LtftStatusInfoDetailDto.builder().reason("reason").build();
     when(service.updateStatusAsAdmin(id, UNSUBMITTED, detail)).thenReturn(Optional.empty());
 
     ResponseEntity<LtftFormDto> response = controller.unsubmitLtft(id, detail);
@@ -301,7 +301,7 @@ class AdminLtftResourceTest {
   void shouldReturnUnsubmittedFormWhenFormUnsubmitted() throws MethodArgumentNotValidException {
     UUID id = UUID.randomUUID();
     LtftFormDto dto = LtftFormDto.builder().id(id).build();
-    LftfStatusInfoDetailDto detail = LftfStatusInfoDetailDto.builder().reason("reason").build();
+    LtftStatusInfoDetailDto detail = LtftStatusInfoDetailDto.builder().reason("reason").build();
     when(service.updateStatusAsAdmin(id, UNSUBMITTED, detail)).thenReturn(Optional.of(dto));
 
     ResponseEntity<LtftFormDto> response = controller.unsubmitLtft(id, detail);
