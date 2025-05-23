@@ -83,6 +83,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import uk.nhs.hee.tis.trainee.forms.dto.DiscussionDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctChangeDto;
@@ -1070,12 +1071,12 @@ class LtftServiceTest {
     assertThat("Unexpected TPD email.", discussions.tpdEmail(), is("t.pd@example.com"));
     assertThat("Unexpected other discussion count.", discussions.other(), hasSize(2));
 
-    PersonDto discussion1 = discussions.other().get(0);
+    DiscussionDto discussion1 = discussions.other().get(0);
     assertThat("Unexpected discussion name.", discussion1.name(), is("Other 1"));
     assertThat("Unexpected discussion email.", discussion1.email(), is("other.1@example.com"));
     assertThat("Unexpected discussion role.", discussion1.role(), is("Role 1"));
 
-    PersonDto discussion2 = discussions.other().get(1);
+    DiscussionDto discussion2 = discussions.other().get(1);
     assertThat("Unexpected discussion name.", discussion2.name(), is("Other 2"));
     assertThat("Unexpected discussion email.", discussion2.email(), is("other.2@example.com"));
     assertThat("Unexpected discussion role.", discussion2.role(), is("Role 2"));
@@ -2249,12 +2250,12 @@ class LtftServiceTest {
         .discussions(DiscussionsDto.builder()
             .tpdName("new TPD")
             .tpdEmail("new.tpd@example.com")
-            .other(List.of(PersonDto.builder()
+            .other(List.of(DiscussionDto.builder()
                     .name("new other 1")
                     .email("new.other1@example.com")
                     .role("new role 1")
                     .build(),
-                PersonDto.builder()
+                DiscussionDto.builder()
                     .name("new other 2")
                     .email("new.other2@example.com")
                     .role("new role 2")
@@ -2290,15 +2291,15 @@ class LtftServiceTest {
     assertThat("Unexpected TPD name.", discussions.tpdName(), is("new TPD"));
     assertThat("Unexpected TPD email.", discussions.tpdEmail(), is("new.tpd@example.com"));
 
-    List<PersonDto> other = discussions.other();
+    List<DiscussionDto> other = discussions.other();
     assertThat("Unexpected other discussion count.", other, hasSize(2));
 
-    PersonDto other1 = other.get(0);
+    DiscussionDto other1 = other.get(0);
     assertThat("Unexpected name.", other1.name(), is("new other 1"));
     assertThat("Unexpected email.", other1.email(), is("new.other1@example.com"));
     assertThat("Unexpected role.", other1.role(), is("new role 1"));
 
-    PersonDto other2 = other.get(1);
+    DiscussionDto other2 = other.get(1);
     assertThat("Unexpected name.", other2.name(), is("new other 2"));
     assertThat("Unexpected email.", other2.email(), is("new.other2@example.com"));
     assertThat("Unexpected role.", other2.role(), is("new role 2"));

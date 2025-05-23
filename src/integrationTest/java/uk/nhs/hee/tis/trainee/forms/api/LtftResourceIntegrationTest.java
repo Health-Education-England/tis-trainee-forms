@@ -274,9 +274,15 @@ class LtftResourceIntegrationTest {
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.id", is(ID.toString())))
         .andExpect(jsonPath("$.status.current.assignedAdmin").doesNotExist())
-        .andExpect(jsonPath("$.status.current.modifiedBy").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy.name").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy.email").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy.role")
+            .value("ADMIN"))
         .andExpect(jsonPath("$.status.history[0].assignedAdmin").doesNotExist())
-        .andExpect(jsonPath("$.status.history[0].modifiedBy").doesNotExist());
+        .andExpect(jsonPath("$.status.history[0].modifiedBy.name").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].modifiedBy.email").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].modifiedBy.role")
+            .value("ADMIN"));
   }
 
   @Test
@@ -394,9 +400,15 @@ class LtftResourceIntegrationTest {
             .content(formToSaveJson))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status.current.assignedAdmin").doesNotExist())
-        .andExpect(jsonPath("$.status.current.modifiedBy").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy.name").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy.email").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy.role")
+            .value("TRAINEE"))
         .andExpect(jsonPath("$.status.history[0].assignedAdmin").doesNotExist())
-        .andExpect(jsonPath("$.status.history[0].modifiedBy").doesNotExist());
+        .andExpect(jsonPath("$.status.history[0].modifiedBy.name").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].modifiedBy.email").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].modifiedBy.role")
+            .value("TRAINEE"));
   }
 
   @Test
@@ -492,9 +504,15 @@ class LtftResourceIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.name").value("test"))
         .andExpect(jsonPath("$.status.current.assignedAdmin").doesNotExist())
-        .andExpect(jsonPath("$.status.current.modifiedBy").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy.name").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy.email").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy.role")
+            .value("TRAINEE"))
         .andExpect(jsonPath("$.status.history[0].assignedAdmin").doesNotExist())
-        .andExpect(jsonPath("$.status.history[0].modifiedBy").doesNotExist());
+        .andExpect(jsonPath("$.status.history[0].modifiedBy.name").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].modifiedBy.email").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].modifiedBy.role")
+            .value("TRAINEE"));
   }
 
   @Test
@@ -687,9 +705,13 @@ class LtftResourceIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(savedId.toString()))
         .andExpect(jsonPath("$.status.current.assignedAdmin").doesNotExist())
-        .andExpect(jsonPath("$.status.current.modifiedBy").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy.name").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy.email").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy.role")
+            .value("ADMIN"))
         .andExpect(jsonPath("$.status.history[0].assignedAdmin").doesNotExist())
-        .andExpect(jsonPath("$.status.history[0].modifiedBy").doesNotExist());
+        .andExpect(jsonPath("$.status.history[0].modifiedBy.name").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].modifiedBy.email").doesNotExist());
   }
 
   @Test
@@ -811,9 +833,13 @@ class LtftResourceIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(ID.toString()))
         .andExpect(jsonPath("$.status.current.assignedAdmin").doesNotExist())
-        .andExpect(jsonPath("$.status.current.modifiedBy").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy.name").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy.email").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy.role")
+            .value("TRAINEE"))
         .andExpect(jsonPath("$.status.history[0].assignedAdmin").doesNotExist())
-        .andExpect(jsonPath("$.status.history[0].modifiedBy").doesNotExist());
+        .andExpect(jsonPath("$.status.history[0].modifiedBy.name").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].modifiedBy.email").doesNotExist());
   }
 
   @ParameterizedTest
@@ -921,9 +947,13 @@ class LtftResourceIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(ID.toString()))
         .andExpect(jsonPath("$.status.current.assignedAdmin").doesNotExist())
-        .andExpect(jsonPath("$.status.current.modifiedBy").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy.name").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy.email").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy.role")
+            .value("TRAINEE"))
         .andExpect(jsonPath("$.status.history[0].assignedAdmin").doesNotExist())
-        .andExpect(jsonPath("$.status.history[0].modifiedBy").doesNotExist());
+        .andExpect(jsonPath("$.status.history[0].modifiedBy.name").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].modifiedBy.email").doesNotExist());
   }
 
 
@@ -1004,9 +1034,13 @@ class LtftResourceIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(ID.toString()))
         .andExpect(jsonPath("$.status.current.assignedAdmin").doesNotExist())
-        .andExpect(jsonPath("$.status.current.modifiedBy").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy.name").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy.email").doesNotExist())
+        .andExpect(jsonPath("$.status.current.modifiedBy.role")
+            .value("TRAINEE"))
         .andExpect(jsonPath("$.status.history[0].assignedAdmin").doesNotExist())
-        .andExpect(jsonPath("$.status.history[0].modifiedBy").doesNotExist());
+        .andExpect(jsonPath("$.status.history[0].modifiedBy.name").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].modifiedBy.email").doesNotExist());
   }
 
   /**

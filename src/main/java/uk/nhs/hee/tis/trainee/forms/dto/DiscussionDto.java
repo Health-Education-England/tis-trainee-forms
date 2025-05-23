@@ -21,9 +21,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.dto;
 
-import com.fasterxml.jackson.annotation.JsonView;
 import lombok.Builder;
-import uk.nhs.hee.tis.trainee.forms.dto.views.Admin;
 
 /**
  * Details of a person and their role.
@@ -33,10 +31,8 @@ import uk.nhs.hee.tis.trainee.forms.dto.views.Admin;
  * @param role  The person's role, context dependent.
  */
 @Builder
-public record PersonDto(
-    @JsonView(Admin.Read.class)
+public record DiscussionDto(
     String name,
-    @JsonView(Admin.Read.class)
     String email,
     String role) {
 

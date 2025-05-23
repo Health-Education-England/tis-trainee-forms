@@ -192,7 +192,6 @@ public record LtftFormDto(
         LftfStatusInfoDetailDto detail,
         @JsonView(Admin.Read.class)
         PersonDto assignedAdmin,
-        @JsonView(Admin.Read.class)
         PersonDto modifiedBy,
         Instant timestamp,
         Integer revision
@@ -226,7 +225,7 @@ public record LtftFormDto(
   public record DiscussionsDto(
       String tpdName,
       String tpdEmail,
-      List<PersonDto> other) {
+      List<DiscussionDto> other) {
 
   }
 }
