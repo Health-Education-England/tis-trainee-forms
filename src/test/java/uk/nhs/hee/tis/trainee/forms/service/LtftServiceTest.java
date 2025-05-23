@@ -91,7 +91,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.DiscussionsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.ProgrammeMembershipDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.ReasonsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto;
-import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LtftStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
@@ -1549,7 +1549,7 @@ class LtftServiceTest {
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     Optional<LtftFormDto> optionalDto = service.updateStatusAsAdmin(ID, targetState,
-        LftfStatusInfoDetailDto.builder()
+        LtftStatusInfoDetailDto.builder()
             .reason("detail reason")
             .message("detail message")
             .build()
@@ -1565,7 +1565,7 @@ class LtftServiceTest {
     assertThat("Unexpected current revision.", current.revision(), is(0));
     assertThat("Unexpected current timestamp.", current.timestamp(), notNullValue());
 
-    LftfStatusInfoDetailDto detail = current.detail();
+    LtftStatusInfoDetailDto detail = current.detail();
     assertThat("Unexpected current reason.", detail.reason(), is("detail reason"));
     assertThat("Unexpected current message.", detail.message(), is("detail message"));
 
@@ -1621,7 +1621,7 @@ class LtftServiceTest {
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     Optional<LtftFormDto> optionalDto = service.updateStatusAsAdmin(ID, targetState,
-        LftfStatusInfoDetailDto.builder()
+        LtftStatusInfoDetailDto.builder()
             .reason("detail reason")
             .message("detail message")
             .build()
@@ -1636,7 +1636,7 @@ class LtftServiceTest {
     assertThat("Unexpected current state.", current.state(), is(targetState));
     assertThat("Unexpected current timestamp.", current.timestamp(), notNullValue());
 
-    LftfStatusInfoDetailDto detail = current.detail();
+    LtftStatusInfoDetailDto detail = current.detail();
     assertThat("Unexpected current reason.", detail.reason(), is("detail reason"));
     assertThat("Unexpected current message.", detail.message(), is("detail message"));
 
@@ -1691,7 +1691,7 @@ class LtftServiceTest {
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     Optional<LtftFormDto> optionalDto = service.updateStatusAsAdmin(ID, targetState,
-        LftfStatusInfoDetailDto.builder()
+        LtftStatusInfoDetailDto.builder()
             .reason("detail reason")
             .message("detail message")
             .build()
@@ -1707,7 +1707,7 @@ class LtftServiceTest {
     assertThat("Unexpected current revision.", current.revision(), is(0));
     assertThat("Unexpected current timestamp.", current.timestamp(), notNullValue());
 
-    LftfStatusInfoDetailDto detail = current.detail();
+    LtftStatusInfoDetailDto detail = current.detail();
     assertThat("Unexpected current reason.", detail.reason(), is("detail reason"));
     assertThat("Unexpected current message.", detail.message(), is("detail message"));
 
@@ -1735,7 +1735,7 @@ class LtftServiceTest {
     Arrays.stream(LifecycleState.values()).forEach(targetState -> {
       MethodArgumentNotValidException exception = assertThrows(
           MethodArgumentNotValidException.class,
-          () -> service.updateStatusAsAdmin(ID, targetState, LftfStatusInfoDetailDto.builder()
+          () -> service.updateStatusAsAdmin(ID, targetState, LtftStatusInfoDetailDto.builder()
               .reason("detail reason")
               .message("detail message")
               .build()
@@ -1786,7 +1786,7 @@ class LtftServiceTest {
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     assertDoesNotThrow(() -> service.updateStatusAsAdmin(ID, targetState,
-        LftfStatusInfoDetailDto.builder().build()));
+        LtftStatusInfoDetailDto.builder().build()));
   }
 
   @ParameterizedTest
@@ -1827,7 +1827,7 @@ class LtftServiceTest {
 
     MethodArgumentNotValidException exception = assertThrows(MethodArgumentNotValidException.class,
         () -> service.updateStatusAsAdmin(ID, targetState,
-            LftfStatusInfoDetailDto.builder().build()));
+            LtftStatusInfoDetailDto.builder().build()));
 
     List<FieldError> fieldErrors = exception.getFieldErrors();
     assertThat("Unexpected error count.", fieldErrors, hasSize(1));
@@ -2523,7 +2523,7 @@ class LtftServiceTest {
     StatusInfoDto newStatus = StatusInfoDto.builder()
         .state(SUBMITTED)
         .revision(2)
-        .detail(LftfStatusInfoDetailDto.builder()
+        .detail(LtftStatusInfoDetailDto.builder()
             .reason("new reason")
             .message("new message")
             .build())
@@ -2691,8 +2691,8 @@ class LtftServiceTest {
   @EnumSource(value = LifecycleState.class, names = {"SUBMITTED", "UNSUBMITTED", "WITHDRAWN"})
   void shouldReturnEmptyWhenTransitionFormNotFound(LifecycleState targetState) {
     when(repository.findByTraineeTisIdAndId(any(), any())).thenReturn(Optional.empty());
-    LftfStatusInfoDetailDto detail
-        = new LftfStatusInfoDetailDto("reason", "message");
+    LtftStatusInfoDetailDto detail
+        = new LtftStatusInfoDetailDto("reason", "message");
 
     Optional<LtftFormDto> result = service.changeLtftFormState(ID, detail, targetState);
     assertThat("Unexpected transition result when form not found.", result.isPresent(), is(false));
@@ -2706,7 +2706,7 @@ class LtftServiceTest {
     form.setTraineeTisId(TRAINEE_ID);
     form.setLifecycleState(APPROVED); //cannot transition to any of the given states
     form.setContent(LtftContent.builder().name("test").build());
-    LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
+    LtftStatusInfoDetailDto detail = new LtftStatusInfoDetailDto("reason", "message");
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
 
@@ -2740,7 +2740,7 @@ class LtftServiceTest {
     form.setTraineeTisId(TRAINEE_ID);
     form.setLifecycleState(LifecycleState.SUBMITTED);
     form.setContent(LtftContent.builder().name("test").build());
-    LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto(null, "message");
+    LtftStatusInfoDetailDto detail = new LtftStatusInfoDetailDto(null, "message");
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
 
@@ -2777,7 +2777,7 @@ class LtftServiceTest {
     form.setLifecycleState(DRAFT);
     form.setContent(LtftContent.builder().name("test").build());
 
-    LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
+    LtftStatusInfoDetailDto detail = new LtftStatusInfoDetailDto("reason", "message");
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -2861,7 +2861,7 @@ class LtftServiceTest {
     form.setContent(LtftContent.builder().name("test").build());
     form.setFormRef("formRef_001");
 
-    LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
+    LtftStatusInfoDetailDto detail = new LtftStatusInfoDetailDto("reason", "message");
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -2894,7 +2894,7 @@ class LtftServiceTest {
     form.setContent(LtftContent.builder().name("test").build());
     form.setFormRef("formRef_001");
 
-    LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
+    LtftStatusInfoDetailDto detail = new LtftStatusInfoDetailDto("reason", "message");
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -3014,7 +3014,7 @@ class LtftServiceTest {
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(any(), any()))
         .thenReturn(Optional.of(form));
 
-    LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
+    LtftStatusInfoDetailDto detail = new LtftStatusInfoDetailDto("reason", "message");
     assertThrows(MethodArgumentNotValidException.class,
         () -> service.updateStatusAsAdmin(ID, SUBMITTED, detail));
 
@@ -3032,7 +3032,7 @@ class LtftServiceTest {
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
+    LtftStatusInfoDetailDto detail = new LtftStatusInfoDetailDto("reason", "message");
     service.changeLtftFormState(ID, detail, SUBMITTED);
 
     ArgumentCaptor<SnsNotification<LtftFormDto>> snsNotificationCaptor = ArgumentCaptor.captor();
@@ -3059,7 +3059,7 @@ class LtftServiceTest {
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
 
-    LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
+    LtftStatusInfoDetailDto detail = new LtftStatusInfoDetailDto("reason", "message");
     service.changeLtftFormState(ID, detail, SUBMITTED);
 
     verifyNoInteractions(snsTemplate);
@@ -3080,7 +3080,7 @@ class LtftServiceTest {
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     Optional<LtftFormDto> optionalDto = service.updateStatusAsAdmin(ID, targetState,
-        LftfStatusInfoDetailDto.builder()
+        LtftStatusInfoDetailDto.builder()
             .reason("detail reason")
             .message("detail message")
             .build()

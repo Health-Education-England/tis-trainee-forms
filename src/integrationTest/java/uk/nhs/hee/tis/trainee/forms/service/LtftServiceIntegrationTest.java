@@ -53,6 +53,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LtftStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
@@ -160,8 +161,8 @@ class LtftServiceIntegrationTest {
     assertThat("Unexpected form ID.", submitted.id(), is(draft.id()));
     assertThat("Unexpected form ref.", submitted.formRef(), is("ltft_" + TRAINEE_ID + "_001"));
 
-    LtftFormDto.StatusDto.LftfStatusInfoDetailDto reason
-        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+    LtftStatusInfoDetailDto reason
+        = new LtftStatusInfoDetailDto("reason", "message");
     LtftFormDto unsubmitted = service.unsubmitLtftForm(submitted.id(), reason).orElseThrow();
     assertThat("Unexpected form ID.", unsubmitted.id(), is(submitted.id()));
     assertThat("Unexpected form ref.", unsubmitted.formRef(), is(submitted.formRef()));

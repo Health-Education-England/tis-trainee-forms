@@ -53,7 +53,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
-import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LtftStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -313,7 +313,7 @@ public class LtftService {
    * @param detail The status detail for the submission.
    * @return The DTO of the submitted form, or empty if form not found or could not be submitted.
    */
-  public Optional<LtftFormDto> submitLtftForm(UUID formId, LftfStatusInfoDetailDto detail) {
+  public Optional<LtftFormDto> submitLtftForm(UUID formId, LtftStatusInfoDetailDto detail) {
     return changeLtftFormState(formId, detail, SUBMITTED);
   }
 
@@ -325,7 +325,7 @@ public class LtftService {
    * @return The DTO of the unsubmitted form, or empty if form not found or could not be
    *     unsubmitted.
    */
-  public Optional<LtftFormDto> unsubmitLtftForm(UUID formId, LftfStatusInfoDetailDto detail) {
+  public Optional<LtftFormDto> unsubmitLtftForm(UUID formId, LtftStatusInfoDetailDto detail) {
     return changeLtftFormState(formId, detail, UNSUBMITTED);
   }
 
@@ -336,7 +336,7 @@ public class LtftService {
    * @param detail The status detail for the withdrawal.
    * @return The DTO of the withdrawn form, or empty if form not found or could not be withdrawn.
    */
-  public Optional<LtftFormDto> withdrawLtftForm(UUID formId, LftfStatusInfoDetailDto detail) {
+  public Optional<LtftFormDto> withdrawLtftForm(UUID formId, LtftStatusInfoDetailDto detail) {
     return changeLtftFormState(formId, detail, WITHDRAWN);
   }
 
@@ -349,7 +349,7 @@ public class LtftService {
    * @return The DTO of the form after the state change, or empty if form not found or could not be
    *     changed to the target state.
    */
-  protected Optional<LtftFormDto> changeLtftFormState(UUID formId, LftfStatusInfoDetailDto detail,
+  protected Optional<LtftFormDto> changeLtftFormState(UUID formId, LtftStatusInfoDetailDto detail,
       LifecycleState targetState) {
     String traineeId = traineeIdentity.getTraineeId();
     Optional<LtftForm> formOptional = ltftFormRepository.findByTraineeTisIdAndId(traineeId, formId);
@@ -430,7 +430,7 @@ public class LtftService {
    * @throws MethodArgumentNotValidException If the state transition is not allowed.
    */
   public Optional<LtftFormDto> updateStatusAsAdmin(UUID formId, LifecycleState state,
-      LftfStatusInfoDetailDto detail) throws MethodArgumentNotValidException {
+      LtftStatusInfoDetailDto detail) throws MethodArgumentNotValidException {
     log.info("Updating LTFT form {} as admin [{}]: New state = {}", formId,
         adminIdentity.getEmail(), state);
 
@@ -460,7 +460,7 @@ public class LtftService {
    * @throws MethodArgumentNotValidException If the state transition is not allowed.
    */
   private LtftForm updateStatus(LtftForm form, LifecycleState targetState,
-      UserIdentity identity, @Nullable LftfStatusInfoDetailDto detail)
+      UserIdentity identity, @Nullable LtftStatusInfoDetailDto detail)
       throws MethodArgumentNotValidException {
 
     if (!LifecycleState.canTransitionTo(form, targetState)) {

@@ -41,7 +41,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto.LtftAdminPersonalDetailsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
-import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LtftStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
@@ -176,24 +176,24 @@ public abstract class LtftMapper {
   public abstract Person toEntity(PersonDto dto);
 
   /**
-   * Convert a {@link LftfStatusInfoDetailDto} to a {@link StatusDetail}.
+   * Convert a {@link LtftStatusInfoDetailDto} to a {@link StatusDetail}.
    *
    * @param dto The DTO to convert.
    * @return The equivalent status detail.
    */
-  public abstract StatusDetail toStatusDetail(LftfStatusInfoDetailDto dto);
+  public abstract StatusDetail toStatusDetail(LtftStatusInfoDetailDto dto);
 
   /**
-   * Convert a {@link StatusDetail} to a {@link LftfStatusInfoDetailDto}.
+   * Convert a {@link StatusDetail} to a {@link LtftStatusInfoDetailDto}.
    *
    * @param detail The status detail to convert.
    * @return The equivalent status detail DTO, or an empty DTO if input is null.
    */
-  public LftfStatusInfoDetailDto toStatusDetailDto(StatusDetail detail) {
+  public LtftStatusInfoDetailDto toStatusDetailDto(StatusDetail detail) {
     if (detail == null) {
-      return LftfStatusInfoDetailDto.builder().build();
+      return LtftStatusInfoDetailDto.builder().build();
     }
-    return LftfStatusInfoDetailDto.builder()
+    return LtftStatusInfoDetailDto.builder()
         .reason(detail.reason())
         .message(detail.message())
         .build();

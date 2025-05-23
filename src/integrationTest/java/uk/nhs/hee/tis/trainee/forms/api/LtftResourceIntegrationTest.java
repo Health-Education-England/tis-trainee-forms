@@ -74,7 +74,7 @@ import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto;
-import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LtftStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -369,7 +369,7 @@ class LtftResourceIntegrationTest {
     StatusInfoDto approved = StatusInfoDto.builder()
         .state(LifecycleState.APPROVED)
         .revision(123)
-        .detail(LftfStatusInfoDetailDto.builder()
+        .detail(LtftStatusInfoDetailDto.builder()
             .reason("test reason")
             .message("test message")
             .build())
@@ -665,8 +665,8 @@ class LtftResourceIntegrationTest {
     ltft.setContent(LtftContent.builder().name("test").build());
     template.insert(ltft);
 
-    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
-        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+    LtftStatusInfoDetailDto detail
+        = new LtftStatusInfoDetailDto("reason", "message");
     String detailJson = mapper.writeValueAsString(detail);
     String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID, "email", "given", "family");
     mockMvc.perform(put("/api/ltft/{id}/submit", ID)
@@ -721,8 +721,8 @@ class LtftResourceIntegrationTest {
     ltft.setContent(LtftContent.builder().name("test").build());
     template.insert(ltft);
 
-    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
-        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+    LtftStatusInfoDetailDto detail
+        = new LtftStatusInfoDetailDto("reason", "message");
     String detailJson = mapper.writeValueAsString(detail);
 
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
@@ -745,8 +745,8 @@ class LtftResourceIntegrationTest {
     ltft.setRevision(0);
     template.insert(ltft);
 
-    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
-        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+    LtftStatusInfoDetailDto detail
+        = new LtftStatusInfoDetailDto("reason", "message");
     String detailJson = mapper.writeValueAsString(detail);
     String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID, "email", "given", "family");
     mockMvc.perform(put("/api/ltft/{id}/unsubmit", ID)
@@ -777,8 +777,8 @@ class LtftResourceIntegrationTest {
     ltft.setContent(LtftContent.builder().name("test").build());
     template.insert(ltft);
 
-    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
-        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+    LtftStatusInfoDetailDto detail
+        = new LtftStatusInfoDetailDto("reason", "message");
     String detailJson = mapper.writeValueAsString(detail);
 
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
@@ -800,8 +800,8 @@ class LtftResourceIntegrationTest {
     ltft.setContent(LtftContent.builder().name("test").build());
     template.insert(ltft);
 
-    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
-        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+    LtftStatusInfoDetailDto detail
+        = new LtftStatusInfoDetailDto("reason", "message");
     String detailJson = mapper.writeValueAsString(detail);
     String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID, "email", "given", "family");
     mockMvc.perform(put("/api/ltft/{id}/withdraw", ID)

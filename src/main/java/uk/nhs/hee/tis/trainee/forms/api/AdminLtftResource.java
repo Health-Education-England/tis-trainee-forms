@@ -47,7 +47,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
-import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LtftStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
@@ -165,7 +165,7 @@ public class AdminLtftResource {
    */
   @PutMapping("/{id}/unsubmit")
   ResponseEntity<LtftFormDto> unsubmitLtft(@PathVariable UUID id,
-      @RequestBody LftfStatusInfoDetailDto detail)
+      @RequestBody LtftStatusInfoDetailDto detail)
       throws MethodArgumentNotValidException {
     Optional<LtftFormDto> form = service.updateStatusAsAdmin(id, UNSUBMITTED, detail);
     return ResponseEntity.of(form);
