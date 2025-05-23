@@ -31,6 +31,7 @@ import lombok.Builder;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Update;
+import uk.nhs.hee.tis.trainee.forms.dto.views.Admin;
 import uk.nhs.hee.tis.trainee.forms.dto.views.ReadOnly;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChangeType;
 
@@ -189,8 +190,9 @@ public record LtftFormDto(
 
         LifecycleState state,
         LftfStatusInfoDetailDto detail,
-        PersonDto assignedAdmin,
-        PersonDto modifiedBy,
+        @JsonView(Admin.Read.class)
+        RedactedPersonDto assignedAdmin,
+        RedactedPersonDto modifiedBy,
         Instant timestamp,
         Integer revision
     ) {

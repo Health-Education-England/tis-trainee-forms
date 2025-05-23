@@ -19,24 +19,25 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.dto.views;
+package uk.nhs.hee.tis.trainee.forms.dto;
+
+import com.fasterxml.jackson.annotation.JsonView;
+import lombok.Builder;
+import uk.nhs.hee.tis.trainee.forms.dto.views.Admin;
 
 /**
- * A JSON view for trainees.
+ * Details of a person and their role with redacted fields from trainee view.
+ *
+ * @param name  The person's name, serialized for admin view only.
+ * @param email The person's contact email, serialized for admin view only.
+ * @param role  The person's role, context dependent.
  */
-public interface Trainee {
+@Builder
+public record RedactedPersonDto(
+    @JsonView(Admin.Read.class)
+    String name,
+    @JsonView(Admin.Read.class)
+    String email,
+    String role) {
 
-  /**
-   * A JSON view for trainee read access.
-   */
-  interface Read extends Trainee, ReadOnly {
-
-  }
-
-  /**
-   * A JSON view for trainee write access.
-   */
-  interface Write extends Trainee {
-
-  }
 }
