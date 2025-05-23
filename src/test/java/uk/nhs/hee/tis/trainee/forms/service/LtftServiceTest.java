@@ -83,7 +83,6 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import uk.nhs.hee.tis.trainee.forms.dto.DiscussionDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctChangeDto;
@@ -97,6 +96,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
+import uk.nhs.hee.tis.trainee.forms.dto.RedactedPersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
@@ -1071,12 +1071,12 @@ class LtftServiceTest {
     assertThat("Unexpected TPD email.", discussions.tpdEmail(), is("t.pd@example.com"));
     assertThat("Unexpected other discussion count.", discussions.other(), hasSize(2));
 
-    DiscussionDto discussion1 = discussions.other().get(0);
+    PersonDto discussion1 = discussions.other().get(0);
     assertThat("Unexpected discussion name.", discussion1.name(), is("Other 1"));
     assertThat("Unexpected discussion email.", discussion1.email(), is("other.1@example.com"));
     assertThat("Unexpected discussion role.", discussion1.role(), is("Role 1"));
 
-    DiscussionDto discussion2 = discussions.other().get(1);
+    PersonDto discussion2 = discussions.other().get(1);
     assertThat("Unexpected discussion name.", discussion2.name(), is("Other 2"));
     assertThat("Unexpected discussion email.", discussion2.email(), is("other.2@example.com"));
     assertThat("Unexpected discussion role.", discussion2.role(), is("Role 2"));
@@ -1257,7 +1257,7 @@ class LtftServiceTest {
     assertThat("Unexpected dto presence.", optionalDto.isPresent(), is(true));
 
     LtftFormDto dto = optionalDto.get();
-    PersonDto assignedAdmin = dto.status().current().assignedAdmin();
+    RedactedPersonDto assignedAdmin = dto.status().current().assignedAdmin();
     assertThat("Unexpected admin name.", assignedAdmin.name(), is(ADMIN_NAME));
     assertThat("Unexpected admin email.", assignedAdmin.email(), is(ADMIN_EMAIL));
     assertThat("Unexpected admin role.", assignedAdmin.role(), is("ADMIN"));
@@ -1278,7 +1278,7 @@ class LtftServiceTest {
     assertThat("Unexpected dto presence.", optionalDto.isPresent(), is(true));
 
     LtftFormDto dto = optionalDto.get();
-    PersonDto assignedAdmin = dto.status().current().assignedAdmin();
+    RedactedPersonDto assignedAdmin = dto.status().current().assignedAdmin();
     assertThat("Unexpected admin name.", assignedAdmin.name(), nullValue());
     assertThat("Unexpected admin email.", assignedAdmin.email(), nullValue());
     assertThat("Unexpected admin role.", assignedAdmin.role(), nullValue());
@@ -1350,7 +1350,7 @@ class LtftServiceTest {
     assertThat("Unexpected timestamp.", currentStatus.timestamp(), is(Instant.EPOCH));
     assertThat("Unexpected revision.", currentStatus.revision(), is(1));
 
-    PersonDto modifiedBy = currentStatus.modifiedBy();
+    RedactedPersonDto modifiedBy = currentStatus.modifiedBy();
     assertThat("Unexpected modified name.", modifiedBy.name(), is("Anthony Gilliam"));
     assertThat("Unexpected modified email.", modifiedBy.email(), is("anthony.gilliam@example.com"));
     assertThat("Unexpected modified role.", modifiedBy.role(), is("TRAINEE"));
@@ -1430,7 +1430,7 @@ class LtftServiceTest {
 
     assertThat("Unexpected form presence.", optionalForm.isPresent(), is(true));
 
-    PersonDto assignedAdmin = optionalForm.get().status().current().assignedAdmin();
+    RedactedPersonDto assignedAdmin = optionalForm.get().status().current().assignedAdmin();
     assertThat("Unexpected admin name.", assignedAdmin.name(), is("Ad Min"));
     assertThat("Unexpected admin email.", assignedAdmin.email(), is("ad.min@example.com"));
     assertThat("Unexpected admin role.", assignedAdmin.role(), is("ADMIN"));
@@ -1461,7 +1461,7 @@ class LtftServiceTest {
 
     assertThat("Unexpected form presence.", optionalForm.isPresent(), is(true));
 
-    PersonDto assignedAdmin = optionalForm.get().status().current().assignedAdmin();
+    RedactedPersonDto assignedAdmin = optionalForm.get().status().current().assignedAdmin();
     assertThat("Unexpected admin name.", assignedAdmin.name(), is("new admin"));
     assertThat("Unexpected admin email.", assignedAdmin.email(), is("new.admin@example.com"));
     assertThat("Unexpected admin role.", assignedAdmin.role(), is("ADMIN"));
@@ -1492,7 +1492,7 @@ class LtftServiceTest {
 
     assertThat("Unexpected form presence.", optionalForm.isPresent(), is(true));
 
-    PersonDto assignedAdmin = optionalForm.get().status().current().assignedAdmin();
+    RedactedPersonDto assignedAdmin = optionalForm.get().status().current().assignedAdmin();
     assertThat("Unexpected admin name.", assignedAdmin.name(), is(ADMIN_NAME));
     assertThat("Unexpected admin email.", assignedAdmin.email(), is(ADMIN_EMAIL));
     assertThat("Unexpected admin role.", assignedAdmin.role(), is("ADMIN"));
@@ -1570,7 +1570,7 @@ class LtftServiceTest {
     assertThat("Unexpected current reason.", detail.reason(), is("detail reason"));
     assertThat("Unexpected current message.", detail.message(), is("detail message"));
 
-    PersonDto modifiedBy = current.modifiedBy();
+    RedactedPersonDto modifiedBy = current.modifiedBy();
     assertThat("Unexpected modified name.", modifiedBy.name(), is(ADMIN_NAME));
     assertThat("Unexpected modified email.", modifiedBy.email(), is(ADMIN_EMAIL));
     assertThat("Unexpected modified role.", modifiedBy.role(), is("ADMIN"));
@@ -1641,7 +1641,7 @@ class LtftServiceTest {
     assertThat("Unexpected current reason.", detail.reason(), is("detail reason"));
     assertThat("Unexpected current message.", detail.message(), is("detail message"));
 
-    PersonDto modifiedBy = current.modifiedBy();
+    RedactedPersonDto modifiedBy = current.modifiedBy();
     assertThat("Unexpected modified name.", modifiedBy.name(), is(ADMIN_NAME));
     assertThat("Unexpected modified email.", modifiedBy.email(), is(ADMIN_EMAIL));
     assertThat("Unexpected modified role.", modifiedBy.role(), is("ADMIN"));
@@ -1712,7 +1712,7 @@ class LtftServiceTest {
     assertThat("Unexpected current reason.", detail.reason(), is("detail reason"));
     assertThat("Unexpected current message.", detail.message(), is("detail message"));
 
-    PersonDto modifiedBy = current.modifiedBy();
+    RedactedPersonDto modifiedBy = current.modifiedBy();
     assertThat("Unexpected modified name.", modifiedBy.name(), is(ADMIN_NAME));
     assertThat("Unexpected modified email.", modifiedBy.email(), is(ADMIN_EMAIL));
     assertThat("Unexpected modified role.", modifiedBy.role(), is("ADMIN"));
@@ -2250,12 +2250,12 @@ class LtftServiceTest {
         .discussions(DiscussionsDto.builder()
             .tpdName("new TPD")
             .tpdEmail("new.tpd@example.com")
-            .other(List.of(DiscussionDto.builder()
+            .other(List.of(PersonDto.builder()
                     .name("new other 1")
                     .email("new.other1@example.com")
                     .role("new role 1")
                     .build(),
-                DiscussionDto.builder()
+                PersonDto.builder()
                     .name("new other 2")
                     .email("new.other2@example.com")
                     .role("new role 2")
@@ -2291,15 +2291,15 @@ class LtftServiceTest {
     assertThat("Unexpected TPD name.", discussions.tpdName(), is("new TPD"));
     assertThat("Unexpected TPD email.", discussions.tpdEmail(), is("new.tpd@example.com"));
 
-    List<DiscussionDto> other = discussions.other();
+    List<PersonDto> other = discussions.other();
     assertThat("Unexpected other discussion count.", other, hasSize(2));
 
-    DiscussionDto other1 = other.get(0);
+    PersonDto other1 = other.get(0);
     assertThat("Unexpected name.", other1.name(), is("new other 1"));
     assertThat("Unexpected email.", other1.email(), is("new.other1@example.com"));
     assertThat("Unexpected role.", other1.role(), is("new role 1"));
 
-    DiscussionDto other2 = other.get(1);
+    PersonDto other2 = other.get(1);
     assertThat("Unexpected name.", other2.name(), is("new other 2"));
     assertThat("Unexpected email.", other2.email(), is("new.other2@example.com"));
     assertThat("Unexpected role.", other2.role(), is("new role 2"));
@@ -2412,7 +2412,7 @@ class LtftServiceTest {
         .traineeTisId(TRAINEE_ID)
         .status(StatusDto.builder()
             .current(StatusInfoDto.builder()
-                .assignedAdmin(PersonDto.builder()
+                .assignedAdmin(RedactedPersonDto.builder()
                     .name("new admin")
                     .email("new.admin@example.com")
                     .role("NEW_ADMIN")
@@ -2447,7 +2447,7 @@ class LtftServiceTest {
         .traineeTisId(TRAINEE_ID)
         .status(StatusDto.builder()
             .current(StatusInfoDto.builder()
-                .assignedAdmin(PersonDto.builder()
+                .assignedAdmin(RedactedPersonDto.builder()
                     .name("new admin")
                     .email("new.admin@example.com")
                     .role("NEW_ADMIN")
@@ -2482,7 +2482,7 @@ class LtftServiceTest {
         .traineeTisId(TRAINEE_ID)
         .status(StatusDto.builder()
             .current(StatusInfoDto.builder()
-                .assignedAdmin(PersonDto.builder()
+                .assignedAdmin(RedactedPersonDto.builder()
                     .name("new admin")
                     .email("new.admin@example.com")
                     .role("NEW_ADMIN")
@@ -2511,7 +2511,7 @@ class LtftServiceTest {
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
 
     LtftFormDto formDto = formDtoOptional.get();
-    PersonDto assignedAdmin = formDto.status().current().assignedAdmin();
+    RedactedPersonDto assignedAdmin = formDto.status().current().assignedAdmin();
 
     assertThat("Unexpected assigned admin name.", assignedAdmin.name(), is("Ad Min"));
     assertThat("Unexpected assigned admin email.", assignedAdmin.email(), is("ad.min@example.com"));
@@ -2529,7 +2529,7 @@ class LtftServiceTest {
             .message("new message")
             .build())
         .timestamp(Instant.now())
-        .modifiedBy(PersonDto.builder()
+        .modifiedBy(RedactedPersonDto.builder()
             .name("Trey Knee")
             .email("trey.knee@example.com")
             .role("new role")
@@ -2948,7 +2948,7 @@ class LtftServiceTest {
     assertThat("Unexpected lifecycle state.", payload.status().current().state(), is(SUBMITTED));
     assertThat("Unexpected group ID.", notification.getGroupId(), is(ID.toString()));
 
-    PersonDto payloadAdmin = payload.status().current().assignedAdmin();
+    RedactedPersonDto payloadAdmin = payload.status().current().assignedAdmin();
     assertThat("Unexpected assigned admin name.", payloadAdmin.name(), is(ADMIN_NAME));
     assertThat("Unexpected assigned admin email.", payloadAdmin.email(), is(ADMIN_EMAIL));
     assertThat("Unexpected assigned admin role.", payloadAdmin.role(), is("ADMIN"));

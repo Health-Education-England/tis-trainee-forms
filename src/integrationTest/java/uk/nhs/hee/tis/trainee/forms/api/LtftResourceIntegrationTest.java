@@ -76,7 +76,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
-import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
+import uk.nhs.hee.tis.trainee.forms.dto.RedactedPersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.LtftSubmissionHistory;
@@ -374,7 +374,7 @@ class LtftResourceIntegrationTest {
 
   @Test
   void shouldIgnoreAssignedAdminWhenCreatingLtftFormForTrainee() throws Exception {
-    PersonDto admin = PersonDto.builder()
+    RedactedPersonDto admin = RedactedPersonDto.builder()
         .name("assigned admin")
         .email("assigned.admin@example.com")
         .role("ADMIN")
@@ -477,7 +477,7 @@ class LtftResourceIntegrationTest {
 
   @Test
   void shouldExcludeAdminDetailsWhenLtftFormCreated() throws Exception {
-    PersonDto admin = PersonDto.builder()
+    RedactedPersonDto admin = RedactedPersonDto.builder()
         .name("assigned admin")
         .email("assigned.admin@example.com")
         .role("ADMIN")
@@ -632,7 +632,7 @@ class LtftResourceIntegrationTest {
     form.setLifecycleState(LifecycleState.DRAFT);
     LtftForm formSaved = template.save(form);
 
-    PersonDto admin = PersonDto.builder()
+    RedactedPersonDto admin = RedactedPersonDto.builder()
         .name("assigned admin")
         .email("assigned.admin@example.com")
         .role("ADMIN")

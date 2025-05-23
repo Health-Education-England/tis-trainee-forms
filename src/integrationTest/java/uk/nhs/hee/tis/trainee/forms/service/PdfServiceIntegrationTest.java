@@ -47,7 +47,6 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
-import uk.nhs.hee.tis.trainee.forms.dto.DiscussionDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctChangeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.DeclarationsDto;
@@ -56,6 +55,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.ProgrammeMembershipDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.ReasonsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
+import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
@@ -131,12 +131,12 @@ class PdfServiceIntegrationTest {
             .tpdName("Tee Pee-Dee")
             .tpdEmail("tpd@example.com")
             .other(List.of(
-                DiscussionDto.builder()
+                PersonDto.builder()
                     .name("Ed Super")
                     .email("ed.super@example.com")
                     .role("Educational Supervisor")
                     .build(),
-                DiscussionDto.builder()
+                PersonDto.builder()
                     .name("Person Two")
                     .email("person.2@example.com")
                     .role("Test Person")

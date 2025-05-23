@@ -21,18 +21,22 @@
 
 package uk.nhs.hee.tis.trainee.forms.dto;
 
+import com.fasterxml.jackson.annotation.JsonView;
 import lombok.Builder;
+import uk.nhs.hee.tis.trainee.forms.dto.views.Admin;
 
 /**
- * Details of a person and their role.
+ * Details of a person and their role with redacted fields from trainee view.
  *
- * @param name  The person's name.
- * @param email The person's contact email.
+ * @param name  The person's name, serialized for admin view only.
+ * @param email The person's contact email, serialized for admin view only.
  * @param role  The person's role, context dependent.
  */
 @Builder
-public record DiscussionDto(
+public record RedactedPersonDto(
+    @JsonView(Admin.Read.class)
     String name,
+    @JsonView(Admin.Read.class)
     String email,
     String role) {
 
