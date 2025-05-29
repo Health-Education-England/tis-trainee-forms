@@ -22,21 +22,14 @@
 package uk.nhs.hee.tis.trainee.forms.dto.views;
 
 /**
- * A JSON view for trainees.
+ * A JSON view for admins.
  */
-public interface Trainee {
+public interface Admin {
 
   /**
-   * A JSON view for trainee read access.
+   * A JSON view for admin read access.
    */
-  interface Read extends Trainee, ReadOnly {
-
-  }
-
-  /**
-   * A JSON view for trainee write access.
-   */
-  interface Write extends Trainee {
+  interface Read extends Admin, ReadOnly {
 
   }
 }
