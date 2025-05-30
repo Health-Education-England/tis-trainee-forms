@@ -9,6 +9,7 @@ application:
     sqs:
       coj-received: ${local.sqs-path}/tis-trainee-forms-local-coj-received
       delete-event: ${local.sqs-path}/tis-trainee-forms-local-delete-event
+      notification-event: ${local.sqs-path}/tis-trainee-forms-local-notification-event
   signature:
     secret-key: ${SIGNATURE_SECRET_KEY:not-very-secret-plain-text-value}
 

@@ -11,6 +11,7 @@ application:
     sqs:
       coj-received: ${COJ_RECEIVED_QUEUE:}
       delete-event: ${DELETE_EVENT_QUEUE:}
+      notification-event: ${NOTIFICATION_EVENT_QUEUE:}
   signature:
     secret-key: ${SIGNATURE_SECRET_KEY}
   timezone: Europe/London
