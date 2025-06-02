@@ -448,6 +448,7 @@ public class LtftService {
           .build();
       form.setContent(newContent);
       LtftForm savedForm = ltftFormRepository.save(form);
+      publishUpdateNotification(savedForm, ltftStatusUpdateTopic);
       return Optional.of(mapper.toAdminSummaryDto(savedForm));
     } else {
       log.warn("Could not update TPD notification status: form {} cannot be found .", formId);

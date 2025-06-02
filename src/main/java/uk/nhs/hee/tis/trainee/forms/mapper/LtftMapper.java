@@ -144,6 +144,7 @@ public abstract class LtftMapper {
   @Mapping(target = "discussions", source = "content.discussions")
   @Mapping(target = "change", source = "content.change")
   @Mapping(target = "reasons", source = "content.reasons")
+  @Mapping(target = "tpdEmailStatus", source = "content.tpdEmailStatus")
   public abstract LtftFormDto toDto(LtftForm entity);
 
   /**

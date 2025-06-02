@@ -3132,7 +3132,7 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldReturnEmptyOptionalWhenFormNotFound() {
+  void shouldReturnEmptyOptionalWhenUpdateTpdNotificationFormNotFound() {
     UUID formId = UUID.randomUUID();
     when(repository.findById(formId)).thenReturn(Optional.empty());
 
@@ -3140,6 +3140,48 @@ class LtftServiceTest {
 
     verify(repository, never()).save(any());
     assertThat("Unexpected result.", result.isEmpty(), is(true));
+  }
+
+  @Test
+  void shouldPublishUpdateNotificationWhenTpdStatusUpdated() {
+    UUID formId = UUID.randomUUID();
+    LtftForm form = new LtftForm();
+    form.setId(formId);
+    LtftContent content = LtftContent.builder()
+        .tpdEmailStatus("PENDING")
+        .build();
+    form.setContent(content);
+
+    when(repository.findById(formId)).thenReturn(Optional.of(form));
+    when(repository.save(any(LtftForm.class))).thenAnswer(i -> i.getArgument(0));
+
+    service.updateTpdNotificationStatus(formId, "SENT");
+
+    ArgumentCaptor<SnsNotification<LtftFormDto>> snsNotificationCaptor = ArgumentCaptor.captor();
+    verify(snsTemplate).sendNotification(any(), snsNotificationCaptor.capture());
+
+    SnsNotification<LtftFormDto> capturedNotification = snsNotificationCaptor.getValue();
+    assertThat("Unexpected group ID.", capturedNotification.getGroupId(),
+        is(formId.toString()));
+    assertThat("Unexpected payload TPD status.",
+        capturedNotification.getPayload().tpdEmailStatus(),
+        is("SENT"));
+  }
+
+  @Test
+  void shouldNotPublishUpdateNotificationWhenTpdStatusUnchanged() {
+    UUID formId = UUID.randomUUID();
+    LtftForm form = new LtftForm();
+    LtftContent content = LtftContent.builder()
+        .tpdEmailStatus("SENT")
+        .build();
+    form.setContent(content);
+
+    when(repository.findById(formId)).thenReturn(Optional.of(form));
+
+    service.updateTpdNotificationStatus(formId, "SENT");
+
+    verifyNoInteractions(snsTemplate);
   }
 
   /**

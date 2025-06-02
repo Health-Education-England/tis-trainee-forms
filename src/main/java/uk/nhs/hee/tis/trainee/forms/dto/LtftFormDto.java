@@ -75,6 +75,9 @@ public record LtftFormDto(
     ReasonsDto reasons,
 
     @JsonView(ReadOnly.class)
+    String tpdEmailStatus,
+
+    @JsonView(ReadOnly.class)
     @Null(groups = {Create.class, Update.class})
     StatusDto status,
 
