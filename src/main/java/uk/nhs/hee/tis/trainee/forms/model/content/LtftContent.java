@@ -52,6 +52,20 @@ public record LtftContent(
     Reasons reasons,
     String tpdEmailStatus) implements FormContent {
 
+  // Wither method to create a copy with a new tpdEmailStatus
+  public LtftContent withTpdEmailStatus(String newStatus) {
+    return new LtftContent(
+        this.name,
+        this.personalDetails,
+        this.programmeMembership,
+        this.declarations,
+        this.discussions,
+        this.change,
+        this.reasons,
+        newStatus
+    );
+  }
+
   /**
    * The trainee's personal details.
    *

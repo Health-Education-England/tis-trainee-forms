@@ -437,17 +437,7 @@ public class LtftService {
             formId, status);
         return Optional.of(mapper.toAdminSummaryDto(form));
       }
-      //TODO: ugh
-      LtftContent newContent = LtftContent.builder()
-          .name(form.getContent().name())
-          .personalDetails(form.getContent().personalDetails())
-          .programmeMembership(form.getContent().programmeMembership())
-          .declarations(form.getContent().declarations())
-          .discussions(form.getContent().discussions())
-          .change(form.getContent().change())
-          .reasons(form.getContent().reasons())
-          .tpdEmailStatus(status)
-          .build();
+      LtftContent newContent =  form.getContent().withTpdEmailStatus(status);
       form.setContent(newContent);
       LtftForm savedForm = ltftFormRepository.save(form);
       publishUpdateNotification(savedForm, ltftStatusUpdateTopic);
