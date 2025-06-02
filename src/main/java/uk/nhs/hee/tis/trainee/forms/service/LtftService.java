@@ -433,7 +433,8 @@ public class LtftService {
 
     if (optionalForm.isPresent()) {
       LtftForm form = optionalForm.get();
-      if (form.getContent().tpdEmailStatus().equalsIgnoreCase(status)) {
+      if (form.getContent().tpdEmailStatus() != null
+          && form.getContent().tpdEmailStatus().equalsIgnoreCase(status)) {
         log.info("Skipping update of TPD notification status for form {} as it is already {}.",
             formId, status);
         return Optional.of(mapper.toAdminSummaryDto(form));
@@ -444,7 +445,7 @@ public class LtftService {
       publishUpdateNotification(savedForm, ltftStatusUpdateTopic);
       return Optional.of(mapper.toAdminSummaryDto(savedForm));
     } else {
-      log.warn("Could not update TPD notification status: form {} cannot be found .", formId);
+      log.warn("Could not update TPD notification status: form {} cannot be found.", formId);
       return Optional.empty();
     }
   }

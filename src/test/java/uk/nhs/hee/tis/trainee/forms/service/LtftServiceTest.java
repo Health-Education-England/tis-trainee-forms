@@ -72,8 +72,10 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -3094,12 +3096,14 @@ class LtftServiceTest {
     assertThat("Unexpected revision.", current.revision(), is(expectedRevision));
   }
 
-  @Test
-  void shouldUpdateTpdNotificationStatusWhenFormExists() {
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = "PENDING")
+  void shouldUpdateTpdNotificationStatusWhenFormExists(String initialStatus) {
     UUID formId = UUID.randomUUID();
     LtftForm form = new LtftForm();
     LtftContent content = LtftContent.builder()
-        .tpdEmailStatus("PENDING")
+        .tpdEmailStatus(initialStatus)
         .build();
     form.setContent(content);
 
