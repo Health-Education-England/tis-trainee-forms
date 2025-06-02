@@ -3094,6 +3094,54 @@ class LtftServiceTest {
     assertThat("Unexpected revision.", current.revision(), is(expectedRevision));
   }
 
+  @Test
+  void shouldUpdateTpdNotificationStatusWhenFormExists() {
+    UUID formId = UUID.randomUUID();
+    LtftForm form = new LtftForm();
+    LtftContent content = LtftContent.builder()
+        .tpdEmailStatus("PENDING")
+        .build();
+    form.setContent(content);
+
+    when(repository.findById(formId)).thenReturn(Optional.of(form));
+    when(repository.save(any(LtftForm.class))).thenAnswer(i -> i.getArgument(0));
+
+    Optional<LtftAdminSummaryDto> result = service.updateTpdNotificationStatus(formId, "SENT");
+
+    verify(repository).save(form);
+    assertThat("Unexpected empty result.", result.isPresent(), is(true));
+    assertThat("Unexpected TPD status.", result.get().tpd().emailStatus(), is("SENT"));
+  }
+
+  @Test
+  void shouldNotUpdateTpdNotificationStatusWhenStatusUnchanged() {
+    UUID formId = UUID.randomUUID();
+    LtftForm form = new LtftForm();
+    LtftContent content = LtftContent.builder()
+        .tpdEmailStatus("SENT")
+        .build();
+    form.setContent(content);
+
+    when(repository.findById(formId)).thenReturn(Optional.of(form));
+
+    Optional<LtftAdminSummaryDto> result = service.updateTpdNotificationStatus(formId, "SENT");
+
+    verify(repository, never()).save(any());
+    assertThat("Unexpected empty result.", result.isPresent(), is(true));
+    assertThat("Unexpected TPD status.", result.get().tpd().emailStatus(), is("SENT"));
+  }
+
+  @Test
+  void shouldReturnEmptyOptionalWhenFormNotFound() {
+    UUID formId = UUID.randomUUID();
+    when(repository.findById(formId)).thenReturn(Optional.empty());
+
+    Optional<LtftAdminSummaryDto> result = service.updateTpdNotificationStatus(formId, "SENT");
+
+    verify(repository, never()).save(any());
+    assertThat("Unexpected result.", result.isEmpty(), is(true));
+  }
+
   /**
    * A helper function to provide valid LTFT lifecycle state transitions.
    *
