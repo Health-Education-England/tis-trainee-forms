@@ -54,6 +54,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
@@ -123,7 +124,7 @@ public class LtftService {
    *
    * @return Summaries of the found LTFT forms, or empty if none found.
    */
-  public List<uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto> getLtftSummaries() {
+  public List<LtftSummaryDto> getLtftSummaries() {
     String traineeId = traineeIdentity.getTraineeId();
     log.info("Getting LTFT form summaries for trainee [{}]", traineeId);
 
@@ -153,7 +154,7 @@ public class LtftService {
    * @return A page of found LTFT forms.
    */
   public Page<LtftAdminSummaryDto> getAdminLtftSummaries(Map<String, String> filterParams,
-                                                         Pageable pageable) {
+      Pageable pageable) {
     Set<String> groups = adminIdentity.getGroups();
     log.info("Getting LTFT forms for admin {} with DBCs {}", adminIdentity.getEmail(), groups);
     Page<LtftForm> forms;
