@@ -52,7 +52,12 @@ public record LtftContent(
     Reasons reasons,
     String tpdEmailStatus) implements FormContent {
 
-  // Wither method to create a copy with a new tpdEmailStatus
+  /**
+   * Create a new instance of LtftContent with the specified TPD email status.
+   *
+   * @param newStatus The new status of the TPD email.
+   * @return A new LtftContent instance with the updated TPD email status.
+   */
   public LtftContent withTpdEmailStatus(String newStatus) {
     return new LtftContent(
         this.name,
