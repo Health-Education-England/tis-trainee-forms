@@ -21,19 +21,22 @@
 
 package uk.nhs.hee.tis.trainee.forms.event;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+
+import java.io.IOException;
+import java.time.Instant;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import uk.nhs.hee.tis.trainee.forms.dto.NotificationEventDto;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 
-import java.io.IOException;
-import java.time.Instant;
-import java.util.UUID;
-
-import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.verifyNoInteractions;
-
-public class NotificationEventListenerTest {
+/**
+ * Unit tests for {@link NotificationEventListener}.
+ */
+class NotificationEventListenerTest {
 
   private NotificationEventListener listener;
   private LtftService ltftService;
@@ -52,7 +55,7 @@ public class NotificationEventListenerTest {
         "LTFT_SUBMITTED_TPD",
         Instant.now(),
         "PENDING",
-        null, 
+        null,
         null
     );
 

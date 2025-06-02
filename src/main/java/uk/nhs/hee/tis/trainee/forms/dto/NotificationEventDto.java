@@ -22,8 +22,8 @@
 package uk.nhs.hee.tis.trainee.forms.dto;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
-import lombok.Builder;
 import java.time.Instant;
+import lombok.Builder;
 
 /**
  * A notification event DTO.
