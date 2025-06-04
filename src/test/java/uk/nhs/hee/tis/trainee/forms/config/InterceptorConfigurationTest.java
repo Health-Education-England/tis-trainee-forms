@@ -24,18 +24,22 @@ package uk.nhs.hee.tis.trainee.forms.config;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasItems;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.nhs.hee.tis.trainee.forms.config.InterceptorConfiguration.TRAINEE_ID_APIS;
 
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import uk.nhs.hee.tis.trainee.forms.interceptor.AdminIdentityInterceptor;
+import uk.nhs.hee.tis.trainee.forms.interceptor.AdminLtftIdentityInterceptor;
 import uk.nhs.hee.tis.trainee.forms.interceptor.TraineeIdentityInterceptor;
 
 /**
@@ -61,19 +65,24 @@ class InterceptorConfigurationTest {
     configuration.addInterceptors(registry);
 
     ArgumentCaptor<AdminIdentityInterceptor> interceptorCaptor = ArgumentCaptor.captor();
-    verify(registry).addInterceptor(interceptorCaptor.capture());
+    verify(registry, times(2)).addInterceptor(interceptorCaptor.capture());
 
-    AdminIdentityInterceptor interceptor = interceptorCaptor.getValue();
-    assertThat("Unexpected interceptor class.", interceptor,
-        instanceOf(AdminIdentityInterceptor.class));
+    List<AdminIdentityInterceptor> interceptors = interceptorCaptor.getAllValues();
+    assertThat("Unexpected interceptor class.", interceptors,
+        hasItems(instanceOf(AdminIdentityInterceptor.class),
+            instanceOf(AdminLtftIdentityInterceptor.class)));
 
     ArgumentCaptor<String[]> pathPatternsCaptor = ArgumentCaptor.captor();
-    verify(registration).addPathPatterns(pathPatternsCaptor.capture());
+    verify(registration, times(2)).addPathPatterns(pathPatternsCaptor.capture());
 
-    String[] pathPatterns = pathPatternsCaptor.getValue();
+    List<String[]> pathPatterns = pathPatternsCaptor.getAllValues();
     assert pathPatterns != null;
-    assertThat("Unexpected included path patterns count.", pathPatterns.length, is(1));
-    assertThat("Unexpected included path patterns.", pathPatterns,
+    assertThat("Unexpected included path patterns count.", pathPatterns.size(), is(2));
+    //ordering is important for precedence in applying the filter, so it is checked here
+    List<String> adminLtftPaths = List.of(pathPatterns.get(0));
+    assertThat("Unexpected included admin ltft path patterns.", adminLtftPaths,
+        hasItems("/api/admin/ltft", "/api/admin/ltft/**"));
+    assertThat("Unexpected included admin path patterns.", pathPatterns.get(1),
         is(new String[]{"/api/admin/**"}));
   }
 
