@@ -80,12 +80,12 @@ public class TestJwtUtil {
   }
 
   /**
-   * Generate an admin token with the given groups and default attributes for other fields.
+   * Generate an admin LTFT token with the given groups and default attributes for other fields.
    *
    * @param groups The groups to add in to the token.
    * @return The generated token.
    */
-  public static String generateAdminTokenForGroups(List<String> groups) {
+  public static String generateAdminLtftTokenForGroups(List<String> groups) {
     String groupString = groups.stream()
         .map(s -> s.replaceAll("^|$", "\""))
         .collect(Collectors.joining(","));
@@ -95,7 +95,8 @@ public class TestJwtUtil {
           "email": "ad.min@example.com",
           "given_name": "Ad",
           "family_name": "Min",
-          "cognito:groups": [%s]
+          "cognito:groups": [%s],
+          "cognito:roles": ["NHSE LTFT Admin"]
         }
         """.formatted(groupString);
 

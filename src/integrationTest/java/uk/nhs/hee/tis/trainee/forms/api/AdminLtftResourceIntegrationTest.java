@@ -170,7 +170,7 @@ class AdminLtftResourceIntegrationTest {
       GET | /api/admin/ltft/count
       """)
   void shouldReturnForbiddenWhenNoGroupsInToken(HttpMethod method, URI uri) throws Exception {
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of());
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of());
     mockMvc.perform(request(method, uri)
             .header(HttpHeaders.AUTHORIZATION, token))
         .andExpect(status().isForbidden())
@@ -184,7 +184,7 @@ class AdminLtftResourceIntegrationTest {
       PUT | /api/admin/ltft/123/unsubmit
       """)
   void shouldReturnBadRequestWhenInvalidFormId(HttpMethod method, URI uri) throws Exception {
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(request(method, uri)
             .header(HttpHeaders.AUTHORIZATION, token))
         .andExpect(status().isBadRequest());
@@ -196,7 +196,7 @@ class AdminLtftResourceIntegrationTest {
       """)
   void shouldReturnBadRequestWhenRequiredReasonMissing(HttpMethod method, String uriTemplate)
       throws Exception {
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(request(method, uriTemplate, UUID.randomUUID())
             .header(HttpHeaders.AUTHORIZATION, token))
         .andExpect(status().isBadRequest());
@@ -210,7 +210,7 @@ class AdminLtftResourceIntegrationTest {
       """)
   void shouldReturnNotFoundWhenFormIdNotFound(HttpMethod method, String uriTemplate)
       throws Exception {
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(request(method, uriTemplate, UUID.randomUUID())
             .header(HttpHeaders.AUTHORIZATION, token)
             .contentType(APPLICATION_JSON)
@@ -229,7 +229,7 @@ class AdminLtftResourceIntegrationTest {
     LtftForm form = createLtftForm(SUBMITTED, DBC_2, null);
     form = template.save(form);
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(request(method, uriTemplate, form.getId())
             .header(HttpHeaders.AUTHORIZATION, token)
             .contentType(APPLICATION_JSON)
@@ -240,7 +240,7 @@ class AdminLtftResourceIntegrationTest {
   @ParameterizedTest
   @NullAndEmptySource
   void shouldCountZeroWhenNoLtfts(String statusFilter) throws Exception {
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft/count")
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", statusFilter))
@@ -254,7 +254,7 @@ class AdminLtftResourceIntegrationTest {
   void shouldCountZeroWhenNoLtftsWithMatchingDbc(String statusFilter) throws Exception {
     template.insert(createLtftForm(SUBMITTED, DBC_2, null));
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft/count")
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", statusFilter))
@@ -268,7 +268,7 @@ class AdminLtftResourceIntegrationTest {
   void shouldCountZeroWhenLtftWithMatchingDbcIsDraft(String statusFilter) throws Exception {
     template.insert(createLtftForm(DRAFT, DBC_1, null));
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft/count")
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", statusFilter))
@@ -291,7 +291,7 @@ class AdminLtftResourceIntegrationTest {
     // Total number of states, plus an additional SUBMITTED, minus DRAFT.
     int expectedCount = LifecycleState.values().length;
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft/count")
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", statusFilter))
@@ -311,7 +311,7 @@ class AdminLtftResourceIntegrationTest {
 
     template.insert(createLtftForm(status, DBC_2, null));
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft/count")
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", status.toString()))
@@ -332,7 +332,7 @@ class AdminLtftResourceIntegrationTest {
     // Total number of states, plus an additional SUBMITTED, minus DRAFT.
     int expectedCount = LifecycleState.values().length;
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1, DBC_2));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1, DBC_2));
     mockMvc.perform(get("/api/admin/ltft/count")
             .header(HttpHeaders.AUTHORIZATION, token))
         .andExpect(status().isOk())
@@ -349,7 +349,7 @@ class AdminLtftResourceIntegrationTest {
 
     template.insert(createLtftForm(SUBMITTED, DBC_1, null));
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     String statusFilter = "%s,%s".formatted(SUBMITTED, LifecycleState.UNSUBMITTED);
     mockMvc.perform(get("/api/admin/ltft/count")
             .header(HttpHeaders.AUTHORIZATION, token)
@@ -362,7 +362,7 @@ class AdminLtftResourceIntegrationTest {
   @ParameterizedTest
   @NullAndEmptySource
   void shouldReturnNoSummariesWhenNoLtfts(String statusFilter) throws Exception {
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft")
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", statusFilter))
@@ -382,7 +382,7 @@ class AdminLtftResourceIntegrationTest {
   void shouldReturnNoSummariesWhenNoLtftsWithMatchingDbc(String statusFilter) throws Exception {
     template.insert(createLtftForm(SUBMITTED, DBC_2, null));
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft")
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", statusFilter))
@@ -402,7 +402,7 @@ class AdminLtftResourceIntegrationTest {
   void shouldReturnNoSummariesWhenLtftWithMatchingDbcIsDraft(String statusFilter) throws Exception {
     template.insert(createLtftForm(DRAFT, DBC_1, null));
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft")
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", statusFilter))
@@ -463,7 +463,7 @@ class AdminLtftResourceIntegrationTest {
 
     form = template.insert(form);
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft")
             .header(HttpHeaders.AUTHORIZATION, token))
         .andExpect(status().isOk())
@@ -510,7 +510,7 @@ class AdminLtftResourceIntegrationTest {
     // Total number of states, plus an additional SUBMITTED, minus DRAFT.
     int expectedCount = LifecycleState.values().length;
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft")
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", statusFilter))
@@ -536,7 +536,7 @@ class AdminLtftResourceIntegrationTest {
 
     template.insert(createLtftForm(status, DBC_2, null));
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft")
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("status", status.toString()))
@@ -564,7 +564,7 @@ class AdminLtftResourceIntegrationTest {
     // Total number of states, plus an additional SUBMITTED, minus DRAFT.
     int expectedCount = LifecycleState.values().length;
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1, DBC_2));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1, DBC_2));
     mockMvc.perform(get("/api/admin/ltft")
             .header(HttpHeaders.AUTHORIZATION, token))
         .andExpect(status().isOk())
@@ -587,7 +587,7 @@ class AdminLtftResourceIntegrationTest {
 
     template.insert(createLtftForm(SUBMITTED, DBC_1, null));
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     String statusFilter = "%s,%s".formatted(SUBMITTED, LifecycleState.UNSUBMITTED);
     mockMvc.perform(get("/api/admin/ltft")
             .header(HttpHeaders.AUTHORIZATION, token)
@@ -619,7 +619,7 @@ class AdminLtftResourceIntegrationTest {
 
     template.insert(createLtftForm(SUBMITTED, DBC_1, null));
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     String statusFilter = "%s,%s".formatted(SUBMITTED, LifecycleState.UNSUBMITTED);
     mockMvc.perform(get("/api/admin/ltft")
             .header(HttpHeaders.AUTHORIZATION, token)
@@ -688,7 +688,7 @@ class AdminLtftResourceIntegrationTest {
         .build());
     form3 = template.insert(form3);
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft")
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("sort", sort))
@@ -717,7 +717,7 @@ class AdminLtftResourceIntegrationTest {
     LtftForm form3 = createLtftForm(SUBMITTED, DBC_1, LocalDate.now());
     template.insert(form3);
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft")
             .header(HttpHeaders.AUTHORIZATION, token)
             .param("sort", "proposedStartDate"))
@@ -740,7 +740,7 @@ class AdminLtftResourceIntegrationTest {
     LtftForm form = createLtftForm(DRAFT, DBC_1, null);
     form = template.save(form);
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
             .header(HttpHeaders.AUTHORIZATION, token))
         .andExpect(status().isNotFound());
@@ -790,7 +790,7 @@ class AdminLtftResourceIntegrationTest {
 
     form = template.insert(form);
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
             .header(HttpHeaders.AUTHORIZATION, token))
         .andExpect(status().isOk())
@@ -818,7 +818,7 @@ class AdminLtftResourceIntegrationTest {
     LtftForm form = createLtftForm(DRAFT, DBC_1, null);
     form = template.save(form);
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
             .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
             .header(HttpHeaders.AUTHORIZATION, token))
@@ -860,7 +860,7 @@ class AdminLtftResourceIntegrationTest {
 
     form = template.insert(form);
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     MvcResult result = mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
             .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
             .header(HttpHeaders.AUTHORIZATION, token))
@@ -936,7 +936,7 @@ class AdminLtftResourceIntegrationTest {
 
     form = template.insert(form);
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     MvcResult result = mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
             .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
             .header(HttpHeaders.AUTHORIZATION, token))
@@ -1008,7 +1008,7 @@ class AdminLtftResourceIntegrationTest {
 
     form = template.insert(form);
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     MvcResult result = mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
             .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
             .header(HttpHeaders.AUTHORIZATION, token))
@@ -1081,7 +1081,7 @@ class AdminLtftResourceIntegrationTest {
 
     form = template.insert(form);
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     MvcResult result = mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
             .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
             .header(HttpHeaders.AUTHORIZATION, token))
@@ -1148,7 +1148,7 @@ class AdminLtftResourceIntegrationTest {
 
     form = template.insert(form);
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     MvcResult result = mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
             .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
             .header(HttpHeaders.AUTHORIZATION, token))
@@ -1210,7 +1210,7 @@ class AdminLtftResourceIntegrationTest {
 
     form = template.insert(form);
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     MvcResult result = mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
             .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
             .header(HttpHeaders.AUTHORIZATION, token))
@@ -1283,7 +1283,7 @@ class AdminLtftResourceIntegrationTest {
 
     form = template.insert(form);
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     MvcResult result = mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
             .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
             .header(HttpHeaders.AUTHORIZATION, token))
@@ -1317,7 +1317,7 @@ class AdminLtftResourceIntegrationTest {
       throws Exception {
     LtftForm form = template.insert(createLtftForm(currentState, DBC_1, null));
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(put("/api/admin/ltft/{id}/approve", form.getId())
             .header(HttpHeaders.AUTHORIZATION, token))
         .andExpect(status().isBadRequest())
@@ -1338,7 +1338,7 @@ class AdminLtftResourceIntegrationTest {
   void shouldApproveLtftWhenStateTransitionAllowed(LifecycleState currentState) throws Exception {
     LtftForm form = template.insert(createLtftForm(currentState, DBC_1, null));
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(put("/api/admin/ltft/{id}/approve", form.getId())
             .header(HttpHeaders.AUTHORIZATION, token))
         .andExpect(status().isOk())
@@ -1365,7 +1365,7 @@ class AdminLtftResourceIntegrationTest {
       throws Exception {
     LtftForm form = template.insert(createLtftForm(currentState, DBC_1, null));
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(put("/api/admin/ltft/{id}/unsubmit", form.getId())
             .header(HttpHeaders.AUTHORIZATION, token)
             .contentType(APPLICATION_JSON)
@@ -1394,7 +1394,7 @@ class AdminLtftResourceIntegrationTest {
       throws Exception {
     LtftForm form = template.insert(createLtftForm(currentState, DBC_1, null));
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(put("/api/admin/ltft/{id}/unsubmit", form.getId())
             .header(HttpHeaders.AUTHORIZATION, token)
             .contentType(APPLICATION_JSON)
@@ -1423,7 +1423,7 @@ class AdminLtftResourceIntegrationTest {
       LifecycleState currentState) throws Exception {
     LtftForm form = template.insert(createLtftForm(currentState, DBC_1, null));
 
-    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    String token = TestJwtUtil.generateAdminLtftTokenForGroups(List.of(DBC_1));
     mockMvc.perform(put("/api/admin/ltft/{id}/unsubmit", form.getId())
             .header(HttpHeaders.AUTHORIZATION, token)
             .contentType(APPLICATION_JSON)

@@ -79,8 +79,7 @@ class InterceptorConfigurationTest {
     assert pathPatterns != null;
     assertThat("Unexpected included path patterns count.", pathPatterns.size(), is(2));
     //ordering is important for precedence in applying the filter, so it is checked here
-    List<String> adminLtftPaths = List.of(pathPatterns.get(0));
-    assertThat("Unexpected included admin ltft path patterns.", adminLtftPaths,
+    assertThat("Unexpected included admin ltft path patterns.", List.of(pathPatterns.get(0)),
         hasItems("/api/admin/ltft", "/api/admin/ltft/**"));
     assertThat("Unexpected included admin path patterns.", pathPatterns.get(1),
         is(new String[]{"/api/admin/**"}));
