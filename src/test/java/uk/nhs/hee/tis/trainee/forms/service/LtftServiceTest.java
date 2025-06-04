@@ -3176,13 +3176,29 @@ class LtftServiceTest {
     UUID formId = UUID.randomUUID();
     LtftForm form = new LtftForm();
     LtftContent content = LtftContent.builder()
+        .tpdEmailStatus("PENDING")
+        .build();
+    form.setContent(content);
+
+    when(repository.findById(formId)).thenReturn(Optional.of(form));
+
+    service.updateTpdNotificationStatus(formId, "PENDING");
+
+    verifyNoInteractions(snsTemplate);
+  }
+
+  @Test
+  void shouldNotPublishUpdateNotificationWhenTpdStatusUnchangeable() {
+    UUID formId = UUID.randomUUID();
+    LtftForm form = new LtftForm();
+    LtftContent content = LtftContent.builder()
         .tpdEmailStatus("SENT")
         .build();
     form.setContent(content);
 
     when(repository.findById(formId)).thenReturn(Optional.of(form));
 
-    service.updateTpdNotificationStatus(formId, "SENT");
+    service.updateTpdNotificationStatus(formId, "PENDING");
 
     verifyNoInteractions(snsTemplate);
   }

@@ -439,6 +439,12 @@ public class LtftService {
             formId, status);
         return Optional.of(mapper.toAdminSummaryDto(form));
       }
+      if (form.getContent().tpdEmailStatus() != null
+          && form.getContent().tpdEmailStatus().equalsIgnoreCase("SENT")) {
+        log.warn("Cannot update TPD notification status for form {} as it is already SENT.",
+            formId);
+        return Optional.empty();
+      }
       LtftContent newContent =  form.getContent().withTpdEmailStatus(status);
       form.setContent(newContent);
       LtftForm savedForm = ltftFormRepository.save(form);
