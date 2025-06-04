@@ -21,33 +21,32 @@
 
 package uk.nhs.hee.tis.trainee.forms.dto.identity;
 
-import java.util.Set;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * Identity data for an authenticated TIS Admin user.
+ * Identity data for an authenticated TIS Admin user with access to LTFT functionality.
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class AdminIdentity extends UserIdentity {
-
-  private static final String ROLE = "ADMIN";
-
-  protected Set<String> groups;
-  protected Set<String> roles;
+public class AdminLtftIdentity extends AdminIdentity {
 
   /**
-   * Whether the admin identity is considered complete based on the populated fields.
+   * Whether the admin LTFT identity is considered complete based on the populated fields.
    *
-   * @return Whether the admin identity is considered complete.
+   * @return Whether the admin LTFT identity is considered complete.
    */
+  @Override
   public boolean isComplete() {
-    return getEmail() != null && getName() != null && groups != null && !groups.isEmpty();
+    return super.isComplete() && isLtftAdmin();
   }
 
-  @Override
-  public String getRole() {
-    return ROLE;
+  /**
+   * Check if the admin has the "NHSE LTFT Admin" role.
+   *
+   * @return True if the admin has the "NHSE LTFT Admin" role, false otherwise.
+   */
+  public boolean isLtftAdmin() {
+    return roles != null && roles.contains("NHSE LTFT Admin");
   }
 }

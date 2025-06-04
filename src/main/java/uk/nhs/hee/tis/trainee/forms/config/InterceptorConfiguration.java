@@ -27,8 +27,10 @@ import org.springframework.web.context.annotation.RequestScope;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
+import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminLtftIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.interceptor.AdminIdentityInterceptor;
+import uk.nhs.hee.tis.trainee.forms.interceptor.AdminLtftIdentityInterceptor;
 import uk.nhs.hee.tis.trainee.forms.interceptor.TraineeIdentityInterceptor;
 
 /**
@@ -45,9 +47,13 @@ public class InterceptorConfiguration implements WebMvcConfigurer {
       "/api/formr-partb", "/api/formr-partbs", "/api/formr-partb/**",
       "/api/ltft", "/api/ltft/**"
   };
+  protected static final String[] ADMIN_LTFT_ID_APIS = {
+      "/api/admin/ltft", "/api/admin/ltft/**"
+  };
 
   @Override
   public void addInterceptors(InterceptorRegistry registry) {
+    registry.addInterceptor(adminLtftIdentityInterceptor()).addPathPatterns(ADMIN_LTFT_ID_APIS);
     registry.addInterceptor(adminIdentityInterceptor()).addPathPatterns("/api/admin/**");
     registry.addInterceptor(traineeIdentityInterceptor()).addPathPatterns(TRAINEE_ID_APIS);
   }
@@ -71,6 +77,27 @@ public class InterceptorConfiguration implements WebMvcConfigurer {
   @RequestScope
   public AdminIdentity adminIdentity() {
     return new AdminIdentity();
+  }
+
+  /**
+   * Create an interceptor for creating a {@link AdminLtftIdentity} from a request.
+   *
+   * @return The admin LTFT identity interceptor.
+   */
+  @Bean
+  public AdminLtftIdentityInterceptor adminLtftIdentityInterceptor() {
+    return new AdminLtftIdentityInterceptor(adminLtftIdentity());
+  }
+
+  /**
+   * Create a {@link AdminLtftIdentity} for each request.
+   *
+   * @return The created admin LTFT identity.
+   */
+  @Bean
+  @RequestScope
+  public AdminLtftIdentity adminLtftIdentity() {
+    return new AdminLtftIdentity();
   }
 
   /**
