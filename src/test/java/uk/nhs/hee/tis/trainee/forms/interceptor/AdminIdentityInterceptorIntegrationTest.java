@@ -67,7 +67,7 @@ class AdminIdentityInterceptorIntegrationTest {
   @Autowired
   private MockMvc mockMvc;
 
-  @SpyBean
+  @SpyBean(name = "adminIdentityInterceptor")
   private AdminIdentityInterceptor interceptor;
 
   @ParameterizedTest

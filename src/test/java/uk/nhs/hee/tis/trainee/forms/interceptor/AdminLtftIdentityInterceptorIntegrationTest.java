@@ -46,12 +46,13 @@ import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.config.InterceptorConfiguration;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminLtftIdentity;
+import uk.nhs.hee.tis.trainee.forms.interceptor.AdminLtftIdentityInterceptorIntegrationTest.InterceptorTestController;
 
-@WebMvcTest(AdminLtftIdentityInterceptorIntegrationTest.InterceptorTestController.class)
+@WebMvcTest(InterceptorTestController.class)
 @Import(InterceptorConfiguration.class)
 class AdminLtftIdentityInterceptorIntegrationTest {
   private static final String API_PATH = "/api/admin/ltft";
-  private static final String EMAIL_1 = "admin.1@example.com";
+  private static final String EMAIL_1 = "admin.ltft.1@example.com";
 
   private static final String BEAN_NAME = "adminLtftIdentity";
   private static final String TARGET_BEAN_NAME = ScopedProxyUtils.getTargetBeanName(BEAN_NAME);
@@ -60,7 +61,7 @@ class AdminLtftIdentityInterceptorIntegrationTest {
   @Autowired
   private MockMvc mockMvc;
 
-  @SpyBean
+  @SpyBean(name = "adminLtftIdentityInterceptor")
   private AdminLtftIdentityInterceptor interceptor;
 
   @ParameterizedTest
