@@ -82,7 +82,7 @@ public class AdminIdentityInterceptor implements HandlerInterceptor {
 
     // LTFT endpoints require the appropriate role to access.
     if (request.getRequestURI().matches("^/api/admin/ltft(/.+)?$")
-       && (adminRoles == null || !adminRoles.contains("NHSE LTFT Admin"))) {
+        && (adminRoles == null || !adminRoles.contains("NHSE LTFT Admin"))) {
       response.setStatus(HttpStatus.FORBIDDEN.value());
       return false;
     }
