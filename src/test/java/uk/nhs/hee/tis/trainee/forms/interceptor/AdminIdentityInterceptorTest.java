@@ -206,7 +206,7 @@ class AdminIdentityInterceptorTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"/api/admin/ltft", "/api/admin/ltft/abc"})
+  @ValueSource(strings = {"/forms/api/admin/ltft", "/forms/api/admin/ltft/abc"})
   void shouldReturnFalseAndPopulateIdentityWhenAllFieldsAndNoRolesInAuthToken(String uri) {
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.setRequestURI(uri);
@@ -229,7 +229,7 @@ class AdminIdentityInterceptorTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"/api/admin/ltft", "/api/admin/ltft/abc"})
+  @ValueSource(strings = {"/forms/api/admin/ltft", "/forms/api/admin/ltft/abc"})
   void shouldReturnFalseAndPopulateIdentityWhenAllFieldsAndEmptyRolesInAuthToken(String uri) {
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.setRequestURI(uri);
@@ -278,7 +278,7 @@ class AdminIdentityInterceptorTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"/api/admin/ltft", "/api/admin/ltft/abc"})
+  @ValueSource(strings = {"/forms/api/admin/ltft", "/forms/api/admin/ltft/abc"})
   void shouldReturnTrueAndPopulateIdentityWhenAllFieldsAndLtftRoleInAuthToken(String uri) {
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.setRequestURI(uri);
