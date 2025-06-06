@@ -47,6 +47,7 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.REJECT
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
+import static uk.nhs.hee.tis.trainee.forms.service.LtftService.API_PROGRAMME_MEMBERSHIP_IS_PILOT_ROLLOUT_2024;
 
 import io.awspring.cloud.sns.core.SnsNotification;
 import io.awspring.cloud.sns.core.SnsTemplate;
@@ -72,6 +73,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.Page;
@@ -83,6 +85,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.client.RestTemplate;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctChangeDto;
@@ -134,6 +137,7 @@ class LtftServiceTest {
 
   private static final String LTFT_ASSIGNMENT_UPDATE_TOPIC = "update/topic/assignment";
   private static final String LTFT_STATUS_UPDATE_TOPIC = "update/topic/status";
+  private static final String SERVICE_URL = "http://service.url";
 
   private LtftService service;
   private LtftFormRepository repository;
@@ -141,6 +145,7 @@ class LtftServiceTest {
   private LtftMapper mapper;
   private SnsTemplate snsTemplate;
   private LtftSubmissionHistoryService ltftSubmissionHistoryService;
+  private RestTemplate restTemplate;
 
   @BeforeEach
   void setUp() {
@@ -158,11 +163,12 @@ class LtftServiceTest {
     mongoTemplate = mock(MongoTemplate.class);
     snsTemplate = mock(SnsTemplate.class);
     ltftSubmissionHistoryService = mock(LtftSubmissionHistoryService.class);
+    restTemplate = mock(RestTemplate.class);
 
     mapper = new LtftMapperImpl(new TemporalMapperImpl());
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, mapper,
-        snsTemplate, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
-        ltftSubmissionHistoryService);
+        snsTemplate, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC, SERVICE_URL,
+        ltftSubmissionHistoryService, restTemplate);
   }
 
   @Test
@@ -1894,9 +1900,13 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldSaveIfNewLtftFormForTrainee() {
+  void shouldSaveIfNewLtftFormForTraineeAndRolloutProgrammeMembership() {
+    UUID pmId = UUID.randomUUID();
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(pmId)
+            .build())
         .build();
 
     LtftForm existingForm = new LtftForm();
@@ -1904,11 +1914,51 @@ class LtftServiceTest {
     existingForm.setTraineeTisId(TRAINEE_ID);
     existingForm.setContent(LtftContent.builder().name("test").build());
     when(repository.save(any())).thenReturn(existingForm);
+    String expectedDetailsCall = SERVICE_URL + API_PROGRAMME_MEMBERSHIP_IS_PILOT_ROLLOUT_2024;
+    Map<String, String> expectedUriMap = Map.of(
+        "traineeTisId", TRAINEE_ID,
+        "programmeMembershipId", pmId.toString());
+    when(restTemplate.getForObject(expectedDetailsCall, Boolean.class, expectedUriMap))
+        .thenReturn(Boolean.TRUE);
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
 
     Optional<LtftFormDto> formDtoOptional = service.createLtftForm(dtoToSave);
 
     verify(repository).save(any());
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(booleans = false)
+  void shouldNotSaveIfNewLtftFormForTraineeButNotRolloutProgrammeMembership(Boolean isRollout) {
+    UUID pmId = UUID.randomUUID();
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(pmId)
+            .build())
+        .build();
+
+    LtftForm existingForm = new LtftForm();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId(TRAINEE_ID);
+    existingForm.setContent(LtftContent.builder().name("test").build());
+    when(repository.save(any())).thenReturn(existingForm);
+    String expectedDetailsCall = SERVICE_URL + API_PROGRAMME_MEMBERSHIP_IS_PILOT_ROLLOUT_2024;
+    Map<String, String> expectedUriMap = Map.of(
+        "traineeTisId", TRAINEE_ID,
+        "programmeMembershipId", pmId.toString());
+    when(restTemplate.getForObject(expectedDetailsCall, Boolean.class, expectedUriMap))
+        .thenReturn(isRollout);
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
+
+    Optional<LtftFormDto> formDtoOptional = service.createLtftForm(dtoToSave);
+
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
+    verifyNoInteractions(repository);
   }
 
   @Test
