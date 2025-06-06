@@ -1938,13 +1938,6 @@ class LtftServiceTest {
   @NullSource
   @ValueSource(booleans = false)
   void shouldNotSaveIfNewLtftFormForTraineeButNotRolloutProgrammeMembership(Boolean isRollout) {
-    LtftFormDto dtoToSave = LtftFormDto.builder()
-        .traineeTisId(TRAINEE_ID)
-        .programmeMembership(ProgrammeMembershipDto.builder()
-            .id(PM_UUID)
-            .build())
-        .build();
-
     LtftForm existingForm = new LtftForm();
     existingForm.setId(ID);
     existingForm.setTraineeTisId(TRAINEE_ID);
@@ -1954,6 +1947,13 @@ class LtftServiceTest {
         .thenReturn(isRollout);
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
+
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
+        .build();
 
     Optional<LtftFormDto> formDtoOptional = service.createLtftForm(dtoToSave);
 
@@ -2097,15 +2097,6 @@ class LtftServiceTest {
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
   void shouldNotUpdateFormRefWhenUpdatingLtftFormForTrainee(LifecycleState state) {
-    LtftFormDto dtoToSave = LtftFormDto.builder()
-        .id(ID)
-        .traineeTisId(TRAINEE_ID)
-        .formRef("new ref")
-        .programmeMembership(ProgrammeMembershipDto.builder()
-            .id(PM_UUID)
-            .build())
-        .build();
-
     LtftForm existingForm = new LtftForm();
     existingForm.setId(ID);
     existingForm.setTraineeTisId(TRAINEE_ID);
@@ -2117,7 +2108,16 @@ class LtftServiceTest {
     when(restTemplate.getForObject(SERVICE_URI, Boolean.class, EXPECTED_URI_MAP))
         .thenReturn(true);
 
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .formRef("new ref")
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
+        .build();
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
+
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
 
     LtftFormDto formDto = formDtoOptional.get();

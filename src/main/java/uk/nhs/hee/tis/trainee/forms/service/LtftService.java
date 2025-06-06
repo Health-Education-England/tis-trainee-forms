@@ -301,8 +301,8 @@ public class LtftService {
     String programmeMembershipId = form.getContent()
         .programmeMembership().id().toString();
     if (!isProgrammeMembershipInRollout2024(traineeId, programmeMembershipId)) {
-      log.warn("Could not update form {} for trainee {} as new programme membership {} not in " +
-              "the pilot rollout", formId, traineeId, programmeMembershipId);
+      log.warn("Could not update form {} for trainee {} as new programme membership {} not in "
+              + "the pilot rollout", formId, traineeId, programmeMembershipId);
       return Optional.empty();
     }
 
