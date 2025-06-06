@@ -95,7 +95,8 @@ public class TestJwtUtil {
           "email": "ad.min@example.com",
           "given_name": "Ad",
           "family_name": "Min",
-          "cognito:groups": [%s]
+          "cognito:groups": [%s],
+          "cognito:roles": ["NHSE LTFT Admin"]
         }
         """.formatted(groupString);
 
