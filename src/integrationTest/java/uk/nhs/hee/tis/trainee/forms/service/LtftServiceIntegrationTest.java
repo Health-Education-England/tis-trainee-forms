@@ -26,6 +26,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
+import static org.mockito.Mockito.when;
 
 import io.awspring.cloud.sns.core.SnsTemplate;
 import java.time.LocalDate;
@@ -47,6 +48,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.web.client.RestTemplate;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -69,6 +71,13 @@ class LtftServiceIntegrationTest {
 
   private static final String TRAINEE_ID = "47165";
 
+  private static final String SERVICE_URI = "http://localhost:8203/trainee/api/" +
+      "programme-membership/isrollout2024/{traineeTisId}/{programmeMembershipId}";
+  private static final UUID PM_UUID = UUID.randomUUID();
+  private static final Map<String, String> SERVICE_URI_MAP = Map.of(
+      "traineeTisId", TRAINEE_ID,
+      "programmeMembershipId", PM_UUID.toString());
+
   @Container
   @ServiceConnection
   private static final MongoDBContainer mongoContainer = new MongoDBContainer(
@@ -89,6 +98,9 @@ class LtftServiceIntegrationTest {
   @MockBean
   private SnsTemplate snsTemplate;
 
+  @MockBean
+  RestTemplate restTemplate;
+
   @BeforeEach
   void setUp() {
     traineeIdentity.setTraineeId(TRAINEE_ID);
@@ -105,7 +117,12 @@ class LtftServiceIntegrationTest {
     LtftFormDto dto = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("my test form")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .build();
+
+    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, SERVICE_URI_MAP)).thenReturn(true);
 
     LtftFormDto saved = service.createLtftForm(dto).orElseThrow();
     assertThat("Unexpected form ref.", saved.formRef(), nullValue());
@@ -116,7 +133,12 @@ class LtftServiceIntegrationTest {
     LtftFormDto dto = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("my test form")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .build();
+
+    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, SERVICE_URI_MAP)).thenReturn(true);
 
     LtftFormDto draft1 = service.createLtftForm(dto).orElseThrow();
     LtftFormDto draft2 = service.createLtftForm(dto).orElseThrow();
@@ -132,7 +154,12 @@ class LtftServiceIntegrationTest {
     LtftFormDto dto = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("my test form")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .build();
+
+    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, SERVICE_URI_MAP)).thenReturn(true);
 
     LtftFormDto draft1 = service.createLtftForm(dto).orElseThrow();
     LtftFormDto draft2 = service.createLtftForm(dto).orElseThrow();
@@ -152,7 +179,12 @@ class LtftServiceIntegrationTest {
     LtftFormDto dto = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("my test form")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .build();
+
+    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, SERVICE_URI_MAP)).thenReturn(true);
 
     LtftFormDto draft = service.createLtftForm(dto).orElseThrow();
 
