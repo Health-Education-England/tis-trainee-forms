@@ -51,3 +51,9 @@ com:
     xray:
       emitters:
         daemon-address: ${AWS_XRAY_DAEMON_ADDRESS:}
+
+service:
+  details:
+    host: ${TRAINEE_DETAILS_HOST:localhost}
+    port: ${TRAINEE_DETAILS_PORT:8203}
+    url: http://${service.details.host}:${service.details.port}/trainee
