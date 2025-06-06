@@ -29,6 +29,7 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -44,6 +45,7 @@ import java.net.URI;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
@@ -67,6 +69,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.client.RestTemplate;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -92,6 +95,12 @@ class LtftResourceIntegrationTest {
 
   private static final String TRAINEE_ID = "40";
   private static final UUID ID = UUID.randomUUID();
+  private static final String SERVICE_URI = "http://localhost:8203/trainee/api/" +
+      "programme-membership/isrollout2024/{traineeTisId}/{programmeMembershipId}";
+  private static final UUID PM_UUID = UUID.randomUUID();
+  private static final Map<String, String> SERVICE_URI_MAP = Map.of(
+      "traineeTisId", TRAINEE_ID,
+      "programmeMembershipId", PM_UUID.toString());
 
   @Autowired
   private ObjectMapper mapper;
@@ -103,6 +112,9 @@ class LtftResourceIntegrationTest {
 
   @Autowired
   private MockMvc mockMvc;
+
+  @MockBean
+  RestTemplate restTemplate;
 
   @MockBean
   SnsTemplate snsTemplate;
@@ -192,6 +204,28 @@ class LtftResourceIntegrationTest {
             .header(HttpHeaders.AUTHORIZATION, token)
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"traineeTisId\": \"another id\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @Test
+  void shouldBeBadRequestWhenCreatingLtftFormForNonRolloutProgrammeMembership() throws Exception {
+    LtftFormDto formToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .name("test")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
+        .build();
+    String formToSaveJson = mapper.writeValueAsString(formToSave);
+
+    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, SERVICE_URI_MAP)).thenReturn(false);
+
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(post("/api/ltft")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToSaveJson))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$").doesNotExist());
   }
@@ -315,8 +349,14 @@ class LtftResourceIntegrationTest {
     LtftFormDto formToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("test")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
+
+    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, SERVICE_URI_MAP)).thenReturn(true);
+
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
     mockMvc.perform(post("/api/ltft")
             .header(HttpHeaders.AUTHORIZATION, token)
@@ -344,8 +384,14 @@ class LtftResourceIntegrationTest {
         .traineeTisId(TRAINEE_ID)
         .name("test")
         .formRef("test-ref")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
+
+    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, SERVICE_URI_MAP)).thenReturn(true);
+
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
     mockMvc.perform(post("/api/ltft")
             .header(HttpHeaders.AUTHORIZATION, token)
@@ -360,10 +406,16 @@ class LtftResourceIntegrationTest {
     LtftFormDto formToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("test")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .revision(123)
         .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+
+    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, SERVICE_URI_MAP)).thenReturn(true);
+
     mockMvc.perform(post("/api/ltft")
             .header(HttpHeaders.AUTHORIZATION, token)
             .contentType(MediaType.APPLICATION_JSON)
@@ -387,12 +439,18 @@ class LtftResourceIntegrationTest {
     LtftFormDto formToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("test")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .status(StatusDto.builder()
             .current(current)
             .history(List.of(current))
             .build())
         .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
+
+    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, SERVICE_URI_MAP)).thenReturn(true);
+
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
     mockMvc.perform(post("/api/ltft")
             .header(HttpHeaders.AUTHORIZATION, token)
@@ -426,6 +484,9 @@ class LtftResourceIntegrationTest {
     LtftFormDto formToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("test")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .status(StatusDto.builder()
             .current(approved)
             .submitted(Instant.EPOCH)
@@ -433,6 +494,9 @@ class LtftResourceIntegrationTest {
             .build())
         .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
+
+    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, SERVICE_URI_MAP)).thenReturn(true);
+
     String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID, "anthony.gilliam@example.com",
         "Anthony", "Gilliam");
     mockMvc.perform(post("/api/ltft")
@@ -462,9 +526,15 @@ class LtftResourceIntegrationTest {
     LtftFormDto formToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("test")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .created(Instant.EPOCH)
         .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
+
+    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, SERVICE_URI_MAP)).thenReturn(true);
+
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
     mockMvc.perform(post("/api/ltft")
             .header(HttpHeaders.AUTHORIZATION, token)
@@ -490,12 +560,18 @@ class LtftResourceIntegrationTest {
     LtftFormDto formToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("test")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .status(StatusDto.builder()
             .current(current)
             .history(List.of(current))
             .build())
         .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
+
+    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, SERVICE_URI_MAP)).thenReturn(true);
+
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
     mockMvc.perform(post("/api/ltft")
             .header(HttpHeaders.AUTHORIZATION, token)
@@ -520,9 +596,15 @@ class LtftResourceIntegrationTest {
     LtftFormDto formToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("test")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .lastModified(Instant.EPOCH)
         .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
+
+    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, SERVICE_URI_MAP)).thenReturn(true);
+
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
     mockMvc.perform(post("/api/ltft")
             .header(HttpHeaders.AUTHORIZATION, token)
@@ -596,8 +678,13 @@ class LtftResourceIntegrationTest {
     LtftFormDto formToUpdate = LtftFormDto.builder()
         .id(savedId)
         .traineeTisId(TRAINEE_ID)
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .name("updated")
         .build();
+
+    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, SERVICE_URI_MAP)).thenReturn(true);
 
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
@@ -623,6 +710,35 @@ class LtftResourceIntegrationTest {
         is(TRAINEE_ID));
     assertThat("Unexpected saved record id.", savedRecords.get(0).getId(),
         is(formSaved.getId()));
+  }
+
+  @Test
+  void shouldNotUpdateLtftFormForTraineeIfNotRolloutProgrammeMembership() throws Exception {
+    LtftForm form = new LtftForm();
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(LifecycleState.DRAFT);
+    LtftForm formSaved = template.save(form);
+
+    UUID savedId = formSaved.getId();
+    LtftFormDto formToUpdate = LtftFormDto.builder()
+        .id(savedId)
+        .traineeTisId(TRAINEE_ID)
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
+        .name("updated")
+        .build();
+
+    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, SERVICE_URI_MAP)).thenReturn(false);
+
+    String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(put("/api/ltft/" + savedId)
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToUpdateJson))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$").doesNotExist());
   }
 
   @Test
@@ -654,7 +770,12 @@ class LtftResourceIntegrationTest {
             .build())
         .created(Instant.EPOCH)
         .lastModified(Instant.EPOCH)
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .build();
+
+    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, SERVICE_URI_MAP)).thenReturn(true);
 
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
@@ -694,7 +815,12 @@ class LtftResourceIntegrationTest {
         .id(savedId)
         .traineeTisId(TRAINEE_ID)
         .name("updated")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .build();
+
+    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, SERVICE_URI_MAP)).thenReturn(true);
 
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
