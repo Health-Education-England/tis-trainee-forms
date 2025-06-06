@@ -440,6 +440,7 @@ class AdminLtftResourceIntegrationTest {
         .discussions(Discussions.builder()
             .tpdEmail("tpd@example.com")
             .build())
+        .tpdEmailStatus("SENT")
         .build();
     form.setContent(content);
 
@@ -483,7 +484,7 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.content[0].daysToStart", is(140)))
         .andExpect(jsonPath("$.content[0].shortNotice", is(false)))
         .andExpect(jsonPath("$.content[0].tpd.email", is("tpd@example.com")))
-        .andExpect(jsonPath("$.content[0].tpd.emailStatus", is("UNKNOWN")))
+        .andExpect(jsonPath("$.content[0].tpd.emailStatus", is("SENT")))
         .andExpect(jsonPath("$.content[0].status", is(SUBMITTED.name())))
         .andExpect(jsonPath("$.content[0].assignedAdmin.name", is("Ad Min")))
         .andExpect(jsonPath("$.content[0].assignedAdmin.email", is("ad.min@example.com")))

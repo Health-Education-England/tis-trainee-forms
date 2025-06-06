@@ -64,6 +64,7 @@ import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 
 /**
@@ -414,6 +415,43 @@ public class LtftService {
     } else {
       log.warn("Could not assign admin to form {} since no form exists with this ID for DBCs [{}]",
           formId, dbcs);
+      return Optional.empty();
+    }
+  }
+
+  /**
+   * Update the TPD notification status of an LTFT form.
+   *
+   * @param formId The ID of the LTFT form to update.
+   * @param status The new TPD notification status to set.
+   * @return The admin summary DTO of the updated LTFT form, or empty if the form does not exist.
+   */
+  public Optional<LtftAdminSummaryDto> updateTpdNotificationStatus(UUID formId, String status) {
+    log.info("Updating TPD notification status for LTFT form {}: {}", formId, status);
+
+    Optional<LtftForm> optionalForm = ltftFormRepository.findById(formId);
+
+    if (optionalForm.isPresent()) {
+      LtftForm form = optionalForm.get();
+      if (form.getContent().tpdEmailStatus() != null
+          && form.getContent().tpdEmailStatus().equalsIgnoreCase(status)) {
+        log.info("Skipping update of TPD notification status for form {} as it is already {}.",
+            formId, status);
+        return Optional.of(mapper.toAdminSummaryDto(form));
+      }
+      if (form.getContent().tpdEmailStatus() != null
+          && form.getContent().tpdEmailStatus().equalsIgnoreCase("SENT")) {
+        log.warn("Cannot update TPD notification status for form {} as it is already SENT.",
+            formId);
+        return Optional.empty();
+      }
+      LtftContent newContent =  form.getContent().withTpdEmailStatus(status);
+      form.setContent(newContent);
+      LtftForm savedForm = ltftFormRepository.save(form);
+      publishUpdateNotification(savedForm, ltftStatusUpdateTopic);
+      return Optional.of(mapper.toAdminSummaryDto(savedForm));
+    } else {
+      log.warn("Could not update TPD notification status: form {} cannot be found.", formId);
       return Optional.empty();
     }
   }

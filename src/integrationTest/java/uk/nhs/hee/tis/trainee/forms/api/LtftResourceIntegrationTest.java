@@ -534,6 +534,23 @@ class LtftResourceIntegrationTest {
   }
 
   @Test
+  void shouldIgnoreTpdEmailStatusWhenCreatingLtftFormForTrainee() throws Exception {
+    LtftFormDto formToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .name("test")
+        .tpdEmailStatus("TEST")
+        .build();
+    String formToSaveJson = mapper.writeValueAsString(formToSave);
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(post("/api/ltft")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToSaveJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.tpdEmailStatus", nullValue()));
+  }
+
+  @Test
   void shouldBeBadRequestWhenUpdatingLtftFormWithoutId() throws Exception {
     LtftFormDto formToUpdate = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
@@ -654,6 +671,7 @@ class LtftResourceIntegrationTest {
             .build())
         .created(Instant.EPOCH)
         .lastModified(Instant.EPOCH)
+        .tpdEmailStatus("SENT")
         .build();
 
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
@@ -669,6 +687,7 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.revision").value(0))
         .andExpect(jsonPath("$.status.current.state", is("DRAFT")))
         .andExpect(jsonPath("$.status.current.assignedAdmin").doesNotExist())
+        .andExpect(jsonPath("$.tpdEmailStatus").doesNotExist())
         .andExpect(jsonPath("$.created").value(
             formSaved.getCreated().truncatedTo(ChronoUnit.MILLIS).toString()))
         .andExpect(jsonPath("$.lastModified",

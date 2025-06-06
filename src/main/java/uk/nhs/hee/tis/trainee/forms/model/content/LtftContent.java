@@ -39,6 +39,7 @@ import uk.nhs.hee.tis.trainee.forms.model.Person;
  * @param discussions         Discussions which took place as part of the LTFT process.
  * @param change              The calculated LTFT change.
  * @param reasons             The reasons for applying for LTFT.
+ * @param tpdEmailStatus      The status of the email sent to the TPD, if applicable.
  */
 @Builder
 public record LtftContent(
@@ -48,7 +49,27 @@ public record LtftContent(
     Declarations declarations,
     Discussions discussions,
     CctChange change,
-    Reasons reasons) implements FormContent {
+    Reasons reasons,
+    String tpdEmailStatus) implements FormContent {
+
+  /**
+   * Create a new instance of LtftContent with the specified TPD email status.
+   *
+   * @param newStatus The new status of the TPD email.
+   * @return A new LtftContent instance with the updated TPD email status.
+   */
+  public LtftContent withTpdEmailStatus(String newStatus) {
+    return new LtftContent(
+        this.name,
+        this.personalDetails,
+        this.programmeMembership,
+        this.declarations,
+        this.discussions,
+        this.change,
+        this.reasons,
+        newStatus
+    );
+  }
 
   /**
    * The trainee's personal details.

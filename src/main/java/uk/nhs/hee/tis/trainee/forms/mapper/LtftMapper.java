@@ -80,7 +80,7 @@ public abstract class LtftMapper {
       qualifiedByName = "DaysUntil")
   @Mapping(target = "shortNotice", source = "entity", qualifiedByName = "IsShortNotice")
   @Mapping(target = "tpd.email", source = "content.discussions.tpdEmail")
-  @Mapping(target = "tpd.emailStatus", constant = "UNKNOWN") // TODO: not yet available (TIS21-7022)
+  @Mapping(target = "tpd.emailStatus", source = "content.tpdEmailStatus")
   @Mapping(target = "status", source = "status.current.state")
   @Mapping(target = "assignedAdmin.name", source = "status.current.assignedAdmin.name")
   @Mapping(target = "assignedAdmin.email", source = "status.current.assignedAdmin.email")
@@ -144,6 +144,7 @@ public abstract class LtftMapper {
   @Mapping(target = "discussions", source = "content.discussions")
   @Mapping(target = "change", source = "content.change")
   @Mapping(target = "reasons", source = "content.reasons")
+  @Mapping(target = "tpdEmailStatus", source = "content.tpdEmailStatus")
   public abstract LtftFormDto toDto(LtftForm entity);
 
   /**
