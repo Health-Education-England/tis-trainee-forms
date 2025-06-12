@@ -432,7 +432,7 @@ public class LtftService {
     log.info("Updating TPD notification status for LTFT form {}: {}", formId, status);
 
     Optional<LtftForm> optionalForm = ltftFormRepository.findById(formId);
-    EmailValidityType updatedEmailValidity = mapper.emailStatusToValidity(status);
+    EmailValidityType updatedEmailValidity = mapper.toEmailValidity(status);
 
     if (optionalForm.isPresent()) {
       LtftForm form = optionalForm.get();

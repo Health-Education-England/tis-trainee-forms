@@ -253,7 +253,7 @@ public abstract class LtftMapper {
    * @param emailStatus The email status string to convert.
    * @return The corresponding {@link EmailValidityType}, or null if the input is null.
    */
-  public EmailValidityType emailStatusToValidity(@Nullable String emailStatus) {
+  public EmailValidityType toEmailValidity(@Nullable String emailStatus) {
     if (emailStatus == null) {
       return null;
     }
