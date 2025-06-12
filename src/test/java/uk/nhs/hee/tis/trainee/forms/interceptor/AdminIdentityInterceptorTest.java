@@ -29,6 +29,8 @@ import static org.hamcrest.Matchers.hasSize;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -43,6 +45,8 @@ class AdminIdentityInterceptorTest {
   private static final String FULL_NAME = "Ad Min";
   private static final String GROUP_1 = "123456";
   private static final String GROUP_2 = "ABCDEF";
+  private static final String ROLE_1 = "TSS Support Admin";
+  private static final String ROLE_2 = "NHSE LTFT Admin";
 
   private AdminIdentityInterceptor interceptor;
   private AdminIdentity adminIdentity;
@@ -201,6 +205,53 @@ class AdminIdentityInterceptorTest {
     assertThat("Unexpected admin group count.", adminIdentity.getGroups(), hasSize(0));
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"/forms/api/admin/ltft", "/forms/api/admin/ltft/abc"})
+  void shouldReturnFalseAndPopulateIdentityWhenAllFieldsAndNoRolesInAuthToken(String uri) {
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.setRequestURI(uri);
+    String token = TestJwtUtil.generateToken("""
+        {
+          "email": "%s",
+          "given_name": "%s",
+          "family_name": "%s",
+          "cognito:groups": [
+            "%s",
+            "%s"
+          ]
+        }
+        """.formatted(EMAIL, GIVEN_NAME, FAMILY_NAME, GROUP_1, GROUP_2));
+    request.addHeader(HttpHeaders.AUTHORIZATION, token);
+
+    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+
+    assertThat("Unexpected result.", result, is(false));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"/forms/api/admin/ltft", "/forms/api/admin/ltft/abc"})
+  void shouldReturnFalseAndPopulateIdentityWhenAllFieldsAndEmptyRolesInAuthToken(String uri) {
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.setRequestURI(uri);
+    String token = TestJwtUtil.generateToken("""
+        {
+          "email": "%s",
+          "given_name": "%s",
+          "family_name": "%s",
+          "cognito:groups": [
+            "%s",
+            "%s"
+          ],
+          "cognito:roles": []
+        }
+        """.formatted(EMAIL, GIVEN_NAME, FAMILY_NAME, GROUP_1, GROUP_2));
+    request.addHeader(HttpHeaders.AUTHORIZATION, token);
+
+    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+
+    assertThat("Unexpected result.", result, is(false));
+  }
+
   @Test
   void shouldReturnTrueAndPopulateIdentityWhenAllFieldsAndGroupsInAuthToken() {
     MockHttpServletRequest request = new MockHttpServletRequest();
@@ -215,6 +266,37 @@ class AdminIdentityInterceptorTest {
           ]
         }
         """.formatted(EMAIL, GIVEN_NAME, FAMILY_NAME, GROUP_1, GROUP_2));
+    request.addHeader(HttpHeaders.AUTHORIZATION, token);
+
+    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+
+    assertThat("Unexpected result.", result, is(true));
+    assertThat("Unexpected admin email.", adminIdentity.getEmail(), is(EMAIL));
+    assertThat("Unexpected admin name.", adminIdentity.getName(), is(FULL_NAME));
+    assertThat("Unexpected admin group count.", adminIdentity.getGroups(), hasSize(2));
+    assertThat("Unexpected admin groups.", adminIdentity.getGroups(), hasItems(GROUP_1, GROUP_2));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"/forms/api/admin/ltft", "/forms/api/admin/ltft/abc"})
+  void shouldReturnTrueAndPopulateIdentityWhenAllFieldsAndLtftRoleInAuthToken(String uri) {
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.setRequestURI(uri);
+    String token = TestJwtUtil.generateToken("""
+        {
+          "email": "%s",
+          "given_name": "%s",
+          "family_name": "%s",
+          "cognito:groups": [
+            "%s",
+            "%s"
+          ],
+          "cognito:roles": [
+            "%s",
+            "%s"
+          ]
+        }
+        """.formatted(EMAIL, GIVEN_NAME, FAMILY_NAME, GROUP_1, GROUP_2, ROLE_1, ROLE_2));
     request.addHeader(HttpHeaders.AUTHORIZATION, token);
 
     boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
