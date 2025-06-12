@@ -41,6 +41,8 @@ public class TraineeIdentityInterceptor implements HandlerInterceptor {
   private static final String EMAIL_ATTRIBUTE = "email";
   private static final String GIVEN_NAME_ATTRIBUTE = "given_name";
   private static final String FAMILY_NAME_ATTRIBUTE = "family_name";
+  private static final String LTFT_ENABLED_ATTRIBUTE = "ltft";
+  private static final String LTFT_PROGRAMMES_ATTRIBUTE = "ltftProgrammes";
 
   private final TraineeIdentity traineeIdentity;
 
@@ -64,6 +66,10 @@ public class TraineeIdentityInterceptor implements HandlerInterceptor {
         if (givenName != null && familyName != null) {
           traineeIdentity.setName("%s %s".formatted(givenName, familyName));
         }
+        String ltftEnabled = AuthTokenUtil.getAttribute(authToken, LTFT_ENABLED_ATTRIBUTE);
+        traineeIdentity.setLtftEnabled(Boolean.parseBoolean(ltftEnabled));
+        String ltftProgrammes = AuthTokenUtil.getAttribute(authToken, LTFT_PROGRAMMES_ATTRIBUTE);
+        traineeIdentity.setLtftProgrammes();
       } catch (IOException e) {
         log.warn("Unable to extract trainee ID from authorization token.", e);
       }

@@ -34,6 +34,8 @@ public class TraineeIdentity extends UserIdentity {
   private static final String ROLE = "TRAINEE";
 
   private String traineeId;
+  private boolean ltftEnabled;
+  private String[] ltftProgrammes;
 
   @Override
   public String getRole() {

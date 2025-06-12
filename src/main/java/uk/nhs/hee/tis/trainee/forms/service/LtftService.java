@@ -52,7 +52,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.client.RestTemplate;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
@@ -78,11 +77,6 @@ import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 @XRayEnabled
 public class LtftService {
 
-  private static final String TRAINEE_TIS_ID_FIELD = "traineeTisId";
-  private static final String PROGRAMME_MEMBERSHIP_ID_FIELD = "programmeMembershipId";
-  protected static final String API_PROGRAMME_MEMBERSHIP_IS_PILOT_ROLLOUT_2024
-      = "/api/programme-membership/isrollout2024/{traineeTisId}/{programmeMembershipId}";
-
   private final AdminIdentity adminIdentity;
   private final TraineeIdentity traineeIdentity;
 
@@ -97,9 +91,6 @@ public class LtftService {
 
   private final LtftSubmissionHistoryService ltftSubmissionHistoryService;
 
-  private final RestTemplate restTemplate;
-  private final String serviceUrl;
-
   /**
    * Instantiate the LTFT form service.
    *
@@ -111,18 +102,14 @@ public class LtftService {
    * @param snsTemplate                  The SNS template.
    * @param ltftAssignmentUpdateTopic    The SNS topic for LTFT assignment updates.
    * @param ltftStatusUpdateTopic        The SNS topic for LTFT status updates.
-   * @param serviceUrl                   The base URL of the trainee details service.
    * @param ltftSubmissionHistoryService The service for LTFT submission history.
-   * @param restTemplate                 The RestTemplate for making external calls.
    */
   public LtftService(AdminIdentity adminIdentity, TraineeIdentity traineeIdentity,
       LtftFormRepository ltftFormRepository, MongoTemplate mongoTemplate, LtftMapper mapper,
       SnsTemplate snsTemplate,
       @Value("${application.aws.sns.ltft-assignment-updated}") String ltftAssignmentUpdateTopic,
       @Value("${application.aws.sns.ltft-status-updated}") String ltftStatusUpdateTopic,
-      @Value("${service.details.url}") String serviceUrl,
-      LtftSubmissionHistoryService ltftSubmissionHistoryService,
-      RestTemplate restTemplate) {
+      LtftSubmissionHistoryService ltftSubmissionHistoryService) {
     this.adminIdentity = adminIdentity;
     this.traineeIdentity = traineeIdentity;
     this.ltftFormRepository = ltftFormRepository;
@@ -131,9 +118,7 @@ public class LtftService {
     this.snsTemplate = snsTemplate;
     this.ltftAssignmentUpdateTopic = ltftAssignmentUpdateTopic;
     this.ltftStatusUpdateTopic = ltftStatusUpdateTopic;
-    this.serviceUrl = serviceUrl;
     this.ltftSubmissionHistoryService = ltftSubmissionHistoryService;
-    this.restTemplate = restTemplate;
   }
 
   /**
@@ -249,10 +234,9 @@ public class LtftService {
       return Optional.empty();
     }
 
-    String programmeMembershipId = form.getContent()
-        .programmeMembership().id().toString();
-    if (!isProgrammeMembershipInRollout2024(traineeId, programmeMembershipId)) {
-      log.warn("Could not save form as it is not for a pilot rollout programme membership {}: {}",
+    String programmeMembershipId = form.getContent().programmeMembership().id().toString();
+    if (!isProgrammeMembershipValidForLtft(traineeId, programmeMembershipId)) {
+      log.warn("Could not save form as it is not for a LTFT-enabled programme membership {}: {}",
           traineeId, dto);
       return Optional.empty();
     }
@@ -298,11 +282,10 @@ public class LtftService {
       return Optional.empty();
     }
 
-    String programmeMembershipId = form.getContent()
-        .programmeMembership().id().toString();
-    if (!isProgrammeMembershipInRollout2024(traineeId, programmeMembershipId)) {
-      log.warn("Could not update form {} for trainee {} as new programme membership {} not in "
-              + "the pilot rollout", formId, traineeId, programmeMembershipId);
+    String programmeMembershipId = form.getContent().programmeMembership().id().toString();
+    if (!isProgrammeMembershipValidForLtft(traineeId, programmeMembershipId)) {
+      log.warn("Could not update form {} for trainee {} as new programme membership {} is not "
+          + "LTFT-enabled", formId, traineeId, programmeMembershipId);
       return Optional.empty();
     }
 
@@ -683,20 +666,17 @@ public class LtftService {
   }
 
   /**
-   * Identifies if a programme membership falls within the pilot rollout group 2024.
+   * Identifies if a programme membership is LTFT-enabled.
    *
    * @param traineeId             The trainee TIS ID whose programme membership it is.
    * @param programmeMembershipId The programme membership ID.
-   * @return True if the programme membership is in the pilot rollout group, otherwise false.
+   * @return True if the programme membership is LTFT-enabled, otherwise false.
    */
-  public boolean isProgrammeMembershipInRollout2024(String traineeId,
-                                                    String programmeMembershipId) {
-    Boolean isRollout = restTemplate.getForObject(serviceUrl
-            + API_PROGRAMME_MEMBERSHIP_IS_PILOT_ROLLOUT_2024, Boolean.class,
-        Map.of(TRAINEE_TIS_ID_FIELD, traineeId,
-            PROGRAMME_MEMBERSHIP_ID_FIELD, programmeMembershipId));
-    if (isRollout == null || !isRollout) {
-      log.info("Trainee {} programme membership {} is not in the pilot rollout 2024.",
+  public boolean isProgrammeMembershipValidForLtft(String traineeId,
+                                                   String programmeMembershipId) {
+    Boolean isLtftEnabled = traineeIdentity.getTraineeId();
+    if (!isLtftEnabled) {
+      log.info("Trainee {} programme membership {} is not LTFT-enabled.",
           traineeId, programmeMembershipId);
       return false;
     }
