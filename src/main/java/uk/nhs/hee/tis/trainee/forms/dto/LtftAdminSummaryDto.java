@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.dto;
 import java.time.LocalDate;
 import java.util.UUID;
 import lombok.Builder;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 /**
@@ -73,10 +74,10 @@ public record LtftAdminSummaryDto(
    * The details of a notified person.
    *
    * @param email       The email the notification was sent to.
-   * @param emailStatus The current status of the email, if known.
+   * @param emailStatus The current validity status of the email address.
    */
   @Builder
-  public record LtftAdminNotificationDto(String email, String emailStatus) {
+  public record LtftAdminNotificationDto(String email, EmailValidityType emailStatus) {
 
   }
 }

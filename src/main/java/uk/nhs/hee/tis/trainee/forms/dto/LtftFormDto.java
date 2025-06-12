@@ -28,6 +28,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Update;
@@ -76,7 +77,7 @@ public record LtftFormDto(
 
     @JsonView(ReadOnly.class)
     @Null(groups = {Create.class, Update.class})
-    String tpdEmailStatus,
+    EmailValidityType tpdEmailStatus,
 
     @JsonView(ReadOnly.class)
     @Null(groups = {Create.class, Update.class})

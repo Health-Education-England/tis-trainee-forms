@@ -37,6 +37,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.VALID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.sns.core.SnsTemplate;
@@ -77,6 +78,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
 import uk.nhs.hee.tis.trainee.forms.dto.RedactedPersonDto;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.LtftSubmissionHistory;
@@ -538,7 +540,7 @@ class LtftResourceIntegrationTest {
     LtftFormDto formToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("test")
-        .tpdEmailStatus("TEST")
+        .tpdEmailStatus(VALID)
         .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
     String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
@@ -671,7 +673,7 @@ class LtftResourceIntegrationTest {
             .build())
         .created(Instant.EPOCH)
         .lastModified(Instant.EPOCH)
-        .tpdEmailStatus("SENT")
+        .tpdEmailStatus(VALID)
         .build();
 
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);

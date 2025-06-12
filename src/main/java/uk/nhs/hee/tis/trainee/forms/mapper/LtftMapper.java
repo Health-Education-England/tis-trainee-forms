@@ -23,6 +23,9 @@ package uk.nhs.hee.tis.trainee.forms.mapper;
 
 import static org.mapstruct.InjectionStrategy.CONSTRUCTOR;
 import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.INVALID;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.UNKNOWN;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.VALID;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
 import jakarta.annotation.Nullable;
@@ -45,6 +48,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDeta
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.LtftSubmissionHistory;
@@ -80,7 +84,7 @@ public abstract class LtftMapper {
       qualifiedByName = "DaysUntil")
   @Mapping(target = "shortNotice", source = "entity", qualifiedByName = "IsShortNotice")
   @Mapping(target = "tpd.email", source = "content.discussions.tpdEmail")
-  @Mapping(target = "tpd.emailStatus", source = "content.tpdEmailStatus")
+  @Mapping(target = "tpd.emailStatus", source = "content.tpdEmailValidity")
   @Mapping(target = "status", source = "status.current.state")
   @Mapping(target = "assignedAdmin.name", source = "status.current.assignedAdmin.name")
   @Mapping(target = "assignedAdmin.email", source = "status.current.assignedAdmin.email")
@@ -144,7 +148,7 @@ public abstract class LtftMapper {
   @Mapping(target = "discussions", source = "content.discussions")
   @Mapping(target = "change", source = "content.change")
   @Mapping(target = "reasons", source = "content.reasons")
-  @Mapping(target = "tpdEmailStatus", source = "content.tpdEmailStatus")
+  @Mapping(target = "tpdEmailStatus", source = "content.tpdEmailValidity")
   public abstract LtftFormDto toDto(LtftForm entity);
 
   /**
@@ -241,5 +245,22 @@ public abstract class LtftMapper {
         .map(CctChange::startDate)
         .map(startDate -> ChronoUnit.DAYS.between(referenceDate, startDate) < NOTICE_PERIOD_DAYS)
         .orElse(null);
+  }
+
+  /**
+   * Convert an email status string to an {@link EmailValidityType}.
+   *
+   * @param emailStatus The email status string to convert.
+   * @return The corresponding {@link EmailValidityType}, or null if the input is null.
+   */
+  public EmailValidityType emailStatusToValidity(@Nullable String emailStatus) {
+    if (emailStatus == null) {
+      return null;
+    }
+    return switch (emailStatus) {
+      case "SENT" -> VALID;
+      case "PENDING" -> UNKNOWN;
+      default -> INVALID;
+    };
   }
 }

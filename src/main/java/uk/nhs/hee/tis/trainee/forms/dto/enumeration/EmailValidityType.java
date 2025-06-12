@@ -19,34 +19,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.dto;
-
-import com.fasterxml.jackson.annotation.JsonAlias;
-import lombok.Builder;
+package uk.nhs.hee.tis.trainee.forms.dto.enumeration;
 
 /**
- * A notification event DTO.
-
- * @param tisReference     The TIS record type and id that prompted the notification.
- * @param notificationType The type of notification, e.g. "LTFT_APPROVED", "FORM_UPDATED".
- * @param status           The status of the notification, e.g. "SENT", "FAILED".
+ * An enumeration for email validity types.
  */
-
-@Builder
-public record NotificationEventDto(
-    TisReferenceInfo tisReference,
-    @JsonAlias("type")
-    String notificationType,
-    String status
-) {
-
-  /**
-   * A representation of the TIS record that prompted the notification.
-   *
-   * @param type The TIS reference type for the entity that prompted the notification.
-   * @param id   The TIS ID of the entity that prompted the notification.
-   */
-  public record TisReferenceInfo(String type, String id) {
-
-  }
+public enum EmailValidityType {
+  UNKNOWN, VALID, INVALID, WRONG_RECIPIENT
 }

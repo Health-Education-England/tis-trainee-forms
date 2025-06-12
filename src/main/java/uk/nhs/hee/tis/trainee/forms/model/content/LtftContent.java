@@ -27,6 +27,7 @@ import java.util.UUID;
 import lombok.Builder;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Field;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
 
 /**
@@ -39,7 +40,7 @@ import uk.nhs.hee.tis.trainee.forms.model.Person;
  * @param discussions         Discussions which took place as part of the LTFT process.
  * @param change              The calculated LTFT change.
  * @param reasons             The reasons for applying for LTFT.
- * @param tpdEmailStatus      The status of the email sent to the TPD, if applicable.
+ * @param tpdEmailValidity    The validity of the email address for the TPD, if applicable.
  */
 @Builder
 public record LtftContent(
@@ -50,15 +51,15 @@ public record LtftContent(
     Discussions discussions,
     CctChange change,
     Reasons reasons,
-    String tpdEmailStatus) implements FormContent {
+    EmailValidityType tpdEmailValidity) implements FormContent {
 
   /**
    * Create a new instance of LtftContent with the specified TPD email status.
    *
-   * @param newStatus The new status of the TPD email.
+   * @param newEmailValidity The new status of the TPD email.
    * @return A new LtftContent instance with the updated TPD email status.
    */
-  public LtftContent withTpdEmailStatus(String newStatus) {
+  public LtftContent withTpdEmailStatus(EmailValidityType newEmailValidity) {
     return new LtftContent(
         this.name,
         this.personalDetails,
@@ -67,7 +68,7 @@ public record LtftContent(
         this.discussions,
         this.change,
         this.reasons,
-        newStatus
+        newEmailValidity
     );
   }
 

@@ -41,6 +41,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.INVALID;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.UNKNOWN;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.VALID;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROVED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.REJECTED;
@@ -98,6 +101,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.RedactedPersonDto;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
@@ -3097,12 +3101,12 @@ class LtftServiceTest {
 
   @ParameterizedTest
   @NullSource
-  @ValueSource(strings = "PENDING")
-  void shouldUpdateTpdNotificationStatusWhenFormExists(String initialStatus) {
+  @EnumSource(value = EmailValidityType.class, mode = INCLUDE, names = {"UNKNOWN"})
+  void shouldUpdateTpdNotificationStatusWhenFormExists(EmailValidityType initialStatus) {
     UUID formId = UUID.randomUUID();
     LtftForm form = new LtftForm();
     LtftContent content = LtftContent.builder()
-        .tpdEmailStatus(initialStatus)
+        .tpdEmailValidity(initialStatus)
         .build();
     form.setContent(content);
 
@@ -3113,7 +3117,7 @@ class LtftServiceTest {
 
     verify(repository).save(form);
     assertThat("Unexpected empty result.", result.isPresent(), is(true));
-    assertThat("Unexpected TPD status.", result.get().tpd().emailStatus(), is("SENT"));
+    assertThat("Unexpected TPD status.", result.get().tpd().emailStatus(), is(VALID));
   }
 
   @Test
@@ -3121,17 +3125,17 @@ class LtftServiceTest {
     UUID formId = UUID.randomUUID();
     LtftForm form = new LtftForm();
     LtftContent content = LtftContent.builder()
-        .tpdEmailStatus("SENT")
+        .tpdEmailValidity(INVALID)
         .build();
     form.setContent(content);
 
     when(repository.findById(formId)).thenReturn(Optional.of(form));
 
-    Optional<LtftAdminSummaryDto> result = service.updateTpdNotificationStatus(formId, "SENT");
+    Optional<LtftAdminSummaryDto> result = service.updateTpdNotificationStatus(formId, "FAILED");
 
     verify(repository, never()).save(any());
     assertThat("Unexpected empty result.", result.isPresent(), is(true));
-    assertThat("Unexpected TPD status.", result.get().tpd().emailStatus(), is("SENT"));
+    assertThat("Unexpected TPD status.", result.get().tpd().emailStatus(), is(INVALID));
   }
 
   @Test
@@ -3151,7 +3155,7 @@ class LtftServiceTest {
     LtftForm form = new LtftForm();
     form.setId(formId);
     LtftContent content = LtftContent.builder()
-        .tpdEmailStatus("PENDING")
+        .tpdEmailValidity(UNKNOWN)
         .build();
     form.setContent(content);
 
@@ -3168,7 +3172,7 @@ class LtftServiceTest {
         is(formId.toString()));
     assertThat("Unexpected payload TPD status.",
         capturedNotification.getPayload().tpdEmailStatus(),
-        is("SENT"));
+        is(VALID));
   }
 
   @Test
@@ -3176,7 +3180,7 @@ class LtftServiceTest {
     UUID formId = UUID.randomUUID();
     LtftForm form = new LtftForm();
     LtftContent content = LtftContent.builder()
-        .tpdEmailStatus("PENDING")
+        .tpdEmailValidity(UNKNOWN)
         .build();
     form.setContent(content);
 
@@ -3192,7 +3196,7 @@ class LtftServiceTest {
     UUID formId = UUID.randomUUID();
     LtftForm form = new LtftForm();
     LtftContent content = LtftContent.builder()
-        .tpdEmailStatus("SENT")
+        .tpdEmailValidity(VALID)
         .build();
     form.setContent(content);
 

@@ -21,6 +21,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.service;
 
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.VALID;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
@@ -56,6 +57,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
@@ -430,22 +432,23 @@ public class LtftService {
     log.info("Updating TPD notification status for LTFT form {}: {}", formId, status);
 
     Optional<LtftForm> optionalForm = ltftFormRepository.findById(formId);
+    EmailValidityType updatedEmailValidity = mapper.emailStatusToValidity(status);
 
     if (optionalForm.isPresent()) {
       LtftForm form = optionalForm.get();
-      if (form.getContent().tpdEmailStatus() != null
-          && form.getContent().tpdEmailStatus().equalsIgnoreCase(status)) {
+      if (form.getContent().tpdEmailValidity() != null
+          && form.getContent().tpdEmailValidity() == updatedEmailValidity) {
         log.info("Skipping update of TPD notification status for form {} as it is already {}.",
-            formId, status);
+            formId, updatedEmailValidity);
         return Optional.of(mapper.toAdminSummaryDto(form));
       }
-      if (form.getContent().tpdEmailStatus() != null
-          && form.getContent().tpdEmailStatus().equalsIgnoreCase("SENT")) {
-        log.warn("Cannot update TPD notification status for form {} as it is already SENT.",
+      if (form.getContent().tpdEmailValidity() != null
+          && form.getContent().tpdEmailValidity() == VALID) {
+        log.warn("Cannot update TPD notification status for form {} as it is already VALID.",
             formId);
         return Optional.empty();
       }
-      LtftContent newContent =  form.getContent().withTpdEmailStatus(status);
+      LtftContent newContent =  form.getContent().withTpdEmailStatus(updatedEmailValidity);
       form.setContent(newContent);
       LtftForm savedForm = ltftFormRepository.save(form);
       publishUpdateNotification(savedForm, ltftStatusUpdateTopic);

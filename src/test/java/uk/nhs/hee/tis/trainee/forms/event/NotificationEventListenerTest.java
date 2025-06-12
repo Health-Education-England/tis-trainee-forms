@@ -53,10 +53,7 @@ class NotificationEventListenerTest {
     NotificationEventDto event = new NotificationEventDto(
         new NotificationEventDto.TisReferenceInfo("LTFT", formId.toString()),
         "LTFT_SUBMITTED_TPD",
-        Instant.now(),
-        "PENDING",
-        null,
-        null
+        "PENDING"
     );
 
     listener.handleTpdNotificationEvent(event);
@@ -70,10 +67,7 @@ class NotificationEventListenerTest {
     NotificationEventDto event = new NotificationEventDto(
         new NotificationEventDto.TisReferenceInfo("LTFT", formId.toString()),
         "some other type",
-        Instant.now(),
-        "PENDING",
-        null,
-        null
+        "PENDING"
     );
 
     listener.handleTpdNotificationEvent(event);
@@ -87,10 +81,7 @@ class NotificationEventListenerTest {
     NotificationEventDto event = new NotificationEventDto(
         new NotificationEventDto.TisReferenceInfo("OTHER", formId.toString()),
         "LTFT_SUBMITTED_TPD",
-        Instant.now(),
-        "PENDING",
-        null,
-        null
+        "PENDING"
     );
 
     listener.handleTpdNotificationEvent(event);
@@ -103,10 +94,7 @@ class NotificationEventListenerTest {
     NotificationEventDto event = new NotificationEventDto(
         null,
         "LTFT_SUBMITTED_TPD",
-        Instant.now(),
-        "PENDING",
-        null,
-        null
+        "PENDING"
     );
 
     listener.handleTpdNotificationEvent(event);
