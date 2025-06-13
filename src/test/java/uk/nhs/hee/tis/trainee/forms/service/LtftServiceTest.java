@@ -1906,18 +1906,18 @@ class LtftServiceTest {
 
   @Test
   void shouldSaveIfNewLtftFormForTraineeAndLtftProgrammeMembership() {
+    LtftForm existingForm = new LtftForm();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId(TRAINEE_ID);
+    existingForm.setContent(LtftContent.builder().name("test").build());
+    when(repository.save(any())).thenReturn(existingForm);
+
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .programmeMembership(ProgrammeMembershipDto.builder()
             .id(PM_UUID)
             .build())
         .build();
-
-    LtftForm existingForm = new LtftForm();
-    existingForm.setId(ID);
-    existingForm.setTraineeTisId(TRAINEE_ID);
-    existingForm.setContent(LtftContent.builder().name("test").build());
-    when(repository.save(any())).thenReturn(existingForm);
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
 
@@ -1929,15 +1929,6 @@ class LtftServiceTest {
 
   @Test
   void shouldNotSaveIfNewLtftFormForTraineeIfNoFeaturesSet() {
-    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
-
-    LtftFormDto dtoToSave = LtftFormDto.builder()
-        .traineeTisId(TRAINEE_ID)
-        .programmeMembership(ProgrammeMembershipDto.builder()
-            .id(PM_UUID)
-            .build())
-        .build();
-
     AdminIdentity adminIdentity = new AdminIdentity();
     adminIdentity.setName(ADMIN_NAME);
     adminIdentity.setEmail(ADMIN_EMAIL);
@@ -1950,6 +1941,15 @@ class LtftServiceTest {
         mapper, snsTemplate, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
         ltftSubmissionHistoryService);
 
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
+        .build();
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
+
     Optional<LtftFormDto> formDtoOptional = service.createLtftForm(dtoToSave);
 
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
@@ -1958,15 +1958,6 @@ class LtftServiceTest {
 
   @Test
   void shouldNotSaveIfNewLtftFormForTraineeIfFeaturesLtftNotTrue() {
-    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
-
-    LtftFormDto dtoToSave = LtftFormDto.builder()
-        .traineeTisId(TRAINEE_ID)
-        .programmeMembership(ProgrammeMembershipDto.builder()
-            .id(PM_UUID)
-            .build())
-        .build();
-
     AdminIdentity adminIdentity = new AdminIdentity();
     adminIdentity.setName(ADMIN_NAME);
     adminIdentity.setEmail(ADMIN_EMAIL);
@@ -1983,6 +1974,15 @@ class LtftServiceTest {
         mapper, snsTemplate, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
         ltftSubmissionHistoryService);
 
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
+        .build();
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
+
     Optional<LtftFormDto> formDtoOptional = service.createLtftForm(dtoToSave);
 
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
@@ -1991,15 +1991,6 @@ class LtftServiceTest {
 
   @Test
   void shouldNotSaveIfNewLtftFormForTraineeIfNoFeatureLtftProgrammes() {
-    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
-
-    LtftFormDto dtoToSave = LtftFormDto.builder()
-        .traineeTisId(TRAINEE_ID)
-        .programmeMembership(ProgrammeMembershipDto.builder()
-            .id(PM_UUID)
-            .build())
-        .build();
-
     AdminIdentity adminIdentity = new AdminIdentity();
     adminIdentity.setName(ADMIN_NAME);
     adminIdentity.setEmail(ADMIN_EMAIL);
@@ -2015,6 +2006,15 @@ class LtftServiceTest {
         snsTemplate, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
         ltftSubmissionHistoryService);
 
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
+        .build();
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
+
     Optional<LtftFormDto> formDtoOptional = service.createLtftForm(dtoToSave);
 
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
@@ -2025,20 +2025,14 @@ class LtftServiceTest {
   @NullSource
   @ValueSource(strings = "1042b0f8-3169-4216-8707-65ea1854b6ac")
   void shouldNotSaveIfNewLtftFormForTraineeButNotLtftProgrammeMembership(String otherPmId) {
-    LtftForm existingForm = new LtftForm();
-    existingForm.setId(ID);
-    existingForm.setTraineeTisId(TRAINEE_ID);
-    existingForm.setContent(LtftContent.builder().name("test").build());
-    when(repository.save(any())).thenReturn(existingForm);
-
-    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
-
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .programmeMembership(ProgrammeMembershipDto.builder()
             .id(otherPmId == null ? null : UUID.fromString(otherPmId))
             .build())
         .build();
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
 
     Optional<LtftFormDto> formDtoOptional = service.createLtftForm(dtoToSave);
 
