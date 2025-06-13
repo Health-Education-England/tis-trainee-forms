@@ -21,18 +21,14 @@
 
 package uk.nhs.hee.tis.trainee.forms.interceptor;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.List;
-import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.servlet.HandlerInterceptor;
 import uk.nhs.hee.tis.trainee.forms.api.util.AuthTokenUtil;
-import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 
 /**
@@ -45,9 +41,6 @@ public class TraineeIdentityInterceptor implements HandlerInterceptor {
   private static final String EMAIL_ATTRIBUTE = "email";
   private static final String GIVEN_NAME_ATTRIBUTE = "given_name";
   private static final String FAMILY_NAME_ATTRIBUTE = "family_name";
-  private static final String FEATURES_ATTRIBUTE = "features";
-
-  private static final ObjectMapper objectMapper = new ObjectMapper();
 
   private final TraineeIdentity traineeIdentity;
 
