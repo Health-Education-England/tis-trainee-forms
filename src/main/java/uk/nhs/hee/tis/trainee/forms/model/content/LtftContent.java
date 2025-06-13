@@ -25,6 +25,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
+import lombok.With;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Field;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
@@ -51,26 +52,8 @@ public record LtftContent(
     Discussions discussions,
     CctChange change,
     Reasons reasons,
+    @With
     EmailValidityType tpdEmailValidity) implements FormContent {
-
-  /**
-   * Create a new instance of LtftContent with the specified TPD email status.
-   *
-   * @param newEmailValidity The new status of the TPD email.
-   * @return A new LtftContent instance with the updated TPD email status.
-   */
-  public LtftContent withTpdEmailStatus(EmailValidityType newEmailValidity) {
-    return new LtftContent(
-        this.name,
-        this.personalDetails,
-        this.programmeMembership,
-        this.declarations,
-        this.discussions,
-        this.change,
-        this.reasons,
-        newEmailValidity
-    );
-  }
 
   /**
    * The trainee's personal details.

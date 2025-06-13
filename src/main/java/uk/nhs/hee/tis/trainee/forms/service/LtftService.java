@@ -448,7 +448,7 @@ public class LtftService {
             formId);
         return Optional.empty();
       }
-      LtftContent newContent =  form.getContent().withTpdEmailStatus(updatedEmailValidity);
+      LtftContent newContent =  form.getContent().withTpdEmailValidity(updatedEmailValidity);
       form.setContent(newContent);
       LtftForm savedForm = ltftFormRepository.save(form);
       publishUpdateNotification(savedForm, ltftStatusUpdateTopic);
