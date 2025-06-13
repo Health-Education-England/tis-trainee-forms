@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -36,7 +37,7 @@ public class TestJwtUtil {
   public static final String GIVEN_NAME_ATTRIBUTE = "given_name";
   public static final String FAMILY_NAME_ATTRIBUTE = "family_name";
   public static final String FEATURES_ATTRIBUTE = "features";
-  public static final String FEATURES_LTFT_PROGRAMME = "607ddcfd-bbe9-4835-b795-ca26aebba990";
+  public static final UUID FEATURES_LTFT_PROGRAMME_INCLUDED = UUID.randomUUID();
 
   /**
    * Generate a token with the given payload.
@@ -62,7 +63,7 @@ public class TestJwtUtil {
   public static String generateTokenForTrainee(String traineeTisId, String email, String givenName,
       String familyName) {
     String features = String.format("{\"ltft\":true,"
-        + "\"ltftProgrammes\":[\"%s\"]}", FEATURES_LTFT_PROGRAMME);
+        + "\"ltftProgrammes\":[\"%s\"]}", FEATURES_LTFT_PROGRAMME_INCLUDED);
     String payload = String.format("{\"%s\":\"%s\"", TIS_ID_ATTRIBUTE, traineeTisId)
         + (email == null ? "" : String.format(",\"%s\":\"%s\"", EMAIL_ATTRIBUTE, email)
         + (givenName == null ? "" : String.format(",\"%s\":\"%s\"", GIVEN_NAME_ATTRIBUTE, givenName)

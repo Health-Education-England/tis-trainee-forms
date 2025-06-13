@@ -38,6 +38,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static uk.nhs.hee.tis.trainee.forms.TestJwtUtil.FEATURES_LTFT_PROGRAMME_INCLUDED;
 import static uk.nhs.hee.tis.trainee.forms.TestJwtUtil.FEATURES_LTFT_PROGRAMME;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.VALID;
 
@@ -96,7 +97,7 @@ class LtftResourceIntegrationTest {
 
   private static final String TRAINEE_ID = "40";
   private static final UUID ID = UUID.randomUUID();
-  private static final UUID PM_UUID = UUID.fromString(FEATURES_LTFT_PROGRAMME);
+  private static final UUID PM_UUID = FEATURES_LTFT_PROGRAMME_INCLUDED;
 
   @Autowired
   private ObjectMapper mapper;
