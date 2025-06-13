@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto;
 
 @Slf4j
 public class AuthTokenUtil {
@@ -63,6 +64,23 @@ public class AuthTokenUtil {
    */
   public static String getAttribute(String token, String attribute) throws IOException {
     return (String) getTokenPayload(token).get(attribute);
+  }
+
+  /**
+   * Get the features from the provided token.
+   *
+   * @param token The token to use.
+   * @return The features DTO extracted from the token.
+   * @throws IOException If the token's payload was not a Map or if deserialization fails.
+   */
+  public static FeaturesDto getFeatures(String token) throws IOException {
+    Map<?, ?> payload = getTokenPayload(token);
+    FeaturesDto features = mapper.convertValue(payload.get("features"), FeaturesDto.class);
+    if (features == null) {
+      log.warn("No features found in the token payload {}.", token);
+      return FeaturesDto.builder().build();
+    }
+    return features;
   }
 
   /**

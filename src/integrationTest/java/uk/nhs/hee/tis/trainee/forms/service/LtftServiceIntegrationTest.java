@@ -51,6 +51,7 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
+import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -68,6 +69,7 @@ import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ProgrammeMembershi
 class LtftServiceIntegrationTest {
 
   private static final String TRAINEE_ID = "47165";
+  private static final UUID PM_UUID = UUID.randomUUID();
 
   @Container
   @ServiceConnection
@@ -92,6 +94,10 @@ class LtftServiceIntegrationTest {
   @BeforeEach
   void setUp() {
     traineeIdentity.setTraineeId(TRAINEE_ID);
+    traineeIdentity.setFeatures(FeaturesDto.builder()
+        .ltft(true)
+        .ltftProgrammes(List.of(PM_UUID.toString()))
+        .build());
   }
 
   @AfterEach
@@ -105,6 +111,9 @@ class LtftServiceIntegrationTest {
     LtftFormDto dto = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("my test form")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .build();
 
     LtftFormDto saved = service.createLtftForm(dto).orElseThrow();
@@ -116,6 +125,9 @@ class LtftServiceIntegrationTest {
     LtftFormDto dto = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("my test form")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .build();
 
     LtftFormDto draft1 = service.createLtftForm(dto).orElseThrow();
@@ -132,6 +144,9 @@ class LtftServiceIntegrationTest {
     LtftFormDto dto = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("my test form")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .build();
 
     LtftFormDto draft1 = service.createLtftForm(dto).orElseThrow();
@@ -152,6 +167,9 @@ class LtftServiceIntegrationTest {
     LtftFormDto dto = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("my test form")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .build();
 
     LtftFormDto draft = service.createLtftForm(dto).orElseThrow();

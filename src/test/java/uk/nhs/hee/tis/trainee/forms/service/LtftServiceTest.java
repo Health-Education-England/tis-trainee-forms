@@ -72,6 +72,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.Page;
@@ -83,6 +84,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctChangeDto;
@@ -134,6 +136,7 @@ class LtftServiceTest {
 
   private static final String LTFT_ASSIGNMENT_UPDATE_TOPIC = "update/topic/assignment";
   private static final String LTFT_STATUS_UPDATE_TOPIC = "update/topic/status";
+  private static final UUID PM_UUID = UUID.randomUUID();
 
   private LtftService service;
   private LtftFormRepository repository;
@@ -153,6 +156,10 @@ class LtftServiceTest {
     traineeIdentity.setTraineeId(TRAINEE_ID);
     traineeIdentity.setEmail(TRAINEE_EMAIL);
     traineeIdentity.setName(TRAINEE_NAME);
+    traineeIdentity.setFeatures(FeaturesDto.builder()
+        .ltft(true)
+        .ltftProgrammes(List.of(PM_UUID.toString()))
+        .build());
 
     repository = mock(LtftFormRepository.class);
     mongoTemplate = mock(MongoTemplate.class);
@@ -1894,21 +1901,139 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldSaveIfNewLtftFormForTrainee() {
-    LtftFormDto dtoToSave = LtftFormDto.builder()
-        .traineeTisId(TRAINEE_ID)
-        .build();
-
+  void shouldSaveIfNewLtftFormForTraineeAndLtftProgrammeMembership() {
     LtftForm existingForm = new LtftForm();
     existingForm.setId(ID);
     existingForm.setTraineeTisId(TRAINEE_ID);
     existingForm.setContent(LtftContent.builder().name("test").build());
     when(repository.save(any())).thenReturn(existingForm);
 
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
+        .build();
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
+
     Optional<LtftFormDto> formDtoOptional = service.createLtftForm(dtoToSave);
 
     verify(repository).save(any());
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
+  }
+
+  @Test
+  void shouldNotSaveIfNewLtftFormForTraineeIfNoFeaturesSet() {
+    AdminIdentity adminIdentity = new AdminIdentity();
+    adminIdentity.setName(ADMIN_NAME);
+    adminIdentity.setEmail(ADMIN_EMAIL);
+    adminIdentity.setGroups(Set.of(ADMIN_GROUP));
+
+    TraineeIdentity traineeIdentity = new TraineeIdentity();
+    traineeIdentity.setTraineeId(TRAINEE_ID);
+
+    service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate,
+        mapper, snsTemplate, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
+        ltftSubmissionHistoryService);
+
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
+        .build();
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
+
+    Optional<LtftFormDto> formDtoOptional = service.createLtftForm(dtoToSave);
+
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
+    verifyNoInteractions(repository);
+  }
+
+  @Test
+  void shouldNotSaveIfNewLtftFormForTraineeIfFeaturesLtftNotTrue() {
+    AdminIdentity adminIdentity = new AdminIdentity();
+    adminIdentity.setName(ADMIN_NAME);
+    adminIdentity.setEmail(ADMIN_EMAIL);
+    adminIdentity.setGroups(Set.of(ADMIN_GROUP));
+
+    TraineeIdentity traineeIdentity = new TraineeIdentity();
+    traineeIdentity.setTraineeId(TRAINEE_ID);
+    traineeIdentity.setFeatures(FeaturesDto.builder()
+        .ltft(false)
+        .ltftProgrammes(List.of(PM_UUID.toString()))
+        .build());
+
+    service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate,
+        mapper, snsTemplate, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
+        ltftSubmissionHistoryService);
+
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
+        .build();
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
+
+    Optional<LtftFormDto> formDtoOptional = service.createLtftForm(dtoToSave);
+
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
+    verifyNoInteractions(repository);
+  }
+
+  @Test
+  void shouldNotSaveIfNewLtftFormForTraineeIfNoFeatureLtftProgrammes() {
+    AdminIdentity adminIdentity = new AdminIdentity();
+    adminIdentity.setName(ADMIN_NAME);
+    adminIdentity.setEmail(ADMIN_EMAIL);
+    adminIdentity.setGroups(Set.of(ADMIN_GROUP));
+
+    TraineeIdentity traineeIdentity = new TraineeIdentity();
+    traineeIdentity.setTraineeId(TRAINEE_ID);
+    traineeIdentity.setFeatures(FeaturesDto.builder()
+        .ltft(true)
+        .build());
+
+    service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, mapper,
+        snsTemplate, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
+        ltftSubmissionHistoryService);
+
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
+        .build();
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
+
+    Optional<LtftFormDto> formDtoOptional = service.createLtftForm(dtoToSave);
+
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
+    verifyNoInteractions(repository);
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = "1042b0f8-3169-4216-8707-65ea1854b6ac")
+  void shouldNotSaveIfNewLtftFormForTraineeButNotLtftProgrammeMembership(String otherPmId) {
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(otherPmId == null ? null : UUID.fromString(otherPmId))
+            .build())
+        .build();
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
+
+    Optional<LtftFormDto> formDtoOptional = service.createLtftForm(dtoToSave);
+
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
+    verifyNoInteractions(repository);
   }
 
   @Test
@@ -1994,6 +2119,9 @@ class LtftServiceTest {
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .id(ID)
         .traineeTisId(TRAINEE_ID)
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .build();
 
     LtftForm existingForm = new LtftForm();
@@ -2010,15 +2138,34 @@ class LtftServiceTest {
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
   }
 
-  @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
-  void shouldNotUpdateFormRefWhenUpdatingLtftFormForTrainee(LifecycleState state) {
+  @Test
+  void shouldNotSaveIfUpdatingEditableLtftFormForTraineeWithNonLtftPm() {
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .id(ID)
         .traineeTisId(TRAINEE_ID)
-        .formRef("new ref")
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(UUID.randomUUID())
+            .build())
         .build();
 
+    LtftForm existingForm = new LtftForm();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId(TRAINEE_ID);
+    existingForm.setLifecycleState(DRAFT);
+    existingForm.setContent(LtftContent.builder().name("test").build());
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
+
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
+    verify(repository).findByTraineeTisIdAndId(TRAINEE_ID, ID);
+    verifyNoMoreInteractions(repository);
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldNotUpdateFormRefWhenUpdatingLtftFormForTrainee(LifecycleState state) {
     LtftForm existingForm = new LtftForm();
     existingForm.setId(ID);
     existingForm.setTraineeTisId(TRAINEE_ID);
@@ -2028,6 +2175,14 @@ class LtftServiceTest {
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .formRef("new ref")
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
+        .build();
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
 
@@ -2043,6 +2198,9 @@ class LtftServiceTest {
         .id(ID)
         .traineeTisId(TRAINEE_ID)
         .revision(2)
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .build();
 
     LtftForm existingForm = new LtftForm();
@@ -2069,6 +2227,9 @@ class LtftServiceTest {
         .id(ID)
         .traineeTisId(TRAINEE_ID)
         .name("new name")
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .build();
 
     LtftForm existingForm = new LtftForm();
@@ -2106,6 +2267,9 @@ class LtftServiceTest {
             .telephoneNumber("07700 900999")
             .mobileNumber("07700 900998")
             .skilledWorkerVisaHolder(true)
+            .build())
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
             .build())
         .build();
 
@@ -2151,14 +2315,13 @@ class LtftServiceTest {
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
   void shouldUpdateProgrammeMembershipWhenUpdatingLtftFormForTrainee(LifecycleState state) {
-    UUID newId = UUID.randomUUID();
     LocalDate newStartDate = LocalDate.now();
     LocalDate newEndDate = newStartDate.plusYears(1);
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .id(ID)
         .traineeTisId(TRAINEE_ID)
         .programmeMembership(ProgrammeMembershipDto.builder()
-            .id(newId)
+            .id(PM_UUID)
             .name("new programme")
             .designatedBodyCode("new DBC")
             .managingDeanery("new deanery")
@@ -2193,7 +2356,7 @@ class LtftServiceTest {
     LtftFormDto formDto = formDtoOptional.get();
     ProgrammeMembershipDto programmeMembership = formDto.programmeMembership();
 
-    assertThat("Unexpected ID.", programmeMembership.id(), is(newId));
+    assertThat("Unexpected ID.", programmeMembership.id(), is(PM_UUID));
     assertThat("Unexpected name.", programmeMembership.name(), is("new programme"));
     assertThat("Unexpected DBC.", programmeMembership.designatedBodyCode(), is("new DBC"));
     assertThat("Unexpected deanery.", programmeMembership.managingDeanery(), is("new deanery"));
@@ -2212,6 +2375,9 @@ class LtftServiceTest {
             .discussedWithTpd(true)
             .informationIsCorrect(true)
             .notGuaranteed(true)
+            .build())
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
             .build())
         .build();
 
@@ -2260,6 +2426,9 @@ class LtftServiceTest {
                     .email("new.other2@example.com")
                     .role("new role 2")
                     .build()))
+            .build())
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
             .build())
         .build();
 
@@ -2325,6 +2494,9 @@ class LtftServiceTest {
             .endDate(newEndDate)
             .cctDate(newCctDate)
             .build())
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .build();
 
     LtftForm existingForm = new LtftForm();
@@ -2371,6 +2543,9 @@ class LtftServiceTest {
             .selected(List.of("new reason 1", "new reason 2"))
             .otherDetail("new other detail")
             .supportingInformation("new supporting information")
+            .build())
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
             .build())
         .build();
 
@@ -2419,6 +2594,9 @@ class LtftServiceTest {
                     .build())
                 .build())
             .build())
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .build();
 
     LtftForm existingForm = new LtftForm();
@@ -2454,6 +2632,9 @@ class LtftServiceTest {
                     .build())
                 .build())
             .build())
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .build();
 
     LtftForm existingForm = new LtftForm();
@@ -2488,6 +2669,9 @@ class LtftServiceTest {
                     .role("NEW_ADMIN")
                     .build())
                 .build())
+            .build())
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
             .build())
         .build();
 
@@ -2542,6 +2726,9 @@ class LtftServiceTest {
             .current(newStatus)
             .history(List.of(newStatus, StatusInfoDto.builder().build()))
             .submitted(Instant.now())
+            .build())
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
             .build())
         .build();
 
@@ -2602,6 +2789,9 @@ class LtftServiceTest {
         .id(ID)
         .traineeTisId(TRAINEE_ID)
         .created(Instant.now())
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .build();
 
     LtftForm existingForm = new LtftForm();
@@ -2627,6 +2817,9 @@ class LtftServiceTest {
         .id(ID)
         .traineeTisId(TRAINEE_ID)
         .lastModified(Instant.now())
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .build();
 
     LtftForm existingForm = new LtftForm();
