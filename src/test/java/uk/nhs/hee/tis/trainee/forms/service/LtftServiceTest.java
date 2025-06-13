@@ -2184,7 +2184,6 @@ class LtftServiceTest {
             .build())
         .build();
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
-
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
 
     LtftFormDto formDto = formDtoOptional.get();
