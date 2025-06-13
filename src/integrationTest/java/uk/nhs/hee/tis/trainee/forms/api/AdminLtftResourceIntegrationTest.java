@@ -41,6 +41,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.VALID;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROVED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
@@ -87,6 +88,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
@@ -440,6 +442,7 @@ class AdminLtftResourceIntegrationTest {
         .discussions(Discussions.builder()
             .tpdEmail("tpd@example.com")
             .build())
+        .tpdEmailValidity(VALID)
         .build();
     form.setContent(content);
 
@@ -483,7 +486,7 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.content[0].daysToStart", is(140)))
         .andExpect(jsonPath("$.content[0].shortNotice", is(false)))
         .andExpect(jsonPath("$.content[0].tpd.email", is("tpd@example.com")))
-        .andExpect(jsonPath("$.content[0].tpd.emailStatus", is("UNKNOWN")))
+        .andExpect(jsonPath("$.content[0].tpd.emailStatus", is("VALID")))
         .andExpect(jsonPath("$.content[0].status", is(SUBMITTED.name())))
         .andExpect(jsonPath("$.content[0].assignedAdmin.name", is("Ad Min")))
         .andExpect(jsonPath("$.content[0].assignedAdmin.email", is("ad.min@example.com")))

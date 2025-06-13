@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.mapper;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.INVALID;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -34,6 +35,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
@@ -238,5 +240,19 @@ class LtftMapperTest {
 
     assertThat("Unexpected status detail DTO.", dto.reason(), nullValue());
     assertThat("Unexpected status detail DTO.", dto.message(), nullValue());
+  }
+
+  @Test
+  void shouldReturnNullEmailValidityWhenStatusNull() {
+    EmailValidityType emailValidity = mapper.toEmailValidity(null);
+
+    assertThat("Unexpected email validity.", emailValidity, nullValue());
+  }
+
+  @Test
+  void shouldReturnEmailInvalidWhenStatusNotMapped() {
+    EmailValidityType emailValidity = mapper.toEmailValidity("unknown status");
+
+    assertThat("Unexpected email validity.", emailValidity, is(INVALID));
   }
 }
