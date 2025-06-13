@@ -35,6 +35,8 @@ public class TestJwtUtil {
   public static final String EMAIL_ATTRIBUTE = "email";
   public static final String GIVEN_NAME_ATTRIBUTE = "given_name";
   public static final String FAMILY_NAME_ATTRIBUTE = "family_name";
+  public static final String FEATURES_ATTRIBUTE = "features";
+  public static final String FEATURES_LTFT_PROGRAMME = "607ddcfd-bbe9-4835-b795-ca26aebba990";
 
   /**
    * Generate a token with the given payload.
@@ -49,17 +51,6 @@ public class TestJwtUtil {
   }
 
   /**
-   * Generate a token with the TIS ID attribute as the payload.
-   *
-   * @param traineeTisId The TIS ID to inject in to the payload.
-   * @return The generated token.
-   */
-  public static String generateTokenForTisId(String traineeTisId) {
-    String payload = String.format("{\"%s\":\"%s\"}", TIS_ID_ATTRIBUTE, traineeTisId);
-    return generateToken(payload);
-  }
-
-  /**
    * Generate a token with the various attributes as the payload.
    *
    * @param traineeTisId The TIS ID to inject in to the payload.
@@ -70,13 +61,26 @@ public class TestJwtUtil {
    */
   public static String generateTokenForTrainee(String traineeTisId, String email, String givenName,
       String familyName) {
+    String features = String.format("{\"ltft\":true,"
+        + "\"ltftProgrammes\":[\"%s\"]}", FEATURES_LTFT_PROGRAMME);
     String payload = String.format("{\"%s\":\"%s\"", TIS_ID_ATTRIBUTE, traineeTisId)
         + (email == null ? "" : String.format(",\"%s\":\"%s\"", EMAIL_ATTRIBUTE, email)
         + (givenName == null ? "" : String.format(",\"%s\":\"%s\"", GIVEN_NAME_ATTRIBUTE, givenName)
         + (familyName == null ? "" : String.format(",\"%s\":\"%s\"", FAMILY_NAME_ATTRIBUTE,
-        familyName))))
+        familyName))
+        + String.format(",\"%s\":%s", FEATURES_ATTRIBUTE, features)))
         + "}"; // :tears:
     return generateToken(payload);
+  }
+
+  /**
+   * Generate a token with default values for the various attributes as the payload.
+   *
+   * @param traineeTisId The TIS ID to inject in to the payload.
+   * @return The generated token.
+   */
+  public static String generateTokenForTrainee(String traineeTisId) {
+    return generateTokenForTrainee(traineeTisId, "email", "givenName", "familyName");
   }
 
   /**

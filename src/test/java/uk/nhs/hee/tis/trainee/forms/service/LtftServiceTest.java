@@ -47,7 +47,6 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.REJECT
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
-import static uk.nhs.hee.tis.trainee.forms.service.LtftService.API_PROGRAMME_MEMBERSHIP_IS_PILOT_ROLLOUT_2024;
 
 import io.awspring.cloud.sns.core.SnsNotification;
 import io.awspring.cloud.sns.core.SnsTemplate;
@@ -85,7 +84,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.client.RestTemplate;
+import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctChangeDto;
@@ -137,13 +136,7 @@ class LtftServiceTest {
 
   private static final String LTFT_ASSIGNMENT_UPDATE_TOPIC = "update/topic/assignment";
   private static final String LTFT_STATUS_UPDATE_TOPIC = "update/topic/status";
-  private static final String SERVICE_URL = "http://service.url";
-  private static final String SERVICE_URI = SERVICE_URL
-      + API_PROGRAMME_MEMBERSHIP_IS_PILOT_ROLLOUT_2024;
   private static final UUID PM_UUID = UUID.randomUUID();
-  private static final Map<String, String> EXPECTED_URI_MAP = Map.of(
-      "traineeTisId", TRAINEE_ID,
-      "programmeMembershipId", PM_UUID.toString());
 
   private LtftService service;
   private LtftFormRepository repository;
@@ -151,7 +144,6 @@ class LtftServiceTest {
   private LtftMapper mapper;
   private SnsTemplate snsTemplate;
   private LtftSubmissionHistoryService ltftSubmissionHistoryService;
-  private RestTemplate restTemplate;
 
   @BeforeEach
   void setUp() {
@@ -164,17 +156,20 @@ class LtftServiceTest {
     traineeIdentity.setTraineeId(TRAINEE_ID);
     traineeIdentity.setEmail(TRAINEE_EMAIL);
     traineeIdentity.setName(TRAINEE_NAME);
+    traineeIdentity.setFeatures(FeaturesDto.builder()
+        .ltft(true)
+        .ltftProgrammes(List.of(PM_UUID.toString()))
+        .build());
 
     repository = mock(LtftFormRepository.class);
     mongoTemplate = mock(MongoTemplate.class);
     snsTemplate = mock(SnsTemplate.class);
     ltftSubmissionHistoryService = mock(LtftSubmissionHistoryService.class);
-    restTemplate = mock(RestTemplate.class);
 
     mapper = new LtftMapperImpl(new TemporalMapperImpl());
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, mapper,
-        snsTemplate, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC, SERVICE_URL,
-        ltftSubmissionHistoryService, restTemplate);
+        snsTemplate, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
+        ltftSubmissionHistoryService);
   }
 
   @Test
@@ -1906,7 +1901,7 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldSaveIfNewLtftFormForTraineeAndRolloutProgrammeMembership() {
+  void shouldSaveIfNewLtftFormForTraineeAndLtftProgrammeMembership() {
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .programmeMembership(ProgrammeMembershipDto.builder()
@@ -1919,8 +1914,6 @@ class LtftServiceTest {
     existingForm.setTraineeTisId(TRAINEE_ID);
     existingForm.setContent(LtftContent.builder().name("test").build());
     when(repository.save(any())).thenReturn(existingForm);
-    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, EXPECTED_URI_MAP))
-        .thenReturn(true);
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
 
@@ -1930,24 +1923,116 @@ class LtftServiceTest {
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
   }
 
-  @ParameterizedTest
-  @NullSource
-  @ValueSource(booleans = false)
-  void shouldNotSaveIfNewLtftFormForTraineeButNotRolloutProgrammeMembership(Boolean isRollout) {
-    LtftForm existingForm = new LtftForm();
-    existingForm.setId(ID);
-    existingForm.setTraineeTisId(TRAINEE_ID);
-    existingForm.setContent(LtftContent.builder().name("test").build());
-    when(repository.save(any())).thenReturn(existingForm);
-    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, EXPECTED_URI_MAP))
-        .thenReturn(isRollout);
-
+  @Test
+  void shouldNotSaveIfNewLtftFormForTraineeIfNoFeaturesSet() {
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
 
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .programmeMembership(ProgrammeMembershipDto.builder()
             .id(PM_UUID)
+            .build())
+        .build();
+
+    AdminIdentity adminIdentity = new AdminIdentity();
+    adminIdentity.setName(ADMIN_NAME);
+    adminIdentity.setEmail(ADMIN_EMAIL);
+    adminIdentity.setGroups(Set.of(ADMIN_GROUP));
+
+    TraineeIdentity traineeIdentity = new TraineeIdentity();
+    traineeIdentity.setTraineeId(TRAINEE_ID);
+
+    service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate,
+        mapper, snsTemplate, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
+        ltftSubmissionHistoryService);
+
+    Optional<LtftFormDto> formDtoOptional = service.createLtftForm(dtoToSave);
+
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
+    verifyNoInteractions(repository);
+  }
+
+  @Test
+  void shouldNotSaveIfNewLtftFormForTraineeIfFeaturesLtftNotTrue() {
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
+
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
+        .build();
+
+    AdminIdentity adminIdentity = new AdminIdentity();
+    adminIdentity.setName(ADMIN_NAME);
+    adminIdentity.setEmail(ADMIN_EMAIL);
+    adminIdentity.setGroups(Set.of(ADMIN_GROUP));
+
+    TraineeIdentity traineeIdentity = new TraineeIdentity();
+    traineeIdentity.setTraineeId(TRAINEE_ID);
+    traineeIdentity.setFeatures(FeaturesDto.builder()
+        .ltft(false)
+        .ltftProgrammes(List.of(PM_UUID.toString()))
+        .build());
+
+    service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate,
+        mapper, snsTemplate, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
+        ltftSubmissionHistoryService);
+
+    Optional<LtftFormDto> formDtoOptional = service.createLtftForm(dtoToSave);
+
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
+    verifyNoInteractions(repository);
+  }
+
+  @Test
+  void shouldNotSaveIfNewLtftFormForTraineeIfNoFeatureLtftProgrammes() {
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
+
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
+        .build();
+
+    AdminIdentity adminIdentity = new AdminIdentity();
+    adminIdentity.setName(ADMIN_NAME);
+    adminIdentity.setEmail(ADMIN_EMAIL);
+    adminIdentity.setGroups(Set.of(ADMIN_GROUP));
+
+    TraineeIdentity traineeIdentity = new TraineeIdentity();
+    traineeIdentity.setTraineeId(TRAINEE_ID);
+    traineeIdentity.setFeatures(FeaturesDto.builder()
+        .ltft(true)
+        .build());
+
+    service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, mapper,
+        snsTemplate, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
+        ltftSubmissionHistoryService);
+
+    Optional<LtftFormDto> formDtoOptional = service.createLtftForm(dtoToSave);
+
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(false));
+    verifyNoInteractions(repository);
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = "1042b0f8-3169-4216-8707-65ea1854b6ac")
+  void shouldNotSaveIfNewLtftFormForTraineeButNotLtftProgrammeMembership(String otherPmId) {
+    LtftForm existingForm = new LtftForm();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId(TRAINEE_ID);
+    existingForm.setContent(LtftContent.builder().name("test").build());
+    when(repository.save(any())).thenReturn(existingForm);
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.empty());
+
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(otherPmId == null ? null : UUID.fromString(otherPmId))
             .build())
         .build();
 
@@ -2052,8 +2137,6 @@ class LtftServiceTest {
     existingForm.setContent(LtftContent.builder().name("test").build());
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, EXPECTED_URI_MAP))
-        .thenReturn(true);
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
 
@@ -2061,15 +2144,13 @@ class LtftServiceTest {
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
   }
 
-  @ParameterizedTest
-  @NullSource
-  @ValueSource(booleans = false)
-  void shouldNotSaveIfUpdatingEditableLtftFormForTraineeWithNonRolloutPm(Boolean inRollout) {
+  @Test
+  void shouldNotSaveIfUpdatingEditableLtftFormForTraineeWithNonLtftPm() {
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .id(ID)
         .traineeTisId(TRAINEE_ID)
         .programmeMembership(ProgrammeMembershipDto.builder()
-            .id(PM_UUID)
+            .id(UUID.randomUUID())
             .build())
         .build();
 
@@ -2080,8 +2161,6 @@ class LtftServiceTest {
     existingForm.setContent(LtftContent.builder().name("test").build());
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, EXPECTED_URI_MAP))
-        .thenReturn(inRollout);
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
 
@@ -2101,8 +2180,6 @@ class LtftServiceTest {
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, EXPECTED_URI_MAP))
-        .thenReturn(true);
 
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .id(ID)
@@ -2141,8 +2218,6 @@ class LtftServiceTest {
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, EXPECTED_URI_MAP))
-        .thenReturn(true);
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
@@ -2174,8 +2249,6 @@ class LtftServiceTest {
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, EXPECTED_URI_MAP))
-        .thenReturn(true);
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
@@ -2227,8 +2300,6 @@ class LtftServiceTest {
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, EXPECTED_URI_MAP))
-        .thenReturn(true);
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
@@ -2285,8 +2356,6 @@ class LtftServiceTest {
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, EXPECTED_URI_MAP))
-        .thenReturn(true);
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
@@ -2333,8 +2402,6 @@ class LtftServiceTest {
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, EXPECTED_URI_MAP))
-        .thenReturn(true);
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
@@ -2390,8 +2457,6 @@ class LtftServiceTest {
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, EXPECTED_URI_MAP))
-        .thenReturn(true);
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
@@ -2459,8 +2524,6 @@ class LtftServiceTest {
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, EXPECTED_URI_MAP))
-        .thenReturn(true);
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
@@ -2507,8 +2570,6 @@ class LtftServiceTest {
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, EXPECTED_URI_MAP))
-        .thenReturn(true);
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
@@ -2553,8 +2614,6 @@ class LtftServiceTest {
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, EXPECTED_URI_MAP))
-        .thenReturn(true);
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
@@ -2593,8 +2652,6 @@ class LtftServiceTest {
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, EXPECTED_URI_MAP))
-        .thenReturn(true);
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
@@ -2640,8 +2697,6 @@ class LtftServiceTest {
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, EXPECTED_URI_MAP))
-        .thenReturn(true);
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
@@ -2709,8 +2764,6 @@ class LtftServiceTest {
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, EXPECTED_URI_MAP))
-        .thenReturn(true);
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
@@ -2756,8 +2809,6 @@ class LtftServiceTest {
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, EXPECTED_URI_MAP))
-        .thenReturn(true);
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
@@ -2786,8 +2837,6 @@ class LtftServiceTest {
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-    when(restTemplate.getForObject(SERVICE_URI, Boolean.class, EXPECTED_URI_MAP))
-        .thenReturn(true);
 
     Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
     assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
