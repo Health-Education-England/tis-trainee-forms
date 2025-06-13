@@ -234,8 +234,8 @@ public class LtftService {
       return Optional.empty();
     }
 
-    String programmeMembershipId = form.getContent().programmeMembership().id().toString();
-    if (!isProgrammeMembershipValidForLtft(traineeId, programmeMembershipId)) {
+    UUID programmeMembershipId = form.getContent().programmeMembership().id();
+    if (!isProgrammeMembershipValidForLtft(programmeMembershipId)) {
       log.warn("Could not save form as it is not for a LTFT-enabled programme membership {}: {}",
           traineeId, dto);
       return Optional.empty();
@@ -282,8 +282,8 @@ public class LtftService {
       return Optional.empty();
     }
 
-    String programmeMembershipId = form.getContent().programmeMembership().id().toString();
-    if (!isProgrammeMembershipValidForLtft(traineeId, programmeMembershipId)) {
+    UUID programmeMembershipId = form.getContent().programmeMembership().id();
+    if (!isProgrammeMembershipValidForLtft(programmeMembershipId)) {
       log.warn("Could not update form {} for trainee {} as new programme membership {} is not "
           + "LTFT-enabled", formId, traineeId, programmeMembershipId);
       return Optional.empty();
@@ -668,16 +668,24 @@ public class LtftService {
   /**
    * Identifies if a programme membership is LTFT-enabled.
    *
-   * @param traineeId             The trainee TIS ID whose programme membership it is.
    * @param programmeMembershipId The programme membership ID.
    * @return True if the programme membership is LTFT-enabled, otherwise false.
    */
-  public boolean isProgrammeMembershipValidForLtft(String traineeId,
-                                                   String programmeMembershipId) {
-    Boolean isLtftEnabled = traineeIdentity.getTraineeId();
-    if (!isLtftEnabled) {
-      log.info("Trainee {} programme membership {} is not LTFT-enabled.",
-          traineeId, programmeMembershipId);
+  protected boolean isProgrammeMembershipValidForLtft(UUID programmeMembershipId) {
+    if (traineeIdentity.getFeatures() == null) {
+      log.info("Trainee {} does not have features set.", traineeIdentity.getTraineeId());
+      return false;
+    }
+    if (!traineeIdentity.getFeatures().ltft()) {
+      log.info("Trainee {} is not LTFT-enabled.", traineeIdentity.getTraineeId());
+      return false;
+    }
+    if (programmeMembershipId == null
+        || traineeIdentity.getFeatures().ltftProgrammes() == null
+        || !traineeIdentity.getFeatures().ltftProgrammes()
+        .contains(programmeMembershipId.toString())) {
+      log.info("Trainee {} programme membership {} is null or not LTFT-enabled.",
+          traineeIdentity.getTraineeId(), programmeMembershipId);
       return false;
     }
     return true;
