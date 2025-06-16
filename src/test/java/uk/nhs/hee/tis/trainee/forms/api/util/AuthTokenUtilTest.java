@@ -35,6 +35,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto;
 
 class AuthTokenUtilTest {
 
@@ -150,5 +151,53 @@ class AuthTokenUtilTest {
     String attribute = AuthTokenUtil.getAttribute(token, STRING_ATTRIBUTE);
 
     assertThat("Unexpected attribute.", attribute, is("40"));
+  }
+
+  @Test
+  void getFeaturesShouldThrowExceptionWhenTokenPayloadNotMap() {
+    String encodedPayload = Base64.getEncoder()
+        .encodeToString("[]".getBytes(StandardCharsets.UTF_8));
+    String token = String.format("aa.%s.cc", encodedPayload);
+
+    assertThrows(IOException.class, () -> AuthTokenUtil.getFeatures(token));
+  }
+
+  @Test
+  void getFeaturesShouldReturnEmptyFeaturesWhenFeaturesNotInToken() throws IOException {
+    String encodedPayload = Base64.getEncoder()
+        .encodeToString("{}".getBytes(StandardCharsets.UTF_8));
+    String token = String.format("aa.%s.cc", encodedPayload);
+
+    FeaturesDto features = AuthTokenUtil.getFeatures(token);
+
+    assertThat("Unexpected features ltft value.", features.ltft(), is(false));
+    assertThat("Unexpected features ltft programmes value.", features.ltftProgrammes(),
+        nullValue());
+  }
+
+  @Test
+  void getFeaturesShouldReturnFeaturesFromToken() throws IOException {
+    String encodedPayload = Base64.getEncoder()
+        .encodeToString("""
+             {
+                "features": {
+                  "ltft": true,
+                  "ltftProgrammes": [
+                    "LTFT Programme 1",
+                    "LTFT Programme 2"
+                  ]
+                }
+             }
+            """
+            .getBytes(StandardCharsets.UTF_8));
+    String token = String.format("aa.%s.cc", encodedPayload);
+
+    FeaturesDto features = AuthTokenUtil.getFeatures(token);
+
+    assertThat("Unexpected features ltft value.", features.ltft(), is(true));
+    assertThat("Unexpected features ltft programmes count.", features.ltftProgrammes(),
+        hasSize(2));
+    assertThat("Unexpected features ltft programmes.", features.ltftProgrammes(),
+        hasItems("LTFT Programme 1", "LTFT Programme 2"));
   }
 }

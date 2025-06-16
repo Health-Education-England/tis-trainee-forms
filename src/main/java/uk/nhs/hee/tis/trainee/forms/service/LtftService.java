@@ -233,6 +233,14 @@ public class LtftService {
           traineeId, dto);
       return Optional.empty();
     }
+
+    UUID programmeMembershipId = form.getContent().programmeMembership().id();
+    if (!isProgrammeMembershipValidForLtft(programmeMembershipId)) {
+      log.warn("Could not save form as it is not for a LTFT-enabled programme membership {}: {}",
+          traineeId, dto);
+      return Optional.empty();
+    }
+
     LtftForm savedForm = ltftFormRepository.save(form);
     return Optional.of(mapper.toDto(savedForm));
   }
@@ -271,6 +279,13 @@ public class LtftService {
     if (existingState != DRAFT && existingState != UNSUBMITTED) {
       log.warn("Could not update form {} for trainee {} since state {} is not editable",
           formId, traineeId, existingState);
+      return Optional.empty();
+    }
+
+    UUID programmeMembershipId = form.getContent().programmeMembership().id();
+    if (!isProgrammeMembershipValidForLtft(programmeMembershipId)) {
+      log.warn("Could not update form {} for trainee {} as new programme membership {} is not "
+          + "LTFT-enabled", formId, traineeId, programmeMembershipId);
       return Optional.empty();
     }
 
@@ -648,5 +663,31 @@ public class LtftService {
         .build();
 
     snsTemplate.sendNotification(topic, notification);
+  }
+
+  /**
+   * Identifies if a programme membership is LTFT-enabled.
+   *
+   * @param programmeMembershipId The programme membership ID.
+   * @return True if the programme membership is LTFT-enabled, otherwise false.
+   */
+  protected boolean isProgrammeMembershipValidForLtft(UUID programmeMembershipId) {
+    if (traineeIdentity.getFeatures() == null) {
+      log.info("Trainee {} does not have features set.", traineeIdentity.getTraineeId());
+      return false;
+    }
+    if (!traineeIdentity.getFeatures().ltft()) {
+      log.info("Trainee {} is not LTFT-enabled.", traineeIdentity.getTraineeId());
+      return false;
+    }
+    if (programmeMembershipId == null
+        || traineeIdentity.getFeatures().ltftProgrammes() == null
+        || !traineeIdentity.getFeatures().ltftProgrammes()
+        .contains(programmeMembershipId.toString())) {
+      log.info("Trainee {} programme membership {} is null or not LTFT-enabled.",
+          traineeIdentity.getTraineeId(), programmeMembershipId);
+      return false;
+    }
+    return true;
   }
 }

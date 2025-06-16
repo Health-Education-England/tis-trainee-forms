@@ -19,26 +19,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.dto.identity;
+package uk.nhs.hee.tis.trainee.forms.dto;
 
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto;
+import java.util.List;
+import lombok.Builder;
 
 /**
- * Trainee identity data for an authenticated user.
+ * A DTO for trainee details feature flags.
  */
-@Data
-@EqualsAndHashCode(callSuper = true)
-public class TraineeIdentity extends UserIdentity {
+@Builder
+public record FeaturesDto(boolean ltft,
+                          List<String> ltftProgrammes) {
 
-  private static final String ROLE = "TRAINEE";
-
-  private String traineeId;
-  private FeaturesDto features;
-
-  @Override
-  public String getRole() {
-    return ROLE;
-  }
 }

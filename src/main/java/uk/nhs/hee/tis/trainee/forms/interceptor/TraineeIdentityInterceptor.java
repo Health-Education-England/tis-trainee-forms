@@ -64,6 +64,7 @@ public class TraineeIdentityInterceptor implements HandlerInterceptor {
         if (givenName != null && familyName != null) {
           traineeIdentity.setName("%s %s".formatted(givenName, familyName));
         }
+        traineeIdentity.setFeatures(AuthTokenUtil.getFeatures(authToken));
       } catch (IOException e) {
         log.warn("Unable to extract trainee ID from authorization token.", e);
       }
