@@ -39,7 +39,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static uk.nhs.hee.tis.trainee.forms.TestJwtUtil.FEATURES_LTFT_PROGRAMME_INCLUDED;
-import static uk.nhs.hee.tis.trainee.forms.TestJwtUtil.FEATURES_LTFT_PROGRAMME;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.VALID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -597,9 +596,12 @@ class LtftResourceIntegrationTest {
         .traineeTisId(TRAINEE_ID)
         .name("test")
         .tpdEmailStatus(VALID)
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
         .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
-    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/ltft")
             .header(HttpHeaders.AUTHORIZATION, token)
             .contentType(MediaType.APPLICATION_JSON)
