@@ -21,6 +21,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.service;
 
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.VALID;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
@@ -56,6 +57,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
@@ -64,6 +66,7 @@ import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 
 /**
@@ -414,6 +417,44 @@ public class LtftService {
     } else {
       log.warn("Could not assign admin to form {} since no form exists with this ID for DBCs [{}]",
           formId, dbcs);
+      return Optional.empty();
+    }
+  }
+
+  /**
+   * Update the TPD notification status of an LTFT form.
+   *
+   * @param formId The ID of the LTFT form to update.
+   * @param status The new TPD notification status to set.
+   * @return The admin summary DTO of the updated LTFT form, or empty if the form does not exist.
+   */
+  public Optional<LtftAdminSummaryDto> updateTpdNotificationStatus(UUID formId, String status) {
+    log.info("Updating TPD notification status for LTFT form {}: {}", formId, status);
+
+    Optional<LtftForm> optionalForm = ltftFormRepository.findById(formId);
+    EmailValidityType updatedEmailValidity = mapper.toEmailValidity(status);
+
+    if (optionalForm.isPresent()) {
+      LtftForm form = optionalForm.get();
+      if (form.getContent().tpdEmailValidity() != null
+          && form.getContent().tpdEmailValidity() == updatedEmailValidity) {
+        log.info("Skipping update of TPD notification status for form {} as it is already {}.",
+            formId, updatedEmailValidity);
+        return Optional.of(mapper.toAdminSummaryDto(form));
+      }
+      if (form.getContent().tpdEmailValidity() != null
+          && form.getContent().tpdEmailValidity() == VALID) {
+        log.warn("Cannot update TPD notification status for form {} as it is already VALID.",
+            formId);
+        return Optional.empty();
+      }
+      LtftContent newContent =  form.getContent().withTpdEmailValidity(updatedEmailValidity);
+      form.setContent(newContent);
+      LtftForm savedForm = ltftFormRepository.save(form);
+      publishUpdateNotification(savedForm, ltftStatusUpdateTopic);
+      return Optional.of(mapper.toAdminSummaryDto(savedForm));
+    } else {
+      log.warn("Could not update TPD notification status: form {} cannot be found.", formId);
       return Optional.empty();
     }
   }

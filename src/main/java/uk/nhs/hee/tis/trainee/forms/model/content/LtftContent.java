@@ -25,8 +25,10 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
+import lombok.With;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Field;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
 
 /**
@@ -39,6 +41,7 @@ import uk.nhs.hee.tis.trainee.forms.model.Person;
  * @param discussions         Discussions which took place as part of the LTFT process.
  * @param change              The calculated LTFT change.
  * @param reasons             The reasons for applying for LTFT.
+ * @param tpdEmailValidity    The validity of the email address for the TPD, if applicable.
  */
 @Builder
 public record LtftContent(
@@ -48,7 +51,9 @@ public record LtftContent(
     Declarations declarations,
     Discussions discussions,
     CctChange change,
-    Reasons reasons) implements FormContent {
+    Reasons reasons,
+    @With
+    EmailValidityType tpdEmailValidity) implements FormContent {
 
   /**
    * The trainee's personal details.

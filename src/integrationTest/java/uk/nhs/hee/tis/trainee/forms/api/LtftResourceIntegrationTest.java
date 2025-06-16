@@ -37,6 +37,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.VALID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.sns.core.SnsTemplate;
@@ -77,6 +78,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
 import uk.nhs.hee.tis.trainee.forms.dto.RedactedPersonDto;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.LtftSubmissionHistory;
@@ -534,6 +536,23 @@ class LtftResourceIntegrationTest {
   }
 
   @Test
+  void shouldIgnoreTpdEmailStatusWhenCreatingLtftFormForTrainee() throws Exception {
+    LtftFormDto formToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .name("test")
+        .tpdEmailStatus(VALID)
+        .build();
+    String formToSaveJson = mapper.writeValueAsString(formToSave);
+    String token = TestJwtUtil.generateTokenForTisId(TRAINEE_ID);
+    mockMvc.perform(post("/api/ltft")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToSaveJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.tpdEmailStatus", nullValue()));
+  }
+
+  @Test
   void shouldBeBadRequestWhenUpdatingLtftFormWithoutId() throws Exception {
     LtftFormDto formToUpdate = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
@@ -654,6 +673,7 @@ class LtftResourceIntegrationTest {
             .build())
         .created(Instant.EPOCH)
         .lastModified(Instant.EPOCH)
+        .tpdEmailStatus(VALID)
         .build();
 
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
@@ -669,6 +689,7 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.revision").value(0))
         .andExpect(jsonPath("$.status.current.state", is("DRAFT")))
         .andExpect(jsonPath("$.status.current.assignedAdmin").doesNotExist())
+        .andExpect(jsonPath("$.tpdEmailStatus").doesNotExist())
         .andExpect(jsonPath("$.created").value(
             formSaved.getCreated().truncatedTo(ChronoUnit.MILLIS).toString()))
         .andExpect(jsonPath("$.lastModified",

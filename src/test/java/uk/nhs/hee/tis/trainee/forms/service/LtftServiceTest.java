@@ -41,6 +41,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.INVALID;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.UNKNOWN;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.VALID;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROVED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.REJECTED;
@@ -72,6 +75,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.Page;
@@ -97,6 +101,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.RedactedPersonDto;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
@@ -3092,6 +3097,114 @@ class LtftServiceTest {
     StatusInfoDto current = optionalDto.get().status().current();
     int expectedRevision = targetState.isIncrementsRevision() ? 1 : 0;
     assertThat("Unexpected revision.", current.revision(), is(expectedRevision));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @EnumSource(value = EmailValidityType.class, mode = INCLUDE, names = {"UNKNOWN"})
+  void shouldUpdateTpdNotificationStatusWhenFormExists(EmailValidityType initialStatus) {
+    UUID formId = UUID.randomUUID();
+    LtftForm form = new LtftForm();
+    LtftContent content = LtftContent.builder()
+        .tpdEmailValidity(initialStatus)
+        .build();
+    form.setContent(content);
+
+    when(repository.findById(formId)).thenReturn(Optional.of(form));
+    when(repository.save(any(LtftForm.class))).thenAnswer(i -> i.getArgument(0));
+
+    Optional<LtftAdminSummaryDto> result = service.updateTpdNotificationStatus(formId, "SENT");
+
+    verify(repository).save(form);
+    assertThat("Unexpected empty result.", result.isPresent(), is(true));
+    assertThat("Unexpected TPD status.", result.get().tpd().emailStatus(), is(VALID));
+  }
+
+  @Test
+  void shouldNotUpdateTpdNotificationStatusWhenStatusUnchanged() {
+    UUID formId = UUID.randomUUID();
+    LtftForm form = new LtftForm();
+    LtftContent content = LtftContent.builder()
+        .tpdEmailValidity(INVALID)
+        .build();
+    form.setContent(content);
+
+    when(repository.findById(formId)).thenReturn(Optional.of(form));
+
+    Optional<LtftAdminSummaryDto> result = service.updateTpdNotificationStatus(formId, "FAILED");
+
+    verify(repository, never()).save(any());
+    assertThat("Unexpected empty result.", result.isPresent(), is(true));
+    assertThat("Unexpected TPD status.", result.get().tpd().emailStatus(), is(INVALID));
+  }
+
+  @Test
+  void shouldReturnEmptyOptionalWhenUpdateTpdNotificationFormNotFound() {
+    UUID formId = UUID.randomUUID();
+    when(repository.findById(formId)).thenReturn(Optional.empty());
+
+    Optional<LtftAdminSummaryDto> result = service.updateTpdNotificationStatus(formId, "SENT");
+
+    verify(repository, never()).save(any());
+    assertThat("Unexpected result.", result.isEmpty(), is(true));
+  }
+
+  @Test
+  void shouldPublishUpdateNotificationWhenTpdStatusUpdated() {
+    UUID formId = UUID.randomUUID();
+    LtftForm form = new LtftForm();
+    form.setId(formId);
+    LtftContent content = LtftContent.builder()
+        .tpdEmailValidity(UNKNOWN)
+        .build();
+    form.setContent(content);
+
+    when(repository.findById(formId)).thenReturn(Optional.of(form));
+    when(repository.save(any(LtftForm.class))).thenAnswer(i -> i.getArgument(0));
+
+    service.updateTpdNotificationStatus(formId, "SENT");
+
+    ArgumentCaptor<SnsNotification<LtftFormDto>> snsNotificationCaptor = ArgumentCaptor.captor();
+    verify(snsTemplate).sendNotification(any(), snsNotificationCaptor.capture());
+
+    SnsNotification<LtftFormDto> capturedNotification = snsNotificationCaptor.getValue();
+    assertThat("Unexpected group ID.", capturedNotification.getGroupId(),
+        is(formId.toString()));
+    assertThat("Unexpected payload TPD status.",
+        capturedNotification.getPayload().tpdEmailStatus(),
+        is(VALID));
+  }
+
+  @Test
+  void shouldNotPublishUpdateNotificationWhenTpdStatusUnchanged() {
+    UUID formId = UUID.randomUUID();
+    LtftForm form = new LtftForm();
+    LtftContent content = LtftContent.builder()
+        .tpdEmailValidity(UNKNOWN)
+        .build();
+    form.setContent(content);
+
+    when(repository.findById(formId)).thenReturn(Optional.of(form));
+
+    service.updateTpdNotificationStatus(formId, "PENDING");
+
+    verifyNoInteractions(snsTemplate);
+  }
+
+  @Test
+  void shouldNotPublishUpdateNotificationWhenTpdStatusUnchangeable() {
+    UUID formId = UUID.randomUUID();
+    LtftForm form = new LtftForm();
+    LtftContent content = LtftContent.builder()
+        .tpdEmailValidity(VALID)
+        .build();
+    form.setContent(content);
+
+    when(repository.findById(formId)).thenReturn(Optional.of(form));
+
+    service.updateTpdNotificationStatus(formId, "PENDING");
+
+    verifyNoInteractions(snsTemplate);
   }
 
   /**
