@@ -351,6 +351,7 @@ class LtftServiceTest {
       personalDetails.surname | content.personalDetails.surname
       programmeName | content.programmeMembership.name
       status | status.current.state
+      traineeId | traineeTisId
       """)
   void shouldApplySingleValueUserFiltersWhenCountingAdminLtfts(String external, String internal) {
     service.getAdminLtftCount(Map.of(external, "filterValue"));
@@ -377,6 +378,7 @@ class LtftServiceTest {
       personalDetails.surname | content.personalDetails.surname
       programmeName | content.programmeMembership.name
       status | status.current.state
+      traineeId | traineeTisId
       """)
   void shouldApplyMultiValueUserFiltersWhenCountingAdminLtfts(String external, String internal) {
     service.getAdminLtftCount(Map.of(external, "filterValue1,filterValue2"));
@@ -567,6 +569,7 @@ class LtftServiceTest {
       personalDetails.surname | content.personalDetails.surname
       programmeName | content.programmeMembership.name
       status | status.current.state
+      traineeId | traineeTisId
       """)
   void shouldApplySingleValueUserFiltersWhenGettingAdminLtftSummaries(String external,
       String internal) {
@@ -596,6 +599,7 @@ class LtftServiceTest {
       personalDetails.surname | content.personalDetails.surname
       programmeName | content.programmeMembership.name
       status | status.current.state
+      traineeId | traineeTisId
       """)
   void shouldApplyMultiValueUserFiltersWhenGettingAdminLtftSummaries(String external,
       String internal) {

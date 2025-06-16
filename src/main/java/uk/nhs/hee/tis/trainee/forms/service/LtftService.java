@@ -630,6 +630,7 @@ public class LtftService {
             case "personalDetails.surname" -> "content.personalDetails.surname";
             case "programmeName" -> "content.programmeMembership.name";
             case "status" -> "status.current.state";
+            case "traineeId" -> "traineeTisId";
             default -> null;
           };
           return property == null ? null : new SimpleEntry<>(property, e.getValue());
