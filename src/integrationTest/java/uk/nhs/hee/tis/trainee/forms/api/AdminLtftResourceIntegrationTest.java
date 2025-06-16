@@ -612,6 +612,33 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.page.totalPages", is(1)));
   }
 
+  @Test
+  void shouldReturnSummariesWithMatchingTraineeIdWhenHasTraineeIdFilter()
+      throws Exception {
+
+    LtftForm ltftForDifferentTrainee = createLtftForm(SUBMITTED, DBC_1, null);
+    ltftForDifferentTrainee.setTraineeTisId("another id");
+    template.insert(ltftForDifferentTrainee);
+
+    LtftForm ltftForTrainee = createLtftForm(SUBMITTED, DBC_1, null);
+    ltftForTrainee.setTraineeTisId("trainee id to find");
+    template.insert(ltftForTrainee);
+
+    LtftForm ltftForDifferentTrainee2 = createLtftForm(SUBMITTED, DBC_1, null);
+    ltftForDifferentTrainee2.setTraineeTisId("another id2");
+    template.insert(ltftForDifferentTrainee2);
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(get("/api/admin/ltft")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .param("traineeId", "trainee id to find"))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.content").isArray())
+        .andExpect(jsonPath("$.content", hasSize(1)))
+        .andExpect(jsonPath("$.content[0].personalDetails.id", is("trainee id to find")));
+  }
+
   @ParameterizedTest
   @ValueSource(ints = {0, 1, 2})
   void shouldPageLtftSummariesWhenTooManyResults(int pageNumber) throws Exception {
