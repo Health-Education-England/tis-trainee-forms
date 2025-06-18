@@ -23,10 +23,12 @@ package uk.nhs.hee.tis.trainee.forms.api;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
 import com.fasterxml.jackson.annotation.JsonView;
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -43,6 +45,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Update;
 import uk.nhs.hee.tis.trainee.forms.dto.views.Trainee;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
+import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
 /**
  * A controller for Less Than Full-time (LTFT) endpoints.
@@ -54,14 +57,16 @@ import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 public class LtftResource {
 
   private final LtftService service;
+  private final PdfService pdfService;
 
   /**
    * Construct a REST controller for LTFT related endpoints.
    *
    * @param service A service providing LTFT functionality.
    */
-  public LtftResource(LtftService service) {
+  public LtftResource(LtftService service, PdfService pdfService) {
     this.service = service;
+    this.pdfService = pdfService;
   }
 
   /**
@@ -75,6 +80,46 @@ public class LtftResource {
     log.info("Request to get summary list of LTFT records.");
     List<LtftSummaryDto> ltfts = service.getLtftSummaries();
     return ResponseEntity.ok(ltfts);
+  }
+
+  /**
+   * Get an existing LTFT form.
+   *
+   * @param formId The id of the LTFT form to retrieve.
+   *
+   * @return The DTO of the saved form.
+   */
+  @GetMapping("/{formId}")
+  @JsonView(Trainee.Read.class)
+  public ResponseEntity<LtftFormDto> getLtft(@PathVariable UUID formId) {
+    log.info("Request to retrieve LTFT form {}.", formId);
+    Optional<LtftFormDto> ltft = service.getLtftForm(formId);
+    return ResponseEntity.of(ltft);
+  }
+
+  /**
+   * Get a PDF of a LTFT form with a particular ID.
+   *
+   * @param formId The ID of the form.
+   * @return The generated PDF
+   */
+  @GetMapping(value = "/{formId}", produces = MediaType.APPLICATION_PDF_VALUE)
+  ResponseEntity<byte[]> getLtftPdf(@PathVariable UUID formId) {
+    log.info("PDF requested by trainee for LTFT '{}'", formId);
+    Optional<LtftFormDto> formDetail = service.getLtftForm(formId);
+
+    if (formDetail.isPresent()) {
+      LtftFormDto ltft = formDetail.get();
+
+      try {
+        byte[] pdf = pdfService.generatePdf(ltft, "trainee");
+        return ResponseEntity.ok(pdf);
+      } catch (IOException e) {
+        return ResponseEntity.unprocessableEntity().build();
+      }
+    }
+
+    return ResponseEntity.notFound().build();
   }
 
   /**
@@ -159,21 +204,6 @@ public class LtftResource {
     Optional<LtftFormDto> withdrawnLtft = service.withdrawLtftForm(formId, reason);
     return withdrawnLtft.map(ResponseEntity::ok)
         .orElseGet(() -> ResponseEntity.badRequest().build());
-  }
-
-  /**
-   * Get an existing LTFT form.
-   *
-   * @param formId The id of the LTFT form to retrieve.
-   *
-   * @return The DTO of the saved form.
-   */
-  @GetMapping("/{formId}")
-  @JsonView(Trainee.Read.class)
-  public ResponseEntity<LtftFormDto> getLtft(@PathVariable UUID formId) {
-    log.info("Request to retrieve LTFT form {}.", formId);
-    Optional<LtftFormDto> ltft = service.getLtftForm(formId);
-    return ResponseEntity.of(ltft);
   }
 
   /**
