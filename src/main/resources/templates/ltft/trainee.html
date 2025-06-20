@@ -28,6 +28,26 @@
               <dt class="nhsuk-summary-list__key" th:text="${var.status?.current?.state} ? ${var.status?.current?.state} : _">Modified</dt>
               <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(var.lastModified, 'dd MMMM yyyy HH:mm (z)', timezone)} ?: _">Not provided</dd>
             </div>
+            <th:block th:if="${#strings.toString(var.status?.current?.state)} == 'UNSUBMITTED' or ${#strings.toString(var.status?.current?.state)} == 'WITHDRAWN'">
+              <div class="nhsuk-summary-list__row">
+                <dt class="nhsuk-summary-list__key" th:text="${var.status?.current?.state} ? |${var.status?.current?.state} by| : _">Modified by</dt>
+                <dd class="nhsuk-summary-list__value" th:text="${#strings.toString(var.status?.current?.modifiedBy?.role)} == 'TRAINEE' ? 'Me' : 'TIS Admin'"></dd>
+              </div>
+              <div class="nhsuk-summary-list__row">
+                <dt class="nhsuk-summary-list__key">Reason</dt>
+                <dd class="nhsuk-summary-list__value" th:switch="${var.status?.current?.detail.reason}">
+                  <span th:case="'other'">other reason</span>
+                  <span th:case="'changePercentage'">Change WTE percentage</span>
+                  <span th:case="'changeStartDate'">Change start date</span>
+                  <span th:case="'changeOfCircs'">Change of circumstances</span>
+                  <span th:case="*"><span th:switch="${var.status?.current?.detail.reason} ?: _">Not provided</span></span>
+                </dd>
+              </div>
+              <div class="nhsuk-summary-list__row">
+                <dt class="nhsuk-summary-list__key">Message</dt>
+                <dd class="nhsuk-summary-list__value" th:text="${var.status?.current?.detail.message} ?: _">Not provided</dd>
+              </div>
+            </th:block>
             <div class="nhsuk-summary-list__row">
               <dt class="nhsuk-summary-list__key">Reference</dt>
               <dd class="nhsuk-summary-list__value" th:text="${var.formRef} ?: _">Not provided</dd>

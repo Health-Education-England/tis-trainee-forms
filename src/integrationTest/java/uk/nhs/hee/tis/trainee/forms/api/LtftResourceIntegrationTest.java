@@ -23,7 +23,13 @@ package uk.nhs.hee.tis.trainee.forms.api;
 
 import static java.lang.Thread.sleep;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.startsWith;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
 import static org.springframework.http.MediaType.APPLICATION_PDF;
@@ -38,13 +44,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static uk.nhs.hee.tis.trainee.forms.TestJwtUtil.FEATURES_LTFT_PROGRAMME_INCLUDED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.VALID;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.sns.core.SnsTemplate;
 import java.net.URI;
-import java.time.*;
+import java.time.Duration;
 import java.time.format.DateTimeFormatter;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.time.ZonedDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 import org.apache.pdfbox.Loader;
@@ -1041,7 +1052,7 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.id").value(ID.toString()))
         .andExpect(jsonPath("$.traineeTisId").value(TRAINEE_ID))
         .andExpect(jsonPath("$.revision").value("1"))
-        .andExpect(jsonPath("$.status.current.state").value(LifecycleState.UNSUBMITTED.name()))
+        .andExpect(jsonPath("$.status.current.state").value(UNSUBMITTED.name()))
         .andExpect(jsonPath("$.status.current.revision").value("1"))
         .andExpect(jsonPath("$.status.current.detail.reason").value("reason"))
         .andExpect(jsonPath("$.status.current.detail.message").value("message"));
@@ -1270,7 +1281,7 @@ class LtftResourceIntegrationTest {
   }
 
   @Test
-  void shouldGetDetailPdfFormStatus() throws Exception {
+  void shouldGetDetailPdfFormStatusIfLtftUnsubmitted() throws Exception {
     LtftForm ltft = new LtftForm();
     ltft.setTraineeTisId(TRAINEE_ID);
     ltft.setFormRef("ltft_47165_001");
@@ -1289,15 +1300,21 @@ class LtftResourceIntegrationTest {
     Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
 
     AbstractAuditedForm.Status.StatusInfo statusInfo = AbstractAuditedForm.Status.StatusInfo.builder()
-        .state(SUBMITTED)
+        .state(UNSUBMITTED)
         .assignedAdmin(Person.builder().build())
+        .detail(AbstractAuditedForm.Status.StatusDetail.builder()
+            .reason("changePercentage")
+            .message("Testing Message")
+            .build())
+        .modifiedBy(Person.builder()
+            .role("TRAINEE").build())
         .timestamp(Instant.now())
         .build();
     ltft.setStatus(AbstractAuditedForm.Status.builder()
         .current(statusInfo)
         .history(List.of(
             statusInfo,
-            AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED).timestamp(latestSubmitted).build()))
+            AbstractAuditedForm.Status.StatusInfo.builder().state(UNSUBMITTED).timestamp(latestSubmitted).build()))
         .build()
     );
 
@@ -1320,7 +1337,7 @@ class LtftResourceIntegrationTest {
     assertThat("Unexpected header.", pdfText,
         startsWith("Changing hours (LTFT)" + System.lineSeparator()));
     assertThat("Unexpected sub title.", pdfText,
-        containsString("SUBMITTED Application" + System.lineSeparator()));
+        containsString("UNSUBMITTED Application" + System.lineSeparator()));
     assertThat("Unexpected name.", pdfText,
         containsString("Name Reducing Hours" + System.lineSeparator()));
 
@@ -1332,7 +1349,13 @@ class LtftResourceIntegrationTest {
     String modifiedString = ZonedDateTime.ofInstant(ltft.getLastModified(), timezone)
         .format(datePattern);
     assertThat("Unexpected modified timestamp.", pdfText,
-        containsString("SUBMITTED " + modifiedString + System.lineSeparator()));
+        containsString("UNSUBMITTED " + modifiedString + System.lineSeparator()));
+    assertThat("Unexpected modified by.", pdfText,
+        containsString("UNSUBMITTED by Me" + System.lineSeparator()));
+    assertThat("Unexpected status reason.", pdfText,
+        containsString("Reason Change WTE percentage" + System.lineSeparator()));
+    assertThat("Unexpected status message.", pdfText,
+        containsString("Message Testing Message" + System.lineSeparator()));
     assertThat("Unexpected form ref.", pdfText,
         containsString("Reference ltft_47165_001" + System.lineSeparator()));
   }
