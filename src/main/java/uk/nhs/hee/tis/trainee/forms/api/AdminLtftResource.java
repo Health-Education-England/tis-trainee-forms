@@ -119,7 +119,7 @@ public class AdminLtftResource {
    */
   @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_PDF_VALUE)
   ResponseEntity<byte[]> getLtftAdminDetailPdf(@PathVariable UUID id) {
-    log.info("PDF requested for LTFT '{}'", id);
+    log.info("PDF requested by admin for LTFT '{}'", id);
     Optional<LtftFormDto> formDetail = service.getAdminLtftDetail(id);
 
     if (formDetail.isPresent()) {

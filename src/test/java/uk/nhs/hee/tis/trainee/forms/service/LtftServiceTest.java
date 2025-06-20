@@ -34,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -3153,6 +3154,10 @@ class LtftServiceTest {
     assertThat("Unexpected assigned admin name.", payloadAdmin.name(), is(ADMIN_NAME));
     assertThat("Unexpected assigned admin email.", payloadAdmin.email(), is(ADMIN_EMAIL));
     assertThat("Unexpected assigned admin role.", payloadAdmin.role(), is("ADMIN"));
+
+    verify(snsTemplate, never()).sendNotification(eq(LTFT_STATUS_UPDATE_TOPIC),
+        snsNotificationCaptor.capture());
+
   }
 
   @Test
@@ -3203,6 +3208,9 @@ class LtftServiceTest {
     assertThat("Unexpected form reference.", payload.formRef(), is("LTFT_123"));
     assertThat("Unexpected lifecycle state.", payload.status().current().state(), is(SUBMITTED));
     assertThat("Unexpected group ID.", notification.getGroupId(), is(ID.toString()));
+
+    verify(snsTemplate, never()).sendNotification(eq(LTFT_ASSIGNMENT_UPDATE_TOPIC),
+        anyString());
   }
 
   @Test

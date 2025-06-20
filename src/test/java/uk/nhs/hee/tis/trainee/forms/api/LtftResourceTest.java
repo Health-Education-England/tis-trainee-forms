@@ -24,13 +24,18 @@ package uk.nhs.hee.tis.trainee.forms.api;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.sameInstance;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.OK;
+import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -40,6 +45,7 @@ import org.springframework.http.ResponseEntity;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
+import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
 class LtftResourceTest {
 
@@ -47,11 +53,13 @@ class LtftResourceTest {
 
   private LtftResource controller;
   private LtftService service;
+  private PdfService pdfService;
 
   @BeforeEach
   void setUp() {
     service = mock(LtftService.class);
-    controller = new LtftResource(service);
+    pdfService = mock(PdfService.class);
+    controller = new LtftResource(service, pdfService);
   }
 
   @Test
@@ -273,5 +281,47 @@ class LtftResourceTest {
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     LtftFormDto responseDto = response.getBody();
     assertThat("Unexpected response body.", responseDto, is(form));
+  }
+
+  @Test
+  void shouldNotGetDetailPdfWhenFormNotFound() {
+    UUID id = UUID.randomUUID();
+    when(service.getLtftForm(id)).thenReturn(Optional.empty());
+
+    ResponseEntity<byte[]> response = controller.getLtftPdf(id);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(NOT_FOUND));
+    assertThat("Unexpected response body.", response.getBody(), nullValue());
+
+    verifyNoInteractions(pdfService);
+  }
+
+  @Test
+  void shouldNotGetDetailPdfWhenPdfGenerationFails() throws IOException {
+    UUID id = UUID.randomUUID();
+    LtftFormDto dto = LtftFormDto.builder().id(id).build();
+    when(service.getLtftForm(id)).thenReturn(Optional.of(dto));
+
+    when(pdfService.generatePdf(dto, "trainee")).thenThrow(IOException.class);
+
+    ResponseEntity<byte[]> response = controller.getLtftPdf(id);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(UNPROCESSABLE_ENTITY));
+    assertThat("Unexpected response body.", response.getBody(), nullValue());
+  }
+
+  @Test
+  void shouldGetDetailPdfWhenFormFound() throws IOException {
+    UUID id = UUID.randomUUID();
+    LtftFormDto dto = LtftFormDto.builder().id(id).build();
+    when(service.getLtftForm(id)).thenReturn(Optional.of(dto));
+
+    byte[] body = "body".getBytes();
+    when(pdfService.generatePdf(dto, "trainee")).thenReturn(body);
+
+    ResponseEntity<byte[]> response = controller.getLtftPdf(id);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), sameInstance(body));
   }
 }
