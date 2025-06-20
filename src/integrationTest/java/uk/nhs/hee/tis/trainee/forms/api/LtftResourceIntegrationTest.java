@@ -37,7 +37,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static uk.nhs.hee.tis.trainee.forms.TestJwtUtil.FEATURES_LTFT_PROGRAMME_INCLUDED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.VALID;
-import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -1212,8 +1211,66 @@ class LtftResourceIntegrationTest {
     }
   }
 
+  @ParameterizedTest
+  @EnumSource(LifecycleState.class)
+  void shouldReturnPdfAndShowCorrectStatusForAllLtftStatus(LifecycleState status) throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setFormRef("ltft_47165_001");
+
+    LtftContent content = LtftContent.builder()
+        .name("Reducing Hours")
+        .personalDetails(LtftContent.PersonalDetails.builder().build())
+        .programmeMembership(ProgrammeMembership.builder().build())
+        .change(CctChange.builder().build())
+        .reasons(LtftContent.Reasons.builder().build())
+        .declarations(LtftContent.Declarations.builder().build())
+        .discussions(Discussions.builder().build())
+        .build();
+    ltft.setContent(content);
+
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+
+    AbstractAuditedForm.Status.StatusInfo statusInfo = AbstractAuditedForm.Status.StatusInfo.builder()
+        .state(status)
+        .assignedAdmin(Person.builder().build())
+        .timestamp(Instant.now())
+        .build();
+    ltft.setStatus(AbstractAuditedForm.Status.builder()
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            AbstractAuditedForm.Status.StatusInfo.builder().state(status).timestamp(latestSubmitted).build()))
+        .build()
+    );
+
+    ltft = template.insert(ltft);
+
+    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
+            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_PDF))
+        .andReturn();
+
+    byte[] response = result.getResponse().getContentAsByteArray();
+    PDDocument pdf = Loader.loadPDF(response);
+    PDFTextStripper textStripper = new PDFTextStripper();
+    textStripper.setAddMoreFormatting(false);
+    String pdfText = textStripper.getText(pdf);
+
+    assertThat("Unexpected sub title.", pdfText,
+        containsString(status + " Application" + System.lineSeparator()));
+    DateTimeFormatter datePattern = DateTimeFormatter.ofPattern("dd MMMM yyyy HH:mm (z)");
+    String modifiedString = ZonedDateTime.ofInstant(ltft.getLastModified(), timezone)
+        .format(datePattern);
+    assertThat("Unexpected modified timestamp.", pdfText,
+        containsString(status + " " + modifiedString + System.lineSeparator()));
+  }
+
   @Test
-  void shouldGetDetailPdfFormStatusWhenLtftIsSubmitted() throws Exception {
+  void shouldGetDetailPdfFormStatus() throws Exception {
     LtftForm ltft = new LtftForm();
     ltft.setTraineeTisId(TRAINEE_ID);
     ltft.setFormRef("ltft_47165_001");
@@ -1274,14 +1331,14 @@ class LtftResourceIntegrationTest {
 
     String modifiedString = ZonedDateTime.ofInstant(ltft.getLastModified(), timezone)
         .format(datePattern);
-    assertThat("Unexpected submitted timestamp.", pdfText,
-        containsString("Submitted " + modifiedString + System.lineSeparator()));
+    assertThat("Unexpected modified timestamp.", pdfText,
+        containsString("SUBMITTED " + modifiedString + System.lineSeparator()));
     assertThat("Unexpected form ref.", pdfText,
         containsString("Reference ltft_47165_001" + System.lineSeparator()));
   }
 
   @Test
-  void shouldGetDetailPdfProgrammeDetailsWhenLtftIsSubmitted() throws Exception {
+  void shouldGetDetailPdfProgrammeDetails() throws Exception {
     LtftForm ltft = new LtftForm();
     ltft.setTraineeTisId(TRAINEE_ID);
     ltft.setAssignedAdmin(Person.builder().build(), null);
@@ -1364,7 +1421,7 @@ class LtftResourceIntegrationTest {
     assertThat("Unexpected sub header.", pdfText,
         containsString("Proposed Changes" + System.lineSeparator()));
     assertThat("Unexpected change type.", pdfText,
-        containsString("Change Type LTFT" + System.lineSeparator()));
+        containsString("Change Type Changing hours (LTFT)" + System.lineSeparator()));
     String changeStartDateString = changeStartDate.format(datePattern);
     assertThat("Unexpected change date.", pdfText,
         containsString("Change Date " + changeStartDateString + System.lineSeparator()));
@@ -1376,7 +1433,7 @@ class LtftResourceIntegrationTest {
   }
 
   @Test
-  void shouldGetDetailPdfDiscussionsDetailsWhenLtftIsSubmitted() throws Exception {
+  void shouldGetDetailPdfDiscussionsDetails() throws Exception {
     LtftForm ltft = new LtftForm();
     ltft.setTraineeTisId(TRAINEE_ID);
 
@@ -1452,7 +1509,7 @@ class LtftResourceIntegrationTest {
   }
 
   @Test
-  void shouldGetDetailPdfReasonDetailsWhenLtftIsSubmitted() throws Exception {
+  void shouldGetDetailPdfReasonDetails() throws Exception {
     LtftForm ltft = new LtftForm();
     ltft.setTraineeTisId(TRAINEE_ID);
     ltft.setAssignedAdmin(Person.builder().build(), null);
@@ -1511,7 +1568,7 @@ class LtftResourceIntegrationTest {
   }
 
   @Test
-  void shouldGetDetailPdfPersonalDetailsWhenLtftIsSubmitted() throws Exception {
+  void shouldGetDetailPdfPersonalDetails() throws Exception {
       LtftForm ltft = new LtftForm();
       ltft.setTraineeTisId(TRAINEE_ID);
 
@@ -1587,7 +1644,7 @@ class LtftResourceIntegrationTest {
   }
 
   @Test
-  void shouldGetDetailPdfDeclarationDetailsWhenLtftIsSubmitted() throws Exception {
+  void shouldGetDetailPdfDeclarationDetails() throws Exception {
     LtftForm ltft = new LtftForm();
     ltft.setTraineeTisId(TRAINEE_ID);
     ltft.setAssignedAdmin(Person.builder().build(), null);
