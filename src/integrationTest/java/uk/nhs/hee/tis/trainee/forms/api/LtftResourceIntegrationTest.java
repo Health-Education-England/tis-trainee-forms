@@ -23,13 +23,16 @@ package uk.nhs.hee.tis.trainee.forms.api;
 
 import static java.lang.Thread.sleep;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.startsWith;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
+import static org.springframework.http.MediaType.APPLICATION_PDF;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -40,14 +43,24 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static uk.nhs.hee.tis.trainee.forms.TestJwtUtil.FEATURES_LTFT_PROGRAMME_INCLUDED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.VALID;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.sns.core.SnsTemplate;
 import java.net.URI;
+import java.time.Duration;
+import java.time.format.DateTimeFormatter;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.time.ZonedDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 import org.hamcrest.TypeSafeMatcher;
@@ -58,6 +71,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -70,6 +84,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -80,12 +95,15 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
 import uk.nhs.hee.tis.trainee.forms.dto.RedactedPersonDto;
-import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.LtftSubmissionHistory;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
+import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
+import uk.nhs.hee.tis.trainee.forms.model.content.CctChangeType;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ProgrammeMembership;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Discussions;
 
 @SpringBootTest
@@ -94,6 +112,7 @@ import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Discussions;
 @AutoConfigureMockMvc
 class LtftResourceIntegrationTest {
 
+  private static final String DBC_1 = "1-abc123";
   private static final String TRAINEE_ID = "40";
   private static final UUID ID = UUID.randomUUID();
   private static final UUID PM_UUID = FEATURES_LTFT_PROGRAMME_INCLUDED;
@@ -108,6 +127,9 @@ class LtftResourceIntegrationTest {
 
   @Autowired
   private MockMvc mockMvc;
+
+  @Value("${application.timezone}")
+  private ZoneId timezone;
 
   @MockBean
   SnsTemplate snsTemplate;
@@ -917,7 +939,7 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.id").value(ID.toString()))
         .andExpect(jsonPath("$.traineeTisId").value(TRAINEE_ID))
         .andExpect(jsonPath("$.formRef", notNullValue()))
-        .andExpect(jsonPath("$.status.current.state").value(LifecycleState.SUBMITTED.name()))
+        .andExpect(jsonPath("$.status.current.state").value(SUBMITTED.name()))
         .andExpect(jsonPath("$.status.current.detail.reason").value("reason"))
         .andExpect(jsonPath("$.status.current.detail.message").value("message"))
         .andExpect(jsonPath("$.status.submitted", notNullValue()));
@@ -969,7 +991,7 @@ class LtftResourceIntegrationTest {
     LtftForm ltft = new LtftForm();
     ltft.setId(UUID.fromString("ec5c8db7-9848-419b-85ce-c5b53b1e3794"));
     ltft.setTraineeTisId(TRAINEE_ID);
-    ltft.setLifecycleState(LifecycleState.SUBMITTED);
+    ltft.setLifecycleState(SUBMITTED);
     ltft.setContent(LtftContent.builder().name("test").build());
     template.insert(ltft);
 
@@ -1030,7 +1052,7 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.id").value(ID.toString()))
         .andExpect(jsonPath("$.traineeTisId").value(TRAINEE_ID))
         .andExpect(jsonPath("$.revision").value("1"))
-        .andExpect(jsonPath("$.status.current.state").value(LifecycleState.UNSUBMITTED.name()))
+        .andExpect(jsonPath("$.status.current.state").value(UNSUBMITTED.name()))
         .andExpect(jsonPath("$.status.current.revision").value("1"))
         .andExpect(jsonPath("$.status.current.detail.reason").value("reason"))
         .andExpect(jsonPath("$.status.current.detail.message").value("message"));
@@ -1041,7 +1063,7 @@ class LtftResourceIntegrationTest {
     LtftForm ltft = new LtftForm();
     ltft.setId(ID);
     ltft.setTraineeTisId(TRAINEE_ID);
-    ltft.setLifecycleState(LifecycleState.SUBMITTED);
+    ltft.setLifecycleState(SUBMITTED);
     ltft.setContent(LtftContent.builder().name("test").build());
     ltft.setRevision(0);
 
@@ -1129,7 +1151,7 @@ class LtftResourceIntegrationTest {
     LtftForm ltft = new LtftForm();
     ltft.setId(ID);
     ltft.setTraineeTisId(TRAINEE_ID);
-    ltft.setLifecycleState(LifecycleState.SUBMITTED);
+    ltft.setLifecycleState(SUBMITTED);
     ltft.setContent(LtftContent.builder().name("test").build());
 
     Person admin = Person.builder()
@@ -1198,5 +1220,510 @@ class LtftResourceIntegrationTest {
     public static Matcher<String> closeTo(double operand, double error) {
       return new TimestampCloseTo(operand, error);
     }
+  }
+
+  @ParameterizedTest
+  @EnumSource(LifecycleState.class)
+  void shouldReturnPdfAndShowCorrectStatusForAllLtftStatus(LifecycleState status) throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setFormRef("ltft_47165_001");
+
+    LtftContent content = LtftContent.builder()
+        .name("Reducing Hours")
+        .personalDetails(LtftContent.PersonalDetails.builder().build())
+        .programmeMembership(ProgrammeMembership.builder().build())
+        .change(CctChange.builder().build())
+        .reasons(LtftContent.Reasons.builder().build())
+        .declarations(LtftContent.Declarations.builder().build())
+        .discussions(Discussions.builder().build())
+        .build();
+    ltft.setContent(content);
+
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+
+    AbstractAuditedForm.Status.StatusInfo statusInfo = AbstractAuditedForm.Status.StatusInfo.builder()
+        .state(status)
+        .assignedAdmin(Person.builder().build())
+        .timestamp(Instant.now())
+        .build();
+    ltft.setStatus(AbstractAuditedForm.Status.builder()
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            AbstractAuditedForm.Status.StatusInfo.builder().state(status).timestamp(latestSubmitted).build()))
+        .build()
+    );
+
+    ltft = template.insert(ltft);
+
+    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
+            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_PDF))
+        .andReturn();
+
+    byte[] response = result.getResponse().getContentAsByteArray();
+    PDDocument pdf = Loader.loadPDF(response);
+    PDFTextStripper textStripper = new PDFTextStripper();
+    textStripper.setAddMoreFormatting(false);
+    String pdfText = textStripper.getText(pdf);
+
+    assertThat("Unexpected sub title.", pdfText,
+        containsString(status + " Application" + System.lineSeparator()));
+    DateTimeFormatter datePattern = DateTimeFormatter.ofPattern("dd MMMM yyyy HH:mm (z)");
+    String modifiedString = ZonedDateTime.ofInstant(ltft.getLastModified(), timezone)
+        .format(datePattern);
+    assertThat("Unexpected modified timestamp.", pdfText,
+        containsString(status + " " + modifiedString + System.lineSeparator()));
+  }
+
+  @Test
+  void shouldGetDetailPdfFormStatusIfLtftUnsubmitted() throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setFormRef("ltft_47165_001");
+
+    LtftContent content = LtftContent.builder()
+        .name("Reducing Hours")
+        .personalDetails(LtftContent.PersonalDetails.builder().build())
+        .programmeMembership(ProgrammeMembership.builder().build())
+        .change(CctChange.builder().build())
+        .reasons(LtftContent.Reasons.builder().build())
+        .declarations(LtftContent.Declarations.builder().build())
+        .discussions(Discussions.builder().build())
+        .build();
+    ltft.setContent(content);
+
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+
+    AbstractAuditedForm.Status.StatusInfo statusInfo = AbstractAuditedForm.Status.StatusInfo.builder()
+        .state(UNSUBMITTED)
+        .assignedAdmin(Person.builder().build())
+        .detail(AbstractAuditedForm.Status.StatusDetail.builder()
+            .reason("changePercentage")
+            .message("Testing Message")
+            .build())
+        .modifiedBy(Person.builder()
+            .role("TRAINEE").build())
+        .timestamp(Instant.now())
+        .build();
+    ltft.setStatus(AbstractAuditedForm.Status.builder()
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            AbstractAuditedForm.Status.StatusInfo.builder().state(UNSUBMITTED).timestamp(latestSubmitted).build()))
+        .build()
+    );
+
+    ltft = template.insert(ltft);
+
+    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
+            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_PDF))
+        .andReturn();
+
+    byte[] response = result.getResponse().getContentAsByteArray();
+    PDDocument pdf = Loader.loadPDF(response);
+    PDFTextStripper textStripper = new PDFTextStripper();
+    textStripper.setAddMoreFormatting(false);
+    String pdfText = textStripper.getText(pdf);
+
+    assertThat("Unexpected header.", pdfText,
+        startsWith("Changing hours (LTFT)" + System.lineSeparator()));
+    assertThat("Unexpected sub title.", pdfText,
+        containsString("UNSUBMITTED Application" + System.lineSeparator()));
+    assertThat("Unexpected name.", pdfText,
+        containsString("Name Reducing Hours" + System.lineSeparator()));
+
+    DateTimeFormatter datePattern = DateTimeFormatter.ofPattern("dd MMMM yyyy HH:mm (z)");
+    String createdString = ZonedDateTime.ofInstant(ltft.getCreated(), timezone).format(datePattern);
+    assertThat("Unexpected created timestamp.", pdfText,
+        containsString("Created " + createdString + System.lineSeparator()));
+
+    String modifiedString = ZonedDateTime.ofInstant(ltft.getLastModified(), timezone)
+        .format(datePattern);
+    assertThat("Unexpected modified timestamp.", pdfText,
+        containsString("UNSUBMITTED " + modifiedString + System.lineSeparator()));
+    assertThat("Unexpected modified by.", pdfText,
+        containsString("UNSUBMITTED by Me" + System.lineSeparator()));
+    assertThat("Unexpected status reason.", pdfText,
+        containsString("Reason Change WTE percentage" + System.lineSeparator()));
+    assertThat("Unexpected status message.", pdfText,
+        containsString("Message Testing Message" + System.lineSeparator()));
+    assertThat("Unexpected form ref.", pdfText,
+        containsString("Reference ltft_47165_001" + System.lineSeparator()));
+  }
+
+  @Test
+  void shouldGetDetailPdfProgrammeDetails() throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setAssignedAdmin(Person.builder().build(), null);
+
+    LocalDate startDate = LocalDate.now();
+    LocalDate endDate = startDate.plusYears(1);
+    LocalDate changeStartDate = startDate.plusMonths(1);
+    LocalDate cctDate = endDate.plusYears(2);
+
+    LtftContent content = LtftContent.builder()
+        .personalDetails(LtftContent.PersonalDetails.builder().build())
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(DBC_1)
+            .name("General Practice")
+            .startDate(startDate)
+            .endDate(endDate)
+            .wte(0.85)
+            .build())
+        .change(CctChange.builder()
+            .type(CctChangeType.LTFT)
+            .startDate(changeStartDate)
+            .endDate(endDate)
+            .wte(0.75)
+            .cctDate(cctDate)
+            .build())
+        .reasons(LtftContent.Reasons.builder().build())
+        .declarations(LtftContent.Declarations.builder().build())
+        .discussions(Discussions.builder().build())
+        .build();
+    ltft.setContent(content);
+
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+
+    AbstractAuditedForm.Status.StatusInfo statusInfo = AbstractAuditedForm.Status.StatusInfo.builder()
+        .state(SUBMITTED).timestamp(Instant.now())
+        .build();
+    ltft.setStatus(AbstractAuditedForm.Status.builder()
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED).timestamp(latestSubmitted).build()))
+        .build()
+    );
+
+    ltft = template.insert(ltft);
+
+    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
+            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_PDF))
+        .andReturn();
+
+    byte[] response = result.getResponse().getContentAsByteArray();
+    PDDocument pdf = Loader.loadPDF(response);
+    PDFTextStripper textStripper = new PDFTextStripper();
+    textStripper.setAddMoreFormatting(false);
+    String pdfText = textStripper.getText(pdf);
+
+    assertThat("Unexpected section header.", pdfText,
+        containsString("CCT Calculation Summary" + System.lineSeparator()));
+    assertThat("Unexpected sub header.", pdfText,
+        containsString("Linked Programme" + System.lineSeparator()));
+    assertThat("Unexpected name.", pdfText,
+        containsString("Programme Name General Practice" + System.lineSeparator()));
+    DateTimeFormatter datePattern = DateTimeFormatter.ofPattern("dd MMMM yyyy");
+    String startDateString = startDate.format(datePattern);
+    assertThat("Unexpected start date.", pdfText,
+        containsString("Start Date " + startDateString + System.lineSeparator()));
+    String endDateString = endDate.format(datePattern);
+    assertThat("Unexpected end date.", pdfText,
+        containsString("Completion Date " + endDateString + System.lineSeparator()));
+
+    assertThat("Unexpected sub header.", pdfText,
+        containsString("Current WTE percentage" + System.lineSeparator()));
+    assertThat("Unexpected current wte.", pdfText,
+        containsString("WTE 85%" + System.lineSeparator()));
+
+    assertThat("Unexpected sub header.", pdfText,
+        containsString("Proposed Changes" + System.lineSeparator()));
+    assertThat("Unexpected change type.", pdfText,
+        containsString("Change Type Changing hours (LTFT)" + System.lineSeparator()));
+    String changeStartDateString = changeStartDate.format(datePattern);
+    assertThat("Unexpected change date.", pdfText,
+        containsString("Change Date " + changeStartDateString + System.lineSeparator()));
+    assertThat("Unexpected proposed wte.", pdfText,
+        containsString("Proposed WTE 75%" + System.lineSeparator()));
+    String cctDateString = cctDate.format(datePattern);
+    assertThat("Unexpected new completion date.", pdfText,
+        containsString("New Completion Date " + cctDateString + System.lineSeparator()));
+  }
+
+  @Test
+  void shouldGetDetailPdfDiscussionsDetails() throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setTraineeTisId(TRAINEE_ID);
+
+    LtftContent content = LtftContent.builder()
+        .personalDetails(LtftContent.PersonalDetails.builder().build())
+        .programmeMembership(ProgrammeMembership.builder().build())
+        .change(CctChange.builder().build())
+        .reasons(LtftContent.Reasons.builder().build())
+        .declarations(LtftContent.Declarations.builder().build())
+        .discussions(Discussions.builder()
+            .tpdName("Tee Pee-Dee")
+            .tpdEmail("tpd@example.com")
+            .other(List.of(
+                Person.builder()
+                    .name("Ed Super")
+                    .email("ed.super@example.com")
+                    .role("Educational Supervisor")
+                    .build(),
+                Person.builder()
+                    .name("Person Two")
+                    .email("person.2@example.com")
+                    .role("Test Data")
+                    .build()
+            ))
+            .build())
+        .build();
+    ltft.setContent(content);
+
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+
+    AbstractAuditedForm.Status.StatusInfo statusInfo = AbstractAuditedForm.Status.StatusInfo.builder()
+        .state(SUBMITTED)
+        .assignedAdmin(Person.builder().build())
+        .timestamp(Instant.now())
+        .build();
+    ltft.setStatus(AbstractAuditedForm.Status.builder()
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED).timestamp(latestSubmitted).build()))
+        .build()
+    );
+
+    ltft = template.insert(ltft);
+
+    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
+            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_PDF))
+        .andReturn();
+
+    byte[] response = result.getResponse().getContentAsByteArray();
+    PDDocument pdf = Loader.loadPDF(response);
+    PDFTextStripper textStripper = new PDFTextStripper();
+    textStripper.setAddMoreFormatting(false);
+    String pdfText = textStripper.getText(pdf);
+
+    assertThat("Unexpected section header.", pdfText,
+        containsString("Discussing your proposals" + System.lineSeparator()));
+    assertThat("Unexpected TPD name.", pdfText,
+        containsString("TPD Name Tee Pee-Dee" + System.lineSeparator()));
+    assertThat("Unexpected TPD email.", pdfText,
+        containsString("TPD Email Address tpd@example.com" + System.lineSeparator()));
+    assertThat("Unexpected other discussions.", pdfText, containsString(
+        "Other Discussions Name: Ed Super"
+            + System.lineSeparator() + "Email: ed.super@example.com"
+            + System.lineSeparator() + "Role: Educational Supervisor"
+            + System.lineSeparator() + "Name: Person Two"
+            + System.lineSeparator() + "Email: person.2@example.com"
+            + System.lineSeparator() + "Role: Test Data" + System.lineSeparator()));
+  }
+
+  @Test
+  void shouldGetDetailPdfReasonDetails() throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setAssignedAdmin(Person.builder().build(), null);
+
+    LtftContent content = LtftContent.builder()
+        .personalDetails(LtftContent.PersonalDetails.builder().build())
+        .programmeMembership(ProgrammeMembership.builder().build())
+        .change(CctChange.builder().build())
+        .reasons(LtftContent.Reasons.builder()
+            .selected(List.of("Test1", "Test2", "Other"))
+            .otherDetail("other-detail")
+            .supportingInformation("supporting-information")
+            .build())
+        .declarations(LtftContent.Declarations.builder().build())
+        .discussions(Discussions.builder().build())
+        .build();
+    ltft.setContent(content);
+
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+
+    AbstractAuditedForm.Status.StatusInfo statusInfo = AbstractAuditedForm.Status.StatusInfo.builder()
+        .state(SUBMITTED).timestamp(Instant.now())
+        .build();
+    ltft.setStatus(AbstractAuditedForm.Status.builder()
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED).timestamp(latestSubmitted).build()))
+        .build()
+    );
+
+    ltft = template.insert(ltft);
+
+    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
+            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_PDF))
+        .andReturn();
+
+    byte[] response = result.getResponse().getContentAsByteArray();
+    PDDocument pdf = Loader.loadPDF(response);
+    PDFTextStripper textStripper = new PDFTextStripper();
+    textStripper.setAddMoreFormatting(false);
+    String pdfText = textStripper.getText(pdf);
+
+    assertThat("Unexpected section header.", pdfText,
+        containsString("Reason(s) for applying" + System.lineSeparator()));
+    assertThat("Unexpected visa holder.", pdfText.replaceAll("[\r\n]+", ""),
+        containsString("Why are you applying for Changing hours (LTFT)?Test1Test2Other"));
+    assertThat("Unexpected other reason.", pdfText,
+        containsString("Other reason other-detail" + System.lineSeparator()));
+    assertThat("Unexpected visa holder.", pdfText.replaceAll("[\r\n]+", ""),
+        containsString("Please provide any additional information to support your application (if needed).supporting-information"));
+  }
+
+  @Test
+  void shouldGetDetailPdfPersonalDetails() throws Exception {
+      LtftForm ltft = new LtftForm();
+      ltft.setTraineeTisId(TRAINEE_ID);
+
+      LtftContent content = LtftContent.builder()
+          .personalDetails(LtftContent.PersonalDetails.builder()
+              .title("Dr")
+              .forenames("Anthony")
+              .surname("Gilliam")
+              .email("anthony.gilliam@example.com")
+              .gmcNumber("1234567")
+              .gdcNumber("D123456")
+              .telephoneNumber("07700900000")
+              .mobileNumber("07700900001")
+              .skilledWorkerVisaHolder(true)
+              .build())
+          .programmeMembership(ProgrammeMembership.builder().build())
+          .change(CctChange.builder().build())
+          .reasons(LtftContent.Reasons.builder().build())
+          .declarations(LtftContent.Declarations.builder().build())
+          .discussions(LtftContent.Discussions.builder().build())
+          .build();
+      ltft.setContent(content);
+
+      Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+
+      AbstractAuditedForm.Status.StatusInfo statusInfo = AbstractAuditedForm.Status.StatusInfo.builder()
+          .state(SUBMITTED)
+          .assignedAdmin(Person.builder().build())
+          .timestamp(Instant.now())
+          .build();
+      ltft.setStatus(AbstractAuditedForm.Status.builder()
+            .current(statusInfo)
+            .history(List.of(
+                statusInfo,
+                AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED).timestamp(latestSubmitted).build()))
+            .build()
+        );
+
+      ltft = template.insert(ltft);
+
+      String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+      MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
+              .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+              .header(HttpHeaders.AUTHORIZATION, token))
+          .andExpect(status().isOk())
+          .andExpect(content().contentType(APPLICATION_PDF))
+          .andReturn();
+
+      byte[] response = result.getResponse().getContentAsByteArray();
+      PDDocument pdf = Loader.loadPDF(response);
+      PDFTextStripper textStripper = new PDFTextStripper();
+      textStripper.setAddMoreFormatting(false);
+      String pdfText = textStripper.getText(pdf);
+
+      assertThat("Unexpected section header.", pdfText,
+          containsString("Personal Details" + System.lineSeparator()));
+      assertThat("Unexpected forename.", pdfText,
+          containsString("Forename Anthony" + System.lineSeparator()));
+      assertThat("Unexpected surname.", pdfText,
+          containsString("Surname (GMC-Registered) Gilliam" + System.lineSeparator()));
+      assertThat("Unexpected contact telphone.", pdfText,
+          containsString("Contact Telephone 07700900000" + System.lineSeparator()));
+      assertThat("Unexpected contact mobile.", pdfText,
+          containsString("Contact Mobile 07700900001" + System.lineSeparator()));
+    assertThat("Unexpected email.", pdfText,
+        containsString("Email Address anthony.gilliam@example.com" + System.lineSeparator()));
+      assertThat("Unexpected GMC.", pdfText,
+          containsString("GMC Number 1234567" + System.lineSeparator()));
+      assertThat("Unexpected GDC.", pdfText,
+          containsString("GDC Number (if applicable) D123456" + System.lineSeparator()));
+      assertThat("Unexpected visa holder.", pdfText.replaceAll("[\r\n]+", ""),
+          containsString("Are you a Tier 2 / Skilled Worker Visa holder?true"));
+  }
+
+  @Test
+  void shouldGetDetailPdfDeclarationDetails() throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setAssignedAdmin(Person.builder().build(), null);
+
+    LtftContent content = LtftContent.builder()
+        .personalDetails(LtftContent.PersonalDetails.builder().build())
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(DBC_1)
+            .build())
+        .change(CctChange.builder().build())
+        .reasons(LtftContent.Reasons.builder().build())
+        .declarations(LtftContent.Declarations.builder()
+            .discussedWithTpd(true)
+            .informationIsCorrect(true)
+            .notGuaranteed(true)
+            .build())
+        .discussions(Discussions.builder().build())
+        .build();
+    ltft.setContent(content);
+
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+
+    AbstractAuditedForm.Status.StatusInfo statusInfo = AbstractAuditedForm.Status.StatusInfo.builder()
+        .state(SUBMITTED).timestamp(Instant.now())
+        .build();
+    ltft.setStatus(AbstractAuditedForm.Status.builder()
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED).timestamp(latestSubmitted).build()))
+        .build()
+    );
+
+    ltft = template.insert(ltft);
+
+    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
+            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_PDF))
+        .andReturn();
+
+    byte[] response = result.getResponse().getContentAsByteArray();
+    PDDocument pdf = Loader.loadPDF(response);
+    PDFTextStripper textStripper = new PDFTextStripper();
+    textStripper.setAddMoreFormatting(false);
+    String pdfText = textStripper.getText(pdf);
+
+    assertThat("Unexpected section header.", pdfText,
+        containsString("Declarations" + System.lineSeparator()));
+    assertThat("Unexpected declaration.", pdfText.replaceAll("[\r\n]+", ""),
+        containsString("I confirm that the information I have provided is correct and accurate to the best of my knowledge.true"));
+    assertThat("Unexpected declaration.", pdfText.replaceAll("[\r\n]+", ""),
+        containsString("I have discussed the proposals outlined in the CCT Calculation with my Training Programme Director (TPD).true"));
+    assertThat("Unexpected declaration.", pdfText.replaceAll("[\r\n]+", ""),
+        containsString("I understand that approval of my application is not guaranteed.true"));
   }
 }
