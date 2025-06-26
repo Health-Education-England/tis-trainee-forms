@@ -75,8 +75,8 @@ import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 @XRayEnabled
 public class LtftService {
 
-  protected final static String FORM_ATTRIBUTE_FORM_STATUS = "status.current.state";
-  protected final static String FORM_ATTRIBUTE_TPD_STATUS = "content.discussions.tpdStatus";
+  protected static final String FORM_ATTRIBUTE_FORM_STATUS = "status.current.state";
+  protected static final String FORM_ATTRIBUTE_TPD_STATUS = "content.discussions.tpdStatus";
 
   private final AdminIdentity adminIdentity;
   private final TraineeIdentity traineeIdentity;
@@ -631,7 +631,7 @@ public class LtftService {
             case "personalDetails.gmcNumber" -> "content.personalDetails.gmcNumber";
             case "personalDetails.surname" -> "content.personalDetails.surname";
             case "programmeName" -> "content.programmeMembership.name";
-            case "status" -> "status.current.state";
+            case "status" -> FORM_ATTRIBUTE_FORM_STATUS;
             case "traineeId" -> "traineeTisId";
             default -> null;
           };
