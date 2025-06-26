@@ -34,7 +34,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -51,9 +50,9 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.REJECT
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
+import static uk.nhs.hee.tis.trainee.forms.service.LtftService.FORM_ATTRIBUTE_FORM_STATUS;
+import static uk.nhs.hee.tis.trainee.forms.service.LtftService.FORM_ATTRIBUTE_TPD_STATUS;
 
-import io.awspring.cloud.sns.core.SnsNotification;
-import io.awspring.cloud.sns.core.SnsTemplate;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -147,7 +146,7 @@ class LtftServiceTest {
   private LtftFormRepository repository;
   private MongoTemplate mongoTemplate;
   private LtftMapper mapper;
-  private SnsTemplate snsTemplate;
+  private EventBroadcastService eventBroadcastService;
   private LtftSubmissionHistoryService ltftSubmissionHistoryService;
 
   @BeforeEach
@@ -168,12 +167,12 @@ class LtftServiceTest {
 
     repository = mock(LtftFormRepository.class);
     mongoTemplate = mock(MongoTemplate.class);
-    snsTemplate = mock(SnsTemplate.class);
+    eventBroadcastService = mock(EventBroadcastService.class);
     ltftSubmissionHistoryService = mock(LtftSubmissionHistoryService.class);
 
     mapper = new LtftMapperImpl(new TemporalMapperImpl());
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, mapper,
-        snsTemplate, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
+        eventBroadcastService, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
         ltftSubmissionHistoryService);
   }
 
@@ -1943,7 +1942,7 @@ class LtftServiceTest {
     traineeIdentity.setTraineeId(TRAINEE_ID);
 
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate,
-        mapper, snsTemplate, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
+        mapper, eventBroadcastService, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
         ltftSubmissionHistoryService);
 
     LtftFormDto dtoToSave = LtftFormDto.builder()
@@ -1976,7 +1975,7 @@ class LtftServiceTest {
         .build());
 
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate,
-        mapper, snsTemplate, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
+        mapper, eventBroadcastService, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
         ltftSubmissionHistoryService);
 
     LtftFormDto dtoToSave = LtftFormDto.builder()
@@ -2008,7 +2007,7 @@ class LtftServiceTest {
         .build());
 
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, mapper,
-        snsTemplate, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
+        eventBroadcastService, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
         ltftSubmissionHistoryService);
 
     LtftFormDto dtoToSave = LtftFormDto.builder()
@@ -3137,27 +3136,27 @@ class LtftServiceTest {
 
     service.assignAdmin(ID, admin);
 
-    ArgumentCaptor<SnsNotification<LtftFormDto>> snsNotificationCaptor = ArgumentCaptor.captor();
-    verify(snsTemplate).sendNotification(eq(LTFT_ASSIGNMENT_UPDATE_TOPIC),
-        snsNotificationCaptor.capture());
+    ArgumentCaptor<LtftFormDto> ltftFormCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<String> snsTopicCaptor = ArgumentCaptor.captor();
+    verify(eventBroadcastService).publishLtftFormUpdateEvent(ltftFormCaptor.capture(),
+        any(), snsTopicCaptor.capture());
 
-    var notification = snsNotificationCaptor.getValue();
-    var payload = notification.getPayload();
+    LtftFormDto capturedForm = ltftFormCaptor.getValue();
 
-    assertThat("Unexpected form ID.", payload.id(), is(ID));
-    assertThat("Unexpected trainee ID.", payload.traineeTisId(), is(TRAINEE_ID));
-    assertThat("Unexpected form reference.", payload.formRef(), is("LTFT_123"));
-    assertThat("Unexpected lifecycle state.", payload.status().current().state(), is(SUBMITTED));
-    assertThat("Unexpected group ID.", notification.getGroupId(), is(ID.toString()));
+    assertThat("Unexpected form ID.", capturedForm.id(), is(ID));
+    assertThat("Unexpected trainee ID.", capturedForm.traineeTisId(), is(TRAINEE_ID));
+    assertThat("Unexpected form reference.", capturedForm.formRef(), is("LTFT_123"));
+    assertThat("Unexpected lifecycle state.", capturedForm.status().current().state(),
+        is(SUBMITTED));
 
-    RedactedPersonDto payloadAdmin = payload.status().current().assignedAdmin();
+    RedactedPersonDto payloadAdmin = capturedForm.status().current().assignedAdmin();
     assertThat("Unexpected assigned admin name.", payloadAdmin.name(), is(ADMIN_NAME));
     assertThat("Unexpected assigned admin email.", payloadAdmin.email(), is(ADMIN_EMAIL));
     assertThat("Unexpected assigned admin role.", payloadAdmin.role(), is("ADMIN"));
 
-    verify(snsTemplate, never()).sendNotification(eq(LTFT_STATUS_UPDATE_TOPIC),
-        snsNotificationCaptor.capture());
-
+    assertThat("Unexpected group ID.", snsTopicCaptor.getValue(),
+        is(LTFT_ASSIGNMENT_UPDATE_TOPIC));
+    verifyNoMoreInteractions(eventBroadcastService);
   }
 
   @Test
@@ -3178,7 +3177,7 @@ class LtftServiceTest {
         .build();
     service.assignAdmin(ID, adminDto);
 
-    verifyNoInteractions(snsTemplate);
+    verifyNoInteractions(eventBroadcastService);
   }
 
   @Test
@@ -3195,22 +3194,25 @@ class LtftServiceTest {
 
     service.updateStatusAsAdmin(ID, SUBMITTED, null);
 
-    ArgumentCaptor<SnsNotification<LtftFormDto>> snsNotificationCaptor
-        = ArgumentCaptor.forClass(SnsNotification.class);
-    verify(snsTemplate).sendNotification(eq(LTFT_STATUS_UPDATE_TOPIC),
-        snsNotificationCaptor.capture());
+    ArgumentCaptor<LtftFormDto> ltftFormCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<String> snsTopicCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<String> messageCaptor = ArgumentCaptor.captor();
+    verify(eventBroadcastService).publishLtftFormUpdateEvent(ltftFormCaptor.capture(),
+        messageCaptor.capture(), snsTopicCaptor.capture());
 
-    var notification = snsNotificationCaptor.getValue();
-    var payload = notification.getPayload();
+    LtftFormDto capturedForm = ltftFormCaptor.getValue();
 
-    assertThat("Unexpected form ID.", payload.id(), is(ID));
-    assertThat("Unexpected trainee ID.", payload.traineeTisId(), is(TRAINEE_ID));
-    assertThat("Unexpected form reference.", payload.formRef(), is("LTFT_123"));
-    assertThat("Unexpected lifecycle state.", payload.status().current().state(), is(SUBMITTED));
-    assertThat("Unexpected group ID.", notification.getGroupId(), is(ID.toString()));
+    assertThat("Unexpected form ID.", capturedForm.id(), is(ID));
+    assertThat("Unexpected trainee ID.", capturedForm.traineeTisId(), is(TRAINEE_ID));
+    assertThat("Unexpected form reference.", capturedForm.formRef(), is("LTFT_123"));
+    assertThat("Unexpected lifecycle state.", capturedForm.status().current().state(),
+        is(SUBMITTED));
 
-    verify(snsTemplate, never()).sendNotification(eq(LTFT_ASSIGNMENT_UPDATE_TOPIC),
-        anyString());
+    assertThat("Unexpected message.", messageCaptor.getValue(),
+        is(FORM_ATTRIBUTE_FORM_STATUS));
+    assertThat("Unexpected group ID.", snsTopicCaptor.getValue(),
+        is(LTFT_STATUS_UPDATE_TOPIC));
+    verifyNoMoreInteractions(eventBroadcastService);
   }
 
   @Test
@@ -3228,7 +3230,7 @@ class LtftServiceTest {
     assertThrows(MethodArgumentNotValidException.class,
         () -> service.updateStatusAsAdmin(ID, SUBMITTED, detail));
 
-    verifyNoInteractions(snsTemplate);
+    verifyNoInteractions(eventBroadcastService);
   }
 
   @Test
@@ -3245,18 +3247,25 @@ class LtftServiceTest {
     LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
     service.changeLtftFormState(ID, detail, SUBMITTED);
 
-    ArgumentCaptor<SnsNotification<LtftFormDto>> snsNotificationCaptor = ArgumentCaptor.captor();
-    verify(snsTemplate).sendNotification(eq(LTFT_STATUS_UPDATE_TOPIC),
-        snsNotificationCaptor.capture());
+    ArgumentCaptor<LtftFormDto> ltftFormCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<String> snsTopicCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<String> messageCaptor = ArgumentCaptor.captor();
+    verify(eventBroadcastService).publishLtftFormUpdateEvent(ltftFormCaptor.capture(),
+        messageCaptor.capture(), snsTopicCaptor.capture());
 
-    var notification = snsNotificationCaptor.getValue();
-    LtftFormDto payload = notification.getPayload();
+    LtftFormDto capturedForm = ltftFormCaptor.getValue();
 
-    assertThat("Unexpected form ID.", payload.id(), is(ID));
-    assertThat("Unexpected trainee ID.", payload.traineeTisId(), is(TRAINEE_ID));
-    assertThat("Unexpected form reference.", payload.formRef(), is("LTFT_123"));
-    assertThat("Unexpected lifecycle state.", payload.status().current().state(), is(SUBMITTED));
-    assertThat("Unexpected group ID.", notification.getGroupId(), is(ID.toString()));
+    assertThat("Unexpected form ID.", capturedForm.id(), is(ID));
+    assertThat("Unexpected trainee ID.", capturedForm.traineeTisId(), is(TRAINEE_ID));
+    assertThat("Unexpected form reference.", capturedForm.formRef(), is("LTFT_123"));
+    assertThat("Unexpected lifecycle state.", capturedForm.status().current().state(),
+        is(SUBMITTED));
+
+    assertThat("Unexpected message.", messageCaptor.getValue(),
+        is(FORM_ATTRIBUTE_FORM_STATUS));
+    assertThat("Unexpected group ID.", snsTopicCaptor.getValue(),
+        is(LTFT_STATUS_UPDATE_TOPIC));
+    verifyNoMoreInteractions(eventBroadcastService);
   }
 
   @Test
@@ -3272,7 +3281,7 @@ class LtftServiceTest {
     LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
     service.changeLtftFormState(ID, detail, SUBMITTED);
 
-    verifyNoInteractions(snsTemplate);
+    verifyNoInteractions(eventBroadcastService);
   }
 
 
@@ -3368,15 +3377,19 @@ class LtftServiceTest {
 
     service.updateTpdNotificationStatus(formId, "SENT");
 
-    ArgumentCaptor<SnsNotification<LtftFormDto>> snsNotificationCaptor = ArgumentCaptor.captor();
-    verify(snsTemplate).sendNotification(any(), snsNotificationCaptor.capture());
+    ArgumentCaptor<LtftFormDto> ltftDtoCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<String> messageCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<String> snsTopicCaptor = ArgumentCaptor.captor();
+    verify(eventBroadcastService).publishLtftFormUpdateEvent(ltftDtoCaptor.capture(),
+        messageCaptor.capture(), snsTopicCaptor.capture());
 
-    SnsNotification<LtftFormDto> capturedNotification = snsNotificationCaptor.getValue();
-    assertThat("Unexpected group ID.", capturedNotification.getGroupId(),
-        is(formId.toString()));
-    assertThat("Unexpected payload TPD status.",
-        capturedNotification.getPayload().tpdEmailStatus(),
-        is(VALID));
+    LtftFormDto capturedFormDto = ltftDtoCaptor.getValue();
+    assertThat("Unexpected payload TPD status.", capturedFormDto.tpdEmailStatus(), is(VALID));
+    assertThat("Unexpected message attribute.", messageCaptor.getValue(),
+        is(FORM_ATTRIBUTE_TPD_STATUS));
+    assertThat("Unexpected SNS topic.", snsTopicCaptor.getValue(),
+        is(LTFT_STATUS_UPDATE_TOPIC));
+    verifyNoMoreInteractions(eventBroadcastService);
   }
 
   @Test
@@ -3392,7 +3405,7 @@ class LtftServiceTest {
 
     service.updateTpdNotificationStatus(formId, "PENDING");
 
-    verifyNoInteractions(snsTemplate);
+    verifyNoInteractions(eventBroadcastService);
   }
 
   @Test
@@ -3408,7 +3421,7 @@ class LtftServiceTest {
 
     service.updateTpdNotificationStatus(formId, "PENDING");
 
-    verifyNoInteractions(snsTemplate);
+    verifyNoInteractions(eventBroadcastService);
   }
 
   /**

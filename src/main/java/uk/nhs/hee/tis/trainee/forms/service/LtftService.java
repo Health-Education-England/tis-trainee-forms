@@ -28,8 +28,6 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBM
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
-import io.awspring.cloud.sns.core.SnsNotification;
-import io.awspring.cloud.sns.core.SnsTemplate;
 import jakarta.annotation.Nullable;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.List;
@@ -77,6 +75,9 @@ import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 @XRayEnabled
 public class LtftService {
 
+  protected static final String FORM_ATTRIBUTE_FORM_STATUS = "status.current.state";
+  protected static final String FORM_ATTRIBUTE_TPD_STATUS = "content.discussions.tpdStatus";
+
   private final AdminIdentity adminIdentity;
   private final TraineeIdentity traineeIdentity;
 
@@ -85,7 +86,7 @@ public class LtftService {
 
   private final LtftMapper mapper;
 
-  private final SnsTemplate snsTemplate;
+  private final EventBroadcastService eventBroadcastService;
   private final String ltftAssignmentUpdateTopic;
   private final String ltftStatusUpdateTopic;
 
@@ -99,14 +100,14 @@ public class LtftService {
    * @param ltftFormRepository           The LTFT repository.
    * @param mongoTemplate                The Mongo template.
    * @param mapper                       The LTFT mapper.
-   * @param snsTemplate                  The SNS template.
+   * @param eventBroadcastService        The service for broadcasting events.
    * @param ltftAssignmentUpdateTopic    The SNS topic for LTFT assignment updates.
    * @param ltftStatusUpdateTopic        The SNS topic for LTFT status updates.
    * @param ltftSubmissionHistoryService The service for LTFT submission history.
    */
   public LtftService(AdminIdentity adminIdentity, TraineeIdentity traineeIdentity,
       LtftFormRepository ltftFormRepository, MongoTemplate mongoTemplate, LtftMapper mapper,
-      SnsTemplate snsTemplate,
+      EventBroadcastService eventBroadcastService,
       @Value("${application.aws.sns.ltft-assignment-updated}") String ltftAssignmentUpdateTopic,
       @Value("${application.aws.sns.ltft-status-updated}") String ltftStatusUpdateTopic,
       LtftSubmissionHistoryService ltftSubmissionHistoryService) {
@@ -115,10 +116,10 @@ public class LtftService {
     this.ltftFormRepository = ltftFormRepository;
     this.mongoTemplate = mongoTemplate;
     this.mapper = mapper;
-    this.snsTemplate = snsTemplate;
     this.ltftAssignmentUpdateTopic = ltftAssignmentUpdateTopic;
     this.ltftStatusUpdateTopic = ltftStatusUpdateTopic;
     this.ltftSubmissionHistoryService = ltftSubmissionHistoryService;
+    this.eventBroadcastService = eventBroadcastService;
   }
 
   /**
@@ -426,7 +427,7 @@ public class LtftService {
       ltftForm.setAssignedAdmin(assignedAdmin, modifiedBy);
       LtftForm updatedForm = ltftFormRepository.save(ltftForm);
 
-      publishUpdateNotification(updatedForm, ltftAssignmentUpdateTopic);
+      publishUpdateNotification(updatedForm, null, ltftAssignmentUpdateTopic);
 
       return Optional.of(mapper.toDto(updatedForm));
     } else {
@@ -466,7 +467,8 @@ public class LtftService {
       LtftContent newContent =  form.getContent().withTpdEmailValidity(updatedEmailValidity);
       form.setContent(newContent);
       LtftForm savedForm = ltftFormRepository.save(form);
-      publishUpdateNotification(savedForm, ltftStatusUpdateTopic);
+      publishUpdateNotification(savedForm, FORM_ATTRIBUTE_TPD_STATUS,
+          ltftStatusUpdateTopic);
       return Optional.of(mapper.toAdminSummaryDto(savedForm));
     } else {
       log.warn("Could not update TPD notification status: form {} cannot be found.", formId);
@@ -525,7 +527,7 @@ public class LtftService {
           form.getId(), form.getStatus().current().state(), targetState, form.getFormType());
 
       BeanPropertyBindingResult result = new BeanPropertyBindingResult(form, "form");
-      result.addError(new FieldError("LtftForm", "status.current.state",
+      result.addError(new FieldError("LtftForm", FORM_ATTRIBUTE_FORM_STATUS,
           "can not be transitioned to %s".formatted(targetState)));
       throw new MethodArgumentNotValidException(null, result);
     }
@@ -569,7 +571,7 @@ public class LtftService {
       ltftSubmissionHistoryService.takeSnapshot(savedForm);
     }
 
-    publishUpdateNotification(savedForm, ltftStatusUpdateTopic);
+    publishUpdateNotification(savedForm, FORM_ATTRIBUTE_FORM_STATUS, ltftStatusUpdateTopic);
 
     return savedForm;
   }
@@ -629,7 +631,7 @@ public class LtftService {
             case "personalDetails.gmcNumber" -> "content.personalDetails.gmcNumber";
             case "personalDetails.surname" -> "content.personalDetails.surname";
             case "programmeName" -> "content.programmeMembership.name";
-            case "status" -> "status.current.state";
+            case "status" -> FORM_ATTRIBUTE_FORM_STATUS;
             case "traineeId" -> "traineeTisId";
             default -> null;
           };
@@ -651,19 +653,17 @@ public class LtftService {
   }
 
   /**
-   * Publish LTFT status update notification.
+   * Publish LTFT update notification.
    *
-   * @param form The updated LTFT form
+   * @param form             The updated LTFT form.
+   * @param messageAttribute The message attribute to include in the notification.
+   * @param snsTopic         The SNS topic to publish the notification to.
    */
-  private void publishUpdateNotification(LtftForm form, String topic) {
-    log.info("Published update notification for LTFT form {}", form.getId());
-    String groupId = form.getId() == null ? UUID.randomUUID().toString() : form.getId().toString();
+  private void publishUpdateNotification(LtftForm form, String messageAttribute, String snsTopic) {
+    log.info("Published update notification for LTFT form {} to SNS topic {}",
+        form.getId(), snsTopic);
     LtftFormDto dto = mapper.toDto(form);
-    SnsNotification<LtftFormDto> notification = SnsNotification.builder(dto)
-        .groupId(groupId)
-        .build();
-
-    snsTemplate.sendNotification(topic, notification);
+    eventBroadcastService.publishLtftFormUpdateEvent(dto, messageAttribute, snsTopic);
   }
 
   /**
