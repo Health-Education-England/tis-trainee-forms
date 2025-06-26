@@ -33,6 +33,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService.MESSAGE_ATTRIBUTE_KEY;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -51,7 +52,10 @@ import software.amazon.awssdk.services.sns.model.SnsException;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
 
-public class EventBroadcastServiceTest {
+/**
+ * Unit tests for the {@link EventBroadcastService}.
+ */
+class EventBroadcastServiceTest {
   private static final String MESSAGE_ATTRIBUTE = "message-attribute";
   private static final String SNS_TOPIC = "some.sns.topic";
 
@@ -193,7 +197,7 @@ public class EventBroadcastServiceTest {
         .id(TRAINEE_ID)
         .build();
     LtftFormDto.StatusDto status = LtftFormDto.StatusDto.builder().build();
-    LtftFormDto ltftFormDto = LtftFormDto.builder()
+    return LtftFormDto.builder()
         .id(FORM_ID)
         .traineeTisId(TRAINEE_ID)
         .formRef(FORM_REF)
@@ -202,6 +206,5 @@ public class EventBroadcastServiceTest {
         .revision(FORM_REVISION)
         .personalDetails(personalDetailsDto)
         .build();
-    return ltftFormDto;
   }
 }

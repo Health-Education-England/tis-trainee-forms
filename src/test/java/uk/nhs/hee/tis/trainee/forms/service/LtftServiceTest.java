@@ -50,8 +50,8 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.REJECT
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
-import static uk.nhs.hee.tis.trainee.forms.service.LtftService.SNS_MESSAGE_ATTRIBUTE_FORM_STATUS;
-import static uk.nhs.hee.tis.trainee.forms.service.LtftService.SNS_MESSAGE_ATTRIBUTE_TPD_STATUS;
+import static uk.nhs.hee.tis.trainee.forms.service.LtftService.FORM_ATTRIBUTE_FORM_STATUS;
+import static uk.nhs.hee.tis.trainee.forms.service.LtftService.FORM_ATTRIBUTE_TPD_STATUS;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -3209,7 +3209,7 @@ class LtftServiceTest {
         is(SUBMITTED));
 
     assertThat("Unexpected message.", messageCaptor.getValue(),
-        is(SNS_MESSAGE_ATTRIBUTE_FORM_STATUS));
+        is(FORM_ATTRIBUTE_FORM_STATUS));
     assertThat("Unexpected group ID.", snsTopicCaptor.getValue(),
         is(LTFT_STATUS_UPDATE_TOPIC));
     verifyNoMoreInteractions(eventBroadcastService);
@@ -3262,7 +3262,7 @@ class LtftServiceTest {
         is(SUBMITTED));
 
     assertThat("Unexpected message.", messageCaptor.getValue(),
-        is(SNS_MESSAGE_ATTRIBUTE_FORM_STATUS));
+        is(FORM_ATTRIBUTE_FORM_STATUS));
     assertThat("Unexpected group ID.", snsTopicCaptor.getValue(),
         is(LTFT_STATUS_UPDATE_TOPIC));
     verifyNoMoreInteractions(eventBroadcastService);
@@ -3386,7 +3386,7 @@ class LtftServiceTest {
     LtftFormDto capturedFormDto = ltftDtoCaptor.getValue();
     assertThat("Unexpected payload TPD status.", capturedFormDto.tpdEmailStatus(), is(VALID));
     assertThat("Unexpected message attribute.", messageCaptor.getValue(),
-        is(SNS_MESSAGE_ATTRIBUTE_TPD_STATUS));
+        is(FORM_ATTRIBUTE_TPD_STATUS));
     assertThat("Unexpected SNS topic.", snsTopicCaptor.getValue(),
         is(LTFT_STATUS_UPDATE_TOPIC));
     verifyNoMoreInteractions(eventBroadcastService);

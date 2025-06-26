@@ -42,7 +42,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 @Service
 public class EventBroadcastService {
 
-  protected final static String MESSAGE_ATTRIBUTE_KEY = "trigger";
+  protected static final String MESSAGE_ATTRIBUTE_KEY = "trigger";
 
   private final SnsClient snsClient;
 

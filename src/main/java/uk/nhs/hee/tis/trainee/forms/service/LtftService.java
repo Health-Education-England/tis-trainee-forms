@@ -75,8 +75,8 @@ import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 @XRayEnabled
 public class LtftService {
 
-  protected static final String SNS_MESSAGE_ATTRIBUTE_FORM_STATUS = "status.current.state";
-  protected static final String SNS_MESSAGE_ATTRIBUTE_TPD_STATUS = "content.discussions.tpdStatus";
+  protected final static String FORM_ATTRIBUTE_FORM_STATUS = "status.current.state";
+  protected final static String FORM_ATTRIBUTE_TPD_STATUS = "content.discussions.tpdStatus";
 
   private final AdminIdentity adminIdentity;
   private final TraineeIdentity traineeIdentity;
@@ -467,7 +467,7 @@ public class LtftService {
       LtftContent newContent =  form.getContent().withTpdEmailValidity(updatedEmailValidity);
       form.setContent(newContent);
       LtftForm savedForm = ltftFormRepository.save(form);
-      publishUpdateNotification(savedForm, SNS_MESSAGE_ATTRIBUTE_TPD_STATUS,
+      publishUpdateNotification(savedForm, FORM_ATTRIBUTE_TPD_STATUS,
           ltftStatusUpdateTopic);
       return Optional.of(mapper.toAdminSummaryDto(savedForm));
     } else {
@@ -527,7 +527,7 @@ public class LtftService {
           form.getId(), form.getStatus().current().state(), targetState, form.getFormType());
 
       BeanPropertyBindingResult result = new BeanPropertyBindingResult(form, "form");
-      result.addError(new FieldError("LtftForm", "status.current.state",
+      result.addError(new FieldError("LtftForm", FORM_ATTRIBUTE_FORM_STATUS,
           "can not be transitioned to %s".formatted(targetState)));
       throw new MethodArgumentNotValidException(null, result);
     }
@@ -571,7 +571,7 @@ public class LtftService {
       ltftSubmissionHistoryService.takeSnapshot(savedForm);
     }
 
-    publishUpdateNotification(savedForm, SNS_MESSAGE_ATTRIBUTE_FORM_STATUS, ltftStatusUpdateTopic);
+    publishUpdateNotification(savedForm, FORM_ATTRIBUTE_FORM_STATUS, ltftStatusUpdateTopic);
 
     return savedForm;
   }
