@@ -43,6 +43,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 public class EventBroadcastService {
 
   protected static final String MESSAGE_ATTRIBUTE_KEY = "trigger";
+  protected static final String MESSAGE_ATTRIBUTE_DEFAULT_VALUE = "default";
 
   private final SnsClient snsClient;
 
@@ -54,7 +55,8 @@ public class EventBroadcastService {
    * Publish a LTFT form update to SNS.
    *
    * @param formDto          The LTFT form DTO to publish.
-   * @param messageAttribute The message attribute to include in the request, or null if not needed.
+   * @param messageAttribute The message attribute to include in the request (a default is used if
+   *                         this is missing).
    * @param snsTopic         The SNS topic ARN to publish to.
    */
   public void publishLtftFormUpdateEvent(LtftFormDto formDto, String messageAttribute,
@@ -81,6 +83,7 @@ public class EventBroadcastService {
             "Failed to broadcast event to SNS topic '%s' for LTFT form '%s'",
             snsTopic, formDto.id());
         log.error(message, e);
+        throw e;
       }
     }
   }
@@ -90,7 +93,7 @@ public class EventBroadcastService {
    *
    * @param snsTopic         The SNS topic ARN to publish to.
    * @param eventJson        The SNS message contents.
-   * @param messageAttribute The message attribute to include in the request, or null if not needed.
+   * @param messageAttribute The message attribute to include in the request.
    * @param id               The event UUID.
    * @return the built request.
    */
@@ -105,13 +108,11 @@ public class EventBroadcastService {
         .message(eventJson.toString())
         .topicArn(snsTopic);
 
-    if (messageAttribute != null) {
-      MessageAttributeValue messageAttributeValue = MessageAttributeValue.builder()
-          .dataType("String")
-          .stringValue(messageAttribute)
-          .build();
-      request.messageAttributes(Map.of(MESSAGE_ATTRIBUTE_KEY, messageAttributeValue));
-    }
+    MessageAttributeValue messageAttributeValue = MessageAttributeValue.builder()
+        .dataType("String")
+        .stringValue(messageAttribute == null ? MESSAGE_ATTRIBUTE_DEFAULT_VALUE : messageAttribute)
+        .build();
+    request.messageAttributes(Map.of(MESSAGE_ATTRIBUTE_KEY, messageAttributeValue));
 
     String groupId = id == null ? UUID.randomUUID().toString() : id.toString();
     request.messageGroupId(groupId);

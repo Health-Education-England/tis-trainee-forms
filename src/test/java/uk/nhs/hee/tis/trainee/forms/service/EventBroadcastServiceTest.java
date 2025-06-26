@@ -24,14 +24,14 @@ package uk.nhs.hee.tis.trainee.forms.service;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService.MESSAGE_ATTRIBUTE_DEFAULT_VALUE;
 import static uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService.MESSAGE_ATTRIBUTE_KEY;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -96,13 +96,13 @@ class EventBroadcastServiceTest {
   }
 
   @Test
-  void shouldNotThrowSnsExceptionsWhenBroadcastingEvent() {
+  void shouldRethrowSnsExceptionsWhenBroadcastingEvent() {
     LtftFormDto ltftFormDto = buildDummyLtftFormDto();
 
     when(snsClient.publish(any(PublishRequest.class))).thenThrow(SnsException.builder().build());
 
-    assertDoesNotThrow(()
-        -> service.publishLtftFormUpdateEvent(ltftFormDto, MESSAGE_ATTRIBUTE, SNS_TOPIC));
+    assertThrows(SnsException.class,
+        () -> service.publishLtftFormUpdateEvent(ltftFormDto, MESSAGE_ATTRIBUTE, SNS_TOPIC));
   }
 
   @Test
@@ -136,7 +136,7 @@ class EventBroadcastServiceTest {
   }
 
   @Test
-  void shouldNotSetMessageAttributeIfNotRequired() {
+  void shouldIncludeDefaultMessageAttributeIfNotProvided() {
     LtftFormDto ltftFormDto = LtftFormDto.builder().build();
 
     service.publishLtftFormUpdateEvent(ltftFormDto, null, SNS_TOPIC);
@@ -147,8 +147,9 @@ class EventBroadcastServiceTest {
     PublishRequest request = requestCaptor.getValue();
 
     Map<String, MessageAttributeValue> messageAttributes = request.messageAttributes();
-    assertNull(messageAttributes.get(MESSAGE_ATTRIBUTE_KEY),
-        "Unexpected message attribute value.");
+    assertThat("Unexpected message attribute.",
+        messageAttributes.get(MESSAGE_ATTRIBUTE_KEY).stringValue(),
+        is(MESSAGE_ATTRIBUTE_DEFAULT_VALUE));
 
     verifyNoMoreInteractions(snsClient);
   }
