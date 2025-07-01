@@ -16,42 +16,44 @@
         <div class="nhsuk-card__content">
           <dl class="nhsuk-summary-list">
             <h3 class="nhsuk-card__heading" th:text="${var.status?.current?.state} ? |${var.status?.current?.state} Application|: _"></h3>
-            <div class="nhsuk-summary-list__row">
-              <dt class="nhsuk-summary-list__key">Name</dt>
-              <dd class="nhsuk-summary-list__value" th:text="${var.name} ?: _">Not provided</dd>
-            </div>
-            <div class="nhsuk-summary-list__row">
-              <dt class="nhsuk-summary-list__key">Created</dt>
-              <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(var.created, 'dd MMMM yyyy HH:mm (z)', timezone)} ?: _">Not provided</dd>
-            </div>
-            <div class="nhsuk-summary-list__row">
-              <dt class="nhsuk-summary-list__key" th:text="${var.status?.current?.state} ? ${var.status?.current?.state} : _">Modified</dt>
-              <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(var.lastModified, 'dd MMMM yyyy HH:mm (z)', timezone)} ?: _">Not provided</dd>
-            </div>
-            <th:block th:if="${#strings.toString(var.status?.current?.state)} == 'UNSUBMITTED' or ${#strings.toString(var.status?.current?.state)} == 'WITHDRAWN'">
+            <th:block th:if="!(${#strings.toString(var.status?.current?.state)} == 'DRAFT')">
               <div class="nhsuk-summary-list__row">
-                <dt class="nhsuk-summary-list__key" th:text="${var.status?.current?.state} ? |${var.status?.current?.state} by| : _">Modified by</dt>
-                <dd class="nhsuk-summary-list__value" th:text="${#strings.toString(var.status?.current?.modifiedBy?.role)} == 'TRAINEE' ? 'Me' : 'TIS Admin'"></dd>
+                <dt class="nhsuk-summary-list__key">Name</dt>
+                <dd class="nhsuk-summary-list__value" th:text="${not #strings.isEmpty(var.name)} ? ${var.name} : _">Not provided</dd>
               </div>
               <div class="nhsuk-summary-list__row">
-                <dt class="nhsuk-summary-list__key">Reason</dt>
-                <dd class="nhsuk-summary-list__value" th:switch="${var.status?.current?.detail.reason}">
-                  <span th:case="'other'">other reason</span>
-                  <span th:case="'changePercentage'">Change WTE percentage</span>
-                  <span th:case="'changeStartDate'">Change start date</span>
-                  <span th:case="'changeOfCircs'">Change of circumstances</span>
-                  <span th:case="*"><span th:switch="${var.status?.current?.detail.reason} ?: _">Not provided</span></span>
-                </dd>
+                <dt class="nhsuk-summary-list__key">Created</dt>
+                <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(var.created, 'dd MMMM yyyy HH:mm (z)', timezone)} ?: _">Not provided</dd>
               </div>
               <div class="nhsuk-summary-list__row">
-                <dt class="nhsuk-summary-list__key">Message</dt>
-                <dd class="nhsuk-summary-list__value" th:text="${var.status?.current?.detail.message} ?: _">Not provided</dd>
+                <dt class="nhsuk-summary-list__key" th:text="${not #strings.isEmpty(var.status?.current?.state)} ? ${var.status?.current?.state} : _">Modified</dt>
+                <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(var.lastModified, 'dd MMMM yyyy HH:mm (z)', timezone)} ?: _">Not provided</dd>
+              </div>
+              <th:block th:if="${#strings.toString(var.status?.current?.state)} == 'UNSUBMITTED' or ${#strings.toString(var.status?.current?.state)} == 'WITHDRAWN'">
+                <div class="nhsuk-summary-list__row">
+                  <dt class="nhsuk-summary-list__key" th:text="${not #strings.isEmpty(var.status?.current?.state)} ? |${var.status?.current?.state} by| : _">Modified by</dt>
+                  <dd class="nhsuk-summary-list__value" th:text="${#strings.toString(var.status?.current?.modifiedBy?.role)} == 'TRAINEE' ? 'Me' : 'TIS Admin'"></dd>
+                </div>
+                <div class="nhsuk-summary-list__row">
+                  <dt class="nhsuk-summary-list__key">Reason</dt>
+                  <dd class="nhsuk-summary-list__value" th:switch="${var.status?.current?.detail.reason}">
+                    <span th:case="'other'">other reason</span>
+                    <span th:case="'changePercentage'">Change WTE percentage</span>
+                    <span th:case="'changeStartDate'">Change start date</span>
+                    <span th:case="'changeOfCircs'">Change of circumstances</span>
+                    <span th:case="*"><span th:switch="${not #strings.isEmpty(var.status?.current?.detail.reason)} ? ${var.status?.current?.detail.reason} : _">Not provided</span></span>
+                  </dd>
+                </div>
+                <div class="nhsuk-summary-list__row">
+                  <dt class="nhsuk-summary-list__key">Message</dt>
+                  <dd class="nhsuk-summary-list__value" th:text="${not #strings.isEmpty(var.status?.current?.detail.message)} ? ${var.status?.current?.detail.message} : _">Not provided</dd>
+                </div>
+              </th:block>
+              <div class="nhsuk-summary-list__row">
+                <dt class="nhsuk-summary-list__key">Reference</dt>
+                <dd class="nhsuk-summary-list__value" th:text="${not #strings.isEmpty(var.formRef)} ? ${var.formRef} : _">Not provided</dd>
               </div>
             </th:block>
-            <div class="nhsuk-summary-list__row">
-              <dt class="nhsuk-summary-list__key">Reference</dt>
-              <dd class="nhsuk-summary-list__value" th:text="${var.formRef} ?: _">Not provided</dd>
-            </div>
           </dl>
         </div>
       </div>
@@ -62,7 +64,7 @@
             <h3 class="nhsuk-card__heading">Linked Programme</h3>
             <div class="nhsuk-summary-list__row">
               <dt class="nhsuk-summary-list__key">Programme Name</dt>
-              <dd class="nhsuk-summary-list__value" th:text="${programme?.name} ?: _">Not provided</dd>
+              <dd class="nhsuk-summary-list__value" th:text="${not #strings.isEmpty(programme?.name)} ? ${programme?.name} : _">Not provided</dd>
             </div>
             <div class="nhsuk-summary-list__row">
               <dt class="nhsuk-summary-list__key">Start Date</dt>
@@ -108,15 +110,16 @@
           <dl class="nhsuk-summary-list" th:with="discussions=${var.discussions}">
             <div class="nhsuk-summary-list__row">
               <dt class="nhsuk-summary-list__key">TPD Name</dt>
-              <dd class="nhsuk-summary-list__value" th:text="${discussions?.tpdName} ?: _">Not provided</dd>
+              <dd class="nhsuk-summary-list__value" th:text="${not #strings.isEmpty(discussions?.tpdName)} ? ${discussions?.tpdName} : _">Not provided</dd>
             </div>
             <div class="nhsuk-summary-list__row">
               <dt class="nhsuk-summary-list__key">TPD Email Address</dt>
-              <dd class="nhsuk-summary-list__value" th:text="${discussions?.tpdEmail} ?: _">Not provided</dd>
+              <dd class="nhsuk-summary-list__value" th:text="${not #strings.isEmpty(discussions?.tpdEmail)} ? ${discussions?.tpdEmail} : _">Not provided</dd>
             </div>
             <div class="nhsuk-summary-list__row">
               <dt class="nhsuk-summary-list__key">Other Discussions</dt>
               <dd class="nhsuk-summary-list__value">
+                <th:block th:if="!${discussions?.other}">Not provided</th:block>
                 <th:block th:each="person,iter: ${discussions?.other}">
                   Name: <th:block th:text="|${person.name}|"/><br>
                   Email: <th:block th:text="|${person.email}|"/><br>
@@ -142,11 +145,11 @@
             </div>
             <div class="nhsuk-summary-list__row">
               <dt class="nhsuk-summary-list__key">Other reason</dt>
-              <dd class="nhsuk-summary-list__value" th:text="${reasons?.otherDetail} ?: _">Not provided</dd>
+              <dd class="nhsuk-summary-list__value" th:text="${not #strings.isEmpty(reasons?.otherDetail)} ? ${reasons?.otherDetail} : _">Not provided</dd>
             </div>
             <div class="nhsuk-summary-list__row">
               <dt class="nhsuk-summary-list__key">Please provide any additional information to support your application (if needed).</dt>
-              <dd class="nhsuk-summary-list__value" th:text="${reasons?.supportingInformation} ?: _">Not provided</dd>
+              <dd class="nhsuk-summary-list__value" th:text="${not #strings.isEmpty(reasons?.supportingInformation)} ? ${reasons?.supportingInformation} : _">Not provided</dd>
             </div>
           </dl>
         </div>
@@ -157,31 +160,31 @@
           <dl class="nhsuk-summary-list" th:with="pd=${var.personalDetails}">
             <div class="nhsuk-summary-list__row">
               <dt class="nhsuk-summary-list__key">Forename</dt>
-              <dd class="nhsuk-summary-list__value" th:text="${pd?.forenames} ?: _">Not provided</dd>
+              <dd class="nhsuk-summary-list__value" th:text="${not #strings.isEmpty(pd?.forenames)} ? ${pd?.forenames} : _">Not provided</dd>
             </div>
             <div class="nhsuk-summary-list__row">
               <dt class="nhsuk-summary-list__key">Surname (GMC-Registered)</dt>
-              <dd class="nhsuk-summary-list__value" th:text="${pd?.surname} ?: _">Not provided</dd>
+              <dd class="nhsuk-summary-list__value" th:text="${not #strings.isEmpty(pd?.surname)} ? ${pd?.surname} : _">Not provided</dd>
             </div>
             <div class="nhsuk-summary-list__row">
               <dt class="nhsuk-summary-list__key">Contact Telephone</dt>
-              <dd class="nhsuk-summary-list__value" th:text="${pd?.telephoneNumber} ?: _">Not provided</dd>
+              <dd class="nhsuk-summary-list__value" th:text="${not #strings.isEmpty(pd?.telephoneNumber)} ? ${pd?.telephoneNumber} : _">Not provided</dd>
             </div>
             <div class="nhsuk-summary-list__row">
               <dt class="nhsuk-summary-list__key">Contact Mobile</dt>
-              <dd class="nhsuk-summary-list__value" th:text="${pd?.mobileNumber} ?: _">Not provided</dd>
+              <dd class="nhsuk-summary-list__value" th:text="${not #strings.isEmpty(pd?.mobileNumber)} ? ${pd?.mobileNumber} : _">Not provided</dd>
             </div>
             <div class="nhsuk-summary-list__row">
               <dt class="nhsuk-summary-list__key">Email Address</dt>
-              <dd class="nhsuk-summary-list__value" th:text="${pd?.email} ?: _">Not provided</dd>
+              <dd class="nhsuk-summary-list__value" th:text="${not #strings.isEmpty(pd?.email)} ? ${pd?.email} : _">Not provided</dd>
             </div>
             <div class="nhsuk-summary-list__row">
               <dt class="nhsuk-summary-list__key">GMC Number</dt>
-              <dd class="nhsuk-summary-list__value" th:text="${pd?.gmcNumber} ?: _">Not provided</dd>
+              <dd class="nhsuk-summary-list__value" th:text="${not #strings.isEmpty(pd?.gmcNumber)} ? ${pd?.gmcNumber} : _">Not provided</dd>
             </div>
             <div class="nhsuk-summary-list__row">
               <dt class="nhsuk-summary-list__key">GDC Number (if applicable)</dt>
-              <dd class="nhsuk-summary-list__value" th:text="${pd?.gdcNumber} ?: _">Not provided</dd>
+              <dd class="nhsuk-summary-list__value" th:text="${not #strings.isEmpty(pd?.gdcNumber)} ? ${pd?.gdcNumber} : _">Not provided</dd>
             </div>
             <div class="nhsuk-summary-list__row">
               <dt class="nhsuk-summary-list__key">Public Health Number (if applicable)</dt>
@@ -189,7 +192,7 @@
             </div>
             <div class="nhsuk-summary-list__row">
               <dt class="nhsuk-summary-list__key">Are you a Tier 2 / Skilled Worker Visa holder?</dt>
-              <dd class="nhsuk-summary-list__value" th:text="${pd?.skilledWorkerVisaHolder} ?: _">Not provided</dd>
+              <dd class="nhsuk-summary-list__value" th:text="${not #strings.isEmpty(pd?.skilledWorkerVisaHolder)} ? ${pd?.skilledWorkerVisaHolder} : _">Not provided</dd>
             </div>
           </dl>
         </div>
@@ -200,15 +203,15 @@
           <dl class="nhsuk-summary-list" th:with="declarations=${var.declarations}">
             <div class="nhsuk-summary-list__row">
               <dt class="nhsuk-summary-list__key">I confirm that the information I have provided is correct and accurate to the best of my knowledge.</dt>
-              <dd class="nhsuk-summary-list__value" th:text="${declarations?.informationIsCorrect} ?: _">Not provided</dd>
+              <dd class="nhsuk-summary-list__value" th:text="${not #strings.isEmpty(declarations?.informationIsCorrect)} ? ${declarations?.informationIsCorrect} : _">Not provided</dd>
             </div>
             <div class="nhsuk-summary-list__row">
               <dt class="nhsuk-summary-list__key">I have discussed the proposals outlined in the CCT Calculation with my Training Programme Director (TPD).</dt>
-              <dd class="nhsuk-summary-list__value" th:text="${declarations?.discussedWithTpd} ?: _">Not provided</dd>
+              <dd class="nhsuk-summary-list__value" th:text="${not #strings.isEmpty(declarations?.discussedWithTpd)} ? ${declarations?.discussedWithTpd} : _">Not provided</dd>
             </div>
             <div class="nhsuk-summary-list__row">
               <dt class="nhsuk-summary-list__key">I understand that approval of my application is not guaranteed.</dt>
-              <dd class="nhsuk-summary-list__value" th:text="${declarations?.notGuaranteed} ?: _">Not provided</dd>
+              <dd class="nhsuk-summary-list__value" th:text="${not #strings.isEmpty(declarations?.notGuaranteed)} ? ${declarations?.notGuaranteed} : _">Not provided</dd>
             </div>
           </dl>
         </div>
