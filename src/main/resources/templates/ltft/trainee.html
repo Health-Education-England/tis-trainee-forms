@@ -22,14 +22,14 @@
                 <dd class="nhsuk-summary-list__value" th:text="${not #strings.isEmpty(var.name)} ? ${var.name} : _">Not provided</dd>
               </div>
               <div class="nhsuk-summary-list__row">
-                <dt class="nhsuk-summary-list__key">Created</dt>
+                <dt class="nhsuk-summary-list__key">Created date</dt>
                 <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(var.created, 'dd MMMM yyyy HH:mm (z)', timezone)} ?: _">Not provided</dd>
               </div>
               <div class="nhsuk-summary-list__row">
-                <dt class="nhsuk-summary-list__key" th:text="${not #strings.isEmpty(var.status?.current?.state)} ? ${var.status?.current?.state} : _">Modified</dt>
+                <dt class="nhsuk-summary-list__key" th:text="${not #strings.isEmpty(var.status?.current?.state)} ? |${var.status?.current?.state} date| : _">Modified date</dt>
                 <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(var.lastModified, 'dd MMMM yyyy HH:mm (z)', timezone)} ?: _">Not provided</dd>
               </div>
-              <th:block th:if="${#strings.toString(var.status?.current?.state)} == 'UNSUBMITTED' or ${#strings.toString(var.status?.current?.state)} == 'WITHDRAWN'">
+              <th:block th:if="${#strings.toString(var.status?.current?.state)} == 'UNSUBMITTED' or ${#strings.toString(var.status?.current?.state)} == 'WITHDRAWN' or ${#strings.toString(var.status?.current?.state)} == 'REJECTED'">
                 <div class="nhsuk-summary-list__row">
                   <dt class="nhsuk-summary-list__key" th:text="${not #strings.isEmpty(var.status?.current?.state)} ? |${var.status?.current?.state} by| : _">Modified by</dt>
                   <dd class="nhsuk-summary-list__value" th:text="${#strings.toString(var.status?.current?.modifiedBy?.role)} == 'TRAINEE' ? 'Me' : 'TIS Admin'"></dd>
@@ -41,7 +41,7 @@
                     <span th:case="'changePercentage'">Change WTE percentage</span>
                     <span th:case="'changeStartDate'">Change start date</span>
                     <span th:case="'changeOfCircs'">Change of circumstances</span>
-                    <span th:case="*"><span th:switch="${not #strings.isEmpty(var.status?.current?.detail.reason)} ? ${var.status?.current?.detail.reason} : _">Not provided</span></span>
+                    <span th:case="*"><span th:text="${not #strings.isEmpty(var.status?.current?.detail.reason)} ? ${var.status?.current?.detail.reason} : _">Not provided</span></span>
                   </dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
