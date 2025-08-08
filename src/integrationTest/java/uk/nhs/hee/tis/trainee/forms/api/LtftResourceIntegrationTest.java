@@ -1280,18 +1280,19 @@ class LtftResourceIntegrationTest {
         .format(datePattern);
     if (status == DRAFT) {
       assertThat("Unexpected modified timestamp.", pdfText,
-          not(containsString(status + " " + modifiedString + System.lineSeparator())));
+          not(containsString(status + " date " + modifiedString + System.lineSeparator())));
       assertThat("Unexpected form ref.", pdfText,
           not(containsString("Reference")));
     }
     else {
       assertThat("Unexpected modified timestamp.", pdfText,
-          containsString(status + " " + modifiedString + System.lineSeparator()));
+          containsString(status + " date " + modifiedString + System.lineSeparator()));
     }
   }
 
-  @Test
-  void shouldGetDetailPdfFormStatusIfLtftUnsubmitted() throws Exception {
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"UNSUBMITTED", "WITHDRAWN", "REJECTED"})
+  void shouldGetDetailPdfFormStatusReasonIfLtftUnsubmittedRejected(LifecycleState status) throws Exception {
     LtftForm ltft = new LtftForm();
     ltft.setTraineeTisId(TRAINEE_ID);
     ltft.setFormRef("ltft_47165_001");
@@ -1310,7 +1311,7 @@ class LtftResourceIntegrationTest {
     Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
 
     AbstractAuditedForm.Status.StatusInfo statusInfo = AbstractAuditedForm.Status.StatusInfo.builder()
-        .state(UNSUBMITTED)
+        .state(status)
         .assignedAdmin(Person.builder().build())
         .detail(AbstractAuditedForm.Status.StatusDetail.builder()
             .reason("changePercentage")
@@ -1324,7 +1325,7 @@ class LtftResourceIntegrationTest {
         .current(statusInfo)
         .history(List.of(
             statusInfo,
-            AbstractAuditedForm.Status.StatusInfo.builder().state(UNSUBMITTED).timestamp(latestSubmitted).build()))
+            AbstractAuditedForm.Status.StatusInfo.builder().state(status).timestamp(latestSubmitted).build()))
         .build()
     );
 
@@ -1347,21 +1348,21 @@ class LtftResourceIntegrationTest {
     assertThat("Unexpected header.", pdfText,
         startsWith("Changing hours (LTFT)" + System.lineSeparator()));
     assertThat("Unexpected sub title.", pdfText,
-        containsString("UNSUBMITTED Application" + System.lineSeparator()));
+        containsString(status + " Application" + System.lineSeparator()));
     assertThat("Unexpected name.", pdfText,
         containsString("Name Reducing Hours" + System.lineSeparator()));
 
     DateTimeFormatter datePattern = DateTimeFormatter.ofPattern("dd MMMM yyyy HH:mm (z)");
     String createdString = ZonedDateTime.ofInstant(ltft.getCreated(), timezone).format(datePattern);
     assertThat("Unexpected created timestamp.", pdfText,
-        containsString("Created " + createdString + System.lineSeparator()));
+        containsString("Created date " + createdString + System.lineSeparator()));
 
     String modifiedString = ZonedDateTime.ofInstant(ltft.getLastModified(), timezone)
         .format(datePattern);
     assertThat("Unexpected modified timestamp.", pdfText,
-        containsString("UNSUBMITTED " + modifiedString + System.lineSeparator()));
+        containsString(status + " date " + modifiedString + System.lineSeparator()));
     assertThat("Unexpected modified by.", pdfText,
-        containsString("UNSUBMITTED by Me" + System.lineSeparator()));
+        containsString(status + " by Me" + System.lineSeparator()));
     assertThat("Unexpected status reason.", pdfText,
         containsString("Reason Change WTE percentage" + System.lineSeparator()));
     assertThat("Unexpected status message.", pdfText,
