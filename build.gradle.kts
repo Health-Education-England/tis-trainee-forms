@@ -49,7 +49,7 @@ dependencies {
   implementation("io.awspring.cloud:spring-cloud-aws-starter-s3")
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sqs")
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sns")
-  implementation(libs.aws.xray)
+  implementation(libs.aws.xray.spring)
 
   implementation("commons-beanutils:commons-beanutils:1.9.4")
 
