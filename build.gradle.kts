@@ -51,7 +51,7 @@ dependencies {
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sns")
   implementation(libs.aws.xray)
 
-  implementation("commons-beanutils:commons-beanutils:1.9.4")
+  implementation("commons-beanutils:commons-beanutils:1.11.0")
 
   // PDF
   implementation(libs.bundles.pdf.publishing)
