@@ -163,7 +163,7 @@ class S3FormRPartARepositoryImplTest {
   }
 
   @Test
-  void shouldThrowExceptionWhenFormRNotFoundInCloud() {
+  void shouldThrowExceptionWhenFormrNotFoundInCloud() {
     entity.setLifecycleState(LifecycleState.SUBMITTED);
     entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
     entity.setIsArcp(DEFAULT_IS_ARCP);
@@ -224,7 +224,7 @@ class S3FormRPartARepositoryImplTest {
   }
 
   @Test
-  void shouldGetFormRPartAsByTraineeTisIdWhenPmMissing() {
+  void shouldGetFormrPartAsByTraineeTisIdWhenPmMissing() {
     when(s3Mock.listObjectsV2(ListObjectsV2Request.builder().bucket(bucketName)
         .prefix(DEFAULT_TRAINEE_TIS_ID + "/forms/formr-a").build()))
         .thenReturn(s3ListingMock);
@@ -247,7 +247,7 @@ class S3FormRPartARepositoryImplTest {
 
     assertThat("Unexpected numbers of forms.", entities.size(), is(1));
 
-    FormRPartA entity = entities.get(0);
+    entity = entities.get(0);
     assertThat("Unexpected form ID.", entity.getId(), is(UUID.fromString(DEFAULT_FORM_ID)));
     assertThat("Unexpected trainee ID.", entity.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected submitted date.", entity.getSubmissionDate(),

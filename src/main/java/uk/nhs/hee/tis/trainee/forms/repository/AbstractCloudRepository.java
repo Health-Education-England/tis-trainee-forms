@@ -64,7 +64,6 @@ public abstract class AbstractCloudRepository<T extends AbstractFormR> {
 
   protected final ObjectMapper objectMapper;
 
-  private LocalDateTime localDateTime;
   private static final String SUBMISSION_DATE = "submissiondate";
   private static final String LIFECYCLE_STATE = "lifecyclestate";
   private static final String TRAINEE_ID = "traineeid";
@@ -270,6 +269,7 @@ public abstract class AbstractCloudRepository<T extends AbstractFormR> {
   }
 
   private T populateSubmissionDate(T form, Map<String, String> metadata) {
+    LocalDateTime localDateTime;
     try {
       form.setSubmissionDate(LocalDateTime.parse(metadata.get(SUBMISSION_DATE)));
     } catch (DateTimeParseException e) {
