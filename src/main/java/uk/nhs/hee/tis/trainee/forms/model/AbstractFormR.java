@@ -22,6 +22,8 @@
 package uk.nhs.hee.tis.trainee.forms.model;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.Setter;
@@ -37,5 +39,6 @@ public abstract class AbstractFormR extends AbstractForm {
   private LifecycleState lifecycleState;
   private LocalDateTime submissionDate;
   private LocalDateTime lastModifiedDate;
+  private UUID programmeMembershipId;
 
 }

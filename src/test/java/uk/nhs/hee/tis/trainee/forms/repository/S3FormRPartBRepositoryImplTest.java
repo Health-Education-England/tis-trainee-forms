@@ -108,13 +108,20 @@ class S3FormRPartBRepositoryImplTest {
       DateTimeFormatter.ISO_LOCAL_DATE);
   private static final String DEFAULT_FORM_ID = UUID.randomUUID().toString();
   private static final Map<String, String> DEFAULT_UNSUBMITTED_METADATA = Map
-      .of("id", DEFAULT_FORM_ID, "formtype", "inform", "lifecyclestate",
-          LifecycleState.UNSUBMITTED.name(), "submissiondate", DEFAULT_SUBMISSION_DATE_STRING,
-          "traineeid", DEFAULT_TRAINEE_TIS_ID);
+      .of("id", DEFAULT_FORM_ID,
+          "formtype", "inform",
+          "lifecyclestate", LifecycleState.UNSUBMITTED.name(),
+          "submissiondate", DEFAULT_SUBMISSION_DATE_STRING,
+          "traineeid", DEFAULT_TRAINEE_TIS_ID,
+          "programmemembershipid", DEFAULT_PROGRAMME_MEMBERSHIP_ID);
   private static final Map<String, String> UNSUBMITTED_METADATA_DATE_FORMAT_SUBMISSIONDATE = Map
-      .of("id", DEFAULT_FORM_ID, "formtype", "inform", "lifecyclestate",
-          LifecycleState.UNSUBMITTED.name(), "submissiondate", DATE_FORMAT_DATE_STRING,
-          "traineeid", DEFAULT_TRAINEE_TIS_ID);
+      .of("id", DEFAULT_FORM_ID,
+          "formtype", "inform",
+          "lifecyclestate",
+          LifecycleState.UNSUBMITTED.name(),
+          "submissiondate", DATE_FORMAT_DATE_STRING,
+          "traineeid", DEFAULT_TRAINEE_TIS_ID,
+          "programmemembershipid", DEFAULT_PROGRAMME_MEMBERSHIP_ID);
   private static final Boolean DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS = true;
   private static final Boolean DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS = true;
   private static final String FIXED_FIELDS =
@@ -291,6 +298,8 @@ class S3FormRPartBRepositoryImplTest {
         is(DEFAULT_SUBMISSION_DATE));
     assertThat("Unexpected lifecycle state.", entity.getLifecycleState(),
         is(LifecycleState.UNSUBMITTED));
+    assertThat("Unexpected programme membership ID.", entity.getProgrammeMembershipId(),
+        is(UUID.fromString(DEFAULT_PROGRAMME_MEMBERSHIP_ID)));
   }
 
   @Test

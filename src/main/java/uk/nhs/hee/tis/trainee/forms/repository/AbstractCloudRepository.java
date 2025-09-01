@@ -68,6 +68,7 @@ public abstract class AbstractCloudRepository<T extends AbstractFormR> {
   private static final String SUBMISSION_DATE = "submissiondate";
   private static final String LIFECYCLE_STATE = "lifecyclestate";
   private static final String TRAINEE_ID = "traineeid";
+  private static final String PROGRAMME_MEMBERSHIP_ID = "programmemembershipid";
   private static final String FIXED_FIELDS =
       "id,traineeTisId,lifecycleState,submissionDate,lastModifiedDate";
 
@@ -179,6 +180,12 @@ public abstract class AbstractCloudRepository<T extends AbstractFormR> {
         T form = getTypeClass().getConstructor().newInstance();
         form.setId(UUID.fromString(metadata.get("id")));
         form.setTraineeTisId(metadata.get(TRAINEE_ID));
+        try {
+          form.setProgrammeMembershipId(UUID.fromString(metadata.get(PROGRAMME_MEMBERSHIP_ID)));
+        } catch (IllegalArgumentException e) {
+          log.debug("No linked programme membership for form id {}",
+              metadata.get("id"));
+        }
         try {
           form.setSubmissionDate(LocalDateTime.parse(metadata.get(SUBMISSION_DATE)));
         } catch (DateTimeParseException e) {

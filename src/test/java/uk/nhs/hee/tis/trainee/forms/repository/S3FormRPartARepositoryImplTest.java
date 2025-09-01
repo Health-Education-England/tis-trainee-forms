@@ -75,7 +75,7 @@ class S3FormRPartARepositoryImplTest {
       .of("id", DEFAULT_FORM_ID, "formtype", "inform", "lifecyclestate",
           LifecycleState.UNSUBMITTED.name(), "submissiondate",
           DEFAULT_SUBMISSION_DATE_STRING, "traineeid",
-          DEFAULT_TRAINEE_TIS_ID);
+          DEFAULT_TRAINEE_TIS_ID, "programmemembershipid", DEFAULT_PROGRAMME_MEMBERSHIP_ID);
   private static final String FIXED_FIELDS =
       "id,traineeTisId,lifecycleState,submissionDate,lastModifiedDate";
 
@@ -199,6 +199,8 @@ class S3FormRPartARepositoryImplTest {
         is(DEFAULT_SUBMISSION_DATE));
     assertThat("Unexpected lifecycle state.", entity.getLifecycleState(),
         is(LifecycleState.UNSUBMITTED));
+    assertThat("Unexpected programme membership ID.", entity.getProgrammeMembershipId(),
+        is(UUID.fromString(DEFAULT_PROGRAMME_MEMBERSHIP_ID)));
   }
 
   @Test
