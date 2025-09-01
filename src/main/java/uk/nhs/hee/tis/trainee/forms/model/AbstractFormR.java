@@ -23,7 +23,6 @@ package uk.nhs.hee.tis.trainee.forms.model;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
-
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.Setter;

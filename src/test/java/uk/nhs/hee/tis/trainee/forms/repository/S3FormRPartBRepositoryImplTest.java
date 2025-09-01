@@ -9,6 +9,7 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.empty;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -53,6 +54,7 @@ import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Object;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.DeleteType;
@@ -122,6 +124,12 @@ class S3FormRPartBRepositoryImplTest {
           "submissiondate", DATE_FORMAT_DATE_STRING,
           "traineeid", DEFAULT_TRAINEE_TIS_ID,
           "programmemembershipid", DEFAULT_PROGRAMME_MEMBERSHIP_ID);
+  private static final Map<String, String> DEFAULT_METADATA_MISSING_PM = Map
+      .of("id", DEFAULT_FORM_ID,
+          "formtype", "inform",
+          "lifecyclestate", LifecycleState.UNSUBMITTED.name(),
+          "submissiondate", DEFAULT_SUBMISSION_DATE_STRING,
+          "traineeid", DEFAULT_TRAINEE_TIS_ID);
   private static final Boolean DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS = true;
   private static final Boolean DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS = true;
   private static final String FIXED_FIELDS =
@@ -256,6 +264,19 @@ class S3FormRPartBRepositoryImplTest {
   }
 
   @Test
+  void shouldThrowExceptionWhenFormRNotFoundInCloud() {
+    entity.setLifecycleState(LifecycleState.SUBMITTED);
+    entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+    entity.setIsArcp(DEFAULT_IS_ARCP);
+    entity.setProgrammeMembershipId(UUID.fromString(DEFAULT_PROGRAMME_MEMBERSHIP_ID));
+    when(s3Mock.putObject(any(PutObjectRequest.class), any(RequestBody.class))).thenThrow(
+        NoSuchKeyException.builder().message("Key not found").build());
+
+    Exception actual = assertThrows(RuntimeException.class, () -> repo.save(entity));
+    assertThat("Unexpected exception type.", actual instanceof ApplicationException);
+  }
+
+  @Test
   void shouldThrowExceptionWhenFormRPartBNotSaved() {
     entity.setLifecycleState(LifecycleState.SUBMITTED);
     entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
@@ -300,6 +321,41 @@ class S3FormRPartBRepositoryImplTest {
         is(LifecycleState.UNSUBMITTED));
     assertThat("Unexpected programme membership ID.", entity.getProgrammeMembershipId(),
         is(UUID.fromString(DEFAULT_PROGRAMME_MEMBERSHIP_ID)));
+  }
+
+
+
+  @Test
+  void shouldGetFormRPartBsByTraineeTisIdWhenPmMissing() {
+    when(s3Mock.listObjectsV2(ListObjectsV2Request.builder().bucket(bucketName)
+        .prefix(DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b").build())).thenReturn(s3ListingMock);
+    String otherKey = KEY + "w/error";
+    List<S3Object> s3Objects = List.of(
+        S3Object.builder().key(KEY).build(),
+        S3Object.builder().key(otherKey).build()
+    );
+    when(s3ListingMock.contents()).thenReturn(s3Objects);
+
+    HeadObjectResponse metadataResponse = HeadObjectResponse.builder()
+        .metadata(DEFAULT_METADATA_MISSING_PM).build();
+    when(s3Mock.headObject(
+        HeadObjectRequest.builder().bucket(bucketName).key(KEY).build())).thenReturn(
+        metadataResponse);
+    when(s3Mock.headObject(HeadObjectRequest.builder().bucket(bucketName).key(otherKey).build()))
+        .thenThrow(new AmazonServiceException("Expected Exception"));
+
+    List<FormRPartB> entities = repo.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+
+    assertThat("Unexpected numbers of forms.", entities.size(), is(1));
+
+    FormRPartB entity = entities.get(0);
+    assertThat("Unexpected form ID.", entity.getId(), is(UUID.fromString(DEFAULT_FORM_ID)));
+    assertThat("Unexpected trainee ID.", entity.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected submitted date.", entity.getSubmissionDate(),
+        is(DEFAULT_SUBMISSION_DATE));
+    assertThat("Unexpected lifecycle state.", entity.getLifecycleState(),
+        is(LifecycleState.UNSUBMITTED));
+    assertNull(entity.getProgrammeMembershipId(), "Unexpected programme membership ID.");
   }
 
   @Test
