@@ -22,12 +22,16 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
+import jakarta.validation.Valid;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -41,9 +45,11 @@ import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.api.util.HeaderUtil;
 import uk.nhs.hee.tis.trainee.forms.api.validation.FormRPartAValidator;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartAPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
+import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
 @Slf4j
 @RestController
@@ -56,6 +62,7 @@ public class FormRPartAResource {
   private final FormRPartAService service;
   private final FormRPartAValidator validator;
   private final TraineeIdentity loggedInTraineeIdentity;
+  private final PdfService pdfService;
 
   /**
    * Initialise the FormR PartA resource.
@@ -63,12 +70,14 @@ public class FormRPartAResource {
    * @param service         The service to use.
    * @param validator       The form validator to use.
    * @param traineeIdentity The authenticated trainee identity.
+   * @param pdfService      The PDF service to use.
    */
   public FormRPartAResource(FormRPartAService service, FormRPartAValidator validator,
-      TraineeIdentity traineeIdentity) {
+      TraineeIdentity traineeIdentity, PdfService pdfService) {
     this.service = service;
     this.validator = validator;
     this.loggedInTraineeIdentity = traineeIdentity;
+    this.pdfService = pdfService;
   }
 
   /**
@@ -181,5 +190,38 @@ public class FormRPartAResource {
     } else {
       return ResponseEntity.notFound().build();
     }
+  }
+
+  /**
+   * Generate a FormR PartA PDF, unless one already exists.
+   *
+   * @return The downloaded or generated PDF.
+   * @throws IOException A new PDF could not be generated.
+   */
+  @PutMapping(value = "/formr-parta-pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+  public ResponseEntity<byte[]> generatePdf(@Valid @RequestBody FormRPartADto formRPartA)
+      throws IOException {
+
+    String traineeId = loggedInTraineeIdentity.getTraineeId();
+    String formId = formRPartA.getId();
+
+    log.info("Trainee '{}' requesting FormR PartA PDF for form '{}'.", traineeId, formId);
+    String key = String.format("%s/forms/formr_parta/%s.pdf", traineeId, formId);
+
+    Resource publishedPdf = pdfService.getUploadedPdf(key).orElseGet(() -> {
+      try {
+        FormRPartAPdfRequestDto request = new FormRPartAPdfRequestDto(formId, traineeId,
+            formRPartA);
+        return pdfService.generateFormRPartA(request, false);
+      } catch (IOException e) {
+        return null;
+      }
+    });
+
+    if (publishedPdf == null) {
+      return ResponseEntity.unprocessableEntity().build();
+    }
+
+    return ResponseEntity.ok(publishedPdf.getContentAsByteArray());
   }
 }

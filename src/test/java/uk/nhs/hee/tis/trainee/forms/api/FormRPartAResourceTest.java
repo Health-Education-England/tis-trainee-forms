@@ -58,6 +58,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
+import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
 @Import(FormRPartAResource.class)
 @ContextConfiguration(classes = InterceptorConfiguration.class)
@@ -84,6 +85,9 @@ class FormRPartAResourceTest {
 
   @MockBean
   TraineeIdentity traineeIdentity;
+
+  @MockBean
+  PdfService pdfService;
 
   private FormRPartADto dto;
   private FormRPartSimpleDto simpleDto;
