@@ -23,22 +23,28 @@ package uk.nhs.hee.tis.trainee.forms.dto;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import lombok.EqualsAndHashCode;
+import lombok.Value;
 
 /**
  * DTO for a FormR PartA PDF request.
- *
- * @param id        The FormR PartA id.
- * @param traineeId The trainee id.
- * @param form      The FormR PartA data.
  */
-public record FormRPartAPdfRequestDto(
-    @NotNull
-    String id,
-
-    @NotNull
-    String traineeId,
-
+@EqualsAndHashCode(callSuper = true)
+@Value
+public class FormRPartAPdfRequestDto extends FormRPdfRequestDto {
     @Valid
     @NotNull
-    FormRPartADto form
-) {}
+    FormRPartADto form;
+
+    /**
+     * Instantiate a FormR PartA PDF request.
+     *
+     * @param id        The FormR PartA id.
+     * @param traineeId The trainee id.
+     * @param form      The FormR PartA data.
+     */
+    public FormRPartAPdfRequestDto(String id, String traineeId, FormRPartADto form) {
+      super(id, traineeId);
+      this.form = form;
+    }
+}

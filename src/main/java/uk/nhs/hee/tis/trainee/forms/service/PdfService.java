@@ -164,8 +164,8 @@ public class PdfService {
    */
   public Resource generateFormRPartA(FormRPartAPdfRequestDto request, boolean publish)
       throws IOException {
-    String traineeId = request.traineeId();
-    String formId = request.id();
+    String traineeId = request.getTraineeId();
+    String formId = request.getId();
     FormRType type = FormRType.PARTA;
     log.info("Generating a FormR {} PDF for trainee '{}' and form '{}'",
         type, traineeId, formId);
@@ -195,8 +195,8 @@ public class PdfService {
    */
   public Resource generateFormRPartB(FormRPartBPdfRequestDto request, boolean publish)
       throws IOException {
-    String traineeId = request.traineeId();
-    String formId = request.id();
+    String traineeId = request.getTraineeId();
+    String formId = request.getId();
     FormRType type = FormRType.PARTB;
     log.info("Generating a FormR {} PDF for trainee '{}' and form '{}'",
         type, traineeId, formId);

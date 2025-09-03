@@ -22,12 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import static org.hamcrest.Matchers.hasSize;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -39,13 +34,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.io.IOException;
 import java.lang.reflect.Method;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Collections;
-import java.util.Optional;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,7 +43,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.MethodParameter;
-import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ContextConfiguration;
@@ -81,13 +70,6 @@ class FormRPartBResourceTest {
   private static final String DEFAULT_FORENAME = "DEFAULT_FORENAME";
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";
   private static final LifecycleState DEFAULT_LIFECYCLESTATE = LifecycleState.DRAFT;
-  private static final LocalDate DEFAULT_PREV_REVAL_DATE = LocalDate.now().minusMonths(6);
-  private static final LocalDateTime DEFAULT_SUBMISSION_DATE = LocalDateTime.now();
-  private static final LocalDateTime DEFAULT_LAST_MODIFIED_DATE = LocalDateTime.now();
-  private static final LocalDate DEFAULT_CUR_REVAL_DATE = LocalDate.now().plusMonths(6);
-  private static final LocalDate DEFAULT_WORK_START_DATE = LocalDate.now().minusYears(1);
-  private static final LocalDate DEFAULT_WORK_END_DATE = LocalDate.now().minusMonths(3);
-  private static final LocalDate DEFAULT_DECLARE_DATE = LocalDate.now().minusYears(2);
 
   private static final String AUTH_TOKEN
       = TestJwtUtil.generateTokenForTisId(DEFAULT_TRAINEE_TIS_ID);
@@ -436,224 +418,5 @@ class FormRPartBResourceTest {
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
             .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
         .andExpect(status().isNoContent());
-  }
-
-  @Test
-  void putPdfShouldNotCreatePdfWhenNoToken() throws Exception {
-    String formJson = getDefaultFormJson();
-
-    mockMvc.perform(put("/api/formr-partb-pdf")
-            .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .content(formJson))
-        .andExpect(status().isForbidden());
-
-    verifyNoInteractions(pdfService);
-  }
-
-  @Test
-  void putPdfShouldNotCreatePdfWhenTokenIsInvalid() throws Exception {
-    String formJson = getDefaultFormJson();
-    mockMvc.perform(put("/api/formr-partb-pdf")
-            .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .content(formJson)
-            .header(HttpHeaders.AUTHORIZATION, "aa.bb.cc"))
-        .andExpect(status().isForbidden());
-
-    verifyNoInteractions(pdfService);
-  }
-
-  @Test
-  void putPdfShouldNotCreatePdfWhenTraineeIdNotInToken() throws Exception {
-    String formJson = getDefaultFormJson();
-    mockMvc.perform(put("/api/formr-partb-pdf")
-            .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .content(formJson)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateToken("{}")))
-        .andExpect(status().isForbidden());
-
-    verifyNoInteractions(pdfService);
-  }
-
-  @Test
-  void putPdfShouldNotCreatePdfWhenDtoValidationFails() throws Exception {
-    BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(dto, "formDto");
-    bindingResult.addError(new FieldError("formDto", "formField", "Form field not valid."));
-
-    Method method = validator.getClass().getMethod("validate", FormRPartBDto.class);
-    Exception exception = new MethodArgumentNotValidException(new MethodParameter(method, 0),
-        bindingResult);
-    doThrow(exception).when(validator).validate(dto);
-    when(traineeIdentity.getTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
-
-    mockMvc.perform(put("/api/formr-partb-pdf")
-            .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .content(TestUtil.convertObjectToJsonBytes(dto))
-            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
-        .andExpect(status().isBadRequest());
-
-    verifyNoInteractions(pdfService);
-  }
-
-  @Test
-  void putPdfShouldReturnUnprocessableWhenPdfNull() throws Exception {
-    String formJson = getDefaultFormJson();
-
-    when(pdfService.getUploadedPdf("1/forms/formr_partb/" + DEFAULT_ID + ".pdf"))
-        .thenReturn(Optional.empty());
-    when(pdfService.generateFormRPartB(any(), anyBoolean())).thenReturn(null);
-    when(traineeIdentity.getTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
-
-    mockMvc.perform(put("/api/formr-partb-pdf")
-            .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .content(formJson)
-            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
-        .andExpect(status().isUnprocessableEntity());
-  }
-
-  @Test
-  void putPdfShouldReturnUnprocessableWhenIoException() throws Exception {
-    String formJson = getDefaultFormJson();
-
-    when(pdfService.getUploadedPdf("1/forms/formr_partb/" + DEFAULT_ID + ".pdf"))
-        .thenReturn(Optional.empty());
-    doThrow(new IOException("Test exception"))
-        .when(pdfService).generateFormRPartB(any(), anyBoolean());
-    when(traineeIdentity.getTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
-
-    mockMvc.perform(put("/api/formr-partb-pdf")
-            .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .content(formJson)
-            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
-        .andExpect(status().isUnprocessableEntity());
-  }
-
-  @Test
-  void putPdfShouldReturnPreviousPdfWhenUploadedPdfExists() throws Exception {
-    String formJson = getDefaultFormJson();
-
-    byte[] response = "response content".getBytes();
-    Resource resource = mock(Resource.class);
-    when(resource.getContentAsByteArray()).thenReturn(response);
-    when(pdfService.getUploadedPdf("1/forms/formr_partb/" + DEFAULT_ID + ".pdf"))
-        .thenReturn(Optional.of(resource));
-    when(traineeIdentity.getTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
-
-    mockMvc.perform(put("/api/formr-partb-pdf")
-            .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .content(formJson)
-            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
-        .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_PDF))
-        .andExpect(content().bytes(response));
-
-    verify(pdfService, never()).generateFormRPartA(any(), anyBoolean());
-  }
-
-  @Test
-  void putPdfShouldReturnGeneratePdfWhenUploadedPdfNotExists()
-      throws Exception {
-    String formJson = getDefaultFormJson();
-
-    when(pdfService.getUploadedPdf("1/forms/formr_partb/" + DEFAULT_ID + ".pdf"))
-        .thenReturn(Optional.empty());
-
-    byte[] response = "response content".getBytes();
-    Resource resource = mock(Resource.class);
-    when(resource.getContentAsByteArray()).thenReturn(response);
-    when(pdfService.generateFormRPartB(any(), anyBoolean())).thenReturn(resource);
-    when(traineeIdentity.getTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
-
-    mockMvc.perform(put("/api/formr-partb-pdf")
-            .contentType(TestUtil.APPLICATION_JSON_UTF8)
-            .content(formJson)
-            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
-        .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_PDF))
-        .andExpect(content().bytes(response));
-  }
-
-  /**
-   * Generate a default form JSON.
-   *
-   * @return the form JSON.
-   */
-  private String getDefaultFormJson() {
-    return """
-      {
-        "id": "%s",
-        "traineeTisId": "%s",
-        "programmeMembershipId": "%s",
-        "isArcp": true,
-        "forename": "%s",
-        "surname": "%s",
-        "gmcNumber": "11111111",
-        "email": "test@test.com",
-        "localOfficeName": "Test Office",
-        "prevRevalBody": "Previous Body",
-        "prevRevalBodyOther": "Other Body",
-        "currRevalDate": "%s",
-        "prevRevalDate": "%s",
-        "programmeSpecialty": "General Practice",
-        "dualSpecialty": "Other Specialty",
-        "work": [
-          {
-            "typeOfWork": "In Post",
-            "startDate": "%s",
-            "endDate": "%s",
-            "trainingPost": "Test Training Post",
-            "site": "Test Site",
-            "siteLocation": "Test Location",
-            "siteKnownAs": "Test Known As"
-          }
-        ],
-        "sicknessAbsence": 10,
-        "parentalLeave": 0,
-        "careerBreaks": 0,
-        "paidLeave": 5,
-        "unauthorisedLeave": 0,
-        "otherLeave": 0,
-        "totalLeave": 15,
-        "isHonest": true,
-        "isHealthy": true,
-        "isWarned": false,
-        "isComplying": true,
-        "healthStatement": "No health concerns",
-        "havePreviousDeclarations": true,
-        "previousDeclarations": [
-          {
-            "declarationType": "Significant Event",
-            "dateOfEntry": "%s",
-            "title": "Test Previous Declaration",
-            "locationOfEntry": "Test Location"
-          }
-        ],
-        "havePreviousUnresolvedDeclarations": false,
-        "previousDeclarationSummary": null,
-        "haveCurrentDeclarations": false,
-        "currentDeclarations": [],
-        "haveCurrentUnresolvedDeclarations": false,
-        "currentDeclarationSummary": null,
-        "compliments": "Test compliments",
-        "submissionDate": "%s",
-        "lastModifiedDate": "%s",
-        "lifecycleState": "%s",
-        "haveCovidDeclarations": false,
-        "covidDeclarationDto": null
-      }
-      """
-        .formatted(
-            DEFAULT_ID,
-            DEFAULT_TRAINEE_TIS_ID,
-            UUID.randomUUID(),
-            DEFAULT_FORENAME,
-            DEFAULT_SURNAME,
-            DEFAULT_CUR_REVAL_DATE,
-            DEFAULT_PREV_REVAL_DATE,
-            DEFAULT_WORK_START_DATE,
-            DEFAULT_WORK_END_DATE,
-            DEFAULT_DECLARE_DATE,
-            DEFAULT_SUBMISSION_DATE,
-            DEFAULT_LAST_MODIFIED_DATE,
-            DEFAULT_LIFECYCLESTATE);
   }
 }

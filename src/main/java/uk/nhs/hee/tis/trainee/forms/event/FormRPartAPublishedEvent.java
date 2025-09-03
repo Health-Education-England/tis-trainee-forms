@@ -21,6 +21,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.event;
 
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartAPdfRequestDto;
@@ -29,12 +30,10 @@ import uk.nhs.hee.tis.trainee.forms.dto.PublishedPdf;
 /**
  * An event for when a FormR PartA PDF is published.
  */
+@EqualsAndHashCode(callSuper = true)
 @Value
-public class FormRPartAPublishedEvent {
-  String id;
-  String traineeId;
+public class FormRPartAPublishedEvent extends FormRPublishedEvent {
   FormRPartADto form;
-  PublishedPdf pdf;
 
   /**
    * Create an event for when a FormR PartA PDF is published.
@@ -43,9 +42,7 @@ public class FormRPartAPublishedEvent {
    * @param pdf     The reference to the published PDF.
    */
   public FormRPartAPublishedEvent(FormRPartAPdfRequestDto request, PublishedPdf pdf) {
-    traineeId = request.traineeId();
-    id = request.id();
-    form = request.form();
-    this.pdf = pdf;
+    super(request, pdf);
+    this.form = request.getForm();
   }
 }

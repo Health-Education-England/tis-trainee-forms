@@ -43,9 +43,9 @@ public class FormRPartBPublishedEvent {
    * @param pdf     The reference to the published PDF.
    */
   public FormRPartBPublishedEvent(FormRPartBPdfRequestDto request, PublishedPdf pdf) {
-    traineeId = request.traineeId();
-    id = request.id();
-    form = request.form();
+    traineeId = request.getTraineeId();
+    id = request.getId();
+    form = request.getForm();
     this.pdf = pdf;
   }
 }

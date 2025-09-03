@@ -19,32 +19,30 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.dto;
+package uk.nhs.hee.tis.trainee.forms.event;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
-import lombok.EqualsAndHashCode;
-import lombok.Value;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPdfRequestDto;
+import uk.nhs.hee.tis.trainee.forms.dto.PublishedPdf;
 
 /**
- * DTO for a FormR PartB PDF request.
+ * An event for when a FormR PartA PDF is published.
  */
-@EqualsAndHashCode(callSuper = true)
-@Value
-public class FormRPartBPdfRequestDto extends FormRPdfRequestDto {
-    @Valid
-    @NotNull
-    FormRPartBDto form;
+abstract public class FormRPublishedEvent {
+  String id;
+  String traineeId;
+  Object form; // To be defined in subclasses
+  PublishedPdf pdf;
 
-    /**
-     * Instantiate a FormR PartB PDF request.
-     *
-     * @param id        The FormR PartB id.
-     * @param traineeId The trainee id.
-     * @param form      The FormR PartB data.
-     */
-    public FormRPartBPdfRequestDto(String id, String traineeId, FormRPartBDto form) {
-      super(id, traineeId);
-      this.form = form;
-    }
+  /**
+   * Create an event for when a FormR PartA PDF is published.
+   *
+   * @param request The FormR PartA PDF request which triggered this published event.
+   * @param pdf     The reference to the published PDF.
+   */
+  public FormRPublishedEvent(FormRPdfRequestDto request, PublishedPdf pdf) {
+    traineeId = request.getTraineeId();
+    id = request.getId();
+    form = request.getForm();
+    this.pdf = pdf;
+  }
 }

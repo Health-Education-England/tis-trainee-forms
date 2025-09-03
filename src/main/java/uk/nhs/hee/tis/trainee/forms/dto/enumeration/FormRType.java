@@ -51,4 +51,7 @@ public enum FormRType {
     return new TemplateSpec(templatePath, Set.of(), TemplateMode.HTML, null);
   }
 
+  public String lowerName() {
+    return toString().toLowerCase();
+  }
 }
