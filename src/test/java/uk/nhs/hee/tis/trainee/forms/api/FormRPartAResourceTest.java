@@ -22,7 +22,12 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -34,10 +39,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,6 +53,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.MethodParameter;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ContextConfiguration;
@@ -439,7 +447,7 @@ class FormRPartAResourceTest {
             .content(formJson))
         .andExpect(status().isForbidden());
 
-    verifyNoInteractions(service);
+    verifyNoInteractions(pdfService);
   }
 
   @Test
@@ -451,7 +459,117 @@ class FormRPartAResourceTest {
             .header(HttpHeaders.AUTHORIZATION, "aa.bb.cc"))
         .andExpect(status().isForbidden());
 
-    verifyNoInteractions(service);
+    verifyNoInteractions(pdfService);
+  }
+
+  @Test
+  void putPdfShouldNotCreatePdfWhenTraineeIdNotInToken() throws Exception {
+    String formJson = getDefaultFormJson();
+    mockMvc.perform(put("/api/formr-parta-pdf")
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(formJson)
+            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateToken("{}")))
+        .andExpect(status().isForbidden());
+
+    verifyNoInteractions(pdfService);
+  }
+
+  @Test
+  void putPdfShouldNotCreatePdfWhenDtoValidationFails() throws Exception {
+    BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(dto, "formDto");
+    bindingResult.addError(new FieldError("formDto", "formField", "Form field not valid."));
+
+    Method method = validator.getClass().getMethod("validate", FormRPartADto.class);
+    Exception exception = new MethodArgumentNotValidException(new MethodParameter(method, 0),
+        bindingResult);
+    doThrow(exception).when(validator).validate(dto);
+    when(traineeIdentity.getTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
+
+    mockMvc.perform(put("/api/formr-parta-pdf")
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(TestUtil.convertObjectToJsonBytes(dto))
+            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(pdfService);
+  }
+
+  @Test
+  void putPdfShouldReturnUnprocessableWhenPdfNull() throws Exception {
+    String formJson = getDefaultFormJson();
+
+    when(pdfService.getUploadedPdf("1/forms/formr_parta/" + DEFAULT_ID + ".pdf"))
+        .thenReturn(Optional.empty());
+    when(pdfService.generateFormRPartA(any(), anyBoolean())).thenReturn(null);
+    when(traineeIdentity.getTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
+
+    mockMvc.perform(put("/api/formr-parta-pdf")
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(formJson)
+            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
+        .andExpect(status().isUnprocessableEntity());
+  }
+
+  @Test
+  void putPdfShouldReturnUnprocessableWhenIoException() throws Exception {
+    String formJson = getDefaultFormJson();
+
+    when(pdfService.getUploadedPdf("1/forms/formr_parta/" + DEFAULT_ID + ".pdf"))
+        .thenReturn(Optional.empty());
+    doThrow(new IOException("Test exception"))
+        .when(pdfService).generateFormRPartA(any(), anyBoolean());
+    when(traineeIdentity.getTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
+
+    mockMvc.perform(put("/api/formr-parta-pdf")
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(formJson)
+            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
+        .andExpect(status().isUnprocessableEntity());
+  }
+
+  @Test
+  void putPdfShouldReturnPreviousPdfWhenUploadedPdfExists() throws Exception {
+    String formJson = getDefaultFormJson();
+
+    byte[] response = "response content".getBytes();
+    Resource resource = mock(Resource.class);
+    when(resource.getContentAsByteArray()).thenReturn(response);
+    when(pdfService.getUploadedPdf("1/forms/formr_parta/" + DEFAULT_ID + ".pdf"))
+        .thenReturn(Optional.of(resource));
+    when(traineeIdentity.getTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
+
+    mockMvc.perform(put("/api/formr-parta-pdf")
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(formJson)
+            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+        .andExpect(content().bytes(response));
+
+    verify(pdfService, never()).generateFormRPartA(any(), anyBoolean());
+  }
+
+  @Test
+  void putPdfShouldReturnGeneratePdfWhenUploadedPdfNotExists()
+      throws Exception {
+    String formJson = getDefaultFormJson();
+
+    when(pdfService.getUploadedPdf("1/forms/formr_parta/" + DEFAULT_ID + ".pdf"))
+        .thenReturn(Optional.empty());
+
+    byte[] response = "response content".getBytes();
+    Resource resource = mock(Resource.class);
+    when(resource.getContentAsByteArray()).thenReturn(response);
+    when(pdfService.generateFormRPartA(any(), anyBoolean())).thenReturn(resource);
+    when(traineeIdentity.getTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
+
+    mockMvc.perform(put("/api/formr-parta-pdf")
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(formJson)
+            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+        .andExpect(content().bytes(response));
   }
 
   /**
@@ -463,7 +581,7 @@ class FormRPartAResourceTest {
     return
         """
         {
-          "id": "test-id",
+          "id": "%s",
           "traineeTisId": "%s",
           "programmeMembershipId": "%s",
           "isArcp": true,
@@ -503,6 +621,7 @@ class FormRPartAResourceTest {
         }
         """
             .formatted(
+                DEFAULT_ID,
                 DEFAULT_TRAINEE_TIS_ID,
                 UUID.randomUUID(),
                 DEFAULT_FORENAME,
