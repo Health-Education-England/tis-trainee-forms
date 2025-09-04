@@ -51,6 +51,7 @@ import org.thymeleaf.TemplateSpec;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.templatemode.TemplateMode;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartAPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
@@ -60,6 +61,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.GoldGuideVersion;
 import uk.nhs.hee.tis.trainee.forms.event.ConditionsOfJoiningPublishedEvent;
 import uk.nhs.hee.tis.trainee.forms.event.FormRPartAPublishedEvent;
 import uk.nhs.hee.tis.trainee.forms.event.FormRPartBPublishedEvent;
+import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 
 /**
  * A service handling PDF generation and publishing via S3 and SNS.
@@ -229,6 +231,24 @@ public class PdfService {
 
     TemplateSpec templateSpec = new TemplateSpec(
         "ltft" + File.separatorChar + templateFileName + ".html",
+        Set.of(), TemplateMode.HTML, null);
+    return generatePdf(templateSpec, Map.of("var", dto));
+  }
+
+  /**
+   * Generate a PDF for a {@link FormRPartADto}.
+   *
+   * @param dto              The data object to convert to a PDF.
+   * @param templateFileName The name of the template file to use.
+   * @return The bytes of the generated PDF.
+   * @throws IOException If a valid PDF could not be created.
+   */
+  public byte[] generatePdf(FormRPartADto dto, String templateFileName) throws IOException {
+    log.info("Generating a PDF for FormR PartA '{}' modified '{}'",
+        dto.getId(), dto.getLastModifiedDate());
+
+    TemplateSpec templateSpec = new TemplateSpec(
+        "formr" + File.separatorChar + templateFileName + ".html",
         Set.of(), TemplateMode.HTML, null);
     return generatePdf(templateSpec, Map.of("var", dto));
   }

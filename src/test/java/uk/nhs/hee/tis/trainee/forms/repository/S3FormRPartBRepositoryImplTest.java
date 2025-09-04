@@ -342,9 +342,9 @@ class S3FormRPartBRepositoryImplTest {
     assertThat("Unexpected total leave.", entity.getTotalLeave(),
         both(not(DEFAULT_TOTAL_LEAVE)).and(notNullValue()));
     assertThat("Unexpected isHonest flag.", entity.getIsHonest(),
-        both(not(DEFAULT_IS_HONEST)).and(notNullValue()));
+        is(DEFAULT_IS_HONEST));
     assertThat("Unexpected isHealthy flag.", entity.getIsHealthy(),
-        both(not(DEFAULT_IS_HEALTHY)).and(notNullValue()));
+        is(DEFAULT_IS_HEALTHY));
     assertThat("Unexpected health statement.", entity.getHealthStatement(), is(""));
     assertThat("Unexpected havePreviousDeclarations flag.", entity.getHavePreviousDeclarations(),
         is(false));

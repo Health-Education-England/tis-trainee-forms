@@ -40,12 +40,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,6 +60,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.util.FileCopyUtils;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -76,17 +79,11 @@ import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 @WebMvcTest(FormRPartAResource.class)
 class FormRPartAResourceTest {
 
-  private static final String DEFAULT_ID = "DEFAULT_ID";
-  private static final String DEFAULT_TRAINEE_TIS_ID = "1";
+  private static final String DEFAULT_ID = "4e41356d-77a6-4c23-b58b-c340c2ba4bf9";
+  private static final String DEFAULT_TRAINEE_TIS_ID = "47165";
   private static final String DEFAULT_FORENAME = "DEFAULT_FORENAME";
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";
   private static final LifecycleState DEFAULT_LIFECYCLESTATE = LifecycleState.DRAFT;
-  private static final LocalDate DEFAULT_DOB = LocalDate.now().minusYears(25);
-  private static final LocalDateTime DEFAULT_SUBMISSION_DATE = LocalDateTime.now();
-  private static final LocalDateTime DEFAULT_LAST_MODIFIED_DATE = LocalDateTime.now();
-  private static final LocalDate DEFAULT_ATTAINED_DATE = LocalDate.now().minusYears(5);
-  private static final LocalDate DEFAULT_COMPLETION_DATE = LocalDate.now().plusYears(1);
-  private static final LocalDate DEFAULT_START_DATE = LocalDate.now().minusYears(10);
 
   private static final String AUTH_TOKEN
       = TestJwtUtil.generateTokenForTisId(DEFAULT_TRAINEE_TIS_ID);
@@ -498,7 +495,8 @@ class FormRPartAResourceTest {
   void putPdfShouldReturnUnprocessableWhenPdfNull() throws Exception {
     String formJson = getDefaultFormJson();
 
-    when(pdfService.getUploadedPdf("1/forms/formr_parta/" + DEFAULT_ID + ".pdf"))
+    when(pdfService.getUploadedPdf(
+        DEFAULT_TRAINEE_TIS_ID + "/forms/formr_parta/" + DEFAULT_ID + ".pdf"))
         .thenReturn(Optional.empty());
     when(pdfService.generateFormRPartA(any(), anyBoolean())).thenReturn(null);
     when(traineeIdentity.getTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
@@ -514,7 +512,8 @@ class FormRPartAResourceTest {
   void putPdfShouldReturnUnprocessableWhenIoException() throws Exception {
     String formJson = getDefaultFormJson();
 
-    when(pdfService.getUploadedPdf("1/forms/formr_parta/" + DEFAULT_ID + ".pdf"))
+    when(pdfService.getUploadedPdf(
+        DEFAULT_TRAINEE_TIS_ID + "/forms/formr_parta/" + DEFAULT_ID + ".pdf"))
         .thenReturn(Optional.empty());
     doThrow(new IOException("Test exception"))
         .when(pdfService).generateFormRPartA(any(), anyBoolean());
@@ -534,7 +533,8 @@ class FormRPartAResourceTest {
     byte[] response = "response content".getBytes();
     Resource resource = mock(Resource.class);
     when(resource.getContentAsByteArray()).thenReturn(response);
-    when(pdfService.getUploadedPdf("1/forms/formr_parta/" + DEFAULT_ID + ".pdf"))
+    when(pdfService.getUploadedPdf(
+        DEFAULT_TRAINEE_TIS_ID + "/forms/formr_parta/" + DEFAULT_ID + ".pdf"))
         .thenReturn(Optional.of(resource));
     when(traineeIdentity.getTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
 
@@ -554,7 +554,8 @@ class FormRPartAResourceTest {
       throws Exception {
     String formJson = getDefaultFormJson();
 
-    when(pdfService.getUploadedPdf("1/forms/formr_parta/" + DEFAULT_ID + ".pdf"))
+    when(pdfService.getUploadedPdf(
+        DEFAULT_TRAINEE_TIS_ID + "/forms/formr_parta/" + DEFAULT_ID + ".pdf"))
         .thenReturn(Optional.empty());
 
     byte[] response = "response content".getBytes();
@@ -578,60 +579,11 @@ class FormRPartAResourceTest {
    * @return the form JSON.
    */
   private String getDefaultFormJson() {
-    return
-        """
-        {
-          "id": "%s",
-          "traineeTisId": "%s",
-          "programmeMembershipId": "%s",
-          "isArcp": true,
-          "forename": "%s",
-          "surname": "%s",
-          "gmcNumber": "1234567",
-          "localOfficeName": "Test Office",
-          "dateOfBirth": "%s",
-          "gender": "x",
-          "immigrationStatus": "Test Status",
-          "qualification": "Test Qualification",
-          "dateAttained": "%s",
-          "medicalSchool": "Test Medical School",
-          "address1": "Address Line 1",
-          "address2": "Address Line 2",
-          "address3": "Address Line 3",
-          "address4": "Address Line 4",
-          "postCode": "TE57 1NG",
-          "telephoneNumber": "+0123456789",
-          "mobileNumber": "+1234567890",
-          "email": "test@test.com",
-          "declarationType": "TYPE1",
-          "isLeadingToCct": true,
-          "programmeSpecialty": "Test Specialty",
-          "cctSpecialty1": "CCT Specialty 1",
-          "cctSpecialty2": "CCT Specialty 2",
-          "college": "Test College",
-          "completionDate": "%s",
-          "trainingGrade": "Test Grade",
-          "startDate": "%s",
-          "programmeMembershipType": "Substantive",
-          "wholeTimeEquivalent": "1.0",
-          "submissionDate": "%s",
-          "lastModifiedDate": "%s",
-          "otherImmigrationStatus": "other status",
-          "lifecycleState": "%s"
-        }
-        """
-            .formatted(
-                DEFAULT_ID,
-                DEFAULT_TRAINEE_TIS_ID,
-                UUID.randomUUID(),
-                DEFAULT_FORENAME,
-                DEFAULT_SURNAME,
-                DEFAULT_DOB,
-                DEFAULT_ATTAINED_DATE,
-                DEFAULT_COMPLETION_DATE,
-                DEFAULT_START_DATE,
-                DEFAULT_SUBMISSION_DATE,
-                DEFAULT_LAST_MODIFIED_DATE,
-                DEFAULT_LIFECYCLESTATE);
+    try (Reader reader = new InputStreamReader(Objects.requireNonNull(
+        getClass().getResourceAsStream("/forms/testFormRPartA.json")))) {
+      return FileCopyUtils.copyToString(reader);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 }

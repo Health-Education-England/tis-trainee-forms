@@ -34,6 +34,7 @@ import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import javax.imageio.ImageIO;
 import org.apache.pdfbox.io.IOUtils;
@@ -46,7 +47,10 @@ import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.thymeleaf.TemplateSpec;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartAPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctChangeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.DeclarationsDto;
@@ -57,6 +61,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.FormRType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 @SpringBootTest
@@ -79,7 +84,7 @@ class PdfServiceIntegrationTest {
   private ZoneId zoneId;
 
   @Test
-  void shouldMatchEmptyPdfWhenDtoEmpty() throws IOException {
+  void shouldMatchEmptyLtftPdfWhenDtoEmpty() throws IOException {
     LtftFormDto dto = LtftFormDto.builder().build();
 
     byte[] generatedBytes = service.generatePdf(dto, "admin");
@@ -89,7 +94,7 @@ class PdfServiceIntegrationTest {
   }
 
   @Test
-  void shouldMatchFullPdfWhenDtoPopulated() throws IOException {
+  void shouldMatchFullLtftPdfWhenDtoPopulated() throws IOException {
     LtftFormDto dto = LtftFormDto.builder()
         .formRef("ltft_47165_040")
         .created(LocalDate.of(2021, 2, 3).atTime(4, 5).atZone(zoneId).toInstant())
