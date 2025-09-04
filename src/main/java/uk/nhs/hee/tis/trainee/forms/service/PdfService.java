@@ -239,17 +239,14 @@ public class PdfService {
    * Generate a PDF for a {@link FormRPartADto}.
    *
    * @param dto              The data object to convert to a PDF.
-   * @param templateFileName The name of the template file to use.
    * @return The bytes of the generated PDF.
    * @throws IOException If a valid PDF could not be created.
    */
-  public byte[] generatePdf(FormRPartADto dto, String templateFileName) throws IOException {
+  public byte[] generatePdf(FormRPartADto dto) throws IOException {
     log.info("Generating a PDF for FormR PartA '{}' modified '{}'",
         dto.getId(), dto.getLastModifiedDate());
 
-    TemplateSpec templateSpec = new TemplateSpec(
-        "formr" + File.separatorChar + templateFileName + ".html",
-        Set.of(), TemplateMode.HTML, null);
+    TemplateSpec templateSpec = FormRType.PARTA.getFormRTemplate();
     return generatePdf(templateSpec, Map.of("var", dto));
   }
 

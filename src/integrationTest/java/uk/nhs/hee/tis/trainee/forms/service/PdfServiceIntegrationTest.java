@@ -27,14 +27,16 @@ import static org.hamcrest.Matchers.is;
 import com.openhtmltopdf.pdfboxout.visualtester.PdfVisualTester;
 import com.openhtmltopdf.pdfboxout.visualtester.PdfVisualTester.PdfCompareResult;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
-import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.imageio.ImageIO;
 import org.apache.pdfbox.io.IOUtils;
@@ -47,10 +49,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.thymeleaf.TemplateSpec;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
-import uk.nhs.hee.tis.trainee.forms.dto.FormRPartAPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctChangeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.DeclarationsDto;
@@ -61,7 +61,6 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
-import uk.nhs.hee.tis.trainee.forms.dto.enumeration.FormRType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 @SpringBootTest
@@ -158,6 +157,62 @@ class PdfServiceIntegrationTest {
     byte[] generatedBytes = service.generatePdf(dto, "admin");
 
     int problems = compareGeneratedPdf("ltft-admin", generatedBytes);
+    assertThat("Unexpected PDF comparison problem count.", problems, is(0));
+  }
+
+  @Test
+  void shouldMatchEmptyFormRPartAPdfWhenDtoEmpty() throws IOException {
+    FormRPartADto dto = new FormRPartADto();
+    byte[] pdf = service.generatePdf(dto);
+
+    int problems = compareGeneratedPdf("formr-parta-empty", pdf);
+    assertThat("Unexpected PDF comparison problem count.", problems, is(0));
+  }
+
+  @Test
+  void shouldMatchFullFormRPartAPdfWhenDtoPopulated() throws IOException {
+    FormRPartADto dto = new FormRPartADto();
+    dto.setId("form-id-12345");
+    dto.setTraineeTisId("47165");
+    dto.setProgrammeMembershipId(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"));
+    dto.setIsArcp(true);
+    dto.setForename("Anthony");
+    dto.setSurname("Gilliam");
+    dto.setGmcNumber("1234567");
+    dto.setLocalOfficeName("London");
+    dto.setDateOfBirth(LocalDate.of(1980, 4, 5));
+    dto.setGender("gender");
+    dto.setImmigrationStatus("immigration status");
+    dto.setQualification("qualification");
+    dto.setDateAttained(LocalDate.of(2004, 6, 7));
+    dto.setMedicalSchool("medical school");
+    dto.setAddress1("address line 1");
+    dto.setAddress2("address line 2");
+    dto.setAddress3("address line 3");
+    dto.setAddress4("address line 4");
+    dto.setPostCode("AB12 3CD");
+    dto.setTelephoneNumber("+441200900000");
+    dto.setMobileNumber("+447700900000");
+    dto.setEmail("test@testy.com");
+    dto.setDeclarationType("I have been appointed to a programme leading to award of CCT");
+    dto.setIsLeadingToCct(true);
+    dto.setProgrammeSpecialty("programme specialty");
+    dto.setCctSpecialty1("cct specialty 1");
+    dto.setCctSpecialty2("cct specialty 2");
+    dto.setCollege("college");
+    dto.setCompletionDate(LocalDate.of(2024, 8, 9));
+    dto.setTrainingGrade("training grade");
+    dto.setStartDate(LocalDate.of(2021, 9, 10));
+    dto.setProgrammeMembershipType("Substantive");
+    dto.setWholeTimeEquivalent("0.5");
+    dto.setSubmissionDate(LocalDate.of(2024, 10, 11).atTime(12, 13));
+    dto.setLastModifiedDate(LocalDate.of(2024, 11, 12).atTime(13, 14));
+    dto.setOtherImmigrationStatus("other immigration status");
+    dto.setLifecycleState(LifecycleState.SUBMITTED);
+
+    byte[] pdf = service.generatePdf(dto);
+
+    int problems = compareGeneratedPdf("formr-parta", pdf);
     assertThat("Unexpected PDF comparison problem count.", problems, is(0));
   }
 
