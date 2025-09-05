@@ -9,8 +9,10 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.empty;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -290,6 +292,40 @@ class S3FormRPartBRepositoryImplTest {
   }
 
   @Test
+  void shouldNotThrowWhenNoLinkedProgrammeMembership() {
+    when(s3Mock.listObjectsV2(ListObjectsV2Request.builder().bucket(bucketName)
+        .prefix(DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b").build()))
+        .thenReturn(s3ListingMock);
+    String otherKey = KEY + "w/error";
+    List<S3Object> s3Objects = List.of(
+        S3Object.builder().key(KEY).build(),
+        S3Object.builder().key(otherKey).build()
+    );
+    when(s3ListingMock.contents()).thenReturn(s3Objects);
+
+    // invalid UUID metadata
+    Map<String, String> metadata = Map.of(
+        "id", DEFAULT_FORM_ID,
+        "traineeid", DEFAULT_TRAINEE_TIS_ID,
+        "programmemembershipid", "INVALID_UUID",
+        "lifecyclestate", "SUBMITTED",
+        "submissiondate", LocalDateTime.now().toString()
+    );
+
+    HeadObjectResponse metadataResponse = HeadObjectResponse.builder()
+        .metadata(metadata).build();
+    when(s3Mock.headObject(
+        HeadObjectRequest.builder().bucket(bucketName).key(KEY).build())).thenReturn(
+        metadataResponse);
+    when(s3Mock.headObject(HeadObjectRequest.builder().bucket(bucketName).key(otherKey).build()))
+        .thenThrow(new AmazonServiceException("Expected Exception"));
+
+    assertDoesNotThrow(() -> {
+      repo.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    }, "should not throw when no linkedprogramme membership");
+  }
+
+  @Test
   void shouldGetFormRPartBsByTraineeTisId() {
     when(s3Mock.listObjectsV2(ListObjectsV2Request.builder().bucket(bucketName)
         .prefix(DEFAULT_TRAINEE_TIS_ID + "/forms/formr-b").build())).thenReturn(s3ListingMock);
@@ -426,6 +462,17 @@ class S3FormRPartBRepositoryImplTest {
     assertThat("Unexpected havePreviousUnresolvedDeclarations flag.",
         entity.getHavePreviousUnresolvedDeclarations(), is(false));
     assertThat("Unexpected status.", entity.getLifecycleState(), is(SUBMITTED));
+  }
+
+  @Test
+  void shouldReturnEmptyWhenFormrNotFoundInCloud() {
+    when(s3Mock.getObject(any(GetObjectRequest.class)))
+        .thenThrow(NoSuchKeyException.builder().message("Key not found").build());
+
+    Optional<FormRPartB> result = repo.findByIdAndTraineeTisId(
+        DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID);
+
+    assertTrue(result.isEmpty(), "Expected empty when NoSuchKeyException is thrown.");
   }
 
   @Test
