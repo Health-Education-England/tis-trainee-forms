@@ -53,6 +53,7 @@ import org.thymeleaf.templatemode.TemplateMode;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartAPdfRequestDto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PublishedPdf;
@@ -247,6 +248,21 @@ public class PdfService {
         dto.getId(), dto.getLastModifiedDate());
 
     TemplateSpec templateSpec = FormRType.PARTA.getFormRTemplate();
+    return generatePdf(templateSpec, Map.of("var", dto));
+  }
+
+  /**
+   * Generate a PDF for a {@link FormRPartBDto}.
+   *
+   * @param dto              The data object to convert to a PDF.
+   * @return The bytes of the generated PDF.
+   * @throws IOException If a valid PDF could not be created.
+   */
+  public byte[] generatePdf(FormRPartBDto dto) throws IOException {
+    log.info("Generating a PDF for FormR PartB '{}' modified '{}'",
+        dto.getId(), dto.getLastModifiedDate());
+
+    TemplateSpec templateSpec = FormRType.PARTB.getFormRTemplate();
     return generatePdf(templateSpec, Map.of("var", dto));
   }
 

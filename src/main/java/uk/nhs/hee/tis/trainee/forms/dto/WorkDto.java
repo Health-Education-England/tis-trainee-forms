@@ -37,7 +37,7 @@ import uk.nhs.hee.tis.trainee.forms.annotations.NotBeforeAnotherDateValidation;
     dependFieldName = "endDate",
     message = "End date must not be before start date"
 )
-public class WorkDto {
+public class  WorkDto {
 
   @NotNull
   @Size(min = 1, max = 100)

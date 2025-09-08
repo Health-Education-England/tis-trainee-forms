@@ -336,6 +336,82 @@ class PdfServiceTest {
   }
 
   @Test
+  void shouldReturnGeneratedFormRPartApdf() throws IOException {
+    FormRPartADto dto = new FormRPartADto();
+
+    String content = "<html>test content</html>";
+    when(templateEngine.process(any(TemplateSpec.class), any())).thenReturn(content);
+
+    byte[] bytes = service.generatePdf(dto);
+
+    PDDocument pdf = Loader.loadPDF(bytes);
+    String pdfText = new PDFTextStripper().getText(pdf);
+    assertThat("Unexpected content.", pdfText, is("test content" + System.lineSeparator()));
+  }
+
+  @Test
+  void shouldNotUploadGeneratedFormRPartA() throws IOException {
+    FormRPartADto dto = new FormRPartADto();
+
+    when(templateEngine.process(any(TemplateSpec.class), any()))
+        .thenReturn("<html>test content</html>");
+
+    service.generatePdf(dto);
+
+    verifyNoInteractions(s3Template);
+  }
+
+  @Test
+  void shouldNotSendNotificationOfGeneratedFormRPartA() throws IOException {
+    FormRPartADto dto = new FormRPartADto();
+
+    when(templateEngine.process(any(TemplateSpec.class), any()))
+        .thenReturn("<html>test content</html>");
+
+    service.generatePdf(dto);
+
+    verifyNoInteractions(snsTemplate);
+  }
+
+  @Test
+  void shouldReturnGeneratedFormRPartBpdf() throws IOException {
+    FormRPartADto dto = new FormRPartADto();
+
+    String content = "<html>test content</html>";
+    when(templateEngine.process(any(TemplateSpec.class), any())).thenReturn(content);
+
+    byte[] bytes = service.generatePdf(dto);
+
+    PDDocument pdf = Loader.loadPDF(bytes);
+    String pdfText = new PDFTextStripper().getText(pdf);
+    assertThat("Unexpected content.", pdfText, is("test content" + System.lineSeparator()));
+  }
+
+  @Test
+  void shouldNotUploadGeneratedFormRPartB() throws IOException {
+    FormRPartBDto dto = new FormRPartBDto();
+
+    when(templateEngine.process(any(TemplateSpec.class), any()))
+        .thenReturn("<html>test content</html>");
+
+    service.generatePdf(dto);
+
+    verifyNoInteractions(s3Template);
+  }
+
+  @Test
+  void shouldNotSendNotificationOfGeneratedFormRPartB() throws IOException {
+    FormRPartBDto dto = new FormRPartBDto();
+
+    when(templateEngine.process(any(TemplateSpec.class), any()))
+        .thenReturn("<html>test content</html>");
+
+    service.generatePdf(dto);
+
+    verifyNoInteractions(snsTemplate);
+  }
+
+  @Test
   void shouldGenerateFormRPartAFromTemplate() throws IOException {
     FormRPartADto form = new FormRPartADto();
     FormRPartAPdfRequestDto request = new FormRPartAPdfRequestDto(FORM_ID, TRAINEE_ID, form);

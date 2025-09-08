@@ -32,6 +32,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.Data;
+import org.springframework.data.annotation.Transient;
 import uk.nhs.hee.tis.trainee.forms.annotations.LegalAgeValidation;
 import uk.nhs.hee.tis.trainee.forms.annotations.MaxDateValidation;
 import uk.nhs.hee.tis.trainee.forms.annotations.MinDateValidation;
@@ -54,6 +55,9 @@ public class FormRPartADto {
   private String traineeTisId;
   private UUID programmeMembershipId;
   private Boolean isArcp;
+
+  @Transient
+  private String programmeName;
 
   @NotNull
   @Size(min = 1, max = 100)
