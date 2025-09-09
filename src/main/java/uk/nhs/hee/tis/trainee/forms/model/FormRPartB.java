@@ -35,7 +35,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @EqualsAndHashCode(callSuper = true)
 public class FormRPartB extends AbstractFormR {
 
-  private UUID programmeMembershipId;
   private Boolean isArcp;
 
   private String forename;
