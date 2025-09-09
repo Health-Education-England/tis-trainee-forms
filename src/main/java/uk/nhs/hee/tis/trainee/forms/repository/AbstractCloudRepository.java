@@ -64,10 +64,10 @@ public abstract class AbstractCloudRepository<T extends AbstractFormR> {
 
   protected final ObjectMapper objectMapper;
 
-  private LocalDateTime localDateTime;
   private static final String SUBMISSION_DATE = "submissiondate";
   private static final String LIFECYCLE_STATE = "lifecyclestate";
   private static final String TRAINEE_ID = "traineeid";
+  private static final String PROGRAMME_MEMBERSHIP_ID = "programmemembershipid";
   private static final String FIXED_FIELDS =
       "id,traineeTisId,lifecycleState,submissionDate,lastModifiedDate";
 
@@ -128,7 +128,7 @@ public abstract class AbstractCloudRepository<T extends AbstractFormR> {
             entry("name", fileName),
             entry("type", "json"),
             entry("isarcp", isArcp != null ? isArcp.toString() : ""),
-            entry("programmemembershipid", programmeMembershipId != null
+            entry(PROGRAMME_MEMBERSHIP_ID, programmeMembershipId != null
                 ? programmeMembershipId.toString() : ""),
             entry("formtype", form.getFormType()),
             entry(LIFECYCLE_STATE, form.getLifecycleState().name()),
@@ -179,15 +179,8 @@ public abstract class AbstractCloudRepository<T extends AbstractFormR> {
         T form = getTypeClass().getConstructor().newInstance();
         form.setId(UUID.fromString(metadata.get("id")));
         form.setTraineeTisId(metadata.get(TRAINEE_ID));
-        try {
-          form.setSubmissionDate(LocalDateTime.parse(metadata.get(SUBMISSION_DATE)));
-        } catch (DateTimeParseException e) {
-          log.debug("Existing date {} not in latest format, trying as LocalDate.",
-              e.getParsedString());
-          localDateTime = LocalDate.parse(metadata.get(SUBMISSION_DATE))
-              .atStartOfDay();
-          form.setSubmissionDate(localDateTime);
-        }
+        populateProgrammeMembershipId(form, metadata);
+        populateSubmissionDate(form, metadata);
         form.setLifecycleState(
             LifecycleState.valueOf(metadata.get(LIFECYCLE_STATE)
                 .toUpperCase()));
@@ -263,4 +256,29 @@ public abstract class AbstractCloudRepository<T extends AbstractFormR> {
 
   protected abstract String getObjectPrefixTemplate();
 
+  private T populateProgrammeMembershipId(T form, Map<String, String> metadata) {
+    try {
+      if (metadata.get(PROGRAMME_MEMBERSHIP_ID) != null) {
+        form.setProgrammeMembershipId(UUID.fromString(metadata.get(PROGRAMME_MEMBERSHIP_ID)));
+      }
+    } catch (IllegalArgumentException e) {
+      log.debug("No linked programme membership for form id {}",
+          metadata.get("id"));
+    }
+    return form;
+  }
+
+  private T populateSubmissionDate(T form, Map<String, String> metadata) {
+    LocalDateTime localDateTime;
+    try {
+      form.setSubmissionDate(LocalDateTime.parse(metadata.get(SUBMISSION_DATE)));
+    } catch (DateTimeParseException e) {
+      log.debug("Existing date {} not in latest format, trying as LocalDate.",
+          e.getParsedString());
+      localDateTime = LocalDate.parse(metadata.get(SUBMISSION_DATE))
+          .atStartOfDay();
+      form.setSubmissionDate(localDateTime);
+    }
+    return form;
+  }
 }
