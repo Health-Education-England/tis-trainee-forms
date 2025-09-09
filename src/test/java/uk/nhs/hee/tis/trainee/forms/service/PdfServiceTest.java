@@ -375,7 +375,7 @@ class PdfServiceTest {
 
   @Test
   void shouldReturnGeneratedFormRPartBpdf() throws IOException {
-    FormRPartADto dto = new FormRPartADto();
+    FormRPartBDto dto = new FormRPartBDto();
 
     String content = "<html>test content</html>";
     when(templateEngine.process(any(TemplateSpec.class), any())).thenReturn(content);

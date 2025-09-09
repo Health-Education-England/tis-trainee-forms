@@ -65,7 +65,7 @@
                     <dd class="nhsuk-summary-list__value" th:text="${var.gmcNumber} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
-                    <dt class="nhsuk-summary-list__key">Primary contact email address</dt>
+                    <dt class="nhsuk-summary-list__key">Primary Contact Email Address</dt>
                     <dd class="nhsuk-summary-list__value" th:text="${var.email} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
@@ -135,23 +135,23 @@
             <h2 class="nhsuk-card__heading">Whole Scope of Practice: Time Out Of Training (TOOT)</h2>
             <dl class="nhsuk-summary-list">
                 <div class="nhsuk-summary-list__row">
-                    <dt class="nhsuk-summary-list__key">Short and Long-term sickness absence (whole days)</dt>
+                    <dt class="nhsuk-summary-list__key">Short and Long-term Sickness Absence (whole days)</dt>
                     <dd class="nhsuk-summary-list__value" th:text="${var.sicknessAbsence} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
-                    <dt class="nhsuk-summary-list__key">Parental leave - incl Maternity / Paternity leave (whole days)</dt>
+                    <dt class="nhsuk-summary-list__key">Parental Leave - incl Maternity / Paternity Leave (whole days)</dt>
                     <dd class="nhsuk-summary-list__value" th:text="${var.parentalLeave} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
-                    <dt class="nhsuk-summary-list__key">Career breaks within a Programme (OOPC) and non-training placements for experience (OOPE) (whole days)</dt>
+                    <dt class="nhsuk-summary-list__key">Career Breaks within a Programme (OOPC) and Non-training Placements for Experience (OOPE) (whole days)</dt>
                     <dd class="nhsuk-summary-list__value" th:text="${var.careerBreaks} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
-                    <dt class="nhsuk-summary-list__key">Paid / unpaid leave (e.g. compassionate, jury service) (whole days)</dt>
+                    <dt class="nhsuk-summary-list__key">Paid / Unpaid Leave (e.g. compassionate, jury service) (whole days)</dt>
                     <dd class="nhsuk-summary-list__value" th:text="${var.paidLeave} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
-                    <dt class="nhsuk-summary-list__key">Unpaid/unauthorised leave including industrial action (whole days)</dt>
+                    <dt class="nhsuk-summary-list__key">Unpaid/Unauthorised Leave including industrial action (whole days)</dt>
                     <dd class="nhsuk-summary-list__value" th:text="${var.unauthorisedLeave} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
@@ -201,7 +201,7 @@
     </div>
     <div class="nhsuk-card">
         <div class="nhsuk-card__content">
-            <h2 class="nhsuk-card__heading">Summary of previous resolved Form R Declarations</h2>
+            <h2 class="nhsuk-card__heading">Summary of Previous Resolved Form R Declarations</h2>
             <dl class="nhsuk-summary-list">
                 <div class="nhsuk-summary-list__row">
                     <dt class="nhsuk-summary-list__key">Did you declare any Significant Events, Complaints, Other investigations on your PREVIOUS Form R that have since been RESOLVED?</dt>
@@ -214,15 +214,15 @@
                     <dd class="nhsuk-summary-list__value" th:text="${previousDeclaration.declarationType} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
-                    <dt class="nhsuk-summary-list__key">Date of entry in portfolio</dt>
+                    <dt class="nhsuk-summary-list__key">Date of Entry in Portfolio</dt>
                     <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(previousDeclaration.dateOfEntry, 'dd MMMM yyyy')} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
-                    <dt class="nhsuk-summary-list__key">Title/ Topic of reflection/ event</dt>
+                    <dt class="nhsuk-summary-list__key">Title/Topic of Reflection/Event</dt>
                     <dd class="nhsuk-summary-list__value" th:text="${previousDeclaration.title} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
-                    <dt class="nhsuk-summary-list__key">Location of entry in portfolio</dt>
+                    <dt class="nhsuk-summary-list__key">Location of Entry in Portfolio</dt>
                     <dd class="nhsuk-summary-list__value" th:text="${previousDeclaration.locationOfEntry} ?: _">Not Given</dd>
                 </div>
             </dl>
@@ -230,7 +230,7 @@
     </div>
     <div class="nhsuk-card">
         <div class="nhsuk-card__content">
-            <h2 class="nhsuk-card__heading">Summary of previous unresolved Form R Declarations</h2>
+            <h2 class="nhsuk-card__heading">Summary of Previous Unresolved Form R Declarations</h2>
             <dl class="nhsuk-summary-list">
                 <div class="nhsuk-summary-list__row">
                     <dt class="nhsuk-summary-list__key">Do you have any Significant Events, Complaints, or other investigations detailed on your PREVIOUS Form R still UNRESOLVED?</dt>
@@ -245,7 +245,7 @@
     </div>
     <div class="nhsuk-card">
         <div class="nhsuk-card__content">
-            <h2 class="nhsuk-card__heading">Summary of new resolved Form R Declarations</h2>
+            <h2 class="nhsuk-card__heading">Summary of New Resolved Form R Declarations</h2>
             <dl class="nhsuk-summary-list">
                 <div class="nhsuk-summary-list__row">
                     <dt class="nhsuk-summary-list__key">Do you have any NEW Significant Events, Complaints, Other investigations to declare since your previous ARCP/Appraisal that have since been RESOLVED?</dt>
@@ -258,15 +258,15 @@
                     <dd class="nhsuk-summary-list__value" th:text="${currentDeclaration.declarationType} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
-                    <dt class="nhsuk-summary-list__key">Date of entry in portfolio</dt>
+                    <dt class="nhsuk-summary-list__key">Date of Entry in Portfolio</dt>
                     <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(currentDeclaration.dateOfEntry, 'dd MMMM yyyy')} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
-                    <dt class="nhsuk-summary-list__key">Title/ Topic of reflection/ event</dt>
+                    <dt class="nhsuk-summary-list__key">Title/Topic of Reflection/Event</dt>
                     <dd class="nhsuk-summary-list__value" th:text="${currentDeclaration.title} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
-                    <dt class="nhsuk-summary-list__key">Location of entry in portfolio</dt>
+                    <dt class="nhsuk-summary-list__key">Location of Entry in Portfolio</dt>
                     <dd class="nhsuk-summary-list__value" th:text="${currentDeclaration.locationOfEntry} ?: _">Not Given</dd>
                 </div>
             </dl>
@@ -274,7 +274,7 @@
     </div>
     <div class="nhsuk-card">
         <div class="nhsuk-card__content">
-            <h2 class="nhsuk-card__heading">Summary of new unresolved Form R Declarations</h2>
+            <h2 class="nhsuk-card__heading">Summary of New Unresolved Form R Declarations</h2>
             <dl class="nhsuk-summary-list">
                 <div class="nhsuk-summary-list__row">
                     <dt class="nhsuk-summary-list__key">Do you have any NEW DECLARED Significant Events, Complaints, or other investigations still UNRESOLVED?</dt>
@@ -300,7 +300,7 @@
     </div>
     <div class="nhsuk-card" th:if="${var.haveCovidDeclarations != null and var.haveCovidDeclarations and var.covidDeclarationDto != null}">
         <div class="nhsuk-card__content">
-            <h2 class="nhsuk-card__heading">COVID 19 self-assessment & declarations</h2>
+            <h2 class="nhsuk-card__heading">COVID 19 Self-assessment & Declarations</h2>
             <dl class="nhsuk-summary-list">
                 <div class="nhsuk-summary-list__row">
                     <dt class="nhsuk-summary-list__key">Please self-rate your progress in your training since your last ARCP</dt>
@@ -327,7 +327,7 @@
                     <dd class="nhsuk-summary-list__value" th:text="${var.covidDeclarationDto.haveChangesToPlacement} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
-                    <dt class="nhsuk-summary-list__key">Circumstance of change</dt>
+                    <dt class="nhsuk-summary-list__key">Circumstance of Change</dt>
                     <dd class="nhsuk-summary-list__value" th:text="${var.covidDeclarationDto.changeCircumstances} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
@@ -339,11 +339,11 @@
                     <dd class="nhsuk-summary-list__value" th:text="${var.covidDeclarationDto.howPlacementAdjusted} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
-                    <dt class="nhsuk-summary-list__key">Educational Supervisor's name (if applicable)</dt>
+                    <dt class="nhsuk-summary-list__key">Educational Supervisor's Name (if applicable)</dt>
                     <dd class="nhsuk-summary-list__value" th:text="${var.covidDeclarationDto.educationSupervisorName} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
-                    <dt class="nhsuk-summary-list__key">Educational Supervisor's email (if applicable)</dt>
+                    <dt class="nhsuk-summary-list__key">Educational Supervisor's Email (if applicable)</dt>
                     <dd class="nhsuk-summary-list__value" th:text="${var.covidDeclarationDto.educationSupervisorEmail} ?: _">Not Given</dd>
                 </div>
             </dl>

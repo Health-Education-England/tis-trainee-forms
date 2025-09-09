@@ -163,7 +163,7 @@
             <h2 class="nhsuk-card__heading">Programme Details</h2>
             <dl class="nhsuk-summary-list">
                 <div class="nhsuk-summary-list__row">
-                    <dt class="nhsuk-summary-list__key">Training grade</dt>
+                    <dt class="nhsuk-summary-list__key">Training Grade</dt>
                     <dd class="nhsuk-summary-list__value" th:text="${var.trainingGrade} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
@@ -171,11 +171,11 @@
                     <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(var.startDate, 'dd MMMM yyyy')} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
-                    <dt class="nhsuk-summary-list__key">Post type or Appointment</dt>
+                    <dt class="nhsuk-summary-list__key">Post Type or Appointment</dt>
                     <dd class="nhsuk-summary-list__value" th:text="${var.programmeMembershipType} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
-                    <dt class="nhsuk-summary-list__key">Training hours (Full Time Equivalent)</dt>
+                    <dt class="nhsuk-summary-list__key">Training Hours (Full Time Equivalent)</dt>
                     <dd class="nhsuk-summary-list__value" th:text="${var.wholeTimeEquivalent} ?: _">Not Given</dd>
                 </div>
             </dl>
