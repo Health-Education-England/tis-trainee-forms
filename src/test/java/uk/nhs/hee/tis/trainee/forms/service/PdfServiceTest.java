@@ -64,9 +64,15 @@ import org.thymeleaf.context.Context;
 import software.amazon.awssdk.services.s3.S3Client;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoining;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartAPdfRequestDto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.GoldGuideVersion;
 import uk.nhs.hee.tis.trainee.forms.event.ConditionsOfJoiningPublishedEvent;
+import uk.nhs.hee.tis.trainee.forms.event.FormRPartAPublishedEvent;
+import uk.nhs.hee.tis.trainee.forms.event.FormRPartBPublishedEvent;
 
 class PdfServiceTest {
 
@@ -76,6 +82,7 @@ class PdfServiceTest {
   private static final String TRAINEE_ID = UUID.randomUUID().toString();
   private static final UUID PROGRAMME_MEMBERSHIP_ID = UUID.randomUUID();
   private static final String PROGRAMME_NAME = "Test Programme";
+  private static final String FORM_ID = "form-id";
 
   private static final ZoneId TIMEZONE = ZoneId.of("Europe/London");
 
@@ -326,5 +333,318 @@ class PdfServiceTest {
     service.generatePdf(dto, "admin");
 
     verifyNoInteractions(snsTemplate);
+  }
+
+  @Test
+  void shouldReturnGeneratedFormRPartApdf() throws IOException {
+    FormRPartADto dto = new FormRPartADto();
+
+    String content = "<html>test content</html>";
+    when(templateEngine.process(any(TemplateSpec.class), any())).thenReturn(content);
+
+    byte[] bytes = service.generatePdf(dto);
+
+    PDDocument pdf = Loader.loadPDF(bytes);
+    String pdfText = new PDFTextStripper().getText(pdf);
+    assertThat("Unexpected content.", pdfText, is("test content" + System.lineSeparator()));
+  }
+
+  @Test
+  void shouldNotUploadGeneratedFormRPartA() throws IOException {
+    FormRPartADto dto = new FormRPartADto();
+
+    when(templateEngine.process(any(TemplateSpec.class), any()))
+        .thenReturn("<html>test content</html>");
+
+    service.generatePdf(dto);
+
+    verifyNoInteractions(s3Template);
+  }
+
+  @Test
+  void shouldNotSendNotificationOfGeneratedFormRPartA() throws IOException {
+    FormRPartADto dto = new FormRPartADto();
+
+    when(templateEngine.process(any(TemplateSpec.class), any()))
+        .thenReturn("<html>test content</html>");
+
+    service.generatePdf(dto);
+
+    verifyNoInteractions(snsTemplate);
+  }
+
+  @Test
+  void shouldReturnGeneratedFormRPartBpdf() throws IOException {
+    FormRPartBDto dto = new FormRPartBDto();
+
+    String content = "<html>test content</html>";
+    when(templateEngine.process(any(TemplateSpec.class), any())).thenReturn(content);
+
+    byte[] bytes = service.generatePdf(dto);
+
+    PDDocument pdf = Loader.loadPDF(bytes);
+    String pdfText = new PDFTextStripper().getText(pdf);
+    assertThat("Unexpected content.", pdfText, is("test content" + System.lineSeparator()));
+  }
+
+  @Test
+  void shouldNotUploadGeneratedFormRPartB() throws IOException {
+    FormRPartBDto dto = new FormRPartBDto();
+
+    when(templateEngine.process(any(TemplateSpec.class), any()))
+        .thenReturn("<html>test content</html>");
+
+    service.generatePdf(dto);
+
+    verifyNoInteractions(s3Template);
+  }
+
+  @Test
+  void shouldNotSendNotificationOfGeneratedFormRPartB() throws IOException {
+    FormRPartBDto dto = new FormRPartBDto();
+
+    when(templateEngine.process(any(TemplateSpec.class), any()))
+        .thenReturn("<html>test content</html>");
+
+    service.generatePdf(dto);
+
+    verifyNoInteractions(snsTemplate);
+  }
+
+  @Test
+  void shouldGenerateFormRPartAFromTemplate() throws IOException {
+    FormRPartADto form = new FormRPartADto();
+    FormRPartAPdfRequestDto request = new FormRPartAPdfRequestDto(FORM_ID, TRAINEE_ID, form);
+
+    service.generateFormRPartA(request, false);
+
+    ArgumentCaptor<TemplateSpec> templateCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.captor();
+    verify(templateEngine).process(templateCaptor.capture(), contextCaptor.capture());
+
+    TemplateSpec templateSpec = templateCaptor.getValue();
+    String filename = "parta.html";
+    assertThat("Unexpected template.", templateSpec.getTemplate(),
+        is("formr" + File.separatorChar + filename));
+    assertThat("Unexpected template selectors.", templateSpec.getTemplateSelectors(), nullValue());
+    assertThat("Unexpected template mode.", templateSpec.getTemplateMode(), is(HTML));
+    assertThat("Unexpected template resolution attributes.",
+        templateSpec.getTemplateResolutionAttributes(), nullValue());
+
+    Context context = contextCaptor.getValue();
+    assertThat("Unexpected locale.", context.getLocale(), is(Locale.ENGLISH));
+
+    Set<String> variableNames = context.getVariableNames();
+    assertThat("Unexpected variable count.", variableNames.size(), is(2));
+    assertThat("Unexpected event value.", context.getVariable("var"), sameInstance(request));
+    assertThat("Unexpected timezone value.", context.getVariable("timezone"), is(TIMEZONE.getId()));
+  }
+
+  @Test
+  void shouldUploadGeneratedFormRPartA() throws IOException {
+    FormRPartADto form = new FormRPartADto();
+    FormRPartAPdfRequestDto request = new FormRPartAPdfRequestDto(FORM_ID, TRAINEE_ID, form);
+
+    when(templateEngine.process(any(TemplateSpec.class), any())).thenReturn(
+        "<html>test content</html>");
+
+    service.generateFormRPartA(request, false);
+
+    String key = TRAINEE_ID + "/forms/formr_parta/" + FORM_ID + ".pdf";
+    ArgumentCaptor<ByteArrayInputStream> contentCaptor = ArgumentCaptor.captor();
+    verify(s3Template).upload(eq(BUCKET_NAME), eq(key), contentCaptor.capture());
+
+    ByteArrayInputStream contentIs = contentCaptor.getValue();
+    PDDocument pdf = Loader.loadPDF(new RandomAccessReadBuffer(contentIs));
+    String pdfText = new PDFTextStripper().getText(pdf);
+
+    assertThat("Unexpected content.", pdfText, is("test content" + System.lineSeparator()));
+  }
+
+  @Test
+  void shouldSendNotificationOfGeneratedFormRPartAWhenPublishTrue() throws IOException {
+    FormRPartADto form = new FormRPartADto();
+    FormRPartAPdfRequestDto request = new FormRPartAPdfRequestDto(FORM_ID, TRAINEE_ID, form);
+
+    when(templateEngine.process(any(TemplateSpec.class), any())).thenReturn(
+        "<html>test content</html>");
+
+    String key = TRAINEE_ID + "/forms/formr_parta/" + FORM_ID + ".pdf";
+    S3Resource uploaded = S3Resource.create("s3://my-bucket/" + key, mock(S3Client.class),
+        mock(S3OutputStreamProvider.class));
+    when(s3Template.upload(any(), any(), any())).thenReturn(uploaded);
+
+    service.generateFormRPartA(request, true);
+
+    ArgumentCaptor<SnsNotification<FormRPartAPublishedEvent>> notificationCaptor =
+        ArgumentCaptor.captor();
+    verify(snsTemplate).sendNotification(eq(TOPIC_ARN), notificationCaptor.capture());
+
+    SnsNotification<FormRPartAPublishedEvent> notification = notificationCaptor.getValue();
+    assertThat("Unexpected group ID.", notification.getGroupId(), is(FORM_ID));
+
+    Map<String, Object> headers = notification.getHeaders();
+    assertThat("Unexpected header count.", headers.size(), is(3));
+    assertThat("Unexpected header value.", headers.get("message-group-id"), is(FORM_ID));
+    assertThat("Unexpected header value.", headers.get("pdf_type"), is("FORM"));
+    assertThat("Unexpected header value.", headers.get("form_type"), is("FORMR_PARTA"));
+
+    FormRPartAPublishedEvent payload = notification.getPayload();
+    assertThat("Unexpected trainee ID.", payload.getTraineeId(), is(TRAINEE_ID));
+    assertThat("Unexpected form ID.", payload.getId(), is(FORM_ID));
+    assertThat("Unexpected form.", payload.getForm(), is(form));
+    assertThat("Unexpected PDF bucket.", payload.getPdf().bucket(), is(BUCKET_NAME));
+    assertThat("Unexpected PDF key.", payload.getPdf().key(), is(key));
+  }
+
+  @Test
+  void shouldNotSendNotificationOfGeneratedFormRPartAWhenPublishFalse() throws IOException {
+    FormRPartADto form = new FormRPartADto();
+    FormRPartAPdfRequestDto request = new FormRPartAPdfRequestDto(FORM_ID, TRAINEE_ID, form);
+
+    when(templateEngine.process(any(TemplateSpec.class), any())).thenReturn(
+        "<html>test content</html>");
+
+    service.generateFormRPartA(request, false);
+
+    verifyNoInteractions(snsTemplate);
+  }
+
+  @Test
+  void shouldReturnGeneratedFormRPartA() throws IOException {
+    FormRPartADto form = new FormRPartADto();
+    FormRPartAPdfRequestDto request = new FormRPartAPdfRequestDto(FORM_ID, TRAINEE_ID, form);
+
+    String content = "<html>test content</html>";
+    when(templateEngine.process(any(TemplateSpec.class), any())).thenReturn(content);
+
+    S3Resource uploaded = mock(S3Resource.class);
+    when(s3Template.upload(any(), any(), any())).thenReturn(uploaded);
+
+    byte[] contentBytes = content.getBytes();
+    when(uploaded.getContentAsByteArray()).thenReturn(contentBytes);
+
+    Resource resource = service.generateFormRPartA(request, false);
+
+    assertThat("Unexpected content.", resource.getContentAsByteArray(), is(contentBytes));
+  }
+
+
+  @Test
+  void shouldGenerateFormRPartBFromTemplate() throws IOException {
+    FormRPartBDto form = new FormRPartBDto();
+    FormRPartBPdfRequestDto request = new FormRPartBPdfRequestDto(FORM_ID, TRAINEE_ID, form);
+
+    service.generateFormRPartB(request, false);
+
+    ArgumentCaptor<TemplateSpec> templateCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.captor();
+    verify(templateEngine).process(templateCaptor.capture(), contextCaptor.capture());
+
+    TemplateSpec templateSpec = templateCaptor.getValue();
+    String filename = "partb.html";
+    assertThat("Unexpected template.", templateSpec.getTemplate(),
+        is("formr" + File.separatorChar + filename));
+    assertThat("Unexpected template selectors.", templateSpec.getTemplateSelectors(), nullValue());
+    assertThat("Unexpected template mode.", templateSpec.getTemplateMode(), is(HTML));
+    assertThat("Unexpected template resolution attributes.",
+        templateSpec.getTemplateResolutionAttributes(), nullValue());
+
+    Context context = contextCaptor.getValue();
+    assertThat("Unexpected locale.", context.getLocale(), is(Locale.ENGLISH));
+
+    Set<String> variableNames = context.getVariableNames();
+    assertThat("Unexpected variable count.", variableNames.size(), is(2));
+    assertThat("Unexpected event value.", context.getVariable("var"), sameInstance(request));
+    assertThat("Unexpected timezone value.", context.getVariable("timezone"), is(TIMEZONE.getId()));
+  }
+
+  @Test
+  void shouldUploadGeneratedFormRPartB() throws IOException {
+    FormRPartBDto form = new FormRPartBDto();
+    FormRPartBPdfRequestDto request = new FormRPartBPdfRequestDto(FORM_ID, TRAINEE_ID, form);
+
+    when(templateEngine.process(any(TemplateSpec.class), any())).thenReturn(
+        "<html>test content</html>");
+
+    service.generateFormRPartB(request, false);
+
+    String key = TRAINEE_ID + "/forms/formr_partb/" + FORM_ID + ".pdf";
+    ArgumentCaptor<ByteArrayInputStream> contentCaptor = ArgumentCaptor.captor();
+    verify(s3Template).upload(eq(BUCKET_NAME), eq(key), contentCaptor.capture());
+
+    ByteArrayInputStream contentIs = contentCaptor.getValue();
+    PDDocument pdf = Loader.loadPDF(new RandomAccessReadBuffer(contentIs));
+    String pdfText = new PDFTextStripper().getText(pdf);
+
+    assertThat("Unexpected content.", pdfText, is("test content" + System.lineSeparator()));
+  }
+
+  @Test
+  void shouldSendNotificationOfGeneratedFormRPartBWhenPublishTrue() throws IOException {
+    FormRPartBDto form = new FormRPartBDto();
+    FormRPartBPdfRequestDto request = new FormRPartBPdfRequestDto(FORM_ID, TRAINEE_ID, form);
+
+    when(templateEngine.process(any(TemplateSpec.class), any())).thenReturn(
+        "<html>test content</html>");
+
+    String key = TRAINEE_ID + "/forms/formr_partb/" + FORM_ID + ".pdf";
+    S3Resource uploaded = S3Resource.create("s3://my-bucket/" + key, mock(S3Client.class),
+        mock(S3OutputStreamProvider.class));
+    when(s3Template.upload(any(), any(), any())).thenReturn(uploaded);
+
+    service.generateFormRPartB(request, true);
+
+    ArgumentCaptor<SnsNotification<FormRPartBPublishedEvent>> notificationCaptor =
+        ArgumentCaptor.captor();
+    verify(snsTemplate).sendNotification(eq(TOPIC_ARN), notificationCaptor.capture());
+
+    SnsNotification<FormRPartBPublishedEvent> notification = notificationCaptor.getValue();
+    assertThat("Unexpected group ID.", notification.getGroupId(), is(FORM_ID));
+
+    Map<String, Object> headers = notification.getHeaders();
+    assertThat("Unexpected header count.", headers.size(), is(3));
+    assertThat("Unexpected header value.", headers.get("message-group-id"), is(FORM_ID));
+    assertThat("Unexpected header value.", headers.get("pdf_type"), is("FORM"));
+    assertThat("Unexpected header value.", headers.get("form_type"), is("FORMR_PARTB"));
+
+    FormRPartBPublishedEvent payload = notification.getPayload();
+    assertThat("Unexpected trainee ID.", payload.getTraineeId(), is(TRAINEE_ID));
+    assertThat("Unexpected form ID.", payload.getId(), is(FORM_ID));
+    assertThat("Unexpected form.", payload.getForm(), is(form));
+    assertThat("Unexpected PDF bucket.", payload.getPdf().bucket(), is(BUCKET_NAME));
+    assertThat("Unexpected PDF key.", payload.getPdf().key(), is(key));
+  }
+
+  @Test
+  void shouldNotSendNotificationOfGeneratedFormRPartBWhenPublishFalse() throws IOException {
+    FormRPartBDto form = new FormRPartBDto();
+    FormRPartBPdfRequestDto request = new FormRPartBPdfRequestDto(FORM_ID, TRAINEE_ID, form);
+
+    when(templateEngine.process(any(TemplateSpec.class), any())).thenReturn(
+        "<html>test content</html>");
+
+    service.generateFormRPartB(request, false);
+
+    verifyNoInteractions(snsTemplate);
+  }
+
+  @Test
+  void shouldReturnGeneratedFormRPartB() throws IOException {
+    FormRPartBDto form = new FormRPartBDto();
+    FormRPartBPdfRequestDto request = new FormRPartBPdfRequestDto(FORM_ID, TRAINEE_ID, form);
+
+    String content = "<html>test content</html>";
+    when(templateEngine.process(any(TemplateSpec.class), any())).thenReturn(content);
+
+    S3Resource uploaded = mock(S3Resource.class);
+    when(s3Template.upload(any(), any(), any())).thenReturn(uploaded);
+
+    byte[] contentBytes = content.getBytes();
+    when(uploaded.getContentAsByteArray()).thenReturn(contentBytes);
+
+    Resource resource = service.generateFormRPartB(request, false);
+
+    assertThat("Unexpected content.", resource.getContentAsByteArray(), is(contentBytes));
   }
 }

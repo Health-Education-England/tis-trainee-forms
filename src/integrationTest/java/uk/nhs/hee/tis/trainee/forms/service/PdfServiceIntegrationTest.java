@@ -32,8 +32,12 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.imageio.ImageIO;
 import org.apache.pdfbox.io.IOUtils;
@@ -47,6 +51,10 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
+import uk.nhs.hee.tis.trainee.forms.dto.CovidDeclarationDto;
+import uk.nhs.hee.tis.trainee.forms.dto.DeclarationDto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctChangeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.DeclarationsDto;
@@ -57,6 +65,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
+import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 @SpringBootTest
@@ -79,7 +88,7 @@ class PdfServiceIntegrationTest {
   private ZoneId zoneId;
 
   @Test
-  void shouldMatchEmptyPdfWhenDtoEmpty() throws IOException {
+  void shouldMatchEmptyLtftPdfWhenDtoEmpty() throws IOException {
     LtftFormDto dto = LtftFormDto.builder().build();
 
     byte[] generatedBytes = service.generatePdf(dto, "admin");
@@ -89,11 +98,13 @@ class PdfServiceIntegrationTest {
   }
 
   @Test
-  void shouldMatchFullPdfWhenDtoPopulated() throws IOException {
+  void shouldMatchFullLtftPdfWhenDtoPopulated() throws IOException {
     LtftFormDto dto = LtftFormDto.builder()
         .formRef("ltft_47165_040")
-        .created(LocalDate.of(2021, 2, 3).atTime(4, 5).atZone(zoneId).toInstant())
-        .lastModified(LocalDate.of(2026, 7, 8).atTime(9, 10).atZone(zoneId).toInstant())
+        .created(LocalDate.of(2021, 2, 3).atTime(4, 5)
+            .atZone(zoneId).toInstant())
+        .lastModified(LocalDate.of(2026, 7, 8).atTime(9, 10)
+            .atZone(zoneId).toInstant())
         .status(StatusDto.builder()
             .current(StatusInfoDto.builder()
                 .state(LifecycleState.SUBMITTED)
@@ -153,6 +164,196 @@ class PdfServiceIntegrationTest {
     byte[] generatedBytes = service.generatePdf(dto, "admin");
 
     int problems = compareGeneratedPdf("ltft-admin", generatedBytes);
+    assertThat("Unexpected PDF comparison problem count.", problems, is(0));
+  }
+
+  @Test
+  void shouldMatchEmptyFormRPartAPdfWhenDtoEmpty() throws IOException {
+    FormRPartADto dto = new FormRPartADto();
+    byte[] pdf = service.generatePdf(dto);
+
+    int problems = compareGeneratedPdf("formr-parta-empty", pdf);
+    assertThat("Unexpected PDF comparison problem count.", problems, is(0));
+  }
+
+  @Test
+  void shouldMatchFullFormRPartAPdfWhenDtoPopulated() throws IOException {
+    FormRPartADto dto = new FormRPartADto();
+    dto.setId("form-id-12345");
+    dto.setTraineeTisId("47165");
+    dto.setProgrammeMembershipId(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"));
+    dto.setIsArcp(true);
+    dto.setProgrammeName("some programme name");
+    dto.setForename("Anthony");
+    dto.setSurname("Gilliam");
+    dto.setGmcNumber("1234567");
+    dto.setLocalOfficeName("London");
+    dto.setDateOfBirth(LocalDate.of(1980, 4, 5));
+    dto.setGender("gender");
+    dto.setImmigrationStatus("immigration status");
+    dto.setQualification("qualification");
+    dto.setDateAttained(LocalDate.of(2004, 6, 7));
+    dto.setMedicalSchool("medical school");
+    dto.setAddress1("address line 1");
+    dto.setAddress2("address line 2");
+    dto.setAddress3("address line 3");
+    dto.setAddress4("address line 4");
+    dto.setPostCode("AB12 3CD");
+    dto.setTelephoneNumber("+441200900000");
+    dto.setMobileNumber("+447700900000");
+    dto.setEmail("test@testy.com");
+    dto.setDeclarationType("I have been appointed to a programme leading to award of CCT");
+    dto.setIsLeadingToCct(true);
+    dto.setProgrammeSpecialty("programme specialty");
+    dto.setCctSpecialty1("cct specialty 1");
+    dto.setCctSpecialty2("cct specialty 2");
+    dto.setCollege("college");
+    dto.setCompletionDate(LocalDate.of(2024, 8, 9));
+    dto.setTrainingGrade("training grade");
+    dto.setStartDate(LocalDate.of(2021, 9, 10));
+    dto.setProgrammeMembershipType("Substantive");
+    dto.setWholeTimeEquivalent("0.5");
+
+    LocalDateTime submissionDate = LocalDate.of(2014, 10, 11).atTime(12, 13);
+    ZoneOffset submissionOffset = ZonedDateTime.of(submissionDate, ZoneId.systemDefault()).getOffset();
+    dto.setSubmissionDate(submissionDate.plusSeconds(submissionOffset.getTotalSeconds()));
+    LocalDateTime lastModifiedDate = LocalDate.of(2014, 11, 12).atTime(13, 14);
+    ZoneOffset lastModifiedOffset = ZonedDateTime.of(lastModifiedDate, ZoneId.systemDefault()).getOffset();
+    dto.setLastModifiedDate(lastModifiedDate.plusSeconds(lastModifiedOffset.getTotalSeconds()));
+
+    dto.setOtherImmigrationStatus("other immigration status");
+    dto.setLifecycleState(LifecycleState.SUBMITTED);
+
+    byte[] pdf = service.generatePdf(dto);
+
+    int problems = compareGeneratedPdf("formr-parta", pdf);
+    assertThat("Unexpected PDF comparison problem count.", problems, is(0));
+  }
+
+  @Test
+  void shouldMatchEmptyFormRPartBPdfWhenDtoEmpty() throws IOException {
+    FormRPartBDto dto = new FormRPartBDto();
+    byte[] pdf = service.generatePdf(dto);
+
+    int problems = compareGeneratedPdf("formr-partb-empty", pdf);
+    assertThat("Unexpected PDF comparison problem count.", problems, is(0));
+  }
+
+  @Test
+  void shouldMatchFullFormRPartBPdfWhenDtoPopulated() throws IOException {
+    FormRPartBDto dto = new FormRPartBDto();
+    dto.setId("form-id-12345");
+    dto.setTraineeTisId("47165");
+    dto.setProgrammeMembershipId(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"));
+    dto.setIsArcp(true);
+    dto.setProgrammeName("some programme name");
+    dto.setForename("Anthony");
+    dto.setSurname("Gilliam");
+    dto.setGmcNumber("1234567");
+    dto.setEmail("test@testy.com");
+    dto.setLocalOfficeName("London");
+    dto.setPrevRevalBody("prev reval body");
+    dto.setPrevRevalBodyOther("prev reval body other");
+    dto.setCurrRevalDate(LocalDate.of(2024, 4, 5));
+    dto.setPrevRevalDate(LocalDate.of(2021, 3, 4));
+    dto.setProgrammeSpecialty("programme specialty");
+    dto.setDualSpecialty("dual specialty");
+
+    WorkDto work1 = new WorkDto();
+    work1.setTypeOfWork("type of work 1");
+    work1.setStartDate(LocalDate.of(2021, 9, 10));
+    work1.setEndDate(LocalDate.of(2022, 9, 10));
+    work1.setTrainingPost("post held 1");
+    work1.setSite("site 1");
+    work1.setSiteLocation("location 1");
+    work1.setSiteKnownAs("known as 1");
+    WorkDto work2 = new WorkDto();
+    work2.setTypeOfWork("type of work 2");
+    work2.setStartDate(LocalDate.of(2022, 9, 10));
+    work2.setEndDate(LocalDate.of(2023, 9, 10));
+    work2.setTrainingPost("post held 2");
+    work2.setSite("site 2");
+    work2.setSiteLocation("location 2");
+    work2.setSiteKnownAs("known as 2");
+    dto.setWork(List.of(work1, work2));
+
+    dto.setSicknessAbsence(10);
+    dto.setParentalLeave(0);
+    dto.setCareerBreaks(5);
+    dto.setPaidLeave(8);
+    dto.setUnauthorisedLeave(1);
+    dto.setOtherLeave(1);
+    dto.setTotalLeave(25);
+
+    dto.setIsHonest(true);
+    dto.setIsHealthy(false);
+    dto.setIsWarned(true);
+    dto.setIsComplying(true);
+    dto.setHealthStatement("health statement");
+    
+    dto.setHavePreviousDeclarations(true);
+    DeclarationDto prevDeclaration1 = new DeclarationDto();
+    prevDeclaration1.setDeclarationType("declaration type 1");
+    prevDeclaration1.setDateOfEntry(LocalDate.of(2020, 1, 2));
+    prevDeclaration1.setTitle("title 1");
+    prevDeclaration1.setLocationOfEntry("location 1");
+    DeclarationDto prevDeclaration2 = new DeclarationDto();
+    prevDeclaration1.setDeclarationType("declaration type 2");
+    prevDeclaration1.setDateOfEntry(LocalDate.of(2022, 2, 14));
+    prevDeclaration1.setTitle("title 2");
+    prevDeclaration1.setLocationOfEntry("location 2");
+    dto.setPreviousDeclarations(List.of(prevDeclaration1, prevDeclaration2));
+    
+    dto.setHavePreviousUnresolvedDeclarations(true);
+    dto.setPreviousDeclarationSummary("Previous declaration summary which could be a fairly long " +
+        "piece of text to cover the various points that need to be made.");
+    
+    dto.setHaveCurrentDeclarations(true);
+    DeclarationDto curDeclaration1 = new DeclarationDto();
+    curDeclaration1.setDeclarationType("declaration type 11");
+    curDeclaration1.setDateOfEntry(LocalDate.of(2024, 1, 2));
+    curDeclaration1.setTitle("title 11");
+    curDeclaration1.setLocationOfEntry("location 11");
+    DeclarationDto curDeclaration2 = new DeclarationDto();
+    curDeclaration1.setDeclarationType("declaration type 22");
+    curDeclaration1.setDateOfEntry(LocalDate.of(2025, 2, 14));
+    curDeclaration1.setTitle("title 22");
+    curDeclaration1.setLocationOfEntry("location 22");
+    dto.setCurrentDeclarations(List.of(curDeclaration1, curDeclaration2));
+
+    dto.setHaveCurrentUnresolvedDeclarations(true);
+    dto.setCurrentDeclarationSummary("Current declaration summary which could be a fairly long " +
+        "piece of text to cover the various points that need to be made, such as this one is.");
+
+    dto.setCompliments("some compliments text");
+
+    dto.setHaveCovidDeclarations(true);
+    CovidDeclarationDto covid = new CovidDeclarationDto();
+    covid.setSelfRateForCovid("Self rate for covid");
+    covid.setReasonOfSelfRate("Reason for self rate");
+    covid.setOtherInformationForPanel("Other information for panel");
+    covid.setDiscussWithSupervisorChecked(true);
+    covid.setDiscussWithSomeoneChecked(false);
+    covid.setHaveChangesToPlacement(true);
+    covid.setChangeCircumstances("Change circumstances");
+    covid.setChangeCircumstanceOther("Change circumstance other");
+    covid.setHowPlacementAdjusted("How placement adjusted");
+    covid.setEducationSupervisorName("Ed Super");
+    covid.setEducationSupervisorEmail("super@ed.com");
+    dto.setCovidDeclarationDto(covid);
+
+    LocalDateTime submissionDate = LocalDate.of(2014, 10, 11).atTime(12, 13);
+    ZoneOffset submissionOffset = ZonedDateTime.of(submissionDate, ZoneId.systemDefault()).getOffset();
+    dto.setSubmissionDate(submissionDate.plusSeconds(submissionOffset.getTotalSeconds()));
+    LocalDateTime lastModifiedDate = LocalDate.of(2014, 11, 12).atTime(13, 14);
+    ZoneOffset lastModifiedOffset = ZonedDateTime.of(lastModifiedDate, ZoneId.systemDefault()).getOffset();
+    dto.setLastModifiedDate(lastModifiedDate.plusSeconds(lastModifiedOffset.getTotalSeconds()));
+
+    dto.setLifecycleState(LifecycleState.SUBMITTED);
+
+    byte[] pdf = service.generatePdf(dto);
+
+    int problems = compareGeneratedPdf("formr-partb", pdf);
     assertThat("Unexpected PDF comparison problem count.", problems, is(0));
   }
 

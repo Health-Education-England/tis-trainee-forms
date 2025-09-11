@@ -1,6 +1,7 @@
 /*
  * The MIT License (MIT)
- * Copyright 2020 Crown Copyright (Health Education England)
+ *
+ * Copyright 2025 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -20,51 +21,24 @@
 
 package uk.nhs.hee.tis.trainee.forms.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import java.time.LocalDate;
-import lombok.Data;
-import uk.nhs.hee.tis.trainee.forms.annotations.MaxDateValidation;
-import uk.nhs.hee.tis.trainee.forms.annotations.MinDateValidation;
-import uk.nhs.hee.tis.trainee.forms.annotations.NotBeforeAnotherDateValidation;
 
 /**
- * A DTO for work information.
+ * DTO for a FormR PartB PDF request.
+ *
+ * @param id        The FormR PartB id.
+ * @param traineeId The trainee id.
+ * @param form      The FormR PartB data.
  */
-@Data
-@NotBeforeAnotherDateValidation(
-    fieldName = "startDate",
-    dependFieldName = "endDate",
-    message = "End date must not be before start date"
-)
-public class  WorkDto {
+public record FormRPartBPdfRequestDto(
+    @NotNull
+    String id,
 
-  @NotNull
-  @Size(min = 1, max = 100)
-  private String typeOfWork;
+    @NotNull
+    String traineeId,
 
-  @NotNull
-  @MaxDateValidation(maxYearsInFuture = 25)
-  @MinDateValidation(maxYearsAgo = 25)
-  private LocalDate startDate;
-
-  @NotNull
-  @MaxDateValidation(maxYearsInFuture = 25)
-  @MinDateValidation(maxYearsAgo = 25)
-  private LocalDate endDate;
-
-  @NotNull
-  @Size(min = 1, max = 100)
-  private String trainingPost;
-
-  @NotNull
-  @Size(min = 1, max = 100)
-  private String site;
-
-  @NotNull
-  @Size(min = 1, max = 100)
-  private String siteLocation;
-
-  @Size(max = 100)
-  private String siteKnownAs;
-}
+    @Valid
+    @NotNull
+    FormRPartBDto form
+) {}

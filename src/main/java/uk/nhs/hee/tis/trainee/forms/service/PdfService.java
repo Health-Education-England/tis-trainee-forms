@@ -51,10 +51,18 @@ import org.thymeleaf.TemplateSpec;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.templatemode.TemplateMode;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartAPdfRequestDto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PublishedPdf;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.FormRType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.GoldGuideVersion;
 import uk.nhs.hee.tis.trainee.forms.event.ConditionsOfJoiningPublishedEvent;
+import uk.nhs.hee.tis.trainee.forms.event.FormRPartAPublishedEvent;
+import uk.nhs.hee.tis.trainee.forms.event.FormRPartBPublishedEvent;
+import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 
 /**
  * A service handling PDF generation and publishing via S3 and SNS.
@@ -68,6 +76,8 @@ public class PdfService {
 
   private static final String FORM_TYPE = "form_type";
   private static final String FORM_TYPE_COJ = "COJ";
+  private static final String FORM_TYPE_FORMR_PARTA = "FORMR_PARTA";
+  private static final String FORM_TYPE_FORMR_PARTB = "FORMR_PARTB";
 
   private final TemplateEngine templateEngine;
 
@@ -148,6 +158,68 @@ public class PdfService {
   }
 
   /**
+   * Generate and upload a FormR PartA PDF.
+   *
+   * @param request The FormR PartA request DTO to generate a PDF for.
+   * @param publish Whether the generated PDF should be published after upload.
+   * @return The bytes of the generated PDF.
+   * @throws IOException If a valid PDF could not be created.
+   */
+  public Resource generateFormRPartA(FormRPartAPdfRequestDto request, boolean publish)
+      throws IOException {
+    String traineeId = request.traineeId();
+    String formId = request.id();
+    FormRType type = FormRType.PARTA;
+    log.info("Generating a FormR {} PDF for trainee '{}' and form '{}'",
+        type, traineeId, formId);
+
+    TemplateSpec templateSpec = type.getFormRTemplate();
+    byte[] pdf = generatePdf(templateSpec, Map.of("var", request));
+
+    S3Resource uploaded = upload(traineeId, FORM_TYPE_FORMR_PARTA, formId, pdf);
+
+    if (publish) {
+      Location location = uploaded.getLocation();
+      PublishedPdf pdfRef = new PublishedPdf(location.getBucket(), location.getObject());
+      FormRPartAPublishedEvent publishEvent = new FormRPartAPublishedEvent(request, pdfRef);
+      publish(FORM_TYPE_FORMR_PARTA, formId, publishEvent);
+    }
+
+    return uploaded;
+  }
+
+  /**
+   * Generate and upload a FormR PartB PDF.
+   *
+   * @param request The FormR PartB request DTO to generate a PDF for.
+   * @param publish Whether the generated PDF should be published after upload.
+   * @return The bytes of the generated PDF.
+   * @throws IOException If a valid PDF could not be created.
+   */
+  public Resource generateFormRPartB(FormRPartBPdfRequestDto request, boolean publish)
+      throws IOException {
+    String traineeId = request.traineeId();
+    String formId = request.id();
+    FormRType type = FormRType.PARTB;
+    log.info("Generating a FormR {} PDF for trainee '{}' and form '{}'",
+        type, traineeId, formId);
+
+    TemplateSpec templateSpec = type.getFormRTemplate();
+    byte[] pdf = generatePdf(templateSpec, Map.of("var", request));
+
+    S3Resource uploaded = upload(traineeId, FORM_TYPE_FORMR_PARTB, formId, pdf);
+
+    if (publish) {
+      Location location = uploaded.getLocation();
+      PublishedPdf pdfRef = new PublishedPdf(location.getBucket(), location.getObject());
+      FormRPartBPublishedEvent publishEvent = new FormRPartBPublishedEvent(request, pdfRef);
+      publish(FORM_TYPE_FORMR_PARTB, formId, publishEvent);
+    }
+
+    return uploaded;
+  }
+
+  /**
    * Generate a PDF for a {@link LtftFormDto}.
    *
    * @param dto              The data object to convert to a PDF.
@@ -161,6 +233,36 @@ public class PdfService {
     TemplateSpec templateSpec = new TemplateSpec(
         "ltft" + File.separatorChar + templateFileName + ".html",
         Set.of(), TemplateMode.HTML, null);
+    return generatePdf(templateSpec, Map.of("var", dto));
+  }
+
+  /**
+   * Generate a PDF for a {@link FormRPartADto}.
+   *
+   * @param dto              The data object to convert to a PDF.
+   * @return The bytes of the generated PDF.
+   * @throws IOException If a valid PDF could not be created.
+   */
+  public byte[] generatePdf(FormRPartADto dto) throws IOException {
+    log.info("Generating a PDF for FormR PartA '{}' modified '{}'",
+        dto.getId(), dto.getLastModifiedDate());
+
+    TemplateSpec templateSpec = FormRType.PARTA.getFormRTemplate();
+    return generatePdf(templateSpec, Map.of("var", dto));
+  }
+
+  /**
+   * Generate a PDF for a {@link FormRPartBDto}.
+   *
+   * @param dto              The data object to convert to a PDF.
+   * @return The bytes of the generated PDF.
+   * @throws IOException If a valid PDF could not be created.
+   */
+  public byte[] generatePdf(FormRPartBDto dto) throws IOException {
+    log.info("Generating a PDF for FormR PartB '{}' modified '{}'",
+        dto.getId(), dto.getLastModifiedDate());
+
+    TemplateSpec templateSpec = FormRType.PARTB.getFormRTemplate();
     return generatePdf(templateSpec, Map.of("var", dto));
   }
 
