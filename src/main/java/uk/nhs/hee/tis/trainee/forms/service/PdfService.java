@@ -174,7 +174,7 @@ public class PdfService {
         type, traineeId, formId);
 
     TemplateSpec templateSpec = type.getFormRTemplate();
-    byte[] pdf = generatePdf(templateSpec, Map.of("var", request));
+    byte[] pdf = generatePdf(templateSpec, Map.of("var", request.form()));
 
     S3Resource uploaded = upload(traineeId, FORM_TYPE_FORMR_PARTA, formId, pdf);
 
@@ -205,7 +205,7 @@ public class PdfService {
         type, traineeId, formId);
 
     TemplateSpec templateSpec = type.getFormRTemplate();
-    byte[] pdf = generatePdf(templateSpec, Map.of("var", request));
+    byte[] pdf = generatePdf(templateSpec, Map.of("var", request.form()));
 
     S3Resource uploaded = upload(traineeId, FORM_TYPE_FORMR_PARTB, formId, pdf);
 
