@@ -37,6 +37,7 @@ import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
 import static org.springframework.http.MediaType.TEXT_PLAIN;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROVED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.REJECTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
@@ -270,6 +271,41 @@ class AdminLtftResourceTest {
     when(service.updateStatusAsAdmin(id, APPROVED, null)).thenReturn(Optional.of(dto));
 
     ResponseEntity<LtftFormDto> response = controller.approveLtft(id);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), sameInstance(dto));
+  }
+
+  @Test
+  void shouldThrowExceptionWhenRejectNotValid() throws MethodArgumentNotValidException {
+    UUID id = UUID.randomUUID();
+    LftfStatusInfoDetailDto detail = LftfStatusInfoDetailDto.builder().reason("reason").build();
+    when(service.updateStatusAsAdmin(id, REJECTED, detail)).thenThrow(
+        MethodArgumentNotValidException.class);
+
+    assertThrows(MethodArgumentNotValidException.class, () -> controller.rejectLtft(id, detail));
+  }
+
+  @Test
+  void shouldReturnNotFoundWhenRejectFormNotFound() throws MethodArgumentNotValidException {
+    UUID id = UUID.randomUUID();
+    LftfStatusInfoDetailDto detail = LftfStatusInfoDetailDto.builder().reason("reason").build();
+    when(service.updateStatusAsAdmin(id, REJECTED, detail)).thenReturn(Optional.empty());
+
+    ResponseEntity<LtftFormDto> response = controller.rejectLtft(id, detail);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(NOT_FOUND));
+    assertThat("Unexpected response body.", response.getBody(), nullValue());
+  }
+
+  @Test
+  void shouldReturnRejectFormWhenFormUnsubmitted() throws MethodArgumentNotValidException {
+    UUID id = UUID.randomUUID();
+    LtftFormDto dto = LtftFormDto.builder().id(id).build();
+    LftfStatusInfoDetailDto detail = LftfStatusInfoDetailDto.builder().reason("reason").build();
+    when(service.updateStatusAsAdmin(id, REJECTED, detail)).thenReturn(Optional.of(dto));
+
+    ResponseEntity<LtftFormDto> response = controller.rejectLtft(id, detail);
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), sameInstance(dto));

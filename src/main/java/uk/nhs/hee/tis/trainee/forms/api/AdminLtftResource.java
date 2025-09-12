@@ -22,6 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROVED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.REJECTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
@@ -153,6 +154,21 @@ public class AdminLtftResource {
   ResponseEntity<LtftFormDto> approveLtft(@PathVariable UUID id)
       throws MethodArgumentNotValidException {
     Optional<LtftFormDto> form = service.updateStatusAsAdmin(id, APPROVED, null);
+    return ResponseEntity.of(form);
+  }
+
+  /**
+   * Reject the form with the given ID, must be associated with the user's local office.
+   *
+   * @param id The ID of the form to unsubmit.
+   * @return The rejected form.
+   * @throws MethodArgumentNotValidException When the state transition was not valid.
+   */
+  @PutMapping("/{id}/reject")
+  ResponseEntity<LtftFormDto> rejectLtft(@PathVariable UUID id,
+      @RequestBody LftfStatusInfoDetailDto detail)
+      throws MethodArgumentNotValidException {
+    Optional<LtftFormDto> form = service.updateStatusAsAdmin(id, REJECTED, detail);
     return ResponseEntity.of(form);
   }
 
