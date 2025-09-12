@@ -436,7 +436,8 @@ class PdfServiceTest {
 
     Set<String> variableNames = context.getVariableNames();
     assertThat("Unexpected variable count.", variableNames.size(), is(2));
-    assertThat("Unexpected event value.", context.getVariable("var"), sameInstance(request));
+    assertThat("Unexpected event value.", context.getVariable("var"),
+        sameInstance(request.form()));
     assertThat("Unexpected timezone value.", context.getVariable("timezone"), is(TIMEZONE.getId()));
   }
 
@@ -555,7 +556,8 @@ class PdfServiceTest {
 
     Set<String> variableNames = context.getVariableNames();
     assertThat("Unexpected variable count.", variableNames.size(), is(2));
-    assertThat("Unexpected event value.", context.getVariable("var"), sameInstance(request));
+    assertThat("Unexpected event value.", context.getVariable("var"),
+        sameInstance(request.form()));
     assertThat("Unexpected timezone value.", context.getVariable("timezone"), is(TIMEZONE.getId()));
   }
 
