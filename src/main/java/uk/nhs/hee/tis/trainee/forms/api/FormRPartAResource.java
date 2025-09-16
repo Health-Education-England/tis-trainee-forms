@@ -22,7 +22,10 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
+import io.awspring.cloud.s3.Location;
+import io.awspring.cloud.s3.S3Resource;
 import jakarta.validation.Valid;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -44,10 +47,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.api.util.HeaderUtil;
 import uk.nhs.hee.tis.trainee.forms.api.validation.FormRPartAValidator;
+import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartAPdfRequestDto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
+import uk.nhs.hee.tis.trainee.forms.dto.PublishedPdf;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
+import uk.nhs.hee.tis.trainee.forms.event.FormRPartAPublishedEvent;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
@@ -113,16 +121,17 @@ public class FormRPartAResource {
    *
    * @param dto   the dto to update
    * @return the ResponseEntity with status 200 and with body the new dto, or with status 500
-   * (Internal Server Error) if the formRPartBDto couldn't be updated. If the id is not provided,
+   * (Internal Server Error) if the formRPartADto couldn't be updated. If the id is not provided,
    * will create a new FormRPartA
    * @throws URISyntaxException if the Location URI syntax is incorrect
    */
   @PutMapping("/formr-parta")
   public ResponseEntity<FormRPartADto> updateFormRPartA(@RequestBody FormRPartADto dto)
-      throws URISyntaxException, MethodArgumentNotValidException {
+      throws URISyntaxException, MethodArgumentNotValidException, IOException {
     log.info("REST request to update FormRPartA : {}", dto);
     if (dto.getId() == null) {
       return createFormRPartA(dto);
+      //TODO: could be submitted so might need to publish PDF here as well
     }
 
     if (!dto.getTraineeTisId().equals(loggedInTraineeIdentity.getTraineeId())) {
@@ -132,6 +141,11 @@ public class FormRPartAResource {
 
     validator.validate(dto);
     FormRPartADto result = service.save(dto);
+
+    if (dto.getLifecycleState() == LifecycleState.SUBMITTED) {
+      String traineeId = loggedInTraineeIdentity.getTraineeId();
+      publishSubmittedFormPdf(traineeId, dto);
+    }
     return ResponseEntity.ok().body(result);
   }
 
@@ -223,5 +237,23 @@ public class FormRPartAResource {
     }
 
     return ResponseEntity.ok(publishedPdf.getContentAsByteArray());
+  }
+
+  private void publishSubmittedFormPdf(String traineeId, FormRPartADto formRPartA)
+      throws IOException {
+    String formId = formRPartA.getId();
+
+    log.info("Publishing submitted FormR PartA PDF for trainee '{}' form '{}'.", traineeId, formId);
+    String key = String.format("%s/forms/formr_parta/%s.pdf", traineeId, formId);
+
+    Optional<Resource> savedPdf = pdfService.getUploadedPdf(key);
+    if (savedPdf.isEmpty()) {
+      FormRPartAPdfRequestDto request = new FormRPartAPdfRequestDto(formId, traineeId, formRPartA);
+      pdfService.generateFormRPartA(request, true);
+    } else {
+      //TODO: can you overwrite an S3 object like this? Do we need to (submit-unsubmit-submit again)?
+      FormRPartAPdfRequestDto request = new FormRPartAPdfRequestDto(formId, traineeId, formRPartA);
+      pdfService.generateFormRPartA(request, true);
+    }
   }
 }
