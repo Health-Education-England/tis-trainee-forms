@@ -105,7 +105,7 @@ public class FormRPartBResource {
 
     validator.validate(dto);
     FormRPartBDto result = service.save(dto);
-    publishPdfIfSubmittedForm(dto);
+    publishPdfIfSubmittedForm(result);
 
     return ResponseEntity.created(new URI("/api/formr-partb/" + result.getId())).body(result);
   }
@@ -134,7 +134,7 @@ public class FormRPartBResource {
 
     validator.validate(dto);
     FormRPartBDto result = service.save(dto);
-    publishPdfIfSubmittedForm(dto);
+    publishPdfIfSubmittedForm(result);
 
     return ResponseEntity.ok().body(result);
   }

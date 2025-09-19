@@ -106,7 +106,7 @@ public class FormRPartAResource {
 
     validator.validate(dto);
     FormRPartADto result = service.save(dto);
-    publishPdfIfSubmittedForm(dto);
+    publishPdfIfSubmittedForm(result);
 
     return ResponseEntity.created(new URI("/api/formr-parta/" + result.getId())).body(result);
   }
@@ -126,7 +126,6 @@ public class FormRPartAResource {
     log.info("REST request to update FormRPartA : {}", dto);
     if (dto.getId() == null) {
       return createFormRPartA(dto);
-      //TODO: could be submitted so might need to publish PDF here as well
     }
 
     if (!dto.getTraineeTisId().equals(loggedInTraineeIdentity.getTraineeId())) {
@@ -136,7 +135,7 @@ public class FormRPartAResource {
 
     validator.validate(dto);
     FormRPartADto result = service.save(dto);
-    publishPdfIfSubmittedForm(dto);
+    publishPdfIfSubmittedForm(result);
 
     return ResponseEntity.ok().body(result);
   }

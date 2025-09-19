@@ -29,6 +29,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -44,11 +45,14 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -67,6 +71,7 @@ import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.api.validation.FormRPartAValidator;
 import uk.nhs.hee.tis.trainee.forms.config.InterceptorConfiguration;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartAPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
@@ -216,6 +221,47 @@ class FormRPartAResourceTest {
         .andExpect(jsonPath("$.lifecycleState").value(LifecycleState.DRAFT.name()));
   }
 
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = EnumSource.Mode.EXCLUDE, names = {"SUBMITTED"})
+  void postShouldCreateFormButNotPublishPdfIfNotSubmitted(LifecycleState state) throws Exception {
+    dto.setId(null);
+    FormRPartADto createdDto = new FormRPartADto();
+    createdDto.setId(DEFAULT_ID);
+    createdDto.setLifecycleState(state);
+
+    when(service.save(dto)).thenReturn(createdDto);
+    when(traineeIdentity.getTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
+
+    mockMvc.perform(put("/api/formr-parta")
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(TestUtil.convertObjectToJsonBytes(dto))
+            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
+        .andExpect(status().isCreated());
+    verifyNoInteractions(pdfService);
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"SUBMITTED"})
+  void postShouldCreateFormAndPublishPdfIfSubmitted(LifecycleState state) throws Exception {
+    dto.setId(null);
+    FormRPartADto createdDto = new FormRPartADto();
+    createdDto.setId(DEFAULT_ID);
+    createdDto.setLifecycleState(state);
+
+    when(service.save(dto)).thenReturn(createdDto);
+    when(traineeIdentity.getTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
+
+    mockMvc.perform(put("/api/formr-parta")
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(TestUtil.convertObjectToJsonBytes(dto))
+            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
+        .andExpect(status().isCreated());
+    FormRPartAPdfRequestDto expectedRequest
+        = new FormRPartAPdfRequestDto(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID, createdDto);
+    verify(pdfService).generateFormRPartA(expectedRequest, true);
+    verifyNoMoreInteractions(pdfService);
+  }
+
   @Test
   void putShouldNotUpdateFormWhenNoToken() throws Exception {
     mockMvc.perform(put("/api/formr-parta")
@@ -308,6 +354,49 @@ class FormRPartAResourceTest {
         .andExpect(header().string(HttpHeaders.LOCATION, "/api/formr-parta/" + DEFAULT_ID))
         .andExpect(jsonPath("$.id").value(DEFAULT_ID))
         .andExpect(jsonPath("$.lifecycleState").value(LifecycleState.DRAFT.name()));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = EnumSource.Mode.EXCLUDE, names = {"SUBMITTED"})
+  void putShouldUpdateFormButNotPublishPdfIfNotSubmitted(LifecycleState state) throws Exception {
+    FormRPartADto savedDto = new FormRPartADto();
+    savedDto.setId(DEFAULT_ID);
+    savedDto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    savedDto.setLifecycleState(state);
+
+    when(service.save(dto)).thenReturn(savedDto);
+    when(traineeIdentity.getTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
+
+    mockMvc.perform(put("/api/formr-parta")
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(TestUtil.convertObjectToJsonBytes(dto))
+            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
+        .andExpect(status().isOk());
+    verifyNoInteractions(pdfService);
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"SUBMITTED"})
+  void putShouldUpdateFormAndPublishSavedPdfIfSubmitted(LifecycleState state) throws Exception {
+    FormRPartADto savedDto = new FormRPartADto();
+    savedDto.setId(DEFAULT_ID);
+    savedDto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    savedDto.setLifecycleState(state);
+    LocalDateTime savedTime = LocalDateTime.now();
+    savedDto.setLastModifiedDate(savedTime);
+
+    when(service.save(dto)).thenReturn(savedDto);
+    when(traineeIdentity.getTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
+
+    mockMvc.perform(put("/api/formr-parta")
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .content(TestUtil.convertObjectToJsonBytes(dto))
+            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
+        .andExpect(status().isOk());
+    FormRPartAPdfRequestDto expectedRequest
+        = new FormRPartAPdfRequestDto(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID, savedDto);
+    verify(pdfService).generateFormRPartA(expectedRequest, true);
+    verifyNoMoreInteractions(pdfService);
   }
 
   @Test
@@ -432,6 +521,17 @@ class FormRPartAResourceTest {
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
             .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
         .andExpect(status().isNoContent());
+  }
+
+  @Test
+  void deleteByIdShouldReturnBadRequestWhenIllegalFormId() throws Exception {
+    doThrow(new IllegalArgumentException("error")).when(service).deleteFormRPartAById(DEFAULT_ID);
+    when(traineeIdentity.getTraineeId()).thenReturn(DEFAULT_TRAINEE_TIS_ID);
+
+    mockMvc.perform(delete("/api/formr-parta/" + DEFAULT_ID)
+            .contentType(TestUtil.APPLICATION_JSON_UTF8)
+            .header(HttpHeaders.AUTHORIZATION, AUTH_TOKEN))
+        .andExpect(status().isBadRequest());
   }
 
   @Test

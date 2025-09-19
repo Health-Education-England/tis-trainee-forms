@@ -28,6 +28,3 @@ spring:
         static: eu-west-2
       s3:
         path-style-access-enabled: true
-  data:
-    mongodb:
-      uri: mongodb://${DB_USER:admin}:${DB_PASSWORD:pwd}@${DB_HOST:localhost}:${DB_PORT:27017}/${DB_NAME:forms}?authSource=admin
