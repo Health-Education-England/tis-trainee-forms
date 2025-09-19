@@ -46,6 +46,7 @@ import uk.nhs.hee.tis.trainee.forms.api.validation.FormRPartBValidator;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
@@ -89,7 +90,7 @@ public class FormRPartBResource {
    */
   @PostMapping("/formr-partb")
   public ResponseEntity<FormRPartBDto> createFormRPartB(@RequestBody FormRPartBDto dto)
-      throws URISyntaxException, MethodArgumentNotValidException {
+      throws URISyntaxException, MethodArgumentNotValidException, IOException {
     log.info("REST request to save FormRPartB : {}", dto);
     if (dto.getId() != null) {
       return ResponseEntity.badRequest().headers(HeaderUtil
@@ -104,6 +105,8 @@ public class FormRPartBResource {
 
     validator.validate(dto);
     FormRPartBDto result = service.save(dto);
+    publishPdfIfSubmittedForm(dto);
+
     return ResponseEntity.created(new URI("/api/formr-partb/" + result.getId())).body(result);
   }
 
@@ -118,7 +121,7 @@ public class FormRPartBResource {
    */
   @PutMapping("/formr-partb")
   public ResponseEntity<FormRPartBDto> updateFormRPartB(@RequestBody FormRPartBDto dto)
-      throws URISyntaxException, MethodArgumentNotValidException {
+      throws URISyntaxException, MethodArgumentNotValidException, IOException {
     log.info("REST request to update FormRPartB : {}", dto);
     if (dto.getId() == null) {
       return createFormRPartB(dto);
@@ -131,6 +134,8 @@ public class FormRPartBResource {
 
     validator.validate(dto);
     FormRPartBDto result = service.save(dto);
+    publishPdfIfSubmittedForm(dto);
+
     return ResponseEntity.ok().body(result);
   }
 
@@ -222,5 +227,23 @@ public class FormRPartBResource {
     }
 
     return ResponseEntity.ok(publishedPdf.getContentAsByteArray());
+  }
+
+  /**
+   * Publish the submitted FormR PartB PDF to S3 and send an event notification.
+   *
+   * @param formRPartB The submitted form.
+   * @throws IOException If the PDF could not be generated.
+   */
+  private void publishPdfIfSubmittedForm(FormRPartBDto formRPartB) throws IOException {
+    if (formRPartB.getLifecycleState() == LifecycleState.SUBMITTED) {
+      String traineeId = loggedInTraineeIdentity.getTraineeId();
+      String formId = formRPartB.getId();
+      log.info("Publishing submitted FormR PartB PDF for trainee '{}' form '{}'.",
+          traineeId, formId);
+
+      FormRPartBPdfRequestDto request = new FormRPartBPdfRequestDto(formId, traineeId, formRPartB);
+      pdfService.generateFormRPartB(request, true);
+    }
   }
 }

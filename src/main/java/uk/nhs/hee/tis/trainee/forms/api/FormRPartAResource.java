@@ -22,10 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
-import io.awspring.cloud.s3.Location;
-import io.awspring.cloud.s3.S3Resource;
 import jakarta.validation.Valid;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -47,15 +44,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.api.util.HeaderUtil;
 import uk.nhs.hee.tis.trainee.forms.api.validation.FormRPartAValidator;
-import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartAPdfRequestDto;
-import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
-import uk.nhs.hee.tis.trainee.forms.dto.PublishedPdf;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
-import uk.nhs.hee.tis.trainee.forms.event.FormRPartAPublishedEvent;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
@@ -98,7 +91,7 @@ public class FormRPartAResource {
    */
   @PostMapping("/formr-parta")
   public ResponseEntity<FormRPartADto> createFormRPartA(@RequestBody FormRPartADto dto)
-      throws URISyntaxException, MethodArgumentNotValidException {
+      throws URISyntaxException, MethodArgumentNotValidException, IOException {
     log.info("REST request to save FormRPartA : {}", dto);
     if (dto.getId() != null) {
       return ResponseEntity.badRequest().headers(HeaderUtil
@@ -113,6 +106,8 @@ public class FormRPartAResource {
 
     validator.validate(dto);
     FormRPartADto result = service.save(dto);
+    publishPdfIfSubmittedForm(dto);
+
     return ResponseEntity.created(new URI("/api/formr-parta/" + result.getId())).body(result);
   }
 
@@ -141,11 +136,8 @@ public class FormRPartAResource {
 
     validator.validate(dto);
     FormRPartADto result = service.save(dto);
+    publishPdfIfSubmittedForm(dto);
 
-    if (dto.getLifecycleState() == LifecycleState.SUBMITTED) {
-      String traineeId = loggedInTraineeIdentity.getTraineeId();
-      publishSubmittedFormPdf(traineeId, dto);
-    }
     return ResponseEntity.ok().body(result);
   }
 
@@ -239,19 +231,19 @@ public class FormRPartAResource {
     return ResponseEntity.ok(publishedPdf.getContentAsByteArray());
   }
 
-  private void publishSubmittedFormPdf(String traineeId, FormRPartADto formRPartA)
-      throws IOException {
-    String formId = formRPartA.getId();
+  /**
+   * Publish the submitted FormR PartA PDF to S3 and send an event notification.
+   *
+   * @param formRPartA The submitted form.
+   * @throws IOException If the PDF could not be generated.
+   */
+  private void publishPdfIfSubmittedForm(FormRPartADto formRPartA) throws IOException {
+    if (formRPartA.getLifecycleState() == LifecycleState.SUBMITTED) {
+      String traineeId = loggedInTraineeIdentity.getTraineeId();
+      String formId = formRPartA.getId();
+      log.info("Publishing submitted FormR PartA PDF for trainee '{}' form '{}'.",
+          traineeId, formId);
 
-    log.info("Publishing submitted FormR PartA PDF for trainee '{}' form '{}'.", traineeId, formId);
-    String key = String.format("%s/forms/formr_parta/%s.pdf", traineeId, formId);
-
-    Optional<Resource> savedPdf = pdfService.getUploadedPdf(key);
-    if (savedPdf.isEmpty()) {
-      FormRPartAPdfRequestDto request = new FormRPartAPdfRequestDto(formId, traineeId, formRPartA);
-      pdfService.generateFormRPartA(request, true);
-    } else {
-      //TODO: can you overwrite an S3 object like this? Do we need to (submit-unsubmit-submit again)?
       FormRPartAPdfRequestDto request = new FormRPartAPdfRequestDto(formId, traineeId, formRPartA);
       pdfService.generateFormRPartA(request, true);
     }
