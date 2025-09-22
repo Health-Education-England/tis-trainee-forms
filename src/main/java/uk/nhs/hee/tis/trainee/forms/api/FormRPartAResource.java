@@ -47,6 +47,7 @@ import uk.nhs.hee.tis.trainee.forms.api.validation.FormRPartAValidator;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartAPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
@@ -90,7 +91,7 @@ public class FormRPartAResource {
    */
   @PostMapping("/formr-parta")
   public ResponseEntity<FormRPartADto> createFormRPartA(@RequestBody FormRPartADto dto)
-      throws URISyntaxException, MethodArgumentNotValidException {
+      throws URISyntaxException, MethodArgumentNotValidException, IOException {
     log.info("REST request to save FormRPartA : {}", dto);
     if (dto.getId() != null) {
       return ResponseEntity.badRequest().headers(HeaderUtil
@@ -105,6 +106,8 @@ public class FormRPartAResource {
 
     validator.validate(dto);
     FormRPartADto result = service.save(dto);
+    publishPdfIfSubmittedForm(result);
+
     return ResponseEntity.created(new URI("/api/formr-parta/" + result.getId())).body(result);
   }
 
@@ -113,13 +116,13 @@ public class FormRPartAResource {
    *
    * @param dto   the dto to update
    * @return the ResponseEntity with status 200 and with body the new dto, or with status 500
-   * (Internal Server Error) if the formRPartBDto couldn't be updated. If the id is not provided,
+   * (Internal Server Error) if the formRPartADto couldn't be updated. If the id is not provided,
    * will create a new FormRPartA
    * @throws URISyntaxException if the Location URI syntax is incorrect
    */
   @PutMapping("/formr-parta")
   public ResponseEntity<FormRPartADto> updateFormRPartA(@RequestBody FormRPartADto dto)
-      throws URISyntaxException, MethodArgumentNotValidException {
+      throws URISyntaxException, MethodArgumentNotValidException, IOException {
     log.info("REST request to update FormRPartA : {}", dto);
     if (dto.getId() == null) {
       return createFormRPartA(dto);
@@ -132,6 +135,8 @@ public class FormRPartAResource {
 
     validator.validate(dto);
     FormRPartADto result = service.save(dto);
+    publishPdfIfSubmittedForm(result);
+
     return ResponseEntity.ok().body(result);
   }
 
@@ -223,5 +228,23 @@ public class FormRPartAResource {
     }
 
     return ResponseEntity.ok(publishedPdf.getContentAsByteArray());
+  }
+
+  /**
+   * Publish the submitted FormR PartA PDF to S3 and send an event notification.
+   *
+   * @param formRPartA The submitted form.
+   * @throws IOException If the PDF could not be generated.
+   */
+  private void publishPdfIfSubmittedForm(FormRPartADto formRPartA) throws IOException {
+    if (formRPartA.getLifecycleState() == LifecycleState.SUBMITTED) {
+      String traineeId = loggedInTraineeIdentity.getTraineeId();
+      String formId = formRPartA.getId();
+      log.info("Publishing submitted FormR PartA PDF for trainee '{}' form '{}'.",
+          traineeId, formId);
+
+      FormRPartAPdfRequestDto request = new FormRPartAPdfRequestDto(formId, traineeId, formRPartA);
+      pdfService.generateFormRPartA(request, true);
+    }
   }
 }
