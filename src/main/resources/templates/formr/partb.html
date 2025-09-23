@@ -2,7 +2,7 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>Form R Part A</title>
+    <title>Form R Part B</title>
     <link href="/static/css/print.css" rel="stylesheet" />
 </head>
 <body>
@@ -98,10 +98,10 @@
     <div class="nhsuk-card">
         <div class="nhsuk-card__content">
             <h2 class="nhsuk-card__heading">Whole Scope of Practice: Work</h2>
-            <dl class="nhsuk-summary-list" th:each="workItem : ${var.work}">
-                <div class="nhsuk-summary-list__row">
-                    <dt class="nhsuk-summary-list__key">Type Of Work</dt>
-                    <dd class="nhsuk-summary-list__value" th:text="${workItem.typeOfWork} ?: _">Not Given</dd>
+            <dl class="nhsuk-summary-list" style="display: table; table-layout: fixed; width: 100%; margin-bottom: 40px;" th:each="workItem : ${var.work}">
+                <div class="nhsuk-summary-list__row" style="display: table-row">
+                    <dt class="nhsuk-summary-list__key" style="width:25%">Type Of Work</dt>
+                    <dd class="nhsuk-summary-list__value" style="width:75%" th:text="${workItem.typeOfWork} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
                     <dt class="nhsuk-summary-list__key">Start Date</dt>
