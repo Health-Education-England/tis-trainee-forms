@@ -275,7 +275,15 @@ class PdfServiceIntegrationTest {
     work2.setSite("site 2");
     work2.setSiteLocation("location 2");
     work2.setSiteKnownAs("known as 2");
-    dto.setWork(List.of(work1, work2));
+    WorkDto work3 = new WorkDto();
+    work3.setTypeOfWork("In Post ST3 General Practice");
+    work3.setStartDate(LocalDate.of(2024, 11, 6));
+    work3.setEndDate(LocalDate.of(2025, 10, 30));
+    work3.setTrainingPost("Yes");
+    work3.setSite("Cranleigh Gardens Medical Centre");
+    work3.setSiteLocation("(until 28/02/2011 Brent House Surgery) Cranleigh Gardens Bridgwater Somerset");
+    work3.setSiteKnownAs("Cranleigh Gardens Medical Centre (L85025)");
+    dto.setWork(List.of(work1, work2, work3));
 
     dto.setSicknessAbsence(10);
     dto.setParentalLeave(0);
