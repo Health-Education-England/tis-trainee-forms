@@ -21,6 +21,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 import lombok.Builder;
 
@@ -28,6 +29,7 @@ import lombok.Builder;
  * A DTO for trainee details feature flags.
  */
 @Builder
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record FeaturesDto(boolean ltft,
                           List<String> ltftProgrammes) {
 

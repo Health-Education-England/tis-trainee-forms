@@ -200,4 +200,31 @@ class AuthTokenUtilTest {
     assertThat("Unexpected features ltft programmes.", features.ltftProgrammes(),
         hasItems("LTFT Programme 1", "LTFT Programme 2"));
   }
+
+  @Test
+  void getFeaturesShouldIgnoreExtraFeaturesInToken() throws IOException {
+    String encodedPayload = Base64.getEncoder()
+        .encodeToString("""
+             {
+                "features": {
+                  "ltft": true,
+                  "ltftProgrammes": [
+                    "LTFT Programme 1",
+                    "LTFT Programme 2"
+                  ],
+                  "anotherFeature": "some value"
+                }
+             }
+            """
+            .getBytes(StandardCharsets.UTF_8));
+    String token = String.format("aa.%s.cc", encodedPayload);
+
+    FeaturesDto features = AuthTokenUtil.getFeatures(token);
+
+    assertThat("Unexpected features ltft value.", features.ltft(), is(true));
+    assertThat("Unexpected features ltft programmes count.", features.ltftProgrammes(),
+        hasSize(2));
+    assertThat("Unexpected features ltft programmes.", features.ltftProgrammes(),
+        hasItems("LTFT Programme 1", "LTFT Programme 2"));
+  }
 }
