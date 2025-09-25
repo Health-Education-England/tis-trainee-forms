@@ -21,6 +21,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.api.util;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -36,6 +37,10 @@ import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto;
 public class AuthTokenUtil {
 
   private static final ObjectMapper mapper = new ObjectMapper();
+
+  static {
+    mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+  }
 
   private AuthTokenUtil() {
 

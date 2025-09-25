@@ -200,4 +200,25 @@ class AuthTokenUtilTest {
     assertThat("Unexpected features ltft programmes.", features.ltftProgrammes(),
         hasItems("LTFT Programme 1", "LTFT Programme 2"));
   }
+
+  @Test
+  void shouldNotFailOnUnknownFeature() {
+    String encodedPayload = Base64.getEncoder()
+        .encodeToString("""
+             {
+                "features": {
+                  "unknown": "feature",
+                  "ltft": true,
+                  "ltftProgrammes": [
+                    "LTFT Programme 1",
+                    "LTFT Programme 2"
+                  ]
+                }
+             }
+            """
+            .getBytes(StandardCharsets.UTF_8));
+    String token = String.format("aa.%s.cc", encodedPayload);
+
+    assertDoesNotThrow(() -> AuthTokenUtil.getFeatures(token));
+  }
 }
