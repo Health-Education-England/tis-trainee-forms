@@ -36,6 +36,7 @@ import java.util.Base64;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto;
+import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto.FormFeatures.LtftFeatures;
 
 class AuthTokenUtilTest {
 
@@ -169,9 +170,10 @@ class AuthTokenUtilTest {
     String token = String.format("aa.%s.cc", encodedPayload);
 
     FeaturesDto features = AuthTokenUtil.getFeatures(token);
+    LtftFeatures ltftFeatures = features.forms().ltft();
 
-    assertThat("Unexpected features ltft value.", features.ltft(), is(false));
-    assertThat("Unexpected features ltft programmes value.", features.ltftProgrammes(),
+    assertThat("Unexpected features ltft value.", ltftFeatures.enabled(), is(false));
+    assertThat("Unexpected features ltft programmes value.", ltftFeatures.qualifyingProgrammes(),
         nullValue());
   }
 
@@ -181,11 +183,15 @@ class AuthTokenUtilTest {
         .encodeToString("""
              {
                 "features": {
-                  "ltft": true,
-                  "ltftProgrammes": [
-                    "LTFT Programme 1",
-                    "LTFT Programme 2"
-                  ]
+                  "forms": {
+                    "ltft": {
+                      "enabled": true,
+                      "qualifyingProgrammes": [
+                        "LTFT Programme 1",
+                        "LTFT Programme 2"
+                      ]
+                    }
+                  }
                 }
              }
             """
@@ -194,10 +200,12 @@ class AuthTokenUtilTest {
 
     FeaturesDto features = AuthTokenUtil.getFeatures(token);
 
-    assertThat("Unexpected features ltft value.", features.ltft(), is(true));
-    assertThat("Unexpected features ltft programmes count.", features.ltftProgrammes(),
-        hasSize(2));
-    assertThat("Unexpected features ltft programmes.", features.ltftProgrammes(),
+    LtftFeatures ltftFeatures = features.forms().ltft();
+    assertThat("Unexpected features ltft value.", ltftFeatures.enabled(), is(true));
+
+    Set<String> qualifyingProgrammes = ltftFeatures.qualifyingProgrammes();
+    assertThat("Unexpected features ltft programmes count.", qualifyingProgrammes, hasSize(2));
+    assertThat("Unexpected features ltft programmes.", qualifyingProgrammes,
         hasItems("LTFT Programme 1", "LTFT Programme 2"));
   }
 
@@ -208,11 +216,15 @@ class AuthTokenUtilTest {
              {
                 "features": {
                   "unknown": "feature",
-                  "ltft": true,
-                  "ltftProgrammes": [
-                    "LTFT Programme 1",
-                    "LTFT Programme 2"
-                  ]
+                  "forms": {
+                    "ltft": {
+                      "enabled": true,
+                      "qualifyingProgrammes": [
+                        "LTFT Programme 1",
+                        "LTFT Programme 2"
+                      ]
+                    }
+                  }
                 }
              }
             """

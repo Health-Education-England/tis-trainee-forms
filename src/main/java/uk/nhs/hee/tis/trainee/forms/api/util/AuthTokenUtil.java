@@ -32,6 +32,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto;
+import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto.FormFeatures;
+import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto.FormFeatures.LtftFeatures;
 
 @Slf4j
 public class AuthTokenUtil {
@@ -83,7 +85,11 @@ public class AuthTokenUtil {
     FeaturesDto features = mapper.convertValue(payload.get("features"), FeaturesDto.class);
     if (features == null) {
       log.warn("No features found in the token payload {}.", token);
-      return FeaturesDto.builder().build();
+      return FeaturesDto.builder()
+          .forms(FormFeatures.builder()
+              .ltft(LtftFeatures.builder().build())
+              .build())
+          .build();
     }
     return features;
   }

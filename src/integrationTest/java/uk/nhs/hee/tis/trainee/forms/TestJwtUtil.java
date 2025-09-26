@@ -32,11 +32,6 @@ import java.util.stream.Collectors;
  */
 public class TestJwtUtil {
 
-  public static final String TIS_ID_ATTRIBUTE = "custom:tisId";
-  public static final String EMAIL_ATTRIBUTE = "email";
-  public static final String GIVEN_NAME_ATTRIBUTE = "given_name";
-  public static final String FAMILY_NAME_ATTRIBUTE = "family_name";
-  public static final String FEATURES_ATTRIBUTE = "features";
   public static final UUID FEATURES_LTFT_PROGRAMME_INCLUDED = UUID.randomUUID();
 
   /**
@@ -62,15 +57,23 @@ public class TestJwtUtil {
    */
   public static String generateTokenForTrainee(String traineeTisId, String email, String givenName,
       String familyName) {
-    String features = String.format("{\"ltft\":true,"
-        + "\"ltftProgrammes\":[\"%s\"]}", FEATURES_LTFT_PROGRAMME_INCLUDED);
-    String payload = String.format("{\"%s\":\"%s\"", TIS_ID_ATTRIBUTE, traineeTisId)
-        + (email == null ? "" : String.format(",\"%s\":\"%s\"", EMAIL_ATTRIBUTE, email)
-        + (givenName == null ? "" : String.format(",\"%s\":\"%s\"", GIVEN_NAME_ATTRIBUTE, givenName)
-        + (familyName == null ? "" : String.format(",\"%s\":\"%s\"", FAMILY_NAME_ATTRIBUTE,
-        familyName))
-        + String.format(",\"%s\":%s", FEATURES_ATTRIBUTE, features)))
-        + "}"; // :tears:
+    String optionalClaims = (email == null ? "" : String.format("\"email\":\"%s\",", email))
+        + (givenName == null ? "" : String.format("\"given_name\":\"%s\",", givenName))
+        + (familyName == null ? "" : String.format("\"family_name\":\"%s\",", familyName));
+    String payload = """
+        {
+          "custom:tisId": "%s",
+          %s
+          "features": {
+            "forms": {
+              "ltft": {
+                "enabled": true,
+                "qualifyingProgrammes": ["%s"]
+              }
+            }
+          }
+        }
+        """.formatted(traineeTisId, optionalClaims, FEATURES_LTFT_PROGRAMME_INCLUDED);
     return generateToken(payload);
   }
 

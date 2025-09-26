@@ -52,6 +52,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto;
+import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto.FormFeatures;
+import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto.FormFeatures.LtftFeatures;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -95,8 +97,12 @@ class LtftServiceIntegrationTest {
   void setUp() {
     traineeIdentity.setTraineeId(TRAINEE_ID);
     traineeIdentity.setFeatures(FeaturesDto.builder()
-        .ltft(true)
-        .ltftProgrammes(List.of(PM_UUID.toString()))
+        .forms(FormFeatures.builder()
+            .ltft(LtftFeatures.builder()
+                .enabled(true)
+                .qualifyingProgrammes(Set.of(PM_UUID.toString()))
+                .build())
+            .build())
         .build());
   }
 
