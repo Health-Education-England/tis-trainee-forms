@@ -25,8 +25,6 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -34,7 +32,6 @@ import static org.mockito.Mockito.when;
 import static uk.nhs.hee.tis.trainee.forms.config.InterceptorConfiguration.TRAINEE_ID_APIS;
 import static uk.nhs.hee.tis.trainee.forms.config.InterceptorConfiguration.TRAINEE_ID_EXCLUDE_APIS;
 
-import java.lang.reflect.Array;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
