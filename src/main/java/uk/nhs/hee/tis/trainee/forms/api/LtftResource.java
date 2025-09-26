@@ -33,6 +33,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -222,5 +223,22 @@ public class LtftResource {
     return deleted.get().equals(true)
         ? ResponseEntity.ok().build()
         : ResponseEntity.badRequest().build();
+  }
+
+  /**
+   * Move all LTFT from one trainee to another.
+   *
+   * @param fromTraineeId The TIS ID of the trainee to move LTFT forms from.
+   * @param toTraineeId   The TIS ID of the trainee to move LTFT forms to.
+   * @return True if the LTFT were moved.
+   */
+  @PatchMapping("/move/{fromTraineeId}/to/{toTraineeId}")
+  public ResponseEntity<Boolean> moveLtfts(@PathVariable String fromTraineeId,
+      @PathVariable String toTraineeId) {
+    log.info("Request to move LTFT forms from trainee {} to trainee {}",
+        fromTraineeId, toTraineeId);
+
+    service.moveLtftForms(fromTraineeId, toTraineeId);
+    return ResponseEntity.ok(true);
   }
 }
