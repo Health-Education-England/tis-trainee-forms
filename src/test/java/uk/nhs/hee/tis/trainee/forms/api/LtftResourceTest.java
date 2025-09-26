@@ -28,6 +28,7 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.sameInstance;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
@@ -323,5 +324,17 @@ class LtftResourceTest {
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), sameInstance(body));
+  }
+
+  @Test
+  void shouldMoveLtftFormsWhenTraineeIdsProvided() {
+    String fromTraineeId = "40";
+    String toTraineeId = "50";
+
+    ResponseEntity<Boolean> response = controller.moveLtfts(fromTraineeId, toTraineeId);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), is(true));
+    verify(service).moveLtftForms(fromTraineeId, toTraineeId);
   }
 }

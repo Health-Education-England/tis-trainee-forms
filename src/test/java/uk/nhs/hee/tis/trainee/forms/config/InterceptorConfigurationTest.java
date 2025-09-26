@@ -25,11 +25,16 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.nhs.hee.tis.trainee.forms.config.InterceptorConfiguration.TRAINEE_ID_APIS;
+import static uk.nhs.hee.tis.trainee.forms.config.InterceptorConfiguration.TRAINEE_ID_EXCLUDE_APIS;
 
+import java.lang.reflect.Array;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -57,6 +62,9 @@ class InterceptorConfigurationTest {
 
     InterceptorRegistration registration = mock(InterceptorRegistration.class);
     when(registry.addInterceptor(any(AdminIdentityInterceptor.class))).thenReturn(registration);
+    //because trainee interceptor is chained, we need to mock this too
+    when(registry.addInterceptor(any(TraineeIdentityInterceptor.class))).thenReturn(registration);
+    when(registration.addPathPatterns(any(String[].class))).thenReturn(registration);
 
     configuration.addInterceptors(registry);
 
@@ -68,10 +76,9 @@ class InterceptorConfigurationTest {
         instanceOf(AdminIdentityInterceptor.class));
 
     ArgumentCaptor<String[]> pathPatternsCaptor = ArgumentCaptor.captor();
-    verify(registration).addPathPatterns(pathPatternsCaptor.capture());
+    verify(registration, times(2)).addPathPatterns(pathPatternsCaptor.capture());
 
-    String[] pathPatterns = pathPatternsCaptor.getValue();
-    assert pathPatterns != null;
+    String[] pathPatterns = pathPatternsCaptor.getAllValues().get(0);
     assertThat("Unexpected included path patterns count.", pathPatterns.length, is(1));
     assertThat("Unexpected included path patterns.", pathPatterns,
         is(new String[]{"/api/admin/**"}));
@@ -84,6 +91,7 @@ class InterceptorConfigurationTest {
 
     InterceptorRegistration registration = mock(InterceptorRegistration.class);
     when(registry.addInterceptor(any(TraineeIdentityInterceptor.class))).thenReturn(registration);
+    when(registration.addPathPatterns(any(String[].class))).thenReturn(registration);
 
     configuration.addInterceptors(registry);
 
@@ -102,5 +110,27 @@ class InterceptorConfigurationTest {
     assertThat("Unexpected included path patterns.",
         pathPatterns.length, is(TRAINEE_ID_APIS.length));
     assertThat("Unexpected included path patterns.", pathPatterns, is(TRAINEE_ID_APIS));
+  }
+
+  @Test
+  void shouldExcludeApisFromTraineeIdentityInterceptor() {
+    InterceptorRegistry registry = mock(InterceptorRegistry.class);
+    when(registry.addInterceptor(any())).thenReturn(mock(InterceptorRegistration.class));
+
+    InterceptorRegistration registration = mock(InterceptorRegistration.class);
+    when(registry.addInterceptor(any(TraineeIdentityInterceptor.class))).thenReturn(registration);
+    when(registration.addPathPatterns(any(String[].class))).thenReturn(registration);
+
+    configuration.addInterceptors(registry);
+
+    ArgumentCaptor<String[]> excludePathPatternsCaptor = ArgumentCaptor.captor();
+    verify(registration).excludePathPatterns(excludePathPatternsCaptor.capture());
+
+    String[] excludePathPatterns = excludePathPatternsCaptor.getValue();
+    assert excludePathPatterns != null;
+    assertThat("Unexpected excluded path patterns count.",
+        excludePathPatterns.length, is(TRAINEE_ID_EXCLUDE_APIS.length));
+    assertThat("Unexpected excluded path patterns.",
+        excludePathPatterns, is(TRAINEE_ID_EXCLUDE_APIS));
   }
 }

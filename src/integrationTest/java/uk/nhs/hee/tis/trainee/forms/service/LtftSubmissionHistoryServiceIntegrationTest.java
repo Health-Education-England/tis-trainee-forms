@@ -22,11 +22,14 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 
 import io.awspring.cloud.sns.core.SnsTemplate;
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -97,5 +100,72 @@ class LtftSubmissionHistoryServiceIntegrationTest {
         savedSubmissionHistory.getRevision(), is(form.getRevision()));
     assertThat("Unexpected saved submission trainee TIS ID.",
         savedSubmissionHistory.getTraineeTisId(), is(form.getTraineeTisId()));
+  }
+
+  @Test
+  void shouldMoveLtftSubmissionsWhenSubmissionsExist() {
+    String fromTraineeId = "oldTrainee";
+    String toTraineeId = "newTrainee";
+    LtftForm form1 = new LtftForm();
+    form1.setId(UUID.randomUUID());
+    form1.setTraineeTisId(fromTraineeId);
+    form1.setFormRef("form 1");
+    form1.setRevision(1);
+    LtftForm form2 = new LtftForm();
+    form2.setId(UUID.randomUUID());
+    form2.setTraineeTisId(fromTraineeId);
+    form2.setFormRef("form 2");
+    form2.setRevision(1);
+
+    service.takeSnapshot(form1);
+    service.takeSnapshot(form2);
+
+    service.moveLtftSubmissions(fromTraineeId, toTraineeId);
+
+    List<LtftSubmissionHistory> traineeSubmissions
+        = template.findAll(LtftSubmissionHistory.class);
+
+    assertThat("Unexpected number of submissions.", traineeSubmissions.size(), is(2));
+    for (LtftSubmissionHistory submission : traineeSubmissions) {
+      assertThat("Submission not moved.", submission.getTraineeTisId(), is(toTraineeId));
+    }
+  }
+
+  @Test
+  void shouldHandleMoveLtftSubmissionsWhenNoSubmissionsExist() {
+    String fromTraineeId = "oldTrainee";
+    String toTraineeId = "newTrainee";
+
+    service.moveLtftSubmissions(fromTraineeId, toTraineeId);
+
+    List<LtftSubmissionHistory> traineeSubmissions
+        = template.findAll(LtftSubmissionHistory.class);
+
+    assertThat("Unexpected number of submissions.", traineeSubmissions.size(), is(0));
+  }
+
+  @Test
+  void willUpdateLastModifiedDateWhenMoving() {
+    String fromTraineeId = "oldTrainee";
+    String toTraineeId = "newTrainee";
+    LtftForm form1 = new LtftForm();
+    form1.setId(UUID.randomUUID());
+    form1.setTraineeTisId(fromTraineeId);
+    form1.setFormRef("form 1");
+    form1.setRevision(1);
+    Instant lastModified = Instant.now().minusSeconds(100);
+    form1.setLastModified(lastModified);
+
+    service.takeSnapshot(form1);
+
+    service.moveLtftSubmissions(fromTraineeId, toTraineeId);
+
+    List<LtftSubmissionHistory> traineeSubmissions = template.findAll(LtftSubmissionHistory.class);
+
+    assertThat("Unexpected number of submissions.", traineeSubmissions.size(), is(1));
+    for (LtftSubmissionHistory submission : traineeSubmissions) {
+      assertThat("Submission last modified has changed.", submission.getLastModified(),
+          greaterThan(lastModified));
+    }
   }
 }
