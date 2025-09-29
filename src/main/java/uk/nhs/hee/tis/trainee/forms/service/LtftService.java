@@ -50,6 +50,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto.FormFeatures.LtftFeatures;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
@@ -464,7 +465,7 @@ public class LtftService {
             formId);
         return Optional.empty();
       }
-      LtftContent newContent =  form.getContent().withTpdEmailValidity(updatedEmailValidity);
+      LtftContent newContent = form.getContent().withTpdEmailValidity(updatedEmailValidity);
       form.setContent(newContent);
       LtftForm savedForm = ltftFormRepository.save(form);
       publishUpdateNotification(savedForm, FORM_ATTRIBUTE_TPD_STATUS,
@@ -677,14 +678,16 @@ public class LtftService {
       log.info("Trainee {} does not have features set.", traineeIdentity.getTraineeId());
       return false;
     }
-    if (!traineeIdentity.getFeatures().ltft()) {
+
+    LtftFeatures ltftFeatures = traineeIdentity.getFeatures().forms().ltft();
+
+    if (!ltftFeatures.enabled()) {
       log.info("Trainee {} is not LTFT-enabled.", traineeIdentity.getTraineeId());
       return false;
     }
     if (programmeMembershipId == null
-        || traineeIdentity.getFeatures().ltftProgrammes() == null
-        || !traineeIdentity.getFeatures().ltftProgrammes()
-        .contains(programmeMembershipId.toString())) {
+        || ltftFeatures.qualifyingProgrammes() == null
+        || !ltftFeatures.qualifyingProgrammes().contains(programmeMembershipId.toString())) {
       log.info("Trainee {} programme membership {} is null or not LTFT-enabled.",
           traineeIdentity.getTraineeId(), programmeMembershipId);
       return false;
