@@ -467,12 +467,12 @@ class FormRelocateServiceTest {
     verify(formRPartARepositoryMock, times(2)).save(formRPartACaptor.capture());
     verify(formRPartBRepositoryMock, times(2)).save(formRPartBCaptor.capture());
     List<FormRPartA> savedFormRPartAs = formRPartACaptor.getAllValues();
-    for (FormRPartA formRPartA : savedFormRPartAs) {
-      assertThat("Unexpected trainee ID.", formRPartA.getTraineeTisId(), is(TARGET_TRAINEE_TIS_ID));
+    for (FormRPartA formRA : savedFormRPartAs) {
+      assertThat("Unexpected trainee ID.", formRA.getTraineeTisId(), is(TARGET_TRAINEE_TIS_ID));
     }
     List<FormRPartB> savedFormRPartBs = formRPartBCaptor.getAllValues();
-    for (FormRPartB formRPartB : savedFormRPartBs) {
-      assertThat("Unexpected trainee ID.", formRPartB.getTraineeTisId(), is(TARGET_TRAINEE_TIS_ID));
+    for (FormRPartB formRB : savedFormRPartBs) {
+      assertThat("Unexpected trainee ID.", formRB.getTraineeTisId(), is(TARGET_TRAINEE_TIS_ID));
     }
   }
 

@@ -80,23 +80,23 @@ public class FormRelocateService {
     log.info("Moving {}} FormR PartA's from {} to {}.",
         formRPartAs.size(), sourceTraineeTisId, targetTraineeTisId);
     formRPartAs.forEach(form -> {
-          try {
-            relocateForm(form.getId().toString(), targetTraineeTisId);
-          } catch (ApplicationException e) {
-            log.error("Error occurred when moving FormR PartA {}: {}", form.getId(), e.toString());
-          }
-        });
+      try {
+        relocateForm(form.getId().toString(), targetTraineeTisId);
+      } catch (ApplicationException e) {
+        log.error("Error occurred when moving FormR PartA {}: {}", form.getId(), e.toString());
+      }
+    });
 
     List<FormRPartB> formRPartBs = formRPartBRepository.findByTraineeTisId(sourceTraineeTisId);
     log.info("Moving {} FormR PartB's from {} to {}",
         formRPartBs.size(), sourceTraineeTisId, targetTraineeTisId);
     formRPartBs.forEach(form -> {
-          try {
-            relocateForm(form.getId().toString(), targetTraineeTisId);
-          } catch (ApplicationException e) {
-            log.error("Error occurred when moving FormR PartB {}: {}", form.getId(), e.toString());
-          }
-        });
+      try {
+        relocateForm(form.getId().toString(), targetTraineeTisId);
+      } catch (ApplicationException e) {
+        log.error("Error occurred when moving FormR PartB {}: {}", form.getId(), e.toString());
+      }
+    });
   }
 
   /**
