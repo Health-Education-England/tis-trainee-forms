@@ -22,6 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -42,6 +43,7 @@ import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 class FormRelocationResourceTest {
 
   private static final String FORM_ID = "FORM_ID";
+  private static final String SOURCE_TRAINEE = "SOURCE_TRAINEE";
   private static final String TARGET_TRAINEE = "TARGET_TRAINEE";
 
   private MockMvc mockMvc;
@@ -86,5 +88,13 @@ class FormRelocationResourceTest {
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
             .param("targetTrainee", TARGET_TRAINEE))
             .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void shouldMoveAllForms() throws Exception {
+    mockMvc.perform(patch("/api/form-relocate/move/" + SOURCE_TRAINEE + "/to/" + TARGET_TRAINEE)
+            .contentType(TestUtil.APPLICATION_JSON_UTF8))
+        .andExpect(status().isOk());
+    verify(service).moveAllForms(SOURCE_TRAINEE, TARGET_TRAINEE);
   }
 }

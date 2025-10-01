@@ -27,6 +27,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 
 @Repository
@@ -39,4 +40,6 @@ public interface FormRPartBRepository extends MongoRepository<FormRPartB, UUID> 
   )
   List<FormRPartB> findByTraineeTisIdAndLifecycleState(String traineeTisId,
       LifecycleState lifecycleState);
+
+  List<FormRPartB> findByTraineeTisId(String traineeTisId);
 }

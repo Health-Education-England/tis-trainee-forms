@@ -76,4 +76,21 @@ public class FormRelocateResource {
 
     return ResponseEntity.noContent().build();
   }
+
+  /**
+   * Move all FormR's from one trainee to another.
+   *
+   * @param fromTraineeId The TIS ID of the trainee to move forms from.
+   * @param toTraineeId   The TIS ID of the trainee to move forms to.
+   * @return True if the FormR's were moved.
+   */
+  @PatchMapping("/form-relocate/move/{fromTraineeId}/to/{toTraineeId}")
+  public ResponseEntity<Boolean> moveForms(@PathVariable String fromTraineeId,
+      @PathVariable String toTraineeId) {
+    log.info("Request to move FormR's from trainee {} to trainee {}",
+        fromTraineeId, toTraineeId);
+
+    service.moveAllForms(fromTraineeId, toTraineeId);
+    return ResponseEntity.ok(true);
+  }
 }
