@@ -21,14 +21,32 @@
 
 package uk.nhs.hee.tis.trainee.forms.dto;
 
-import java.util.List;
+import java.util.Set;
 import lombok.Builder;
 
 /**
  * A DTO for trainee details feature flags.
  */
 @Builder
-public record FeaturesDto(boolean ltft,
-                          List<String> ltftProgrammes) {
+public record FeaturesDto(FormFeatures forms) {
 
+  /**
+   * A sub-set of form features.
+   *
+   * @param ltft A sub-set of LTFT features.
+   */
+  @Builder
+  public record FormFeatures(LtftFeatures ltft) {
+
+    /**
+     * A sub-set of LTFT features.
+     *
+     * @param enabled              Whether LTFT is enabled.
+     * @param qualifyingProgrammes A set of programmes which qualify for LTFT.
+     */
+    @Builder
+    public record LtftFeatures(boolean enabled, Set<String> qualifyingProgrammes) {
+
+    }
+  }
 }

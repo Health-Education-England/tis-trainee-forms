@@ -90,6 +90,8 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto;
+import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto.FormFeatures;
+import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto.FormFeatures.LtftFeatures;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctChangeDto;
@@ -163,8 +165,12 @@ class LtftServiceTest {
     traineeIdentity.setEmail(TRAINEE_EMAIL);
     traineeIdentity.setName(TRAINEE_NAME);
     traineeIdentity.setFeatures(FeaturesDto.builder()
-        .ltft(true)
-        .ltftProgrammes(List.of(PM_UUID.toString()))
+        .forms(FormFeatures.builder()
+            .ltft(LtftFeatures.builder()
+                .enabled(true)
+                .qualifyingProgrammes(Set.of(PM_UUID.toString()))
+                .build())
+            .build())
         .build());
 
     repository = mock(LtftFormRepository.class);
@@ -1972,8 +1978,12 @@ class LtftServiceTest {
     TraineeIdentity traineeIdentity = new TraineeIdentity();
     traineeIdentity.setTraineeId(TRAINEE_ID);
     traineeIdentity.setFeatures(FeaturesDto.builder()
-        .ltft(false)
-        .ltftProgrammes(List.of(PM_UUID.toString()))
+        .forms(FormFeatures.builder()
+            .ltft(LtftFeatures.builder()
+                .enabled(false)
+                .qualifyingProgrammes(Set.of(PM_UUID.toString()))
+                .build())
+            .build())
         .build());
 
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate,
@@ -2005,7 +2015,11 @@ class LtftServiceTest {
     TraineeIdentity traineeIdentity = new TraineeIdentity();
     traineeIdentity.setTraineeId(TRAINEE_ID);
     traineeIdentity.setFeatures(FeaturesDto.builder()
-        .ltft(true)
+        .forms(FormFeatures.builder()
+            .ltft(LtftFeatures.builder()
+                .enabled(true)
+                .build())
+            .build())
         .build());
 
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, mapper,
