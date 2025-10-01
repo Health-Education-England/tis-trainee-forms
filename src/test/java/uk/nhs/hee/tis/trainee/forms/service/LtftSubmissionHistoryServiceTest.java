@@ -24,10 +24,15 @@ package uk.nhs.hee.tis.trainee.forms.service;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -79,5 +84,42 @@ class LtftSubmissionHistoryServiceTest {
     assertThat("Unexpected revision.", submissionHistory.getRevision(), is(form.getRevision()));
     assertThat("Unexpected trainee ID.", submissionHistory.getTraineeTisId(),
         is(form.getTraineeTisId()));
+  }
+
+  @Test
+  void shouldMoveLtftSubmissionsFromOneTraineeToAnother() {
+    String fromTraineeId = "123";
+    String toTraineeId = "456";
+
+    LtftSubmissionHistory submission1 = new LtftSubmissionHistory();
+    submission1.setTraineeTisId(fromTraineeId);
+    LtftSubmissionHistory submission2 = new LtftSubmissionHistory();
+    submission2.setTraineeTisId(fromTraineeId);
+    List<LtftSubmissionHistory> submissions = List.of(submission1, submission2);
+
+    when(repository.findByTraineeTisId(fromTraineeId)).thenReturn(submissions);
+
+    service.moveLtftSubmissions(fromTraineeId, toTraineeId);
+
+    ArgumentCaptor<LtftSubmissionHistory> captor =
+        ArgumentCaptor.forClass(LtftSubmissionHistory.class);
+    verify(repository, times(2)).save(captor.capture());
+
+    List<LtftSubmissionHistory> savedSubmissions = captor.getAllValues();
+    assertThat("Unexpected number of moved submissions", savedSubmissions.size(), is(2));
+    savedSubmissions.forEach(submission ->
+        assertThat("Unexpected trainee ID", submission.getTraineeTisId(), is(toTraineeId)));
+  }
+
+  @Test
+  void shouldHandleNoSubmissionsToMove() {
+    String fromTraineeId = "123";
+    String toTraineeId = "456";
+
+    when(repository.findByTraineeTisId(fromTraineeId)).thenReturn(List.of());
+
+    service.moveLtftSubmissions(fromTraineeId, toTraineeId);
+
+    verify(repository, never()).save(any());
   }
 }

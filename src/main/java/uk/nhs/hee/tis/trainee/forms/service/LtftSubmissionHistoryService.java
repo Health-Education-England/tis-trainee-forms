@@ -22,6 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
@@ -64,4 +65,24 @@ public class LtftSubmissionHistoryService {
     ltftHistoryRepository.save(submissionHistory);
   }
 
+  /**
+   * Move all LTFT submissions from one trainee to another. Assumes that fromTraineeId and
+   * toTraineeId are valid.
+   *
+   * @param fromTraineeId The trainee ID to move LTFTs from.
+   * @param toTraineeId   The trainee ID to move LTFTs to.
+   */
+  public void moveLtftSubmissions(String fromTraineeId, String toTraineeId) {
+    List<LtftSubmissionHistory> submissions
+        = ltftHistoryRepository.findByTraineeTisId(fromTraineeId);
+
+    submissions.forEach(form -> {
+      log.info("Moving LTFT submission [{}] from trainee [{}] to trainee [{}]",
+          form.getId(), fromTraineeId, toTraineeId);
+      form.setTraineeTisId(toTraineeId);
+      ltftHistoryRepository.save(form); //lastModifiedDate will be overwritten here
+    });
+    log.info("Moved {} LTFT submissions from trainee [{}] to trainee [{}]",
+        submissions.size(), fromTraineeId, toTraineeId);
+  }
 }

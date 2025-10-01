@@ -25,6 +25,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.in;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
@@ -37,6 +38,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -3436,6 +3438,78 @@ class LtftServiceTest {
     service.updateTpdNotificationStatus(formId, "PENDING");
 
     verifyNoInteractions(eventBroadcastService);
+  }
+
+  @Test
+  void shouldMoveLtftFormsToNewTraineeId() {
+    String fromTraineeId = "oldId";
+    String toTraineeId = "newId";
+
+    LtftForm form1 = new LtftForm();
+    form1.setId(UUID.randomUUID());
+    form1.setTraineeTisId(fromTraineeId);
+    form1.setContent(LtftContent.builder().name("test1").build());
+
+    LtftForm form2 = new LtftForm();
+    form2.setId(UUID.randomUUID());
+    form2.setTraineeTisId(fromTraineeId);
+    form2.setContent(LtftContent.builder().name("test2").build());
+
+    List<LtftForm> formsToMove = List.of(form1, form2);
+
+    when(repository.findByTraineeTisIdOrderByLastModified(fromTraineeId)).thenReturn(formsToMove);
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    service.moveLtftForms(fromTraineeId, toTraineeId);
+
+    ArgumentCaptor<LtftForm> formsCaptor = ArgumentCaptor.captor();
+    verify(repository, times(2)).save(formsCaptor.capture());
+
+    List<LtftForm> savedForms = formsCaptor.getAllValues();
+    assertThat("Unexpected number of forms moved", savedForms, hasSize(2));
+
+    savedForms.forEach(form ->
+        assertThat("Unexpected trainee ID after move", form.getTraineeTisId(), is(toTraineeId)));
+
+    ArgumentCaptor<LtftFormDto> publishCaptor = ArgumentCaptor.captor();
+    verify(eventBroadcastService, times(2)).publishLtftFormUpdateEvent(
+        publishCaptor.capture(), eq(null), eq(LTFT_ASSIGNMENT_UPDATE_TOPIC));
+
+    List<LtftFormDto> publishedDtos = publishCaptor.getAllValues();
+    assertThat("Unexpected number of published DTOs", publishedDtos, hasSize(2));
+    publishedDtos.forEach(dto -> {
+      assertThat("Unexpected trainee ID in published DTO", dto.traineeTisId(), is(toTraineeId));
+      assertThat("Unexpected form ID in published DTO", dto.id(), is(in(savedForms.stream()
+          .map(LtftForm::getId).toList())));
+    });
+
+    verify(ltftSubmissionHistoryService).moveLtftSubmissions(fromTraineeId, toTraineeId);
+  }
+
+  @Test
+  void shouldNotMoveFormsIfNoFormsFoundForTrainee() {
+    String fromTraineeId = "oldId";
+    String toTraineeId = "newId";
+
+    when(repository.findByTraineeTisIdOrderByLastModified(fromTraineeId)).thenReturn(List.of());
+
+    service.moveLtftForms(fromTraineeId, toTraineeId);
+
+    verify(repository, never()).save(any());
+    verify(eventBroadcastService, never()).publishLtftFormUpdateEvent(any(), any(), any());
+  }
+
+  @Test
+  void shouldNotMoveFormsWhenTraineeIdsNullOrUnchanged() {
+    String fromTraineeId = "oldId";
+    String toTraineeId = "newId";
+
+    service.moveLtftForms(null, toTraineeId);
+    service.moveLtftForms(fromTraineeId, null);
+    service.moveLtftForms(null, null);
+    service.moveLtftForms(fromTraineeId, fromTraineeId);
+
+    verifyNoInteractions(repository);
   }
 
   /**

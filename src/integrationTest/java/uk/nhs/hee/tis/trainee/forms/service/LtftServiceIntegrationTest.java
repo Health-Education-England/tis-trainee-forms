@@ -45,6 +45,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.containers.MongoDBContainer;
@@ -250,5 +251,98 @@ class LtftServiceIntegrationTest {
     }
 
     assertThat("Unexpected ID count.", ids, hasSize(10));
+  }
+
+  @Test
+  void shouldMoveLtftFormsAndSubmissionHistoryBetweenTrainees() {
+    String fromTraineeId = TRAINEE_ID;
+    String toTraineeId = "50";
+
+    // Create and submit a form for the source trainee
+    LtftFormDto dto = LtftFormDto.builder()
+        .traineeTisId(fromTraineeId)
+        .name("test form")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
+        .build();
+
+    LtftFormDto draft = service.createLtftForm(dto).orElseThrow();
+    service.submitLtftForm(draft.id(), null).orElseThrow();
+
+    // Create another draft form
+    service.createLtftForm(dto).orElseThrow();
+
+    service.moveLtftForms(fromTraineeId, toTraineeId);
+
+    List<LtftForm> originalTraineeForms = template.find(
+        Query.query(Criteria.where("traineeTisId").is(fromTraineeId)),
+        LtftForm.class);
+    List<LtftForm> newTraineeForms = template.find(
+        Query.query(Criteria.where("traineeTisId").is(toTraineeId)),
+        LtftForm.class);
+
+    assertThat("Unexpected forms remaining for original trainee",
+        originalTraineeForms, hasSize(0));
+    assertThat("Unexpected number of moved forms",
+        newTraineeForms, hasSize(2));
+
+    // Check submission history was moved
+    List<LtftSubmissionHistory> originalTraineeHistory = template.find(
+        Query.query(Criteria.where("traineeTisId").is(fromTraineeId)),
+        LtftSubmissionHistory.class);
+    List<LtftSubmissionHistory> newTraineeHistory = template.find(
+        Query.query(Criteria.where("traineeTisId").is(toTraineeId)),
+        LtftSubmissionHistory.class);
+
+    assertThat("Unexpected submission history remaining for original trainee",
+        originalTraineeHistory, hasSize(0));
+    assertThat("Unexpected number of moved submission history records",
+        newTraineeHistory, hasSize(1));
+  }
+
+  @Test
+  void shouldNotMoveFormsWhenFromTraineeHasNoForms() {
+    String toTraineeId = "50";
+
+    service.moveLtftForms(TRAINEE_ID, toTraineeId);
+
+    List<LtftForm> newTraineeForms = template.find(
+        Query.query(Criteria.where("traineeTisId").is(toTraineeId)),
+        LtftForm.class);
+    List<LtftSubmissionHistory> newTraineeHistory = template.find(
+        Query.query(Criteria.where("traineeTisId").is(toTraineeId)),
+        LtftSubmissionHistory.class);
+
+    assertThat("Unexpected forms created for target trainee",
+        newTraineeForms, hasSize(0));
+    assertThat("Unexpected submission history created for target trainee",
+        newTraineeHistory, hasSize(0));
+  }
+
+  @Test
+  void shouldNotMoveFormsWhenEitherTraineeIdIsNull() {
+    String fromTraineeId = TRAINEE_ID;
+
+    LtftFormDto dto = LtftFormDto.builder()
+        .traineeTisId(fromTraineeId)
+        .name("test form")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
+        .build();
+
+    service.createLtftForm(dto);
+
+    service.moveLtftForms(fromTraineeId, null);
+    service.moveLtftForms(null, "50");
+    service.moveLtftForms(null, null);
+
+    List<LtftForm> originalTraineeForms = template.find(
+        Query.query(Criteria.where("traineeTisId").is(fromTraineeId)),
+        LtftForm.class);
+
+    assertThat("Unexpected forms moved when trainee ID null",
+        originalTraineeForms, hasSize(1));
   }
 }

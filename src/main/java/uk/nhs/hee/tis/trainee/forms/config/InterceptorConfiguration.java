@@ -46,10 +46,18 @@ public class InterceptorConfiguration implements WebMvcConfigurer {
       "/api/ltft", "/api/ltft/**"
   };
 
+  // Exclude move LTFT as this is an internal endpoint.
+  protected static final String[] TRAINEE_ID_EXCLUDE_APIS = {
+      "/api/ltft/move/**"
+  };
+
   @Override
   public void addInterceptors(InterceptorRegistry registry) {
-    registry.addInterceptor(adminIdentityInterceptor()).addPathPatterns("/api/admin/**");
-    registry.addInterceptor(traineeIdentityInterceptor()).addPathPatterns(TRAINEE_ID_APIS);
+    registry.addInterceptor(adminIdentityInterceptor())
+        .addPathPatterns("/api/admin/**");
+    registry.addInterceptor(traineeIdentityInterceptor())
+        .addPathPatterns(TRAINEE_ID_APIS)
+        .excludePathPatterns(TRAINEE_ID_EXCLUDE_APIS);
   }
 
   /**

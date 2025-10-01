@@ -36,6 +36,7 @@ import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
 import static org.springframework.http.MediaType.APPLICATION_PDF;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
@@ -79,6 +80,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -1736,5 +1738,94 @@ class LtftResourceIntegrationTest {
         containsString("I have discussed the proposals outlined in the CCT Calculation with my Training Programme Director (TPD).true"));
     assertThat("Unexpected declaration.", pdfText.replaceAll("[\r\n]+", ""),
         containsString("I understand that approval of my application is not guaranteed.true"));
+  }
+
+  @Test
+  void shouldMoveLtftForms() throws Exception {
+    LtftForm form = new LtftForm();
+    String fromTraineeId = "40";
+    form.setTraineeTisId(fromTraineeId);
+    template.insert(form);
+    LtftForm form2 = new LtftForm();
+    form2.setTraineeTisId(fromTraineeId);
+    template.insert(form2);
+
+    String toTraineeId = "50";
+
+    //note, no authorization required for this operation
+    mockMvc.perform(patch("/api/ltft/move/{fromTraineeId}/to/{toTraineeId}",
+            fromTraineeId, toTraineeId))
+        .andExpect(status().isOk())
+        .andExpect(content().string("true"));
+
+    List<LtftForm> formsForFromTrainee = template.find(
+        Query.query(Criteria.where("traineeTisId").is(fromTraineeId)),
+        LtftForm.class);
+    List<LtftForm> formsForToTrainee = template.find(
+        Query.query(Criteria.where("traineeTisId").is(toTraineeId)),
+        LtftForm.class);
+
+    assertThat("Form should be removed from source trainee",
+        formsForFromTrainee, hasSize(0));
+    assertThat("Form should be moved to target trainee",
+        formsForToTrainee, hasSize(2));
+  }
+
+  @Test
+  void shouldMoveSubmissionHistory() throws Exception {
+    // Create forms for source trainee
+    String fromTraineeId = TRAINEE_ID;
+    String toTraineeId = "50";
+
+    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+
+    // Create and submit form
+    LtftFormDto formToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .name("test")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
+        .build();
+    String formToSaveJson = mapper.writeValueAsString(formToSave);
+    mockMvc.perform(post("/api/ltft")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToSaveJson))
+        .andExpect(status().isOk());
+
+    List<LtftForm> savedRecords = template.find(new Query(), LtftForm.class);
+    UUID form1id = savedRecords.get(0).getId();
+
+    String reasonJson = "{\"reason\": \"its ok\", \"message\": \"some message\"}";
+    mockMvc.perform(put("/api/ltft/{id}/submit", form1id)
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(reasonJson))
+        .andExpect(status().isOk());
+
+    List<LtftSubmissionHistory> historyForFromTrainee = template.find(
+        Query.query(Criteria.where("traineeTisId").is(fromTraineeId)),
+        LtftSubmissionHistory.class);
+    assertThat("Submission history should exist for source trainee",
+        historyForFromTrainee, hasSize(1));
+
+    mockMvc.perform(patch("/api/ltft/move/{fromTraineeId}/to/{toTraineeId}",
+            fromTraineeId, toTraineeId))
+        .andExpect(status().isOk())
+        .andExpect(content().string("true"));
+
+    // Verify submission history was moved
+    List<LtftSubmissionHistory> historyForFromTraineePostMove = template.find(
+        Query.query(Criteria.where("traineeTisId").is(fromTraineeId)),
+        LtftSubmissionHistory.class);
+    List<LtftSubmissionHistory> historyForToTrainee = template.find(
+        Query.query(Criteria.where("traineeTisId").is(toTraineeId)),
+        LtftSubmissionHistory.class);
+
+    assertThat("Submission history should be removed from source trainee",
+        historyForFromTraineePostMove, hasSize(0));
+    assertThat("Submission history should be moved to target trainee",
+        historyForToTrainee, hasSize(1));
   }
 }

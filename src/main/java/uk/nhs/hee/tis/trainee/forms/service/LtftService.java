@@ -668,6 +668,39 @@ public class LtftService {
   }
 
   /**
+   * Move all LTFT forms from one trainee to another. Assumes that fromTraineeId and toTraineeId
+   * are valid. The updated LTFTs are broadcast as events. Also moves LTFT submission history.
+   *
+   * @param fromTraineeId The trainee ID to move LTFTs from.
+   * @param toTraineeId   The trainee ID to move LTFTs to.
+   */
+  public void moveLtftForms(String fromTraineeId, String toTraineeId) {
+    if (fromTraineeId == null || toTraineeId == null || fromTraineeId.equals(toTraineeId)) {
+      log.warn("Not moving LTFT forms, fromTraineeId or toTraineeId is null or unchanged: {} -> {}",
+          fromTraineeId, toTraineeId);
+      return;
+    }
+    List<LtftForm> ltfts = ltftFormRepository
+        .findByTraineeTisIdOrderByLastModified(fromTraineeId);
+
+    ltfts.forEach(form -> {
+      log.info("Moving LTFT form [{}] from trainee [{}] to trainee [{}]",
+          form.getId(), fromTraineeId, toTraineeId);
+      // note no form content changes, just the trainee ID
+      form.setTraineeTisId(toTraineeId);
+      form = ltftFormRepository.save(form);
+      // note: ltftAssignmentUpdateTopic is used here to publish an update to NDW (as the form
+      // content has not changed). Don't use ltftStatusUpdateTopic, which would generate emails
+      // to TPD and trainee.
+      publishUpdateNotification(form, null, ltftAssignmentUpdateTopic);
+    });
+    log.info("Moved {} LTFT forms from trainee [{}] to trainee [{}]",
+        ltfts.size(), fromTraineeId, toTraineeId);
+
+    ltftSubmissionHistoryService.moveLtftSubmissions(fromTraineeId, toTraineeId);
+  }
+
+  /**
    * Identifies if a programme membership is LTFT-enabled.
    *
    * @param programmeMembershipId The programme membership ID.
