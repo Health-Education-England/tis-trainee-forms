@@ -25,6 +25,7 @@ import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,14 +75,17 @@ public class FormRelocateService {
    *
    * @param sourceTraineeTisId The TIS ID of the source trainee.
    * @param targetTraineeTisId The TIS ID of the target trainee.
+   * @return The number of forms moved.
    */
-  public void moveAllForms(String sourceTraineeTisId, String targetTraineeTisId) {
+  public Integer moveAllForms(String sourceTraineeTisId, String targetTraineeTisId) {
+    AtomicReference<Integer> movedForms = new AtomicReference<>(0);
     List<FormRPartA> formRPartAs = formRPartARepository.findByTraineeTisId(sourceTraineeTisId);
     log.info("Moving {}} FormR PartA's from {} to {}.",
         formRPartAs.size(), sourceTraineeTisId, targetTraineeTisId);
     formRPartAs.forEach(form -> {
       try {
         relocateForm(form.getId().toString(), targetTraineeTisId);
+        movedForms.getAndSet(movedForms.get() + 1);
       } catch (ApplicationException e) {
         log.error("Error occurred when moving FormR PartA {}: {}", form.getId(), e.toString());
       }
@@ -93,10 +97,15 @@ public class FormRelocateService {
     formRPartBs.forEach(form -> {
       try {
         relocateForm(form.getId().toString(), targetTraineeTisId);
+        movedForms.getAndSet(movedForms.get() + 1);
       } catch (ApplicationException e) {
         log.error("Error occurred when moving FormR PartB {}: {}", form.getId(), e.toString());
       }
     });
+    log.info("Moved {} forms out of an expected {} forms from {} to {}.",
+        movedForms.get(), formRPartAs.size() + formRPartBs.size(),
+        sourceTraineeTisId, targetTraineeTisId);
+    return movedForms.get();
   }
 
   /**

@@ -21,6 +21,8 @@
 
 package uk.nhs.hee.tis.trainee.forms.api;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -32,8 +34,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import uk.nhs.hee.tis.trainee.forms.service.FormRelocateService;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
@@ -92,9 +97,14 @@ class FormRelocationResourceTest {
 
   @Test
   void shouldMoveAllForms() throws Exception {
-    mockMvc.perform(patch("/api/form-relocate/move/" + SOURCE_TRAINEE + "/to/" + TARGET_TRAINEE)
+    MvcResult result = mockMvc.perform(
+        patch("/api/form-relocate/move/" + SOURCE_TRAINEE + "/to/" + TARGET_TRAINEE)
             .contentType(TestUtil.APPLICATION_JSON_UTF8))
-        .andExpect(status().isOk());
+            .andReturn();
+
+    assertThat("Unexpected result status.", result.getResponse().getStatus(), is(200));
+    assertThat("Unexpected result content.", result.getResponse().getContentAsString(),
+        is("0"));
     verify(service).moveAllForms(SOURCE_TRAINEE, TARGET_TRAINEE);
   }
 }

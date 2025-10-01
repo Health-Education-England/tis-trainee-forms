@@ -108,7 +108,7 @@ public class FormRelocateResourceIntegrationTest {
     mockMvc.perform(patch("/api//form-relocate/move/{fromTraineeId}/to/{toTraineeId}",
             FROM_TRAINEE_ID, TO_TRAINEE_ID))
         .andExpect(status().isOk())
-        .andExpect(content().string("true"));
+        .andExpect(content().string("2"));
 
     FormRPartA movedFormPartA = template.findById(id, FormRPartA.class);
     assertThat("Unexpected missing moved entity.", movedFormPartA, notNullValue());

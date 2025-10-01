@@ -85,12 +85,12 @@ public class FormRelocateResource {
    * @return True if the FormR's were moved.
    */
   @PatchMapping("/form-relocate/move/{fromTraineeId}/to/{toTraineeId}")
-  public ResponseEntity<Boolean> moveForms(@PathVariable String fromTraineeId,
+  public ResponseEntity<Integer> moveForms(@PathVariable String fromTraineeId,
       @PathVariable String toTraineeId) {
     log.info("Request to move FormR's from trainee {} to trainee {}",
         fromTraineeId, toTraineeId);
 
-    service.moveAllForms(fromTraineeId, toTraineeId);
-    return ResponseEntity.ok(true);
+    Integer formsMoved = service.moveAllForms(fromTraineeId, toTraineeId);
+    return ResponseEntity.ok(formsMoved);
   }
 }

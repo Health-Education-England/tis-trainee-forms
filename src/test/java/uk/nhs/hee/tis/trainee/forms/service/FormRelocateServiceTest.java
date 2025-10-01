@@ -462,7 +462,7 @@ class FormRelocateServiceTest {
     when(formRPartBRepositoryMock.findById(formB1.getId())).thenReturn(Optional.of(formB1));
     when(formRPartBRepositoryMock.findById(formB2.getId())).thenReturn(Optional.of(formB2));
 
-    service.moveAllForms(DEFAULT_TRAINEE_TIS_ID, TARGET_TRAINEE_TIS_ID);
+    Integer movedFormsCount = service.moveAllForms(DEFAULT_TRAINEE_TIS_ID, TARGET_TRAINEE_TIS_ID);
 
     verify(formRPartARepositoryMock, times(2)).save(formRPartACaptor.capture());
     verify(formRPartBRepositoryMock, times(2)).save(formRPartBCaptor.capture());
@@ -474,6 +474,7 @@ class FormRelocateServiceTest {
     for (FormRPartB formRB : savedFormRPartBs) {
       assertThat("Unexpected trainee ID.", formRB.getTraineeTisId(), is(TARGET_TRAINEE_TIS_ID));
     }
+    assertThat("Unexpected moved form count.", movedFormsCount, is(4));
   }
 
   @Test
@@ -497,10 +498,11 @@ class FormRelocateServiceTest {
         .thenThrow(new ApplicationException("Expected Exception"));
     when(formRPartBRepositoryMock.findById(formBid)).thenReturn(Optional.of(formB1));
 
-    service.moveAllForms(DEFAULT_TRAINEE_TIS_ID, TARGET_TRAINEE_TIS_ID);
+    Integer movedFormsCount = service.moveAllForms(DEFAULT_TRAINEE_TIS_ID, TARGET_TRAINEE_TIS_ID);
 
     verify(formRPartARepositoryMock, never()).save(any());
     verify(formRPartBRepositoryMock).save(any());
+    assertThat("Unexpected moved form count.", movedFormsCount, is(1));
   }
 
   @Test
@@ -525,10 +527,11 @@ class FormRelocateServiceTest {
         .thenThrow(new ApplicationException("Expected Exception"));
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formA1));
 
-    service.moveAllForms(DEFAULT_TRAINEE_TIS_ID, TARGET_TRAINEE_TIS_ID);
+    Integer movedFormsCount = service.moveAllForms(DEFAULT_TRAINEE_TIS_ID, TARGET_TRAINEE_TIS_ID);
 
     verify(formRPartBRepositoryMock, never()).save(any());
     verify(formRPartARepositoryMock).save(any());
+    assertThat("Unexpected moved form count.", movedFormsCount, is(1));
   }
 
   @Test
@@ -538,12 +541,12 @@ class FormRelocateServiceTest {
     when(formRPartBRepositoryMock.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(List.of());
 
-    service.moveAllForms(DEFAULT_TRAINEE_TIS_ID, TARGET_TRAINEE_TIS_ID);
+    Integer movedFormsCount = service.moveAllForms(DEFAULT_TRAINEE_TIS_ID, TARGET_TRAINEE_TIS_ID);
 
     verify(formRPartARepositoryMock, never()).save(any());
     verify(formRPartBRepositoryMock, never()).save(any());
     verifyNoInteractions(abstractCloudRepositoryAMock);
     verifyNoInteractions(abstractCloudRepositoryBMock);
+    assertThat("Unexpected moved form count.", movedFormsCount, is(0));
   }
-
 }
