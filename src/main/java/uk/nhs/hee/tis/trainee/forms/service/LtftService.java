@@ -702,7 +702,8 @@ public class LtftService {
       movedForms.getAndSet(movedForms.get() + 1);
     });
 
-    Integer movedHistory = ltftSubmissionHistoryService.moveLtftSubmissions(fromTraineeId, toTraineeId);
+    Integer movedHistory
+        = ltftSubmissionHistoryService.moveLtftSubmissions(fromTraineeId, toTraineeId);
     log.info("Moved {} LTFT forms and {} submission histories from trainee [{}] to trainee [{}]",
         movedForms.get(), movedHistory, fromTraineeId, toTraineeId);
     return Map.of(

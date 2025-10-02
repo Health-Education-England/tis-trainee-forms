@@ -465,18 +465,19 @@ class FormRelocateServiceTest {
 
     Map<String, Integer> movedStats = service.moveAllForms(DEFAULT_TRAINEE_ID, TARGET_TRAINEE_ID);
 
+    Map<String, Integer> expectedMap = Map.of("formr-a", 2, "formr-b", 2);
+    assertThat("Unexpected moved form count.", movedStats, is(expectedMap));
+
     verify(formRPartARepositoryMock, times(2)).save(formRPartACaptor.capture());
     verify(formRPartBRepositoryMock, times(2)).save(formRPartBCaptor.capture());
     List<FormRPartA> savedFormRPartAs = formRPartACaptor.getAllValues();
-    for (FormRPartA formRA : savedFormRPartAs) {
-      assertThat("Unexpected trainee ID.", formRA.getTraineeTisId(), is(TARGET_TRAINEE_ID));
+    for (FormRPartA partA : savedFormRPartAs) {
+      assertThat("Unexpected trainee ID.", partA.getTraineeTisId(), is(TARGET_TRAINEE_ID));
     }
     List<FormRPartB> savedFormRPartBs = formRPartBCaptor.getAllValues();
-    for (FormRPartB formRB : savedFormRPartBs) {
-      assertThat("Unexpected trainee ID.", formRB.getTraineeTisId(), is(TARGET_TRAINEE_ID));
+    for (FormRPartB partB : savedFormRPartBs) {
+      assertThat("Unexpected trainee ID.", partB.getTraineeTisId(), is(TARGET_TRAINEE_ID));
     }
-    Map<String, Integer> expectedMap = Map.of("formr-a", 2, "formr-b", 2);
-    assertThat("Unexpected moved form count.", movedStats, is(expectedMap));
   }
 
   @Test
@@ -502,10 +503,11 @@ class FormRelocateServiceTest {
 
     Map<String, Integer> movedStats = service.moveAllForms(DEFAULT_TRAINEE_ID, TARGET_TRAINEE_ID);
 
-    verify(formRPartARepositoryMock, never()).save(any());
-    verify(formRPartBRepositoryMock).save(any());
     Map<String, Integer> expectedMap = Map.of("formr-a", 0, "formr-b", 1);
     assertThat("Unexpected moved form count.", movedStats, is(expectedMap));
+
+    verify(formRPartARepositoryMock, never()).save(any());
+    verify(formRPartBRepositoryMock).save(any());
   }
 
   @Test
@@ -532,10 +534,11 @@ class FormRelocateServiceTest {
 
     Map<String, Integer> movedStats = service.moveAllForms(DEFAULT_TRAINEE_ID, TARGET_TRAINEE_ID);
 
-    verify(formRPartBRepositoryMock, never()).save(any());
-    verify(formRPartARepositoryMock).save(any());
     Map<String, Integer> expectedMap = Map.of("formr-a", 1, "formr-b", 0);
     assertThat("Unexpected moved form count.", movedStats, is(expectedMap));
+
+    verify(formRPartBRepositoryMock, never()).save(any());
+    verify(formRPartARepositoryMock).save(any());
   }
 
   @Test
@@ -547,11 +550,12 @@ class FormRelocateServiceTest {
 
     Map<String, Integer> movedStats = service.moveAllForms(DEFAULT_TRAINEE_ID, TARGET_TRAINEE_ID);
 
+    Map<String, Integer> expectedMap = Map.of("formr-a", 0, "formr-b", 0);
+    assertThat("Unexpected moved form count.", movedStats, is(expectedMap));
+
     verify(formRPartARepositoryMock, never()).save(any());
     verify(formRPartBRepositoryMock, never()).save(any());
     verifyNoInteractions(abstractCloudRepositoryAMock);
     verifyNoInteractions(abstractCloudRepositoryBMock);
-    Map<String, Integer> expectedMap = Map.of("formr-a", 0, "formr-b", 0);
-    assertThat("Unexpected moved form count.", movedStats, is(expectedMap));
   }
 }
