@@ -23,6 +23,7 @@ package uk.nhs.hee.tis.trainee.forms.api;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.io.IOException;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -85,12 +86,12 @@ public class FormRelocateResource {
    * @return True if the FormR's were moved.
    */
   @PatchMapping("/form-relocate/move/{fromTraineeId}/to/{toTraineeId}")
-  public ResponseEntity<Integer> moveForms(@PathVariable String fromTraineeId,
+  public ResponseEntity<Map<String, Integer>> moveForms(@PathVariable String fromTraineeId,
       @PathVariable String toTraineeId) {
     log.info("Request to move FormR's from trainee {} to trainee {}",
         fromTraineeId, toTraineeId);
 
-    Integer formsMoved = service.moveAllForms(fromTraineeId, toTraineeId);
-    return ResponseEntity.ok(formsMoved);
+    Map<String, Integer> movedStats = service.moveAllForms(fromTraineeId, toTraineeId);
+    return ResponseEntity.ok(movedStats);
   }
 }

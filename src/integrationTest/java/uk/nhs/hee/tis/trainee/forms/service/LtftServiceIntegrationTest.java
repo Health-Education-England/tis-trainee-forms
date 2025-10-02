@@ -273,7 +273,7 @@ class LtftServiceIntegrationTest {
     // Create another draft form
     service.createLtftForm(dto).orElseThrow();
 
-    service.moveLtftForms(fromTraineeId, toTraineeId);
+    Map<String, Integer> movedStats = service.moveLtftForms(fromTraineeId, toTraineeId);
 
     List<LtftForm> originalTraineeForms = template.find(
         Query.query(Criteria.where("traineeTisId").is(fromTraineeId)),
@@ -299,13 +299,15 @@ class LtftServiceIntegrationTest {
         originalTraineeHistory, hasSize(0));
     assertThat("Unexpected number of moved submission history records",
         newTraineeHistory, hasSize(1));
+    Map<String, Integer> expectedStats = Map.of("ltft", 2, "ltft-submission", 1);
+    assertThat("Unexpected move stats", movedStats, is(expectedStats));
   }
 
   @Test
   void shouldNotMoveFormsWhenFromTraineeHasNoForms() {
     String toTraineeId = "50";
 
-    service.moveLtftForms(TRAINEE_ID, toTraineeId);
+    Map<String, Integer> movedStats = service.moveLtftForms(TRAINEE_ID, toTraineeId);
 
     List<LtftForm> newTraineeForms = template.find(
         Query.query(Criteria.where("traineeTisId").is(toTraineeId)),
@@ -318,6 +320,8 @@ class LtftServiceIntegrationTest {
         newTraineeForms, hasSize(0));
     assertThat("Unexpected submission history created for target trainee",
         newTraineeHistory, hasSize(0));
+    Map<String, Integer> expectedStats = Map.of("ltft", 0, "ltft-submission", 0);
+    assertThat("Unexpected move stats", movedStats, is(expectedStats));
   }
 
   @Test

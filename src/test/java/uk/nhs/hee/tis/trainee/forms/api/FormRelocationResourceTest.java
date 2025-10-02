@@ -24,10 +24,12 @@ package uk.nhs.hee.tis.trainee.forms.api;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -93,11 +95,14 @@ class FormRelocationResourceTest {
 
   @Test
   void shouldMoveAllForms() throws Exception {
+    Map<String, Integer> serviceResponse = Map.of("dummy", 1);
+    when(service.moveAllForms(SOURCE_TRAINEE, TARGET_TRAINEE)).thenReturn(serviceResponse);
+
     mockMvc.perform(
         patch("/api/form-relocate/move/" + SOURCE_TRAINEE + "/to/" + TARGET_TRAINEE)
             .contentType(TestUtil.APPLICATION_JSON_UTF8))
         .andExpect(status().isOk())
-        .andExpect(content().string("0"));
+        .andExpect(content().string("{\"dummy\":1}"));
 
     verify(service).moveAllForms(SOURCE_TRAINEE, TARGET_TRAINEE);
   }

@@ -120,7 +120,7 @@ class LtftSubmissionHistoryServiceIntegrationTest {
     service.takeSnapshot(form1);
     service.takeSnapshot(form2);
 
-    service.moveLtftSubmissions(fromTraineeId, toTraineeId);
+    Integer movedCount = service.moveLtftSubmissions(fromTraineeId, toTraineeId);
 
     List<LtftSubmissionHistory> traineeSubmissions
         = template.findAll(LtftSubmissionHistory.class);
@@ -129,6 +129,7 @@ class LtftSubmissionHistoryServiceIntegrationTest {
     for (LtftSubmissionHistory submission : traineeSubmissions) {
       assertThat("Submission not moved.", submission.getTraineeTisId(), is(toTraineeId));
     }
+    assertThat("Unexpected number of moved submissions.", movedCount, is(2));
   }
 
   @Test
@@ -136,12 +137,13 @@ class LtftSubmissionHistoryServiceIntegrationTest {
     String fromTraineeId = "oldTrainee";
     String toTraineeId = "newTrainee";
 
-    service.moveLtftSubmissions(fromTraineeId, toTraineeId);
+    Integer movedCount = service.moveLtftSubmissions(fromTraineeId, toTraineeId);
 
     List<LtftSubmissionHistory> traineeSubmissions
         = template.findAll(LtftSubmissionHistory.class);
 
     assertThat("Unexpected number of submissions.", traineeSubmissions.size(), is(0));
+    assertThat("Unexpected number of moved submissions.", movedCount, is(0));
   }
 
   @Test

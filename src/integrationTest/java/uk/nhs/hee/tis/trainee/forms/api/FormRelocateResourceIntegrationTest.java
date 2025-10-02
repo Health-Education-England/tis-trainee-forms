@@ -26,6 +26,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import java.util.UUID;
@@ -37,6 +38,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.MongoDBContainer;
@@ -69,6 +71,7 @@ public class FormRelocateResourceIntegrationTest {
   @AfterEach
   void tearDown() {
     template.findAllAndRemove(new Query(), FormRPartA.class);
+    template.findAllAndRemove(new Query(), FormRPartB.class);
     template.findAllAndRemove(new Query(), FormRPartB.class);
   }
 
@@ -105,10 +108,16 @@ public class FormRelocateResourceIntegrationTest {
     formPartA2.setTraineeTisId(TO_TRAINEE_ID);
     template.insert(formPartA2);
 
-    mockMvc.perform(patch("/api//form-relocate/move/{fromTraineeId}/to/{toTraineeId}",
-            FROM_TRAINEE_ID, TO_TRAINEE_ID))
+    mockMvc
+        .perform(
+            patch(
+                "/api/form-relocate/move/{fromTraineeId}/to/{toTraineeId}",
+                FROM_TRAINEE_ID,
+                TO_TRAINEE_ID))
         .andExpect(status().isOk())
-        .andExpect(content().string("2"));
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.formr-a").value(1))
+        .andExpect(jsonPath("$.formr-b").value(1));
 
     FormRPartA movedFormPartA = template.findById(id, FormRPartA.class);
     assertThat("Unexpected missing moved entity.", movedFormPartA, notNullValue());

@@ -25,6 +25,7 @@ import com.amazonaws.xray.spring.aop.XRayEnabled;
 import com.fasterxml.jackson.annotation.JsonView;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -233,12 +234,12 @@ public class LtftResource {
    * @return True if the LTFT were moved.
    */
   @PatchMapping("/move/{fromTraineeId}/to/{toTraineeId}")
-  public ResponseEntity<Boolean> moveLtfts(@PathVariable String fromTraineeId,
+  public ResponseEntity<Map<String, Integer>> moveLtfts(@PathVariable String fromTraineeId,
       @PathVariable String toTraineeId) {
     log.info("Request to move LTFT forms from trainee {} to trainee {}",
         fromTraineeId, toTraineeId);
 
-    service.moveLtftForms(fromTraineeId, toTraineeId);
-    return ResponseEntity.ok(true);
+    Map<String, Integer> movedStats = service.moveLtftForms(fromTraineeId, toTraineeId);
+    return ResponseEntity.ok(movedStats);
   }
 }

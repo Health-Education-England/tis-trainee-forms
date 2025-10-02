@@ -35,13 +35,16 @@ import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
@@ -330,11 +333,15 @@ class LtftResourceTest {
   void shouldMoveLtftFormsWhenTraineeIdsProvided() {
     String fromTraineeId = "40";
     String toTraineeId = "50";
+    Map<String, Integer> serviceResponse = Map.of("dummy", 1);
+    when(service.moveLtftForms(fromTraineeId, toTraineeId)).thenReturn(serviceResponse);
 
-    ResponseEntity<Boolean> response = controller.moveLtfts(fromTraineeId, toTraineeId);
+    ResponseEntity<Map<String, Integer>> response
+        = controller.moveLtfts(fromTraineeId, toTraineeId);
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
-    assertThat("Unexpected response body.", response.getBody(), is(true));
+    assertThat("Unexpected response body.", response.getBody(), is(serviceResponse));
+
     verify(service).moveLtftForms(fromTraineeId, toTraineeId);
   }
 }
