@@ -40,4 +40,6 @@ public interface FormRPartARepository extends MongoRepository<FormRPartA, UUID> 
   )
   List<FormRPartA> findByTraineeTisIdAndLifecycleState(String traineeTisId,
       LifecycleState lifecycleState);
+
+  List<FormRPartA> findByTraineeTisId(String traineeTisId);
 }

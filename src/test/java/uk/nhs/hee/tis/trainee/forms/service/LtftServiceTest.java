@@ -3460,7 +3460,10 @@ class LtftServiceTest {
     when(repository.findByTraineeTisIdOrderByLastModified(fromTraineeId)).thenReturn(formsToMove);
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    service.moveLtftForms(fromTraineeId, toTraineeId);
+    Map<String, Integer> movedStats = service.moveLtftForms(fromTraineeId, toTraineeId);
+
+    Map<String, Integer> expectedMap = Map.of("ltft", 2, "ltft-submission", 0);
+    assertThat("Unexpected moved form count.", movedStats, is(expectedMap));
 
     ArgumentCaptor<LtftForm> formsCaptor = ArgumentCaptor.captor();
     verify(repository, times(2)).save(formsCaptor.capture());
@@ -3493,7 +3496,10 @@ class LtftServiceTest {
 
     when(repository.findByTraineeTisIdOrderByLastModified(fromTraineeId)).thenReturn(List.of());
 
-    service.moveLtftForms(fromTraineeId, toTraineeId);
+    Map<String, Integer> movedStats = service.moveLtftForms(fromTraineeId, toTraineeId);
+
+    Map<String, Integer> expectedMap = Map.of("ltft", 0, "ltft-submission", 0);
+    assertThat("Unexpected moved form count.", movedStats, is(expectedMap));
 
     verify(repository, never()).save(any());
     verify(eventBroadcastService, never()).publishLtftFormUpdateEvent(any(), any(), any());

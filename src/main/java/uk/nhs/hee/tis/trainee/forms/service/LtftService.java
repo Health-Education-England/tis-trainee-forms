@@ -36,6 +36,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -673,18 +674,23 @@ public class LtftService {
    *
    * @param fromTraineeId The trainee ID to move LTFTs from.
    * @param toTraineeId   The trainee ID to move LTFTs to.
+   * @return A map of the number of LTFT forms and submission histories moved.
    */
-  public void moveLtftForms(String fromTraineeId, String toTraineeId) {
+  public Map<String, Integer> moveLtftForms(String fromTraineeId, String toTraineeId) {
     if (fromTraineeId == null || toTraineeId == null || fromTraineeId.equals(toTraineeId)) {
       log.warn("Not moving LTFT forms, fromTraineeId or toTraineeId is null or unchanged: {} -> {}",
           fromTraineeId, toTraineeId);
-      return;
+      return Map.of(
+          "ltft", 0,
+          "ltft-submission", 0
+      );
     }
     List<LtftForm> ltfts = ltftFormRepository
         .findByTraineeTisIdOrderByLastModified(fromTraineeId);
 
+    AtomicReference<Integer> movedForms = new AtomicReference<>(0);
     ltfts.forEach(form -> {
-      log.info("Moving LTFT form [{}] from trainee [{}] to trainee [{}]",
+      log.debug("Moving LTFT form [{}] from trainee [{}] to trainee [{}]",
           form.getId(), fromTraineeId, toTraineeId);
       // note no form content changes, just the trainee ID
       form.setTraineeTisId(toTraineeId);
@@ -693,11 +699,17 @@ public class LtftService {
       // content has not changed). Don't use ltftStatusUpdateTopic, which would generate emails
       // to TPD and trainee.
       publishUpdateNotification(form, null, ltftAssignmentUpdateTopic);
+      movedForms.getAndSet(movedForms.get() + 1);
     });
-    log.info("Moved {} LTFT forms from trainee [{}] to trainee [{}]",
-        ltfts.size(), fromTraineeId, toTraineeId);
 
-    ltftSubmissionHistoryService.moveLtftSubmissions(fromTraineeId, toTraineeId);
+    Integer movedHistory
+        = ltftSubmissionHistoryService.moveLtftSubmissions(fromTraineeId, toTraineeId);
+    log.info("Moved {} LTFT forms and {} submission histories from trainee [{}] to trainee [{}]",
+        movedForms.get(), movedHistory, fromTraineeId, toTraineeId);
+    return Map.of(
+        "ltft", movedForms.get(),
+        "ltft-submission", movedHistory
+    );
   }
 
   /**

@@ -1756,7 +1756,9 @@ class LtftResourceIntegrationTest {
     mockMvc.perform(patch("/api/ltft/move/{fromTraineeId}/to/{toTraineeId}",
             fromTraineeId, toTraineeId))
         .andExpect(status().isOk())
-        .andExpect(content().string("true"));
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.ltft").value(2))
+        .andExpect(jsonPath("$.ltft-submission").value(0));
 
     List<LtftForm> formsForFromTrainee = template.find(
         Query.query(Criteria.where("traineeTisId").is(fromTraineeId)),
@@ -1813,7 +1815,9 @@ class LtftResourceIntegrationTest {
     mockMvc.perform(patch("/api/ltft/move/{fromTraineeId}/to/{toTraineeId}",
             fromTraineeId, toTraineeId))
         .andExpect(status().isOk())
-        .andExpect(content().string("true"));
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.ltft").value(1))
+        .andExpect(jsonPath("$.ltft-submission").value(1));
 
     // Verify submission history was moved
     List<LtftSubmissionHistory> historyForFromTraineePostMove = template.find(

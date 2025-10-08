@@ -30,10 +30,12 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,8 +60,8 @@ class FormRelocateServiceTest {
 
   private static final UUID FORM_ID = UUID.randomUUID();
   private static final String FORM_ID_STRING = FORM_ID.toString();
-  private static final String TARGET_TRAINEE = "TARGET_TRAINEE";
-  private static final String DEFAULT_TRAINEE_TIS_ID = "DEFAULT_TRAINEE";
+  private static final String TARGET_TRAINEE_ID = "TARGET_TRAINEE";
+  private static final String DEFAULT_TRAINEE_ID = "DEFAULT_TRAINEE";
   private static final String DEFAULT_FORENAME = "DEFAULT_FORENAME";
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";
   private static final LocalDateTime DEFAULT_SUBMISSION_DATE = LocalDateTime.now();
@@ -99,15 +101,15 @@ class FormRelocateServiceTest {
 
     formRPartA = new FormRPartA();
     formRPartA.setId(FORM_ID);
-    formRPartA.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    formRPartA.setTraineeTisId(DEFAULT_TRAINEE_ID);
     formRPartA.setForename(DEFAULT_FORENAME);
     formRPartA.setSurname(DEFAULT_SURNAME);
     formRPartA.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
-    formRPartA.setLifecycleState(LifecycleState.DRAFT);
+    formRPartA.setLifecycleState(DRAFT);
 
     formRPartB = new FormRPartB();
     formRPartB.setId(FORM_ID);
-    formRPartB.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    formRPartB.setTraineeTisId(DEFAULT_TRAINEE_ID);
     formRPartB.setForename(DEFAULT_FORENAME);
     formRPartB.setSurname(DEFAULT_SURNAME);
     formRPartB.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
@@ -118,7 +120,7 @@ class FormRelocateServiceTest {
   void shouldMoveDraftFormRPartAInDb() {
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartA));
 
-    service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE);
+    service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE_ID);
 
     verify(formRPartARepositoryMock).save(formRPartACaptor.capture());
     verifyNoInteractions(formRPartBRepositoryMock);
@@ -126,24 +128,40 @@ class FormRelocateServiceTest {
 
     FormRPartA formRPartA = formRPartACaptor.getValue();
     assertThat("Unexpected form ID.", formRPartA.getId(), is(FORM_ID));
-    assertThat("Unexpected trainee ID.", formRPartA.getTraineeTisId(), is(TARGET_TRAINEE));
+    assertThat("Unexpected trainee ID.", formRPartA.getTraineeTisId(), is(TARGET_TRAINEE_ID));
     assertThat("Unexpected forename.", formRPartA.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", formRPartA.getSurname(), is(DEFAULT_SURNAME));
     assertThat("Unexpected submissionDate.", formRPartA.getSubmissionDate(),
         is(DEFAULT_SUBMISSION_DATE));
     assertThat("Unexpected lifecycleState.", formRPartA.getLifecycleState(),
-        is(LifecycleState.DRAFT));
+        is(DRAFT));
   }
 
   @Test
   void shouldThrowExceptionWhenGetMoveFormInfoInDbFailed() {
     when(formRPartARepositoryMock.findById(FORM_ID))
         .thenThrow(new ApplicationException("Expected Exception"));
+    when(formRPartBRepositoryMock.findById(FORM_ID))
+        .thenThrow(new ApplicationException("Expected Exception"));
 
     assertThrows(ApplicationException.class, () ->
-        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE));
+        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE_ID));
     verify(formRPartARepositoryMock, never()).save(any());
-    verifyNoInteractions(formRPartBRepositoryMock);
+    verify(formRPartBRepositoryMock, never()).save(any());
+    verifyNoInteractions(amazonS3Mock);
+  }
+
+  @Test
+  void shouldTryPartBRepositoryWhenGetMoveFormInfoInDbFailedForPartARepository() {
+    when(formRPartARepositoryMock.findById(FORM_ID))
+        .thenThrow(new ApplicationException("Expected Exception"));
+    when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
+
+    assertThrows(ApplicationException.class, () ->
+        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE_ID));
+    verify(formRPartARepositoryMock, never()).save(any());
+    verify(formRPartBRepositoryMock).findById(FORM_ID);
+    verify(formRPartBRepositoryMock, never()).save(any());
     verifyNoInteractions(amazonS3Mock);
   }
 
@@ -153,7 +171,7 @@ class FormRelocateServiceTest {
     when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
 
     assertThrows(ApplicationException.class, () ->
-        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE));
+        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE_ID));
 
     verify(formRPartARepositoryMock, never()).save(any());
     verify(formRPartBRepositoryMock, never()).save(any());
@@ -162,11 +180,11 @@ class FormRelocateServiceTest {
 
   @Test
   void shouldNotUpdateDbAndS3WhenSourceTraineeIsSameAsTargetTrainee() {
-    formRPartA.setTraineeTisId(TARGET_TRAINEE);
+    formRPartA.setTraineeTisId(TARGET_TRAINEE_ID);
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartA));
 
     assertThrows(ApplicationException.class, () ->
-        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE));
+        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE_ID));
 
     verify(formRPartARepositoryMock, never()).save(any());
     verify(formRPartBRepositoryMock, never()).save(any());
@@ -180,7 +198,7 @@ class FormRelocateServiceTest {
         .thenThrow(new ApplicationException("Expected Exception"));
 
     assertThrows(ApplicationException.class, () ->
-        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE));
+        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE_ID));
 
     verify(formRPartARepositoryMock, times(2)).save(formRPartACaptor.capture());
     verifyNoInteractions(formRPartBRepositoryMock);
@@ -190,13 +208,13 @@ class FormRelocateServiceTest {
     FormRPartA formRPartA = formRPartACaptor.getValue();
     assertThat("Unexpected form ID.", formRPartA.getId(), is(FORM_ID));
     assertThat("Unexpected trainee ID.", formRPartA.getTraineeTisId(),
-        is(DEFAULT_TRAINEE_TIS_ID));
+        is(DEFAULT_TRAINEE_ID));
     assertThat("Unexpected forename.", formRPartA.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", formRPartA.getSurname(), is(DEFAULT_SURNAME));
     assertThat("Unexpected submissionDate.", formRPartA.getSubmissionDate(),
         is(DEFAULT_SUBMISSION_DATE));
     assertThat("Unexpected lifecycleState.", formRPartA.getLifecycleState(),
-        is(LifecycleState.DRAFT));
+        is(DRAFT));
   }
 
   @Test
@@ -207,7 +225,7 @@ class FormRelocateServiceTest {
         .thenThrow(new ApplicationException("Expected Exception"));
 
     assertThrows(ApplicationException.class, () ->
-        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE));
+        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE_ID));
 
     verify(formRPartARepositoryMock, never()).save(any());
     verify(formRPartBRepositoryMock, times(2)).save(formRPartBCaptor.capture());
@@ -217,7 +235,7 @@ class FormRelocateServiceTest {
     FormRPartB formRPartB = formRPartBCaptor.getValue();
     assertThat("Unexpected form ID.", formRPartB.getId(), is(FORM_ID));
     assertThat("Unexpected trainee ID.", formRPartB.getTraineeTisId(),
-        is(DEFAULT_TRAINEE_TIS_ID));
+        is(DEFAULT_TRAINEE_ID));
     assertThat("Unexpected forename.", formRPartB.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", formRPartB.getSurname(), is(DEFAULT_SURNAME));
     assertThat("Unexpected submissionDate.", formRPartB.getSubmissionDate(),
@@ -231,10 +249,10 @@ class FormRelocateServiceTest {
     formRPartA.setLifecycleState(LifecycleState.UNSUBMITTED);
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartA));
     when(abstractCloudRepositoryAMock
-        .findByIdAndTraineeTisId(FORM_ID.toString(), DEFAULT_TRAINEE_TIS_ID))
+        .findByIdAndTraineeTisId(FORM_ID.toString(), DEFAULT_TRAINEE_ID))
         .thenReturn(Optional.of(formRPartA));
 
-    service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE);
+    service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE_ID);
 
     // should update DB
     verify(formRPartARepositoryMock).save(formRPartACaptor.capture());
@@ -242,7 +260,7 @@ class FormRelocateServiceTest {
 
     FormRPartA formRPartA = formRPartACaptor.getValue();
     assertThat("Unexpected form ID.", formRPartA.getId(), is(FORM_ID));
-    assertThat("Unexpected trainee ID.", formRPartA.getTraineeTisId(), is(TARGET_TRAINEE));
+    assertThat("Unexpected trainee ID.", formRPartA.getTraineeTisId(), is(TARGET_TRAINEE_ID));
     assertThat("Unexpected forename.", formRPartA.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", formRPartA.getSurname(), is(DEFAULT_SURNAME));
     assertThat("Unexpected submissionDate.", formRPartA.getSubmissionDate(),
@@ -256,14 +274,14 @@ class FormRelocateServiceTest {
     FormRPartA s3FormRPartA = formRPartACaptor.getValue();
     assertThat("Unexpected form ID.", s3FormRPartA.getId(), is(FORM_ID));
     assertThat("Unexpected trainee ID.", s3FormRPartA.getTraineeTisId(),
-        is(TARGET_TRAINEE));
+        is(TARGET_TRAINEE_ID));
     assertThat("Unexpected forename.", s3FormRPartA.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", s3FormRPartA.getSurname(), is(DEFAULT_SURNAME));
     assertThat("Unexpected submissionDate.", s3FormRPartA.getSubmissionDate(),
         is(DEFAULT_SUBMISSION_DATE));
     assertThat("Unexpected lifecycleState.", s3FormRPartA.getLifecycleState(),
         is(LifecycleState.UNSUBMITTED));
-    verify(abstractCloudRepositoryAMock).delete(FORM_ID.toString(), DEFAULT_TRAINEE_TIS_ID);
+    verify(abstractCloudRepositoryAMock).delete(FORM_ID.toString(), DEFAULT_TRAINEE_ID);
   }
 
   @Test
@@ -271,10 +289,10 @@ class FormRelocateServiceTest {
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
     when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartB));
     when(abstractCloudRepositoryBMock
-        .findByIdAndTraineeTisId(FORM_ID.toString(), DEFAULT_TRAINEE_TIS_ID))
+        .findByIdAndTraineeTisId(FORM_ID.toString(), DEFAULT_TRAINEE_ID))
         .thenReturn(Optional.of(formRPartB));
 
-    service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE);
+    service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE_ID);
 
     // should update DB
     verify(formRPartARepositoryMock, never()).save(any());
@@ -282,7 +300,7 @@ class FormRelocateServiceTest {
 
     FormRPartB formRPartB = formRPartBCaptor.getValue();
     assertThat("Unexpected form ID.", formRPartB.getId(), is(FORM_ID));
-    assertThat("Unexpected trainee ID.", formRPartB.getTraineeTisId(), is(TARGET_TRAINEE));
+    assertThat("Unexpected trainee ID.", formRPartB.getTraineeTisId(), is(TARGET_TRAINEE_ID));
     assertThat("Unexpected forename.", formRPartB.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", formRPartB.getSurname(), is(DEFAULT_SURNAME));
     assertThat("Unexpected submissionDate.", formRPartB.getSubmissionDate(),
@@ -296,14 +314,14 @@ class FormRelocateServiceTest {
     FormRPartB s3FormRPartB = formRPartBCaptor.getValue();
     assertThat("Unexpected form ID.", s3FormRPartB.getId(), is(FORM_ID));
     assertThat("Unexpected trainee ID.", s3FormRPartB.getTraineeTisId(),
-        is(TARGET_TRAINEE));
+        is(TARGET_TRAINEE_ID));
     assertThat("Unexpected forename.", s3FormRPartB.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", s3FormRPartB.getSurname(), is(DEFAULT_SURNAME));
     assertThat("Unexpected submissionDate.", s3FormRPartB.getSubmissionDate(),
         is(DEFAULT_SUBMISSION_DATE));
     assertThat("Unexpected lifecycleState.", s3FormRPartB.getLifecycleState(),
         is(LifecycleState.SUBMITTED));
-    verify(abstractCloudRepositoryBMock).delete(FORM_ID.toString(), DEFAULT_TRAINEE_TIS_ID);
+    verify(abstractCloudRepositoryBMock).delete(FORM_ID.toString(), DEFAULT_TRAINEE_ID);
   }
 
   @Test
@@ -311,11 +329,11 @@ class FormRelocateServiceTest {
     formRPartA.setLifecycleState(LifecycleState.UNSUBMITTED);
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartA));
     when(abstractCloudRepositoryAMock
-        .findByIdAndTraineeTisId(FORM_ID.toString(), DEFAULT_TRAINEE_TIS_ID))
+        .findByIdAndTraineeTisId(FORM_ID.toString(), DEFAULT_TRAINEE_ID))
         .thenReturn(Optional.empty());
 
     assertThrows(ApplicationException.class, () ->
-        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE));
+        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE_ID));
 
     // should roll back DB
     verify(formRPartARepositoryMock, times(2)).save(formRPartACaptor.capture());
@@ -324,7 +342,7 @@ class FormRelocateServiceTest {
     List<FormRPartA> formRPartAs = formRPartACaptor.getAllValues();
     assertThat("Unexpected form ID.", formRPartAs.get(1).getId(), is(FORM_ID));
     assertThat("Unexpected trainee ID.", formRPartAs.get(1).getTraineeTisId(),
-        is(DEFAULT_TRAINEE_TIS_ID));
+        is(DEFAULT_TRAINEE_ID));
     assertThat("Unexpected forename.", formRPartAs.get(1).getForename(),
         is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", formRPartAs.get(1).getSurname(), is(DEFAULT_SURNAME));
@@ -343,11 +361,11 @@ class FormRelocateServiceTest {
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
     when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartB));
     when(abstractCloudRepositoryBMock
-        .findByIdAndTraineeTisId(FORM_ID.toString(), DEFAULT_TRAINEE_TIS_ID))
+        .findByIdAndTraineeTisId(FORM_ID.toString(), DEFAULT_TRAINEE_ID))
         .thenReturn(Optional.empty());
 
     assertThrows(ApplicationException.class, () ->
-        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE));
+        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE_ID));
 
     // should roll back DB
     verify(formRPartARepositoryMock, never()).save(any());
@@ -356,7 +374,7 @@ class FormRelocateServiceTest {
     List<FormRPartB> formRPartBs = formRPartBCaptor.getAllValues();
     assertThat("Unexpected form ID.", formRPartBs.get(1).getId(), is(FORM_ID));
     assertThat("Unexpected trainee ID.", formRPartBs.get(1).getTraineeTisId(),
-        is(DEFAULT_TRAINEE_TIS_ID));
+        is(DEFAULT_TRAINEE_ID));
     assertThat("Unexpected forename.", formRPartBs.get(1).getForename(),
         is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", formRPartBs.get(1).getSurname(), is(DEFAULT_SURNAME));
@@ -375,13 +393,13 @@ class FormRelocateServiceTest {
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
     when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartB));
     when(abstractCloudRepositoryBMock
-        .findByIdAndTraineeTisId(FORM_ID.toString(), DEFAULT_TRAINEE_TIS_ID))
+        .findByIdAndTraineeTisId(FORM_ID.toString(), DEFAULT_TRAINEE_ID))
         .thenReturn(Optional.of(formRPartB));
 
     when(abstractCloudRepositoryBMock.save(formRPartB))
         .thenThrow(new ApplicationException("Expected Exception"));
     assertThrows(ApplicationException.class, () ->
-        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE));
+        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE_ID));
 
     // should roll back DB
     verify(formRPartARepositoryMock, never()).save(any());
@@ -390,7 +408,7 @@ class FormRelocateServiceTest {
     List<FormRPartB> formRPartBs = formRPartBCaptor.getAllValues();
     assertThat("Unexpected form ID.", formRPartBs.get(1).getId(), is(FORM_ID));
     assertThat("Unexpected trainee ID.", formRPartBs.get(1).getTraineeTisId(),
-        is(DEFAULT_TRAINEE_TIS_ID));
+        is(DEFAULT_TRAINEE_ID));
     assertThat("Unexpected forename.", formRPartBs.get(1).getForename(),
         is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", formRPartBs.get(1).getSurname(), is(DEFAULT_SURNAME));
@@ -405,7 +423,7 @@ class FormRelocateServiceTest {
     FormRPartB s3FormRPartB = formRPartBCaptor.getValue();
     assertThat("Unexpected form ID.", s3FormRPartB.getId(), is(FORM_ID));
     assertThat("Unexpected trainee ID.", s3FormRPartB.getTraineeTisId(),
-        is(DEFAULT_TRAINEE_TIS_ID));
+        is(DEFAULT_TRAINEE_ID));
     assertThat("Unexpected forename.", s3FormRPartB.getForename(),
         is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", s3FormRPartB.getSurname(), is(DEFAULT_SURNAME));
@@ -413,5 +431,131 @@ class FormRelocateServiceTest {
         is(DEFAULT_SUBMISSION_DATE));
     assertThat("Unexpected lifecycleState.", s3FormRPartB.getLifecycleState(),
         is(LifecycleState.SUBMITTED));
+  }
+
+  @Test
+  void shouldMoveAllForms() {
+    FormRPartA formA1 = new FormRPartA();
+    formA1.setId(FORM_ID);
+    formA1.setTraineeTisId(DEFAULT_TRAINEE_ID);
+    formA1.setLifecycleState(DRAFT);
+    FormRPartA formA2 = new FormRPartA();
+    formA2.setId(UUID.randomUUID());
+    formA2.setTraineeTisId(DEFAULT_TRAINEE_ID);
+    formA2.setLifecycleState(DRAFT);
+
+    FormRPartB formB1 = new FormRPartB();
+    formB1.setId(UUID.randomUUID());
+    formB1.setTraineeTisId(DEFAULT_TRAINEE_ID);
+    formB1.setLifecycleState(DRAFT);
+    FormRPartB formB2 = new FormRPartB();
+    formB2.setId(UUID.randomUUID());
+    formB2.setTraineeTisId(DEFAULT_TRAINEE_ID);
+    formB2.setLifecycleState(DRAFT);
+
+    when(formRPartARepositoryMock.findByTraineeTisId(DEFAULT_TRAINEE_ID))
+        .thenReturn(List.of(formA1, formA2));
+    when(formRPartBRepositoryMock.findByTraineeTisId(DEFAULT_TRAINEE_ID))
+        .thenReturn(List.of(formB1, formB2));
+
+    when(formRPartARepositoryMock.findById(formA1.getId())).thenReturn(Optional.of(formA1));
+    when(formRPartARepositoryMock.findById(formA2.getId())).thenReturn(Optional.of(formA2));
+    when(formRPartBRepositoryMock.findById(formB1.getId())).thenReturn(Optional.of(formB1));
+    when(formRPartBRepositoryMock.findById(formB2.getId())).thenReturn(Optional.of(formB2));
+
+    Map<String, Integer> movedStats = service.moveAllForms(DEFAULT_TRAINEE_ID, TARGET_TRAINEE_ID);
+
+    Map<String, Integer> expectedMap = Map.of("formr-a", 2, "formr-b", 2);
+    assertThat("Unexpected moved form count.", movedStats, is(expectedMap));
+
+    verify(formRPartARepositoryMock, times(2)).save(formRPartACaptor.capture());
+    verify(formRPartBRepositoryMock, times(2)).save(formRPartBCaptor.capture());
+    List<FormRPartA> savedFormRPartAs = formRPartACaptor.getAllValues();
+    for (FormRPartA partA : savedFormRPartAs) {
+      assertThat("Unexpected trainee ID.", partA.getTraineeTisId(), is(TARGET_TRAINEE_ID));
+    }
+    List<FormRPartB> savedFormRPartBs = formRPartBCaptor.getAllValues();
+    for (FormRPartB partB : savedFormRPartBs) {
+      assertThat("Unexpected trainee ID.", partB.getTraineeTisId(), is(TARGET_TRAINEE_ID));
+    }
+  }
+
+  @Test
+  void shouldContinueMovingFormsWhenOneFormFailsToMove() {
+    FormRPartA formA1 = new FormRPartA();
+    formA1.setId(FORM_ID);
+    formA1.setTraineeTisId(DEFAULT_TRAINEE_ID);
+    FormRPartB formB1 = new FormRPartB();
+    UUID formBid = UUID.randomUUID();
+    formB1.setId(formBid);
+    formB1.setTraineeTisId(DEFAULT_TRAINEE_ID);
+    formB1.setLifecycleState(DRAFT);
+
+    when(formRPartARepositoryMock.findByTraineeTisId(DEFAULT_TRAINEE_ID))
+        .thenReturn(List.of(formA1));
+    when(formRPartBRepositoryMock.findByTraineeTisId(DEFAULT_TRAINEE_ID))
+        .thenReturn(List.of(formB1));
+
+    // Make first form move fail
+    when(formRPartARepositoryMock.findById(any()))
+        .thenThrow(new ApplicationException("Expected Exception"));
+    when(formRPartBRepositoryMock.findById(formBid)).thenReturn(Optional.of(formB1));
+
+    Map<String, Integer> movedStats = service.moveAllForms(DEFAULT_TRAINEE_ID, TARGET_TRAINEE_ID);
+
+    Map<String, Integer> expectedMap = Map.of("formr-a", 0, "formr-b", 1);
+    assertThat("Unexpected moved form count.", movedStats, is(expectedMap));
+
+    verify(formRPartARepositoryMock, never()).save(any());
+    verify(formRPartBRepositoryMock).save(any());
+  }
+
+  @Test
+  void shouldMoveFormsWhenLaterFormFailsToMove() {
+    FormRPartA formA1 = new FormRPartA();
+    formA1.setId(FORM_ID);
+    formA1.setTraineeTisId(DEFAULT_TRAINEE_ID);
+    formA1.setLifecycleState(DRAFT);
+    FormRPartB formB1 = new FormRPartB();
+    UUID formBid = UUID.randomUUID();
+    formB1.setId(formBid);
+    formB1.setTraineeTisId(DEFAULT_TRAINEE_ID);
+    formB1.setLifecycleState(DRAFT);
+
+    when(formRPartARepositoryMock.findByTraineeTisId(DEFAULT_TRAINEE_ID))
+        .thenReturn(List.of(formA1));
+    when(formRPartBRepositoryMock.findByTraineeTisId(DEFAULT_TRAINEE_ID))
+        .thenReturn(List.of(formB1));
+
+    // Make second form move fail
+    when(formRPartBRepositoryMock.findById(any()))
+        .thenThrow(new ApplicationException("Expected Exception"));
+    when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formA1));
+
+    Map<String, Integer> movedStats = service.moveAllForms(DEFAULT_TRAINEE_ID, TARGET_TRAINEE_ID);
+
+    Map<String, Integer> expectedMap = Map.of("formr-a", 1, "formr-b", 0);
+    assertThat("Unexpected moved form count.", movedStats, is(expectedMap));
+
+    verify(formRPartBRepositoryMock, never()).save(any());
+    verify(formRPartARepositoryMock).save(any());
+  }
+
+  @Test
+  void shouldHandleEmptyFormLists() {
+    when(formRPartARepositoryMock.findByTraineeTisId(DEFAULT_TRAINEE_ID))
+        .thenReturn(List.of());
+    when(formRPartBRepositoryMock.findByTraineeTisId(DEFAULT_TRAINEE_ID))
+        .thenReturn(List.of());
+
+    Map<String, Integer> movedStats = service.moveAllForms(DEFAULT_TRAINEE_ID, TARGET_TRAINEE_ID);
+
+    Map<String, Integer> expectedMap = Map.of("formr-a", 0, "formr-b", 0);
+    assertThat("Unexpected moved form count.", movedStats, is(expectedMap));
+
+    verify(formRPartARepositoryMock, never()).save(any());
+    verify(formRPartBRepositoryMock, never()).save(any());
+    verifyNoInteractions(abstractCloudRepositoryAMock);
+    verifyNoInteractions(abstractCloudRepositoryBMock);
   }
 }

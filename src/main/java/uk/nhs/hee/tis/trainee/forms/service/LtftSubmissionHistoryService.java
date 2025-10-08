@@ -23,6 +23,7 @@ package uk.nhs.hee.tis.trainee.forms.service;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
@@ -71,18 +72,22 @@ public class LtftSubmissionHistoryService {
    *
    * @param fromTraineeId The trainee ID to move LTFTs from.
    * @param toTraineeId   The trainee ID to move LTFTs to.
+   * @return The number of LTFT submissions moved.
    */
-  public void moveLtftSubmissions(String fromTraineeId, String toTraineeId) {
+  public Integer moveLtftSubmissions(String fromTraineeId, String toTraineeId) {
+    AtomicReference<Integer> movedCount = new AtomicReference<>(0);
     List<LtftSubmissionHistory> submissions
         = ltftHistoryRepository.findByTraineeTisId(fromTraineeId);
 
     submissions.forEach(form -> {
-      log.info("Moving LTFT submission [{}] from trainee [{}] to trainee [{}]",
+      log.debug("Moving LTFT submission [{}] from trainee [{}] to trainee [{}]",
           form.getId(), fromTraineeId, toTraineeId);
       form.setTraineeTisId(toTraineeId);
       ltftHistoryRepository.save(form); //lastModifiedDate will be overwritten here
+      movedCount.getAndSet(movedCount.get() + 1);
     });
     log.info("Moved {} LTFT submissions from trainee [{}] to trainee [{}]",
-        submissions.size(), fromTraineeId, toTraineeId);
+        movedCount.get(), fromTraineeId, toTraineeId);
+    return movedCount.get();
   }
 }

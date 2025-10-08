@@ -22,8 +22,11 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -68,6 +71,51 @@ public class FormRelocateService {
   }
 
   /**
+   * Move all FormR forms from source trainee to target trainee. Errors are logged but do not stop
+   * the process.
+   *
+   * @param sourceTraineeTisId The TIS ID of the source trainee.
+   * @param targetTraineeTisId The TIS ID of the target trainee.
+   * @return A map of each form type and the number of forms of that type moved.
+   */
+  public Map<String, Integer> moveAllForms(String sourceTraineeTisId, String targetTraineeTisId) {
+    AtomicReference<Integer> movedFormA = new AtomicReference<>(0);
+    List<FormRPartA> formRPartAs = formRPartARepository.findByTraineeTisId(sourceTraineeTisId);
+    log.info("Moving {}} FormR PartA's from {} to {}.",
+        formRPartAs.size(), sourceTraineeTisId, targetTraineeTisId);
+    formRPartAs.forEach(form -> {
+      try {
+        relocateForm(form.getId().toString(), targetTraineeTisId);
+        movedFormA.getAndSet(movedFormA.get() + 1);
+      } catch (ApplicationException e) {
+        log.error("Error occurred when moving FormR PartA {}: {}", form.getId(), e.toString());
+      }
+    });
+    log.debug("Moved {} FormR PartA out of an expected {} forms from {} to {}.",
+        movedFormA.get(), formRPartAs.size(), sourceTraineeTisId, targetTraineeTisId);
+
+    AtomicReference<Integer> movedFormB = new AtomicReference<>(0);
+    List<FormRPartB> formRPartBs = formRPartBRepository.findByTraineeTisId(sourceTraineeTisId);
+    log.info("Moving {} FormR PartB's from {} to {}",
+        formRPartBs.size(), sourceTraineeTisId, targetTraineeTisId);
+    formRPartBs.forEach(form -> {
+      try {
+        relocateForm(form.getId().toString(), targetTraineeTisId);
+        movedFormB.getAndSet(movedFormB.get() + 1);
+      } catch (ApplicationException e) {
+        log.error("Error occurred when moving FormR PartB {}: {}", form.getId(), e.toString());
+      }
+    });
+    log.debug("Moved {} forms out of an expected {} forms from {} to {}.",
+        movedFormB.get(), formRPartBs.size(), sourceTraineeTisId, targetTraineeTisId);
+
+    return Map.of(
+        "formr-a", movedFormA.get(),
+        "formr-b", movedFormB.get()
+    );
+  }
+
+  /**
    * Relocate Form.
    */
   public void relocateForm(String formId, String targetTrainee) {
@@ -75,7 +123,7 @@ public class FormRelocateService {
     // Get Form from MongoDB by FormId
     Optional<AbstractForm> optionalForm = getMoveFormInfoInDb(formId);
 
-    if (!optionalForm.isPresent()) {
+    if (optionalForm.isEmpty()) {
       log.error("Cannot find form with ID " + formId + " from DB.");
       throw new ApplicationException("Cannot find form with ID " + formId + " from DB.");
     }
@@ -104,20 +152,22 @@ public class FormRelocateService {
   }
 
   private Optional<AbstractForm> getMoveFormInfoInDb(String formId) {
+    UUID formUuid = UUID.fromString(formId);
     try {
-      UUID formUuid = UUID.fromString(formId);
       Optional<FormRPartA> optionalFormRPartA = formRPartARepository.findById(formUuid);
-
       if (optionalFormRPartA.isPresent()) {
         return Optional.of(optionalFormRPartA.get());
       }
-      else {
-        Optional<FormRPartB> optionalFormRPartB = formRPartBRepository.findById(formUuid);
-        return Optional.ofNullable(optionalFormRPartB.orElse(null));
-      }
     } catch (Exception e) {
-      log.error("Fail to get form with ID " + formId + ": " + e);
-      throw new ApplicationException("Fail to get form with ID " + formId + ": " + e.toString());
+      log.error("Failed to get Form R Part A with ID {}: {}", formId, e.toString());
+    }
+    //try PartB repository, even if PartA lookup failed
+    try {
+      Optional<FormRPartB> optionalFormRPartB = formRPartBRepository.findById(formUuid);
+      return Optional.ofNullable(optionalFormRPartB.orElse(null));
+    } catch (Exception e) {
+      log.error("Failed to get Form R Part B with ID {}: {}", formId, e.toString());
+      throw new ApplicationException("Fail to get form with ID " + formId + ": " + e);
     }
   }
 
