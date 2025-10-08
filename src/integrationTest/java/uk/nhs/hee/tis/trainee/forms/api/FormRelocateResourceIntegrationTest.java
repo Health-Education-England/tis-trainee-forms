@@ -72,7 +72,6 @@ public class FormRelocateResourceIntegrationTest {
   void tearDown() {
     template.findAllAndRemove(new Query(), FormRPartA.class);
     template.findAllAndRemove(new Query(), FormRPartB.class);
-    template.findAllAndRemove(new Query(), FormRPartB.class);
   }
 
   @Test
