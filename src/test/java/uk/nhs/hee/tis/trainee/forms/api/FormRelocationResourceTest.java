@@ -42,7 +42,6 @@ import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 class FormRelocationResourceTest {
 
   private static final String FORM_ID = "FORM_ID";
-  private static final String SOURCE_TRAINEE = "SOURCE_TRAINEE";
   private static final String TARGET_TRAINEE = "TARGET_TRAINEE";
 
   private MockMvc mockMvc;
