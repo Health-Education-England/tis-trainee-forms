@@ -23,7 +23,6 @@ package uk.nhs.hee.tis.trainee.forms.service;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
@@ -76,12 +75,11 @@ public class FormRelocateService {
    *
    * @param sourceTraineeTisId The TIS ID of the source trainee.
    * @param targetTraineeTisId The TIS ID of the target trainee.
-   * @return A map of each form type and the number of forms of that type moved.
    */
-  public Map<String, Integer> moveAllForms(String sourceTraineeTisId, String targetTraineeTisId) {
+  public void moveAllForms(String sourceTraineeTisId, String targetTraineeTisId) {
     AtomicReference<Integer> movedFormA = new AtomicReference<>(0);
     List<FormRPartA> formRPartAs = formRPartARepository.findByTraineeTisId(sourceTraineeTisId);
-    log.info("Moving {}} FormR PartA's from {} to {}.",
+    log.info("Moving {} FormR PartA's from {} to {}.",
         formRPartAs.size(), sourceTraineeTisId, targetTraineeTisId);
     formRPartAs.forEach(form -> {
       try {
@@ -91,7 +89,7 @@ public class FormRelocateService {
         log.error("Error occurred when moving FormR PartA {}: {}", form.getId(), e.toString());
       }
     });
-    log.debug("Moved {} FormR PartA out of an expected {} forms from {} to {}.",
+    log.debug("Moved {} of {} FormR PartA from {} to {}.",
         movedFormA.get(), formRPartAs.size(), sourceTraineeTisId, targetTraineeTisId);
 
     AtomicReference<Integer> movedFormB = new AtomicReference<>(0);
@@ -106,13 +104,8 @@ public class FormRelocateService {
         log.error("Error occurred when moving FormR PartB {}: {}", form.getId(), e.toString());
       }
     });
-    log.debug("Moved {} forms out of an expected {} forms from {} to {}.",
+    log.debug("Moved {} of {} FormR PartB from {} to {}.",
         movedFormB.get(), formRPartBs.size(), sourceTraineeTisId, targetTraineeTisId);
-
-    return Map.of(
-        "formr-a", movedFormA.get(),
-        "formr-b", movedFormB.get()
-    );
   }
 
   /**

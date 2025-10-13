@@ -19,15 +19,42 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms;
+package uk.nhs.hee.tis.trainee.forms.event;
 
-import org.testcontainers.utility.DockerImageName;
+import io.awspring.cloud.sqs.annotation.SqsListener;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import uk.nhs.hee.tis.trainee.forms.dto.ProfileMoveEvent;
+import uk.nhs.hee.tis.trainee.forms.service.FormRelocateService;
 
 /**
- * Constants for {@link DockerImageName} values used in tests to ensure consistency.
+ * A listener for profile move events.
  */
-public class DockerImageNames {
+@Slf4j
+@Component
+public class ProfileMoveListener {
 
-  public static final DockerImageName LOCALSTACK = DockerImageName.parse("localstack/localstack:3");
-  public static final DockerImageName MONGO = DockerImageName.parse("mongo:5");
+  private final FormRelocateService formRelocateService;
+
+  /**
+   * Construct a listener for profile move events.
+   *
+   * @param formRelocateService The Form Relocation service.
+   */
+  public ProfileMoveListener(FormRelocateService formRelocateService) {
+    this.formRelocateService = formRelocateService;
+  }
+
+  /**
+   * Handle profile move events.
+   *
+   * @param event The profile move event.
+   */
+  @SqsListener("${application.aws.sqs.profile-move}")
+  public void handleProfileMove(ProfileMoveEvent event) {
+    log.info("Handling profile move FormR A's and B's from trainee {} to trainee {}",
+        event.fromTraineeId(), event.toTraineeId());
+
+    formRelocateService.moveAllForms(event.fromTraineeId(), event.toTraineeId());
+  }
 }

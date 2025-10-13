@@ -35,7 +35,6 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -463,10 +462,7 @@ class FormRelocateServiceTest {
     when(formRPartBRepositoryMock.findById(formB1.getId())).thenReturn(Optional.of(formB1));
     when(formRPartBRepositoryMock.findById(formB2.getId())).thenReturn(Optional.of(formB2));
 
-    Map<String, Integer> movedStats = service.moveAllForms(DEFAULT_TRAINEE_ID, TARGET_TRAINEE_ID);
-
-    Map<String, Integer> expectedMap = Map.of("formr-a", 2, "formr-b", 2);
-    assertThat("Unexpected moved form count.", movedStats, is(expectedMap));
+    service.moveAllForms(DEFAULT_TRAINEE_ID, TARGET_TRAINEE_ID);
 
     verify(formRPartARepositoryMock, times(2)).save(formRPartACaptor.capture());
     verify(formRPartBRepositoryMock, times(2)).save(formRPartBCaptor.capture());
@@ -501,10 +497,7 @@ class FormRelocateServiceTest {
         .thenThrow(new ApplicationException("Expected Exception"));
     when(formRPartBRepositoryMock.findById(formBid)).thenReturn(Optional.of(formB1));
 
-    Map<String, Integer> movedStats = service.moveAllForms(DEFAULT_TRAINEE_ID, TARGET_TRAINEE_ID);
-
-    Map<String, Integer> expectedMap = Map.of("formr-a", 0, "formr-b", 1);
-    assertThat("Unexpected moved form count.", movedStats, is(expectedMap));
+    service.moveAllForms(DEFAULT_TRAINEE_ID, TARGET_TRAINEE_ID);
 
     verify(formRPartARepositoryMock, never()).save(any());
     verify(formRPartBRepositoryMock).save(any());
@@ -532,10 +525,7 @@ class FormRelocateServiceTest {
         .thenThrow(new ApplicationException("Expected Exception"));
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formA1));
 
-    Map<String, Integer> movedStats = service.moveAllForms(DEFAULT_TRAINEE_ID, TARGET_TRAINEE_ID);
-
-    Map<String, Integer> expectedMap = Map.of("formr-a", 1, "formr-b", 0);
-    assertThat("Unexpected moved form count.", movedStats, is(expectedMap));
+    service.moveAllForms(DEFAULT_TRAINEE_ID, TARGET_TRAINEE_ID);
 
     verify(formRPartBRepositoryMock, never()).save(any());
     verify(formRPartARepositoryMock).save(any());
@@ -548,10 +538,7 @@ class FormRelocateServiceTest {
     when(formRPartBRepositoryMock.findByTraineeTisId(DEFAULT_TRAINEE_ID))
         .thenReturn(List.of());
 
-    Map<String, Integer> movedStats = service.moveAllForms(DEFAULT_TRAINEE_ID, TARGET_TRAINEE_ID);
-
-    Map<String, Integer> expectedMap = Map.of("formr-a", 0, "formr-b", 0);
-    assertThat("Unexpected moved form count.", movedStats, is(expectedMap));
+    service.moveAllForms(DEFAULT_TRAINEE_ID, TARGET_TRAINEE_ID);
 
     verify(formRPartARepositoryMock, never()).save(any());
     verify(formRPartBRepositoryMock, never()).save(any());
