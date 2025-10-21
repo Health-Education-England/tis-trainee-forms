@@ -23,7 +23,6 @@ package uk.nhs.hee.tis.trainee.forms.api;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.io.IOException;
-import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -76,22 +75,5 @@ public class FormRelocateResource {
     }
 
     return ResponseEntity.noContent().build();
-  }
-
-  /**
-   * Move all FormR's from one trainee to another.
-   *
-   * @param fromTraineeId The TIS ID of the trainee to move forms from.
-   * @param toTraineeId   The TIS ID of the trainee to move forms to.
-   * @return True if the FormR's were moved.
-   */
-  @PatchMapping("/form-relocate/move/{fromTraineeId}/to/{toTraineeId}")
-  public ResponseEntity<Map<String, Integer>> moveForms(@PathVariable String fromTraineeId,
-      @PathVariable String toTraineeId) {
-    log.info("Request to move FormR's from trainee {} to trainee {}",
-        fromTraineeId, toTraineeId);
-
-    Map<String, Integer> movedStats = service.moveAllForms(fromTraineeId, toTraineeId);
-    return ResponseEntity.ok(movedStats);
   }
 }

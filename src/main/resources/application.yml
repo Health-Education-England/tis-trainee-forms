@@ -12,6 +12,7 @@ application:
       coj-received: ${COJ_RECEIVED_QUEUE:}
       delete-event: ${DELETE_EVENT_QUEUE:}
       notification-event: ${NOTIFICATION_EVENT_QUEUE:}
+      profile-move: ${PROFILE_MOVE_QUEUE:}
   signature:
     secret-key: ${SIGNATURE_SECRET_KEY}
   timezone: Europe/London

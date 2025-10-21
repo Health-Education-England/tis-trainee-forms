@@ -19,15 +19,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms;
-
-import org.testcontainers.utility.DockerImageName;
+package uk.nhs.hee.tis.trainee.forms.dto;
 
 /**
- * Constants for {@link DockerImageName} values used in tests to ensure consistency.
+ * A profile move event.
+ *
+ * @param fromTraineeId The ID of the trainee the profile CCT data are being moved from.
+ * @param toTraineeId   The ID of the trainee the profile CCT data are being moved to.
  */
-public class DockerImageNames {
-
-  public static final DockerImageName LOCALSTACK = DockerImageName.parse("localstack/localstack:3");
-  public static final DockerImageName MONGO = DockerImageName.parse("mongo:5");
-}
+public record ProfileMoveEvent(String fromTraineeId, String toTraineeId) {}

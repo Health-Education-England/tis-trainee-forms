@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.hee.tis.trainee"
-version = "0.54.1"
+version = "0.54.2"
 
 configurations {
   compileOnly {
@@ -101,7 +101,9 @@ testing {
       dependencies {
         implementation("org.springframework.boot:spring-boot-testcontainers")
         implementation("org.testcontainers:junit-jupiter")
+        implementation("org.testcontainers:localstack")
         implementation("org.testcontainers:mongodb")
+        implementation("org.awaitility:awaitility")
       }
 
       targets {
