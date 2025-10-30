@@ -1459,8 +1459,8 @@ class LtftResourceIntegrationTest {
     assertThat("Unexpected change type.", pdfText,
         containsString("Change Type Changing hours (LTFT)" + System.lineSeparator()));
     String changeStartDateString = changeStartDate.format(datePattern);
-    assertThat("Unexpected change date.", pdfText,
-        containsString("Change Date " + changeStartDateString + System.lineSeparator()));
+    assertThat("Unexpected LTFT start date.", pdfText,
+        containsString("LTFT Start Date " + changeStartDateString + System.lineSeparator()));
     assertThat("Unexpected proposed wte.", pdfText,
         containsString("Proposed WTE 75%" + System.lineSeparator()));
     String cctDateString = cctDate.format(datePattern);

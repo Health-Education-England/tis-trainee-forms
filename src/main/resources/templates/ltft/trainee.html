@@ -90,7 +90,7 @@
               <dd class="nhsuk-summary-list__value" th:text="${not #strings.isEmpty(change?.type)} ? (${#strings.toString(change?.type)} == 'LTFT' ? 'Changing hours (LTFT)' : ${change?.type}) : 'Not provided'">Not provided</dd>
             </div>
             <div class="nhsuk-summary-list__row">
-              <dt class="nhsuk-summary-list__key">Change Date</dt>
+              <dt class="nhsuk-summary-list__key">LTFT Start Date</dt>
               <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(change?.startDate, 'dd MMMM yyyy')} ?: _">Not provided</dd>
             </div>
             <div class="nhsuk-summary-list__row">
