@@ -37,6 +37,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -89,6 +90,8 @@ public class LtftService {
   private final LtftMapper mapper;
 
   private final EventBroadcastService eventBroadcastService;
+
+  @Getter
   private final String ltftAssignmentUpdateTopic;
   private final String ltftStatusUpdateTopic;
 
@@ -661,7 +664,7 @@ public class LtftService {
    * @param messageAttribute The message attribute to include in the notification.
    * @param snsTopic         The SNS topic to publish the notification to.
    */
-  private void publishUpdateNotification(LtftForm form, String messageAttribute, String snsTopic) {
+  public void publishUpdateNotification(LtftForm form, String messageAttribute, String snsTopic) {
     log.info("Published update notification for LTFT form {} to SNS topic {}",
         form.getId(), snsTopic);
     LtftFormDto dto = mapper.toDto(form);
