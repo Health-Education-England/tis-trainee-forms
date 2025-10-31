@@ -94,7 +94,7 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
         .revision(status == null || status.current == null ? null : status.current.revision)
         .build();
 
-    updateStatusInfo(statusInfo);
+    updateStatusInfo(statusInfo, false);
   }
 
   /**
@@ -129,18 +129,21 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
         .revision(revision)
         .build();
 
-    updateStatusInfo(statusInfo);
+    updateStatusInfo(statusInfo, true);
   }
 
   /**
    * Update the form's current and historical status to include in given {@link StatusInfo}.
    *
-   * @param statusInfo The status info to add to the form.
+   * @param statusInfo           The status info to add to the form.
+   * @param affectsSubmittedDate Whether this status change affects the submitted date. In
+   *                             particular, changing the assigned admin does not affect the
+   *                             submitted date.
    */
-  private void updateStatusInfo(StatusInfo statusInfo) {
+  private void updateStatusInfo(StatusInfo statusInfo, boolean affectsSubmittedDate) {
     Instant submitted;
 
-    if (statusInfo.state == LifecycleState.SUBMITTED) {
+    if (statusInfo.state == LifecycleState.SUBMITTED && affectsSubmittedDate) {
       submitted = statusInfo.timestamp;
     } else {
       submitted = status != null ? status.submitted : null;

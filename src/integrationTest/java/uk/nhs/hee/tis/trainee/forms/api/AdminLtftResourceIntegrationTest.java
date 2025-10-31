@@ -56,6 +56,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -1580,6 +1581,30 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.history[1].modifiedBy.role", is("ADMIN")))
         .andExpect(jsonPath("$.status.history[1].revision", is(1)))
         .andExpect(jsonPath("$.status.history[1].timestamp", notNullValue()));
+  }
+
+  @Test
+  void shouldNotUpdateSubmittedWhenAssigningAdmin() throws Exception {
+    LtftForm form = template.insert(createLtftForm(SUBMITTED, DBC_1, null));
+    Instant originalSubmitted = form.getStatus().submitted();
+
+    String token = TestJwtUtil.generateAdminTokenForGroups(List.of(DBC_1));
+    mockMvc.perform(put("/api/admin/ltft/{id}/assign", form.getId())
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(APPLICATION_JSON)
+            .content("""
+                {
+                  "name": "Ad min",
+                  "email": "ad.min@example.com",
+                  "role": "ADMIN"
+                }
+                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status.current.state", is(SUBMITTED.toString())))
+        .andExpect(jsonPath("$.status.current.revision", is(0)))
+        .andExpect(jsonPath("$.status.current.timestamp", notNullValue()))
+        .andExpect(jsonPath("$.status.submitted",
+            is(originalSubmitted.truncatedTo(ChronoUnit.MILLIS).toString())));
   }
 
   /**

@@ -23,6 +23,7 @@ package uk.nhs.hee.tis.trainee.forms.model;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.closeTo;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
@@ -42,6 +43,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
@@ -344,6 +347,38 @@ class AbstractAuditedFormTest {
         is("test reason"));
     assertThat("Unexpected status detail message.", form.getStatus().current().detail().message(),
         is("test message"));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = "2024-01-01T10:00:00Z")
+  void shouldRetainPreviousSubmittedTimestampWhenSettingAssignedAdmin(String instantStr) {
+    Instant submittedTime = instantStr == null ? null : Instant.parse(instantStr);
+    StatusInfo submittedStatus = StatusInfo.builder()
+        .state(SUBMITTED)
+        .detail(StatusDetail.builder()
+            .reason("test reason")
+            .message("test message")
+            .build())
+        .revision(2)
+        .timestamp(submittedTime)
+        .build();
+
+    form.setStatus(Status.builder()
+        .current(submittedStatus)
+        .history(List.of(submittedStatus))
+        .submitted(submittedTime)
+        .build());
+
+    form.setAssignedAdmin(
+        Person.builder().name("Ad Min").email("ad.min@example.com").role("ADMIN").build(),
+        Person.builder().name("Mo Defy").email("mo.defy@example.com").role("ADMIN").build()
+    );
+
+    assertThat("Unexpected submission timestamp.", form.getStatus().submitted(),
+        is(submittedTime));
+    assertThat("Unexpected last updated timestamp.", form.getStatus().current().timestamp(),
+        greaterThan(submittedTime != null ? submittedTime : Instant.EPOCH));
   }
 
   @ParameterizedTest
