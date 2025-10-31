@@ -22,6 +22,8 @@
 package uk.nhs.hee.tis.trainee.forms.migration;
 
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
+
+import com.mongodb.client.result.UpdateResult;
 import io.mongock.api.annotations.ChangeUnit;
 import io.mongock.api.annotations.Execution;
 import io.mongock.api.annotations.RollbackExecution;
@@ -34,6 +36,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
+import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 
 /**
  * Repair submission dates for LTFT forms where admin assignment has incorrectly overwritten them.
@@ -43,9 +46,11 @@ import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 public class FixLtftSubmissionDates {
 
   private final MongoTemplate mongoTemplate;
+  private final LtftService ltftService;
 
-  public FixLtftSubmissionDates(MongoTemplate mongoTemplate) {
+  public FixLtftSubmissionDates(MongoTemplate mongoTemplate, LtftService ltftService) {
     this.mongoTemplate = mongoTemplate;
+    this.ltftService = ltftService;
   }
 
   /**
@@ -53,52 +58,23 @@ public class FixLtftSubmissionDates {
    */
   @Execution
   public void migrate() {
-
-    //scenarios (non-exhaustive):
-    //most common: form draft, then submitted, then admin assigned:
-    //  form.submitted will be timestamp of history.2 instead of history.1
-    //form draft, form submitted, admin assigned, form unsubmitted
-    //  form.submitted will be timestamp of history.2 instead of history.1 (though not important as unsubmitted)
-    //form draft, form submitted, admin assigned, another admin assigned
-    //  form.submitted will be timestamp of history.3 instead of history.1
-
-    //identification of affected forms:
-    //any form with a submitted date where
-    // the latest history entry with state = SUBMITTED and modifiedBy.role = ADMIN is after
-    // the latest history entry with state = SUBMITTED and modifiedBy.role = TRAINEE
-    // will have an incorrect submitted date
-    // we can use the modifiedBy.role because the only admin change that would apply to a SUBMITTED form is assignment of an admin
-    // NB: when a trainee resubmits a form which had previous had an admin assigned, the admin assignment remains, so we cannot just check for presence of an assigned admin
-
-    //query:
-    //for all forms with submitted date:
-    // filter history for state = SUBMITTED and modifiedBy.role = TRAINEE,
-    // and set form submitted date to latest filtered history timestamp
-
-
     var submittedCriteria = Criteria.where("status.submitted").exists(true);
     var submittedQuery = Query.query(submittedCriteria);
 
     List<LtftForm> submittedForms = mongoTemplate.find(submittedQuery, LtftForm.class);
-    int formsFixed = 0;
 
+    int formsFixed = 0;
     for (LtftForm form : submittedForms) {
       if (form.getStatus() == null || form.getStatus().history() == null) {
         continue;
       }
 
       List<AbstractAuditedForm.Status.StatusInfo> history = form.getStatus().history();
-      Instant lastAdminSubmittedTimestamp = null;
       Instant lastTraineeSubmittedTimestamp = null;
 
       for (AbstractAuditedForm.Status.StatusInfo info : history) {
         if (info.state() == SUBMITTED && info.modifiedBy() != null) {
-          if ("ADMIN".equals(info.modifiedBy().role())) {
-            if (lastAdminSubmittedTimestamp == null
-                || info.timestamp().isAfter(lastAdminSubmittedTimestamp)) {
-              lastAdminSubmittedTimestamp = info.timestamp();
-            }
-          } else if ("TRAINEE".equals(info.modifiedBy().role())) {
+          if ("TRAINEE".equals(info.modifiedBy().role())) {
             if (lastTraineeSubmittedTimestamp == null
                 || info.timestamp().isAfter(lastTraineeSubmittedTimestamp)) {
               lastTraineeSubmittedTimestamp = info.timestamp();
@@ -107,21 +83,32 @@ public class FixLtftSubmissionDates {
         }
       }
 
-      // If admin submitted history item is after trainee submitted, form submission date needs fixing
+      //If we found a trainee submitted timestamp, and it differs from the current one, update it
       if (lastTraineeSubmittedTimestamp != null
-          && lastAdminSubmittedTimestamp != null
-          && lastAdminSubmittedTimestamp.isAfter(lastTraineeSubmittedTimestamp)) {
+          && !lastTraineeSubmittedTimestamp.equals(form.getStatus().submitted())) {
         var updateQuery = Query.query(Criteria.where("id").is(form.getId()));
         var update = new Update().set("status.submitted", lastTraineeSubmittedTimestamp);
         log.info("Fixing submission date for LTFT form id {}: was {}, setting to {}",
             form.getId(), form.getStatus().submitted(), lastTraineeSubmittedTimestamp);
-        mongoTemplate.updateFirst(updateQuery, update, LtftForm.class);
+        UpdateResult updated = mongoTemplate.updateFirst(updateQuery, update, LtftForm.class);
+        if (updated.getModifiedCount() != 1) {
+          log.error("Failed to update submission date for LTFT form id {}", form.getId());
+        }
+        //now publish to NDW
+        LtftForm updatedForm = mongoTemplate.findOne(updateQuery, LtftForm.class);
+        if (updatedForm == null) {
+          log.error("Failed to retrieve updated LTFT form id {}", form.getId());
+          continue;
+        }
+        // As in LtftService.moveLtftForms(), ltftAssignmentUpdateTopic is used here to publish an
+        // update to NDW. Don't use ltftStatusUpdateTopic, which would generate emails
+        // to TPD and trainee.
+        ltftService.publishUpdateNotification(
+            updatedForm, null, ltftService.getLtftAssignmentUpdateTopic());
         formsFixed = formsFixed + 1;
       }
     }
     log.info("Fixed submission dates for {} LTFT forms", formsFixed);
-
-    //need to republish the forms with correct submission dates, or just republish all of them?
   }
 
   /**
