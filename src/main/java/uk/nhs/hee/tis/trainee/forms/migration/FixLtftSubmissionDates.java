@@ -98,13 +98,13 @@ public class FixLtftSubmissionDates {
         LtftForm updatedForm = mongoTemplate.findOne(updateQuery, LtftForm.class);
         if (updatedForm == null) {
           log.error("Failed to retrieve updated LTFT form id {}", form.getId());
-          continue;
+        } else {
+          // As in LtftService.moveLtftForms(), ltftAssignmentUpdateTopic is used here to publish an
+          // update to NDW. Don't use ltftStatusUpdateTopic, which would generate emails
+          // to TPD and trainee.
+          ltftService.publishUpdateNotification(
+              updatedForm, null, ltftService.getLtftAssignmentUpdateTopic());
         }
-        // As in LtftService.moveLtftForms(), ltftAssignmentUpdateTopic is used here to publish an
-        // update to NDW. Don't use ltftStatusUpdateTopic, which would generate emails
-        // to TPD and trainee.
-        ltftService.publishUpdateNotification(
-            updatedForm, null, ltftService.getLtftAssignmentUpdateTopic());
         formsFixed = formsFixed + 1;
       }
     }
