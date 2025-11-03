@@ -98,12 +98,12 @@ public class FixLtftSubmissionDates {
     Instant lastTraineeSubmittedTimestamp = null;
 
     for (AbstractAuditedForm.Status.StatusInfo info : history) {
-      if (info.state() == SUBMITTED && info.modifiedBy() != null) {
-        if ("TRAINEE".equals(info.modifiedBy().role())) {
-          if (lastTraineeSubmittedTimestamp == null
-              || info.timestamp().isAfter(lastTraineeSubmittedTimestamp)) {
-            lastTraineeSubmittedTimestamp = info.timestamp();
-          }
+      if (info.state() == SUBMITTED
+          && info.modifiedBy() != null
+          && "TRAINEE".equals(info.modifiedBy().role())) {
+        if (lastTraineeSubmittedTimestamp == null
+            || info.timestamp().isAfter(lastTraineeSubmittedTimestamp)) {
+          lastTraineeSubmittedTimestamp = info.timestamp();
         }
       }
     }
