@@ -4,8 +4,9 @@ application:
     bucket: tis-trainee-documents-upload-local
   aws:
     sns:
-      PDF_GENERATED_TOPIC: arn:aws:sns:eu-west-2:${local.account-id}:tis-trainee-pdf-generated
-      LTFT_STATUS_UPDATE_TOPIC: arn:aws:sns:eu-west-2:${local.account-id}:tis-trainee-update-form-event
+      pdf-generated: arn:aws:sns:eu-west-2:${local.account-id}:tis-trainee-pdf-generated
+      ltft-assignment-updated: arn:aws:sns:eu-west-2:${local.account-id}:tis-trainee-update-assignment-event
+      ltft-status-updated: arn:aws:sns:eu-west-2:${local.account-id}:tis-trainee-update-form-event
     sqs:
       coj-received: ${local.sqs-path}/tis-trainee-forms-local-coj-received
       delete-event: ${local.sqs-path}/tis-trainee-forms-local-delete-event
