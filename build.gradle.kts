@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.hee.tis.trainee"
-version = "0.54.7"
+version = "0.55.0"
 
 configurations {
   compileOnly {
@@ -31,6 +31,8 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
   implementation("org.springframework.boot:spring-boot-starter-web")
   implementation("org.springframework.boot:spring-boot-starter-validation")
+
+  implementation(libs.bundles.shedlock.mongo)
 
   // Lombok
   compileOnly("org.projectlombok:lombok")
