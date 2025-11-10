@@ -21,8 +21,16 @@
 
 package uk.nhs.hee.tis.trainee.forms.job;
 
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROVED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DELETED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.REJECTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
+
 import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.util.List;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,8 +41,8 @@ import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 
 /**
- * A job to publish all LTFT applications as if they have been updated, useful for refreshing
- * downstream dependants after data discrepancies.
+ * A job to publish all exportable LTFT applications as if they have been updated, useful for
+ * refreshing downstream dependants after data discrepancies.
  */
 @Slf4j
 @Component
@@ -45,6 +53,13 @@ public class PublishLtftRefresh {
   private final LtftService service;
   private final String topic;
 
+  /**
+   * Create an instance of a job for publishing LTFT refreshes.
+   *
+   * @param repository The repository used to retrieve LTFT records.
+   * @param service    The LTFT service used to send notifications.
+   * @param topic      The refresh topic to publish to.
+   */
   public PublishLtftRefresh(LtftFormRepository repository, LtftService service,
       @Value("${application.aws.sns.ltft-refresh}") String topic) {
     this.repository = repository;
@@ -53,13 +68,21 @@ public class PublishLtftRefresh {
   }
 
   /**
-   * Execute the scheduled job to publish all LTFT applications as a refresh.
+   * Execute the scheduled job to publish all exportable LTFT applications as a refresh.
    */
-  @Scheduled(cron = "${application.schedules.publish-all-ltft}")
+  @Scheduled(cron = "${application.schedules.publish-all-ltfts}")
   @SchedulerLock(name = "PublishLtftRefresh.execute")
   public int execute() {
     log.info("Starting LTFT downstream refresh.");
-    List<LtftForm> ltfts = repository.findAll();
+    // Listing allowed (non-DRAFT) states avoids any accidental inclusions of future states.
+    List<LtftForm> ltfts = repository.findByStatus_Current_StateIn(Set.of(
+        APPROVED,
+        DELETED,
+        REJECTED,
+        SUBMITTED,
+        UNSUBMITTED,
+        WITHDRAWN
+    ));
 
     int total = ltfts.size();
     log.info("Found {} LTFTs to refresh.", total);

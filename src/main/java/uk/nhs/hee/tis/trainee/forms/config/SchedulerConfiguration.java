@@ -17,43 +17,34 @@
  * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
  * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
  */
 
-package uk.nhs.hee.tis.trainee.forms.api;
+package uk.nhs.hee.tis.trainee.forms.config;
 
-import com.amazonaws.xray.spring.aop.XRayEnabled;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import uk.nhs.hee.tis.trainee.forms.job.PublishLtftRefresh;
+import net.javacrumbs.shedlock.core.LockProvider;
+import net.javacrumbs.shedlock.provider.mongo.MongoLockProvider;
+import net.javacrumbs.shedlock.spring.annotation.EnableSchedulerLock;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
- * A controller with endpoints for manually triggering scheduled jobs.
+ * Configuration for schedulers and scheduler locking.
  */
-@Slf4j
-@RestController
-@RequestMapping("/api/job")
-@XRayEnabled
-public class JobResource {
-
-  private final PublishLtftRefresh publishLtftRefreshJob;
-
-  public JobResource(PublishLtftRefresh publishLtftRefreshJob) {
-    this.publishLtftRefreshJob = publishLtftRefreshJob;
-  }
+@Configuration
+@EnableScheduling
+@EnableSchedulerLock(defaultLockAtMostFor = "PT30M")
+public class SchedulerConfiguration {
 
   /**
-   * Publish all exportable LTFT records as a refresh.
+   * Create {@link LockProvider} bean.
    *
-   * @return The number of exported LTFT records.
+   * @param mongoTemplate The mongo template, provides the database to use.
+   * @return The created lock provider.
    */
-  @PostMapping("/ltft/publish-refresh")
-  public ResponseEntity<Integer> publishLtftRefresh() {
-    log.info("Received request to publish LTFT refresh.");
-    int publishCount = publishLtftRefreshJob.execute();
-    return ResponseEntity.ok(publishCount);
+  @Bean
+  public LockProvider lockProvider(MongoTemplate mongoTemplate) {
+    return new MongoLockProvider(mongoTemplate.getDb());
   }
 }

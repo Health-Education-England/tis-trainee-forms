@@ -7,6 +7,8 @@ application:
       delete-event: dummy
       notification-event: dummy
       profile-move: dummy
+  schedules:
+    publish-all-ltfts: "-"
 
 mongock:
   enabled: false

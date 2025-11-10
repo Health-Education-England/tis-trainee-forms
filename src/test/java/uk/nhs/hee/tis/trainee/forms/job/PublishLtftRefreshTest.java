@@ -22,7 +22,10 @@
 package uk.nhs.hee.tis.trainee.forms.job;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -30,9 +33,15 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.EnumSource.Mode;
+import org.mockito.ArgumentCaptor;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
@@ -62,6 +71,27 @@ class PublishLtftRefreshTest {
     verifyNoInteractions(service);
   }
 
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = "DRAFT")
+  void shouldNotPublishDraftLtfts(LifecycleState state) {
+    UUID id1 = UUID.randomUUID();
+    LtftForm form1 = new LtftForm();
+    form1.setId(id1);
+
+    UUID id2 = UUID.randomUUID();
+    LtftForm form2 = new LtftForm();
+    form2.setId(id2);
+
+    ArgumentCaptor<Set<LifecycleState>> statesCaptor = ArgumentCaptor.captor();
+    when(repository.findByStatus_Current_StateIn(statesCaptor.capture())).thenReturn(List.of());
+
+    job.execute();
+
+    Set<LifecycleState> states = statesCaptor.getValue();
+    assertThat("Unexpected state query count.", states, hasSize(6));
+    assertThat("Unexpected state in query.", states, hasItem(state));
+  }
+
   @Test
   void shouldPublishAllFoundLtfts() {
     UUID id1 = UUID.randomUUID();
@@ -72,7 +102,7 @@ class PublishLtftRefreshTest {
     LtftForm form2 = new LtftForm();
     form2.setId(id2);
 
-    when(repository.findAll()).thenReturn(List.of(form1, form2));
+    when(repository.findByStatus_Current_StateIn(any())).thenReturn(List.of(form1, form2));
 
     int publishCount = job.execute();
 
@@ -92,7 +122,7 @@ class PublishLtftRefreshTest {
     LtftForm form2 = new LtftForm();
     form2.setId(id2);
 
-    when(repository.findAll()).thenReturn(List.of(form1, form2));
+    when(repository.findByStatus_Current_StateIn(any())).thenReturn(List.of(form1, form2));
     doThrow(RuntimeException.class).when(service)
         .publishUpdateNotification(form1, null, PUBLISH_TOPIC);
 

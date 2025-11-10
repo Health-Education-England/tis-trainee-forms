@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import net.javacrumbs.shedlock.core.LockProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -79,6 +80,9 @@ class ConditionsOfJoiningResourceTest {
 
   @MockBean
   private MongoConfiguration mongoConfiguration;
+
+  @MockBean
+  private LockProvider lockProvider;
 
   @Autowired
   private MockMvc mockMvc;
