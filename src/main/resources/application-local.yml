@@ -6,12 +6,15 @@ application:
     sns:
       pdf-generated: arn:aws:sns:eu-west-2:${local.account-id}:tis-trainee-pdf-generated
       ltft-assignment-updated: arn:aws:sns:eu-west-2:${local.account-id}:tis-trainee-update-assignment-event
+      ltft-refresh: arn:aws:sns:eu-west-2:${local.account-id}:tis-trainee-forms-ltft-refresh-event
       ltft-status-updated: arn:aws:sns:eu-west-2:${local.account-id}:tis-trainee-update-form-event
     sqs:
       coj-received: ${local.sqs-path}/tis-trainee-forms-local-coj-received
       delete-event: ${local.sqs-path}/tis-trainee-forms-local-delete-event
       notification-event: ${local.sqs-path}/tis-trainee-forms-local-notification-event
       profile-move: ${local.sqs-path}/tis-trainee-forms-local-profile-move
+  schedules:
+    publish-all-ltfts: "-"
   signature:
     secret-key: ${SIGNATURE_SECRET_KEY:not-very-secret-plain-text-value}
 

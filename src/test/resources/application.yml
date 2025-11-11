@@ -1,4 +1,6 @@
 application:
+  schedules:
+    publish-all-ltfts: "-"
   signature:
     secret-key: test-secret-key
 
