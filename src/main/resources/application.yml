@@ -55,3 +55,5 @@ com:
     xray:
       emitters:
         daemon-address: ${AWS_XRAY_DAEMON_ADDRESS:}
+      strategy:
+        tracing-name: ${AWS_XRAY_TRACING_NAME:tis-trainee-forms-${application.environment}}
