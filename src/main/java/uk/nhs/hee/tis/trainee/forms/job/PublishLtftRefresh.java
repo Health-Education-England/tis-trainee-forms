@@ -72,7 +72,7 @@ public class PublishLtftRefresh {
    */
   @Scheduled(cron = "${application.schedules.publish-all-ltfts}")
   @SchedulerLock(name = "PublishLtftRefresh.execute")
-  public int execute() {
+  public Integer execute() {
     log.info("Starting LTFT downstream refresh.");
     // Listing allowed (non-DRAFT) states avoids any accidental inclusions of future states.
     List<LtftForm> ltfts = repository.findByStatus_Current_StateIn(Set.of(
