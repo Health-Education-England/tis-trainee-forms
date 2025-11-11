@@ -7,12 +7,15 @@ application:
     sns:
       pdf-generated: ${PDF_GENERATED_TOPIC:}
       ltft-assignment-updated: ${LTFT_ASSIGNMENT_UPDATE_TOPIC:}
+      ltft-refresh: ${LTFT_REFRESH_TOPIC:}
       ltft-status-updated: ${LTFT_STATUS_UPDATE_TOPIC:}
     sqs:
       coj-received: ${COJ_RECEIVED_QUEUE:}
       delete-event: ${DELETE_EVENT_QUEUE:}
       notification-event: ${NOTIFICATION_EVENT_QUEUE:}
       profile-move: ${PROFILE_MOVE_QUEUE:}
+  schedules:
+    publish-all-ltfts: "@monthly"
   signature:
     secret-key: ${SIGNATURE_SECRET_KEY}
   timezone: Europe/London
@@ -43,7 +46,7 @@ server:
 spring:
   data:
     mongodb:
-      uri: mongodb://${DB_USER:admin}:${DB_PASSWORD:pwd}@${DB_HOST:localhost}:${DB_PORT:27017}/${DB_NAME:forms}?authSource=admin&replicaSet=rs0&readPreference=secondaryPreferred&retryWrites=false
+      uri: mongodb://${DB_USER:admin}:${DB_PASSWORD:pwd}@${DB_HOST:localhost}:${DB_PORT:27017}/${DB_NAME:forms}?authSource=admin&retryWrites=false
       auto-index-creation: true
       uuid-representation: standard
 
@@ -52,3 +55,5 @@ com:
     xray:
       emitters:
         daemon-address: ${AWS_XRAY_DAEMON_ADDRESS:}
+      strategy:
+        tracing-name: ${AWS_XRAY_TRACING_NAME:tis-trainee-forms-${application.environment}}

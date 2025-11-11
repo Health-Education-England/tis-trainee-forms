@@ -21,83 +21,219 @@
 
 package uk.nhs.hee.tis.trainee.forms.config;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.hamcrest.CoreMatchers.nullValue;
-import static org.hamcrest.MatcherAssert.assertThat;
+import static io.awspring.cloud.sqs.listener.SqsHeaders.MessageSystemAttributes.SQS_AWS_TRACE_HEADER;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.amazonaws.xray.entities.Subsegment;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.amazonaws.xray.AWSXRay;
+import com.amazonaws.xray.AWSXRayRecorder;
+import com.amazonaws.xray.entities.Segment;
+import com.amazonaws.xray.entities.TraceHeader;
+import com.amazonaws.xray.entities.TraceHeader.SampleDecision;
+import com.amazonaws.xray.entities.TraceID;
+import com.amazonaws.xray.strategy.sampling.AllSamplingStrategy;
+import com.amazonaws.xray.strategy.sampling.NoSamplingStrategy;
 import java.util.Map;
-import java.util.Optional;
 import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.Signature;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import uk.nhs.hee.tis.trainee.forms.config.EcsMetadataConfiguration.EcsMetadata;
-import uk.nhs.hee.tis.trainee.forms.config.EcsMetadataConfiguration.EcsMetadata.ContainerMetadata;
-import uk.nhs.hee.tis.trainee.forms.config.EcsMetadataConfiguration.EcsMetadata.ContainerMetadata.LogOptions;
-import uk.nhs.hee.tis.trainee.forms.config.EcsMetadataConfiguration.EcsMetadata.TaskMetadata;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.InOrder;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.support.GenericMessage;
 
 class AwsXrayInterceptorTest {
 
-  private ObjectMapper objectMapper;
-  private ProceedingJoinPoint pjp;
-  private Subsegment subsegment;
+  private static final String TRACING_NAME = "tis-trainee-notification-test";
+  private static final TraceID ROOT_TRACE_ID = TraceID.fromString(
+      "1-581cf771-a006649127e371903a2de979");
+  private static final TraceID PARENT_TRACE_ID = TraceID.fromString(
+      "1-692da882-b117750237f482014b2ef080");
+
+  private static AWSXRayRecorder originalRecorder;
+
+  private AwsXrayInterceptor interceptor;
+
+  @BeforeAll
+  static void setUpBeforeAll() {
+    originalRecorder = AWSXRay.getGlobalRecorder();
+  }
 
   @BeforeEach
   void setUp() {
-    objectMapper = new ObjectMapper();
-    subsegment = mock(Subsegment.class);
+    interceptor = new AwsXrayInterceptor(TRACING_NAME);
+  }
 
-    pjp = mock(ProceedingJoinPoint.class);
-    when(pjp.getTarget()).thenReturn(Object.class);
+  @AfterAll
+  static void tearDownAfterAll() {
+    AWSXRay.setGlobalRecorder(originalRecorder);
   }
 
   @Test
-  void shouldGenerateNullEcsMetadataWhenNotAvailable() {
-    AwsXrayInterceptor interceptor = new AwsXrayInterceptor(Optional.empty(), objectMapper);
+  void shouldTraceAroundScheduledJobWhenSampleEnabled() throws Throwable {
+    Signature signature = mock(Signature.class);
+    when(signature.getDeclaringType()).thenReturn(TestTracedClass.class);
+    when(signature.getName()).thenReturn("testTracedMethod");
 
-    Map<String, Map<String, Object>> metadata = interceptor.generateMetadata(pjp, subsegment);
+    ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
+    when(pjp.getSignature()).thenReturn(signature);
 
-    assertThat("Unexpected X-Ray metadata.", metadata, notNullValue());
+    AWSXRayRecorder recorder = mock(AWSXRayRecorder.class);
+    when(recorder.getSamplingStrategy()).thenReturn(new AllSamplingStrategy());
+    AWSXRay.setGlobalRecorder(recorder);
 
-    Map<String, Object> ecsMetadataMap = metadata.get("EcsMetadata");
-    assertThat("Unexpected ECS metadata.", ecsMetadataMap, nullValue());
+    Segment segment = mock(Segment.class);
+    when(recorder.beginSegment(any())).thenReturn(segment);
+
+    interceptor.traceAroundScheduledJobs(pjp);
+
+    InOrder inOrder = inOrder(recorder);
+    inOrder.verify(recorder).beginSegment(TRACING_NAME);
+    inOrder.verify(recorder).beginSubsegment("TestTracedClass");
+    inOrder.verify(recorder).beginSubsegment("testTracedMethod");
+
+    verify(segment, never()).setRuleName(any());
+    verify(segment).setSampled(true);
+    verify(pjp).proceed();
   }
 
   @Test
-  void shouldGenerateEcsMetadataWhenAvailable() {
-    EcsMetadata ecsMetadata = new EcsMetadata(
-        new TaskMetadata("cluster", "taskArn", "family", "revision"),
-        new ContainerMetadata("containerArn", new LogOptions("logGroup", "region", "logStream")));
-    AwsXrayInterceptor interceptor = new AwsXrayInterceptor(Optional.of(ecsMetadata), objectMapper);
+  void shouldTraceAroundScheduledJobWhenSampleDisabled() throws Throwable {
+    Signature signature = mock(Signature.class);
+    when(signature.getDeclaringType()).thenReturn(TestTracedClass.class);
+    when(signature.getName()).thenReturn("testTracedMethod");
 
-    Map<String, Map<String, Object>> metadata = interceptor.generateMetadata(pjp, subsegment);
+    ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
+    when(pjp.getSignature()).thenReturn(signature);
 
-    assertThat("Unexpected X-Ray metadata.", metadata, notNullValue());
+    AWSXRayRecorder recorder = mock(AWSXRayRecorder.class);
+    when(recorder.getSamplingStrategy()).thenReturn(new NoSamplingStrategy());
+    AWSXRay.setGlobalRecorder(recorder);
 
-    Map<String, Object> ecsMetadataMap = metadata.get("EcsMetadata");
-    assertThat("Unexpected ECS metadata.", ecsMetadataMap, notNullValue());
+    Segment segment = mock(Segment.class);
+    when(recorder.beginSegment(any())).thenReturn(segment);
 
-    Map<String, Object> taskMetadataMap = (Map<String, Object>) ecsMetadataMap.get("TaskMetadata");
-    assertThat("Unexpected task metadata.", taskMetadataMap, notNullValue());
-    assertThat("Unexpected cluster.", taskMetadataMap.get("Cluster"), is("cluster"));
-    assertThat("Unexpected task ARN.", taskMetadataMap.get("TaskARN"), is("taskArn"));
-    assertThat("Unexpected family.", taskMetadataMap.get("Family"), is("family"));
+    interceptor.traceAroundScheduledJobs(pjp);
 
-    Map<String, Object> containerMetadataMap = (Map<String, Object>) ecsMetadataMap.get(
-        "ContainerMetadata");
-    assertThat("Unexpected container metadata.", containerMetadataMap, notNullValue());
-    assertThat("Unexpected container ARN.", containerMetadataMap.get("ContainerARN"),
-        is("containerArn"));
+    InOrder inOrder = inOrder(recorder);
+    inOrder.verify(recorder).beginSegment(TRACING_NAME);
+    inOrder.verify(recorder).beginSubsegment("TestTracedClass");
+    inOrder.verify(recorder).beginSubsegment("testTracedMethod");
 
-    Map<String, Object> logOptionsMap = (Map<String, Object>) containerMetadataMap.get(
-        "LogOptions");
-    assertThat("Unexpected log options metadata.", logOptionsMap, notNullValue());
-    assertThat("Unexpected log group.", logOptionsMap.get("awslogs-group"), is("logGroup"));
-    assertThat("Unexpected log region.", logOptionsMap.get("awslogs-region"), is("region"));
-    assertThat("Unexpected log stream.", logOptionsMap.get("awslogs-stream"), is("logStream"));
+    verify(segment).setRuleName("");
+    verify(segment).setSampled(false);
+    verify(pjp).proceed();
+  }
+
+  @Test
+  void shouldTraceAroundSqsListenerWhenNoTraceHeader() throws Throwable {
+    Signature signature = mock(Signature.class);
+    when(signature.getDeclaringType()).thenReturn(TestTracedClass.class);
+    when(signature.getName()).thenReturn("testTracedMethod");
+
+    ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
+    when(pjp.getSignature()).thenReturn(signature);
+
+    Message<String> message = new GenericMessage<>("testPayload");
+    when(pjp.getArgs()).thenReturn(new Object[]{message});
+
+    AWSXRayRecorder recorder = mock(AWSXRayRecorder.class);
+    AWSXRay.setGlobalRecorder(recorder);
+
+    Segment segment = mock(Segment.class);
+    when(recorder.beginSegment(any())).thenReturn(segment);
+
+    interceptor.traceAroundSqsListeners(pjp);
+
+    InOrder inOrder = inOrder(recorder);
+    inOrder.verify(recorder).beginSegment(TRACING_NAME);
+    inOrder.verify(recorder).beginSubsegment("TestTracedClass");
+    inOrder.verify(recorder).beginSubsegment("testTracedMethod");
+
+    verify(segment, never()).setRuleName(any());
+    verify(segment).setSampled(false);
+    verify(pjp).proceed();
+  }
+
+  @Test
+  void shouldTraceAroundSqsListenerWhenEmptyTraceHeader() throws Throwable {
+    Signature signature = mock(Signature.class);
+    when(signature.getDeclaringType()).thenReturn(TestTracedClass.class);
+    when(signature.getName()).thenReturn("testTracedMethod");
+
+    ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
+    when(pjp.getSignature()).thenReturn(signature);
+
+    TraceHeader traceHeader = new TraceHeader();
+    Map<String, Object> headers = Map.of(SQS_AWS_TRACE_HEADER, traceHeader.toString());
+    Message<String> message = new GenericMessage<>("testPayload", headers);
+    when(pjp.getArgs()).thenReturn(new Object[]{message});
+
+    AWSXRayRecorder recorder = mock(AWSXRayRecorder.class);
+    AWSXRay.setGlobalRecorder(recorder);
+
+    Segment segment = mock(Segment.class);
+    when(recorder.beginSegment(any())).thenReturn(segment);
+
+    interceptor.traceAroundSqsListeners(pjp);
+
+    InOrder inOrder = inOrder(recorder);
+    inOrder.verify(recorder).beginSegment(TRACING_NAME);
+    inOrder.verify(recorder).beginSubsegment("TestTracedClass");
+    inOrder.verify(recorder).beginSubsegment("testTracedMethod");
+
+    verify(segment, never()).setRuleName(any());
+    verify(segment).setSampled(false);
+    verify(pjp).proceed();
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void shouldTraceAroundSqsListenerWhenTraceHeaderPopulated(boolean sampled) throws Throwable {
+    Signature signature = mock(Signature.class);
+    when(signature.getDeclaringType()).thenReturn(TestTracedClass.class);
+    when(signature.getName()).thenReturn("testTracedMethod");
+
+    ProceedingJoinPoint pjp = mock(ProceedingJoinPoint.class);
+    when(pjp.getSignature()).thenReturn(signature);
+
+    SampleDecision sampleDecision = sampled ? SampleDecision.SAMPLED : SampleDecision.NOT_SAMPLED;
+    TraceHeader traceHeader = new TraceHeader(ROOT_TRACE_ID, PARENT_TRACE_ID.toString(),
+        sampleDecision);
+    Map<String, Object> headers = Map.of(SQS_AWS_TRACE_HEADER, traceHeader.toString());
+    Message<String> message = new GenericMessage<>("testPayload", headers);
+    when(pjp.getArgs()).thenReturn(new Object[]{message});
+
+    AWSXRayRecorder recorder = mock(AWSXRayRecorder.class);
+    AWSXRay.setGlobalRecorder(recorder);
+
+    Segment segment = mock(Segment.class);
+    when(recorder.beginSegment(any(), any(), any())).thenReturn(segment);
+
+    interceptor.traceAroundSqsListeners(pjp);
+
+    InOrder inOrder = inOrder(recorder);
+    inOrder.verify(recorder).beginSegment(TRACING_NAME, ROOT_TRACE_ID, PARENT_TRACE_ID.toString());
+    inOrder.verify(recorder).beginSubsegment("TestTracedClass");
+    inOrder.verify(recorder).beginSubsegment("testTracedMethod");
+
+    verify(segment, never()).setRuleName(any());
+    verify(segment).setSampled(sampled);
+    verify(pjp).proceed();
+  }
+
+  /**
+   * A dummy class for trace testing.
+   */
+  private static class TestTracedClass {
+
   }
 }

@@ -63,6 +63,14 @@ public interface LtftFormRepository extends MongoRepository<LtftForm, UUID> {
   Optional<LtftForm> findByTraineeTisIdAndId(String traineeId, UUID id);
 
   /**
+   * Find all LTFT forms with the given states.
+   *
+   * @param states The states to filter by.
+   * @return The found forms, empty if none found.
+   */
+  List<LtftForm> findByStatus_Current_StateIn(Set<LifecycleState> states);
+
+  /**
    * Find the LTFT form with the given ID and one of the given DBCs.
    *
    * @param id     The ID of the form to find.
@@ -72,7 +80,7 @@ public interface LtftFormRepository extends MongoRepository<LtftForm, UUID> {
    */
   Optional<LtftForm>
       findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-          UUID id, Set<LifecycleState> states, Set<String> dbcs);
+      UUID id, Set<LifecycleState> states, Set<String> dbcs);
 
   /**
    * Find the LTFT form with the given ID associated with one of the given DBCs.
