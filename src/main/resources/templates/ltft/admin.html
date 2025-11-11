@@ -103,11 +103,11 @@
               <dd class="nhsuk-summary-list__value" th:text="${change?.wte} ?: _">Not Given</dd>
             </div>
             <div class="nhsuk-summary-list__row">
-              <dt class="nhsuk-summary-list__key">LTFT Start Date</dt>
+              <dt class="nhsuk-summary-list__key">Start Date</dt>
               <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(change?.startDate, 'dd MMMM yyyy')} ?: _">Not Given</dd>
             </div>
             <div class="nhsuk-summary-list__row">
-              <dt class="nhsuk-summary-list__key">LTFT End Date</dt>
+              <dt class="nhsuk-summary-list__key">End Date</dt>
               <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(change?.cctDate, 'dd MMMM yyyy')} ?: _">Not Given</dd>
             </div>
             <div class="nhsuk-summary-list__row">
