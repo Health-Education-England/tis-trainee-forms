@@ -64,26 +64,37 @@ public class FormRPartBService {
 
   private final TraineeIdentity traineeIdentity;
 
+  private final EventBroadcastService eventBroadcastService;
+
+  private final String formRPartBSubmittedTopic;
+
   @Value("${application.file-store.always-store}")
   private boolean alwaysStoreFiles;
-
 
   /**
    * Constructor for a FormR PartB service.
    *
-   * @param formRPartBRepository spring data repository
-   * @param s3ObjectRepository   S3 Repository for forms
-   * @param formRPartBMapper     maps between the form entity and dto
+   * @param formRPartBRepository    spring data repository
+   * @param s3ObjectRepository      S3 Repository for forms
+   * @param formRPartBMapper        maps between the form entity and dto
+   * @param objectMapper            The object mapper.
+   * @param traineeIdentity         The trainee identity.
+   * @param eventBroadcastService   The event broadcast service.
+   * @param formRPartBSubmittedTopic The SNS topic for FormR PartB submitted events.
    */
   public FormRPartBService(FormRPartBRepository formRPartBRepository,
       S3FormRPartBRepositoryImpl s3ObjectRepository,
       FormRPartBMapper formRPartBMapper,
-      ObjectMapper objectMapper, TraineeIdentity traineeIdentity) {
+      ObjectMapper objectMapper, TraineeIdentity traineeIdentity,
+      EventBroadcastService eventBroadcastService,
+      @Value("${application.aws.sns.formr-partb-submitted}") String formRPartBSubmittedTopic) {
     this.formRPartBRepository = formRPartBRepository;
     this.formRPartBMapper = formRPartBMapper;
     this.s3ObjectRepository = s3ObjectRepository;
     this.objectMapper = objectMapper;
     this.traineeIdentity = traineeIdentity;
+    this.eventBroadcastService = eventBroadcastService;
+    this.formRPartBSubmittedTopic = formRPartBSubmittedTopic;
   }
 
   /**
@@ -98,7 +109,12 @@ public class FormRPartBService {
 
     // Forms stored in cloud are still stored to Mongo for backwards compatibility.
     formRPartB = formRPartBRepository.save(formRPartB);
-    return formRPartBMapper.toDto(formRPartB);
+    FormRPartBDto formDto = formRPartBMapper.toDto(formRPartB);
+    if (formRPartB.getLifecycleState() == LifecycleState.SUBMITTED) {
+      log.debug("Publishing FormRPartB submitted event for form id: {}", formRPartB.getId());
+      eventBroadcastService.publishFormRPartBEvent(formDto, null, formRPartBSubmittedTopic);
+    }
+    return formDto;
   }
 
   /**

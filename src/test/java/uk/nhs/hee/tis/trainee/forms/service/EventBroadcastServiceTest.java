@@ -49,8 +49,11 @@ import software.amazon.awssdk.services.sns.SnsClient;
 import software.amazon.awssdk.services.sns.model.MessageAttributeValue;
 import software.amazon.awssdk.services.sns.model.PublishRequest;
 import software.amazon.awssdk.services.sns.model.SnsException;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 /**
  * Unit tests for the {@link EventBroadcastService}.
@@ -65,7 +68,7 @@ class EventBroadcastServiceTest {
   private static final Integer FORM_REVISION = 1;
 
   private static final UUID FORM_ID = UUID.randomUUID();
-
+  private static final String FORM_ID_STRING = FORM_ID.toString();
 
   private EventBroadcastService service;
 
@@ -188,6 +191,94 @@ class EventBroadcastServiceTest {
     verifyNoMoreInteractions(snsClient);
   }
 
+  @Test
+  void shouldNotPublishFormRPartAEventIfEventDtoIsNull() {
+    service.publishFormRPartAEvent(null, MESSAGE_ATTRIBUTE, SNS_TOPIC);
+
+    verifyNoInteractions(snsClient);
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  void shouldNotPublishFormRPartAEventIfSnsTopicMissing(String snsTopic) {
+    FormRPartADto formRPartADto = buildDummyFormRPartADto();
+    service.publishFormRPartAEvent(formRPartADto, MESSAGE_ATTRIBUTE, snsTopic);
+
+    verifyNoInteractions(snsClient);
+  }
+
+  @Test
+  void shouldPublishFormRPartAEvent() throws JsonProcessingException {
+    FormRPartADto formRPartADto = buildDummyFormRPartADto();
+
+    service.publishFormRPartAEvent(formRPartADto, MESSAGE_ATTRIBUTE, SNS_TOPIC);
+
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
+    verify(snsClient).publish(requestCaptor.capture());
+
+    PublishRequest request = requestCaptor.getValue();
+    assertThat("Unexpected topic ARN.", request.topicArn(), is(SNS_TOPIC));
+    assertThat("Unexpected message group id.", request.messageGroupId(), is(FORM_ID_STRING));
+
+    Map<String, Object> message = objectMapper.readValue(request.message(),
+        new TypeReference<>() {
+        });
+    assertThat("Unexpected message id.", message.get("id"), is(FORM_ID_STRING));
+    assertThat("Unexpected trainee id.", message.get("traineeTisId"), is(TRAINEE_ID));
+
+    Map<String, MessageAttributeValue> messageAttributes = request.messageAttributes();
+    assertThat("Unexpected message attribute value.",
+        messageAttributes.get(MESSAGE_ATTRIBUTE_KEY).stringValue(), is(MESSAGE_ATTRIBUTE));
+    assertThat("Unexpected message attribute data type.",
+        messageAttributes.get(MESSAGE_ATTRIBUTE_KEY).dataType(), is("String"));
+
+    verifyNoMoreInteractions(snsClient);
+  }
+
+  @Test
+  void shouldNotPublishFormRPartBEventIfEventDtoIsNull() {
+    service.publishFormRPartBEvent(null, MESSAGE_ATTRIBUTE, SNS_TOPIC);
+
+    verifyNoInteractions(snsClient);
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  void shouldNotPublishFormRPartBEventIfSnsTopicMissing(String snsTopic) {
+    FormRPartBDto formRPartBDto = buildDummyFormRPartBDto();
+    service.publishFormRPartBEvent(formRPartBDto, MESSAGE_ATTRIBUTE, snsTopic);
+
+    verifyNoInteractions(snsClient);
+  }
+
+  @Test
+  void shouldPublishFormRPartBEvent() throws JsonProcessingException {
+    FormRPartBDto formRPartBDto = buildDummyFormRPartBDto();
+
+    service.publishFormRPartBEvent(formRPartBDto, MESSAGE_ATTRIBUTE, SNS_TOPIC);
+
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
+    verify(snsClient).publish(requestCaptor.capture());
+
+    PublishRequest request = requestCaptor.getValue();
+    assertThat("Unexpected topic ARN.", request.topicArn(), is(SNS_TOPIC));
+    assertThat("Unexpected message group id.", request.messageGroupId(), is(FORM_ID_STRING));
+
+    Map<String, Object> message = objectMapper.readValue(request.message(),
+        new TypeReference<>() {
+        });
+    assertThat("Unexpected message id.", message.get("id"), is(FORM_ID_STRING));
+    assertThat("Unexpected trainee id.", message.get("traineeTisId"), is(TRAINEE_ID));
+
+    Map<String, MessageAttributeValue> messageAttributes = request.messageAttributes();
+    assertThat("Unexpected message attribute value.",
+        messageAttributes.get(MESSAGE_ATTRIBUTE_KEY).stringValue(), is(MESSAGE_ATTRIBUTE));
+    assertThat("Unexpected message attribute data type.",
+        messageAttributes.get(MESSAGE_ATTRIBUTE_KEY).dataType(), is("String"));
+
+    verifyNoMoreInteractions(snsClient);
+  }
+
   /**
    * Return a largely empty LTFT form DTO for test purposes.
    *
@@ -207,5 +298,31 @@ class EventBroadcastServiceTest {
         .revision(FORM_REVISION)
         .personalDetails(personalDetailsDto)
         .build();
+  }
+
+  /**
+   * Return a Form R Part A DTO for test purposes.
+   *
+   * @return the Form R Part A DTO entity.
+   */
+  private FormRPartADto buildDummyFormRPartADto() {
+    FormRPartADto dto = new FormRPartADto();
+    dto.setId(FORM_ID.toString());
+    dto.setTraineeTisId(TRAINEE_ID);
+    dto.setLifecycleState(LifecycleState.SUBMITTED);
+    return dto;
+  }
+
+  /**
+   * Return a Form R Part B DTO for test purposes.
+   *
+   * @return the Form R Part B DTO entity.
+   */
+  private FormRPartBDto buildDummyFormRPartBDto() {
+    FormRPartBDto dto = new FormRPartBDto();
+    dto.setId(FORM_ID.toString());
+    dto.setTraineeTisId(TRAINEE_ID);
+    dto.setLifecycleState(LifecycleState.SUBMITTED);
+    return dto;
   }
 }

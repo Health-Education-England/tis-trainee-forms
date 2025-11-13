@@ -24,6 +24,8 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -112,7 +114,7 @@ class FormRPartBServiceTest {
   private static final Boolean DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS = true;
   private static final Set<String> FIXED_FIELDS =
       Set.of("id", "traineeTisId", "lifecycleState");
-
+  private static final String FORM_R_PART_B_SUBMITTED_TOPIC = "arn:aws:sns:topic";
 
   private FormRPartBService service;
 
@@ -120,6 +122,9 @@ class FormRPartBServiceTest {
   private FormRPartBRepository repositoryMock;
   @Mock
   private S3FormRPartBRepositoryImpl s3FormRPartBRepository;
+
+  @Mock
+  private EventBroadcastService eventBroadcastService;
 
   private ObjectMapper objectMapper;
 
@@ -151,7 +156,8 @@ class FormRPartBServiceTest {
     ReflectionUtils.setField(field, mapper, new CovidDeclarationMapperImpl());
 
     service = new FormRPartBService(
-        repositoryMock, s3FormRPartBRepository, mapper, objectMapper, traineeIdentity);
+        repositoryMock, s3FormRPartBRepository, mapper, objectMapper, traineeIdentity,
+        eventBroadcastService, FORM_R_PART_B_SUBMITTED_TOPIC);
     initData();
   }
 
@@ -735,5 +741,52 @@ class FormRPartBServiceTest {
         .thenThrow(IllegalArgumentException.class);
     assertThrows(ApplicationException.class, () -> service.partialDeleteFormRPartBById(
         DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID, FIXED_FIELDS));
+  }
+
+  @Test
+  void shouldPublishEventWhenSavingSubmittedFormRPartB() {
+    entity.setId(null);
+    entity.setLifecycleState(LifecycleState.SUBMITTED);
+    entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+    FormRPartBDto dto = mapper.toDto(entity);
+
+    when(repositoryMock.save(any())).thenAnswer(invocation -> {
+      FormRPartB entity = invocation.getArgument(0);
+      FormRPartB savedEntity = new FormRPartB();
+      BeanUtils.copyProperties(entity, savedEntity);
+      savedEntity.setId(DEFAULT_ID);
+      return savedEntity;
+    });
+
+    service.save(dto);
+
+    ArgumentCaptor<FormRPartBDto> dtoCaptor = ArgumentCaptor.forClass(FormRPartBDto.class);
+    verify(eventBroadcastService).publishFormRPartBEvent(
+        dtoCaptor.capture(), isNull(), eq(FORM_R_PART_B_SUBMITTED_TOPIC));
+
+    FormRPartBDto publishedDto = dtoCaptor.getValue();
+    assertThat("Unexpected form ID.", publishedDto.getId(), is(DEFAULT_ID_STRING));
+    assertThat("Unexpected lifecycle state.", publishedDto.getLifecycleState(),
+        is(LifecycleState.SUBMITTED));
+  }
+
+  @ParameterizedTest(name = "Should not publish event when saving form with {0} state.")
+  @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = {"SUBMITTED"})
+  void shouldNotPublishEventWhenSavingNonSubmittedFormRPartB(LifecycleState state) {
+    entity.setId(null);
+    entity.setLifecycleState(state);
+    FormRPartBDto dto = mapper.toDto(entity);
+
+    when(repositoryMock.save(any())).thenAnswer(invocation -> {
+      FormRPartB entity = invocation.getArgument(0);
+      FormRPartB savedEntity = new FormRPartB();
+      BeanUtils.copyProperties(entity, savedEntity);
+      savedEntity.setId(DEFAULT_ID);
+      return savedEntity;
+    });
+
+    service.save(dto);
+
+    verifyNoInteractions(eventBroadcastService);
   }
 }

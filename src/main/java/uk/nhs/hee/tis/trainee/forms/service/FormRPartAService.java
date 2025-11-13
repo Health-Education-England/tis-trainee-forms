@@ -64,6 +64,10 @@ public class FormRPartAService {
 
   private final TraineeIdentity traineeIdentity;
 
+  private final EventBroadcastService eventBroadcastService;
+
+  private final String formRPartASubmittedTopic;
+
   @Value("${application.file-store.always-store}")
   private boolean alwaysStoreFiles;
 
@@ -73,16 +77,22 @@ public class FormRPartAService {
   /**
    * Constructor for a FormR PartA service.
    *
-   * @param repository            spring data repository
-   * @param cloudObjectRepository repository to storage form in the cloud
-   * @param mapper                maps between the form entity and dto
-   * @param objectMapper          The object mapper.
-   * @param traineeIdentity       The trainee identity.
+   * @param repository               Spring data repository.
+   * @param cloudObjectRepository    Repository to storage form in the cloud.
+   * @param mapper                   Maps between the form entity and DTO.
+   * @param objectMapper             The object mapper.
+   * @param traineeIdentity          The trainee identity.
+   * @param eventBroadcastService    The event broadcast service.
+   * @param formRPartASubmittedTopic The SNS topic for FormR PartA submitted events.
    */
   public FormRPartAService(FormRPartARepository repository,
       S3FormRPartARepositoryImpl cloudObjectRepository,
       FormRPartAMapper mapper,
-      ObjectMapper objectMapper, TraineeIdentity traineeIdentity) {
+      ObjectMapper objectMapper, TraineeIdentity traineeIdentity,
+      EventBroadcastService eventBroadcastService,
+      @Value("${application.aws.sns.formr-parta-submitted}") String formRPartASubmittedTopic) {
+    this.eventBroadcastService = eventBroadcastService;
+    this.formRPartASubmittedTopic = formRPartASubmittedTopic;
     this.repository = repository;
     this.cloudObjectRepository = cloudObjectRepository;
     this.mapper = mapper;
@@ -102,7 +112,12 @@ public class FormRPartAService {
 
     // Forms stored in cloud are still stored to Mongo for backwards compatibility.
     formRPartA = repository.save(formRPartA);
-    return mapper.toDto(formRPartA);
+    FormRPartADto formDto = mapper.toDto(formRPartA);
+    if (formRPartA.getLifecycleState() == LifecycleState.SUBMITTED) {
+      log.debug("Publishing FormRPartA submitted event for form id: {}", formRPartA.getId());
+      eventBroadcastService.publishFormRPartAEvent(formDto, null, formRPartASubmittedTopic);
+    }
+    return formDto;
   }
 
   /**
