@@ -163,7 +163,8 @@ public class EventBroadcastService {
       return;
     }
 
-    PublishRequest request = buildSnsRequestWithAttributes(snsTopic, eventJson, messageAttributes, id);
+    PublishRequest request
+        = buildSnsRequestWithAttributes(snsTopic, eventJson, messageAttributes, id);
 
     if (request != null) {
       try {
