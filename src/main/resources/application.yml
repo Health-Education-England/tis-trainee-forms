@@ -6,8 +6,7 @@ application:
   aws:
     sns:
       pdf-generated: ${PDF_GENERATED_TOPIC:}
-      formr-parta-submitted: ${FORMR_PARTA_SUBMITTED_TOPIC:}
-      formr-partb-submitted: ${FORMR_PARTB_SUBMITTED_TOPIC:}
+      formr-updated: ${FORMR_UPDATE_TOPIC:}
       ltft-assignment-updated: ${LTFT_ASSIGNMENT_UPDATE_TOPIC:}
       ltft-refresh: ${LTFT_REFRESH_TOPIC:}
       ltft-status-updated: ${LTFT_STATUS_UPDATE_TOPIC:}

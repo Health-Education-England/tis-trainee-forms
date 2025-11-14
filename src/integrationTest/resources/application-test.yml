@@ -3,8 +3,7 @@ application:
     secret-key: test-secret-key
   aws:
     sns:
-      formr-parta-submitted: dummy
-      formr-partb-submitted: dummy
+      formr-updated: dummy
     sqs:
       coj-received: dummy
       delete-event: dummy

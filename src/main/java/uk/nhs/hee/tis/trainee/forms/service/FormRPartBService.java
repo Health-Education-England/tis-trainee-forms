@@ -87,7 +87,7 @@ public class FormRPartBService {
       FormRPartBMapper formRPartBMapper,
       ObjectMapper objectMapper, TraineeIdentity traineeIdentity,
       EventBroadcastService eventBroadcastService,
-      @Value("${application.aws.sns.formr-partb-submitted}") String formRPartBSubmittedTopic) {
+      @Value("${application.aws.sns.formr-updated}") String formRPartBSubmittedTopic) {
     this.formRPartBRepository = formRPartBRepository;
     this.formRPartBMapper = formRPartBMapper;
     this.s3ObjectRepository = s3ObjectRepository;

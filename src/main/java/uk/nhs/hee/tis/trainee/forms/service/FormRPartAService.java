@@ -90,7 +90,7 @@ public class FormRPartAService {
       FormRPartAMapper mapper,
       ObjectMapper objectMapper, TraineeIdentity traineeIdentity,
       EventBroadcastService eventBroadcastService,
-      @Value("${application.aws.sns.formr-parta-submitted}") String formRPartASubmittedTopic) {
+      @Value("${application.aws.sns.formr-updated}") String formRPartASubmittedTopic) {
     this.eventBroadcastService = eventBroadcastService;
     this.formRPartASubmittedTopic = formRPartASubmittedTopic;
     this.repository = repository;
