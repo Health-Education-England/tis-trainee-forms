@@ -74,9 +74,13 @@ import uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService;
 @AutoConfigureMockMvc
 class FormRPartAResourceIntegrationTest {
 
+  private static final UUID ID = UUID.randomUUID();
   private static final String TRAINEE_ID = "47165";
   private static final String FORENAME = "John";
   private static final String SURNAME = "Doe";
+
+  @Autowired
+  private ObjectMapper mapper;
 
   @Container
   @ServiceConnection
@@ -84,22 +88,19 @@ class FormRPartAResourceIntegrationTest {
       DockerImageNames.MONGO);
 
   @Autowired
-  private ObjectMapper mapper;
-
-  @Autowired
   private MockMvc mockMvc;
 
   @MockBean
   SnsTemplate snsTemplate;
+
+  @Autowired
+  private MongoTemplate template;
 
   @MockBean
   S3FormRPartARepositoryImpl s3FormRPartARepository;
 
   @MockBean
   EventBroadcastService eventBroadcastService;
-
-  @Autowired
-  private MongoTemplate template;
 
   @AfterEach
   void tearDown() {
@@ -147,13 +148,19 @@ class FormRPartAResourceIntegrationTest {
   }
 
   @Test
-  void shouldReturnForbiddenWhenCreatingFormRPartAForDifferentTrainee() throws Exception {
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
-    mockMvc.perform(post("/api/formr-parta")
-            .header(HttpHeaders.AUTHORIZATION, token)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content("{\"traineeTisId\": \"another id\"}"))
-        .andExpect(status().isForbidden())
+  void shouldNotFindFormNotOwnedByUser() throws Exception {
+    FormRPartA form = new FormRPartA();
+    form.setId(ID);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setForename(FORENAME);
+    form.setSurname(SURNAME);
+    form.setLifecycleState(LifecycleState.DRAFT);
+    template.save(form);
+
+    String token = TestJwtUtil.generateTokenForTrainee("another trainee");
+    mockMvc.perform(get("/api/ltft/" + ID)
+            .header(HttpHeaders.AUTHORIZATION, token))
+        .andExpect(status().isNotFound())
         .andExpect(jsonPath("$").doesNotExist());
   }
 
@@ -163,6 +170,17 @@ class FormRPartAResourceIntegrationTest {
     mockMvc.perform(get("/api/formr-parta/" + UUID.randomUUID())
             .header(HttpHeaders.AUTHORIZATION, token))
         .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @Test
+  void shouldReturnForbiddenWhenCreatingFormRPartAForDifferentTrainee() throws Exception {
+    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    mockMvc.perform(post("/api/formr-parta")
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"traineeTisId\": \"another id\"}"))
+        .andExpect(status().isForbidden())
         .andExpect(jsonPath("$").doesNotExist());
   }
 
@@ -194,9 +212,8 @@ class FormRPartAResourceIntegrationTest {
 
   @Test
   void shouldReturnBadRequestWhenCreatingFormRPartAWithId() throws Exception {
-    String formId = UUID.randomUUID().toString();
     FormRPartADto formToSave = new FormRPartADto();
-    formToSave.setId(formId);
+    formToSave.setId(ID.toString());
     formToSave.setTraineeTisId(TRAINEE_ID);
     formToSave.setForename(FORENAME);
     formToSave.setSurname(SURNAME);
