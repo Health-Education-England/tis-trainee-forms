@@ -67,6 +67,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartARepositoryImpl;
 import uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService;
+import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -101,6 +102,9 @@ class FormRPartAResourceIntegrationTest {
 
   @MockBean
   EventBroadcastService eventBroadcastService;
+
+  @MockBean
+  PdfService pdfService;
 
   @AfterEach
   void tearDown() {
