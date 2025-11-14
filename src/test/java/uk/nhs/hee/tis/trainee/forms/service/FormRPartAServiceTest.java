@@ -527,7 +527,7 @@ class FormRPartAServiceTest {
 
     ArgumentCaptor<FormRPartADto> dtoCaptor = ArgumentCaptor.forClass(FormRPartADto.class);
     verify(eventBroadcastService).publishFormRPartAEvent(
-        dtoCaptor.capture(), isNull(), eq(FORM_R_PART_A_SUBMITTED_TOPIC));
+        dtoCaptor.capture(), eq("formr-a"), eq(FORM_R_PART_A_SUBMITTED_TOPIC));
 
     FormRPartADto publishedDto = dtoCaptor.getValue();
     assertThat("Unexpected form ID.", publishedDto.getId(), is(DEFAULT_ID_STRING));

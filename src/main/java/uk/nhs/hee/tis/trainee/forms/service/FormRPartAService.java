@@ -115,7 +115,7 @@ public class FormRPartAService {
     FormRPartADto formDto = mapper.toDto(formRPartA);
     if (formRPartA.getLifecycleState() == LifecycleState.SUBMITTED) {
       log.debug("Publishing FormRPartA submitted event for form id: {}", formRPartA.getId());
-      eventBroadcastService.publishFormRPartAEvent(formDto, null, formRPartASubmittedTopic);
+      eventBroadcastService.publishFormRPartAEvent(formDto, "formr-a", formRPartASubmittedTopic);
     }
     return formDto;
   }

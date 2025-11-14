@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.api;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -404,7 +405,7 @@ class FormRPartAResourceIntegrationTest {
 
     ArgumentCaptor<FormRPartADto> dtoCaptor = ArgumentCaptor.forClass(FormRPartADto.class);
     verify(eventBroadcastService).publishFormRPartAEvent(
-        dtoCaptor.capture(), isNull(), org.mockito.ArgumentMatchers.anyString());
+        dtoCaptor.capture(), eq("formr-a"), org.mockito.ArgumentMatchers.anyString());
 
     FormRPartADto publishedDto = dtoCaptor.getValue();
     assertThat("Unexpected forename.", publishedDto.getForename(), is(FORENAME));
