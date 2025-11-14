@@ -33,22 +33,29 @@ import software.amazon.awssdk.services.sns.SnsClient;
 import software.amazon.awssdk.services.sns.model.MessageAttributeValue;
 import software.amazon.awssdk.services.sns.model.PublishRequest;
 import software.amazon.awssdk.services.sns.model.SnsException;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 
 /**
- * A service for broadcasting LTFT form events to SNS.
+ * A service for broadcasting form events to SNS.
  */
 @Slf4j
 @Service
 public class EventBroadcastService {
 
   protected static final String MESSAGE_ATTRIBUTE_KEY = "trigger";
+  protected static final String MESSAGE_ATTRIBUTE_KEY_FORM_TYPE = "formType";
   protected static final String MESSAGE_ATTRIBUTE_DEFAULT_VALUE = "default";
 
   private final SnsClient snsClient;
+  private final ObjectMapper objectMapper;
 
   EventBroadcastService(SnsClient snsClient) {
     this.snsClient = snsClient;
+    objectMapper = new ObjectMapper()
+        .registerModule(new JavaTimeModule())
+        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
   }
 
   /**
@@ -66,22 +73,108 @@ public class EventBroadcastService {
       log.warn("LTFT form is null, skipping SNS publish.");
       return;
     }
-    ObjectMapper objectMapper = new ObjectMapper()
-        .registerModule(new JavaTimeModule())
-        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-    JsonNode eventJson = objectMapper.valueToTree(formDto);
 
-    PublishRequest request = buildSnsRequest(snsTopic, eventJson, messageAttribute, formDto.id());
+    publishJsonEvent(objectMapper.valueToTree(formDto), messageAttribute, snsTopic,
+        formDto.id() == null ? null : formDto.id().toString());
+  }
+
+  /**
+   * Publish a Form R Part A event to SNS.
+   *
+   * @param formDto          The Form R Part A DTO to publish.
+   * @param messageAttributes The message attributes to include in the request.
+   * @param snsTopic         The SNS topic ARN to publish to.
+   */
+  public void publishFormRPartAEvent(FormRPartADto formDto, Map<String, String> messageAttributes,
+      String snsTopic) {
+
+    if (formDto == null) {
+      log.warn("Form R Part A is null, skipping SNS publish.");
+      return;
+    }
+    publishJsonEvent(objectMapper.valueToTree(formDto), messageAttributes, snsTopic,
+        formDto.getId());
+  }
+
+  /**
+   * Publish a Form R Part B event to SNS.
+   *
+   * @param formDto          The Form R Part B DTO to publish.
+   * @param messageAttributes The message attributes to include in the request.
+   * @param snsTopic         The SNS topic ARN to publish to.
+   */
+  public void publishFormRPartBEvent(FormRPartBDto formDto, Map<String, String> messageAttributes,
+      String snsTopic) {
+
+    if (formDto == null) {
+      log.warn("Form R Part B is null, skipping SNS publish.");
+      return;
+    }
+    publishJsonEvent(objectMapper.valueToTree(formDto), messageAttributes, snsTopic,
+        formDto.getId());
+  }
+
+  /**
+   * Publish a generic JSON event to SNS.
+   *
+   * @param eventJson        The event JSON to publish.
+   * @param messageAttribute The message attribute to include in the request.
+   * @param snsTopic         The SNS topic ARN to publish to.
+   * @param id               The event id.
+   */
+  private void publishJsonEvent(JsonNode eventJson, String messageAttribute,
+      String snsTopic, String id) {
+
+    if (isJsonNodeEmpty(eventJson)) {
+      log.warn("Event JSON is empty, skipping SNS publish.");
+      return;
+    }
+
+    PublishRequest request = buildSnsRequest(snsTopic, eventJson, messageAttribute, id);
 
     if (request != null) {
       try {
         snsClient.publish(request);
-        log.info("Broadcast event sent to SNS for LTFT form {} with attribute {}.",
-            formDto.id(), messageAttribute);
+        log.info("Broadcast event sent to SNS for id {} with attribute {}.",
+            id, messageAttribute);
       } catch (SnsException e) {
         String message = String.format(
-            "Failed to broadcast event to SNS topic '%s' for LTFT form '%s'",
-            snsTopic, formDto.id());
+            "Failed to broadcast event to SNS topic '%s' for id '%s'",
+            snsTopic, id);
+        log.error(message, e);
+        throw e;
+      }
+    }
+  }
+
+  /**
+   * Publish a generic JSON event to SNS.
+   *
+   * @param eventJson        The event JSON to publish.
+   * @param messageAttributes The message attributes to include in the request.
+   * @param snsTopic         The SNS topic ARN to publish to.
+   * @param id               The event id.
+   */
+  private void publishJsonEvent(JsonNode eventJson, Map<String, String> messageAttributes,
+      String snsTopic, String id) {
+
+    if (isJsonNodeEmpty(eventJson)) {
+      log.warn("Event JSON is empty, skipping SNS publish.");
+      return;
+    }
+
+    PublishRequest request
+        = buildSnsRequestWithAttributes(snsTopic, eventJson, messageAttributes, id);
+
+    if (request != null) {
+      try {
+        snsClient.publish(request);
+        log.info("Broadcast event sent to SNS for id {} with attributes {}.",
+            id, messageAttributes == null ? "null" : messageAttributes.keySet());
+      } catch (SnsException e) {
+        String message = String.format(
+            "Failed to broadcast event to SNS topic '%s' for id '%s'",
+            snsTopic, id);
         log.error(message, e);
         throw e;
       }
@@ -94,11 +187,11 @@ public class EventBroadcastService {
    * @param snsTopic         The SNS topic ARN to publish to.
    * @param eventJson        The SNS message contents.
    * @param messageAttribute The message attribute to include in the request.
-   * @param id               The event UUID.
+   * @param id               The event id.
    * @return the built request.
    */
   private PublishRequest buildSnsRequest(String snsTopic, JsonNode eventJson,
-      String messageAttribute, UUID id) {
+      String messageAttribute, String id) {
     if (snsTopic == null || snsTopic.isBlank()) {
       log.warn("SNS topic ARN is null or blank, skipping SNS publish.");
       return null;
@@ -114,9 +207,72 @@ public class EventBroadcastService {
         .build();
     request.messageAttributes(Map.of(MESSAGE_ATTRIBUTE_KEY, messageAttributeValue));
 
-    String groupId = id == null ? UUID.randomUUID().toString() : id.toString();
+    String groupId = id == null ? UUID.randomUUID().toString() : id;
     request.messageGroupId(groupId);
 
     return request.build();
+  }
+
+  /**
+   * Build an SNS publish request from a map of message attributes.
+   *
+   * @param snsTopic         The SNS topic ARN to publish to.
+   * @param eventJson        The SNS message contents.
+   * @param attributes        The message attributes to include in the request.
+   * @param id               The event id.
+   * @return the built request.
+   */
+  private PublishRequest buildSnsRequestWithAttributes(String snsTopic, JsonNode eventJson,
+      Map<String, String> attributes, String id) {
+
+    if (snsTopic == null || snsTopic.isBlank()) {
+      log.warn("SNS topic ARN is null or blank, skipping SNS publish.");
+      return null;
+    }
+
+    PublishRequest.Builder request = PublishRequest.builder()
+        .message(eventJson.toString())
+        .topicArn(snsTopic);
+
+    Map<String, MessageAttributeValue> attrMap;
+    if (attributes != null && !attributes.isEmpty()) {
+      // build a map of MessageAttributeValue
+      var builder = new java.util.HashMap<String, MessageAttributeValue>();
+      for (var e : attributes.entrySet()) {
+        String value = e.getValue() == null ? MESSAGE_ATTRIBUTE_DEFAULT_VALUE : e.getValue();
+        builder.put(e.getKey(), MessageAttributeValue.builder()
+            .dataType("String")
+            .stringValue(value)
+            .build());
+      }
+      attrMap = java.util.Map.copyOf(builder);
+      request.messageAttributes(attrMap);
+    }
+
+    String groupId = id == null ? UUID.randomUUID().toString() : id;
+    request.messageGroupId(groupId);
+
+    return request.build();
+  }
+
+  /**
+   * Check if a JsonNode is empty (no fields or all fields are null).
+   *
+   * @param jsonNode The JSON node to check.
+   * @return true if the node is empty or contains only nulls, false otherwise.
+   */
+  private boolean isJsonNodeEmpty(JsonNode jsonNode) {
+    if (jsonNode.isEmpty()) {
+      return true;
+    }
+
+    // Check if all fields are null
+    var iterator = jsonNode.fields();
+    while (iterator.hasNext()) {
+      if (!iterator.next().getValue().isNull()) {
+        return false;
+      }
+    }
+    return true;
   }
 }

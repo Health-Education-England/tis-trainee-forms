@@ -25,6 +25,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -35,6 +36,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -71,6 +73,7 @@ class FormRPartAServiceTest {
   private static final LocalDateTime DEFAULT_SUBMISSION_DATE = LocalDateTime.now();
   private static final Set<String> FIXED_FIELDS =
       Set.of("id", "traineeTisId", "lifecycleState");
+  private static final String FORM_R_PART_A_SUBMITTED_TOPIC = "arn:aws:sns:topic";
 
   private FormRPartAService service;
 
@@ -80,6 +83,9 @@ class FormRPartAServiceTest {
   @Mock
   private S3FormRPartARepositoryImpl cloudObjectRepository;
 
+  @Mock
+  private EventBroadcastService eventBroadcastService;
+
   private FormRPartA entity;
 
   private TraineeIdentity traineeIdentity;
@@ -87,6 +93,8 @@ class FormRPartAServiceTest {
   @Captor
   private ArgumentCaptor<FormRPartA> formRPartACaptor;
 
+  @Captor
+  private ArgumentCaptor<FormRPartADto> formRPartADtoCaptor;
 
   @BeforeEach
   void setUp() {
@@ -96,7 +104,9 @@ class FormRPartAServiceTest {
         repositoryMock,
         cloudObjectRepository,
         new FormRPartAMapperImpl(),
-        new ObjectMapper().findAndRegisterModules(), traineeIdentity);
+        new ObjectMapper().findAndRegisterModules(), traineeIdentity,
+        eventBroadcastService,
+        FORM_R_PART_A_SUBMITTED_TOPIC);
     entity = createEntity();
   }
 
@@ -490,5 +500,63 @@ class FormRPartAServiceTest {
         .thenThrow(IllegalArgumentException.class);
     assertThrows(ApplicationException.class, () -> service.partialDeleteFormRPartAById(
         DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID, FIXED_FIELDS));
+  }
+
+  @Test
+  void shouldPublishEventWhenSavingSubmittedFormRPartA() {
+    entity.setId(null);
+    entity.setLifecycleState(LifecycleState.SUBMITTED);
+    entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+
+    FormRPartADto dto = new FormRPartADto();
+    dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    dto.setForename(DEFAULT_FORENAME);
+    dto.setSurname(DEFAULT_SURNAME);
+    dto.setLifecycleState(LifecycleState.SUBMITTED);
+    dto.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+
+    when(repositoryMock.save(any())).thenAnswer(invocation -> {
+      FormRPartA toSave = invocation.getArgument(0);
+      FormRPartA savedEntity = new FormRPartA();
+      BeanUtils.copyProperties(toSave, savedEntity);
+      savedEntity.setId(DEFAULT_ID);
+      return savedEntity;
+    });
+
+    service.save(dto);
+
+    ArgumentCaptor<FormRPartADto> dtoCaptor = ArgumentCaptor.forClass(FormRPartADto.class);
+    verify(eventBroadcastService).publishFormRPartAEvent(
+        dtoCaptor.capture(), eq(Map.of("formType", "formr-a")), eq(FORM_R_PART_A_SUBMITTED_TOPIC));
+
+    FormRPartADto publishedDto = dtoCaptor.getValue();
+    assertThat("Unexpected form ID.", publishedDto.getId(), is(DEFAULT_ID_STRING));
+    assertThat("Unexpected lifecycle state.", publishedDto.getLifecycleState(),
+        is(LifecycleState.SUBMITTED));
+  }
+
+  @ParameterizedTest(name = "Should not publish event when saving form with {0} state.")
+  @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = {"SUBMITTED"})
+  void shouldNotPublishEventWhenSavingNonSubmittedFormRPartA(LifecycleState state) {
+    entity.setId(null);
+    entity.setLifecycleState(state);
+
+    FormRPartADto dto = new FormRPartADto();
+    dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    dto.setForename(DEFAULT_FORENAME);
+    dto.setSurname(DEFAULT_SURNAME);
+    dto.setLifecycleState(state);
+
+    when(repositoryMock.save(any())).thenAnswer(invocation -> {
+      FormRPartA toSave = invocation.getArgument(0);
+      FormRPartA savedEntity = new FormRPartA();
+      BeanUtils.copyProperties(toSave, savedEntity);
+      savedEntity.setId(DEFAULT_ID);
+      return savedEntity;
+    });
+
+    service.save(dto);
+
+    verifyNoInteractions(eventBroadcastService);
   }
 }
