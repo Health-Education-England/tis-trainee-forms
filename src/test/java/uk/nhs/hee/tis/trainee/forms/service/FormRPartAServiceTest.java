@@ -516,9 +516,9 @@ class FormRPartAServiceTest {
     dto.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
 
     when(repositoryMock.save(any())).thenAnswer(invocation -> {
-      FormRPartA entity = invocation.getArgument(0);
+      FormRPartA toSave = invocation.getArgument(0);
       FormRPartA savedEntity = new FormRPartA();
-      BeanUtils.copyProperties(entity, savedEntity);
+      BeanUtils.copyProperties(toSave, savedEntity);
       savedEntity.setId(DEFAULT_ID);
       return savedEntity;
     });
@@ -548,9 +548,9 @@ class FormRPartAServiceTest {
     dto.setLifecycleState(state);
 
     when(repositoryMock.save(any())).thenAnswer(invocation -> {
-      FormRPartA entity = invocation.getArgument(0);
+      FormRPartA toSave = invocation.getArgument(0);
       FormRPartA savedEntity = new FormRPartA();
-      BeanUtils.copyProperties(entity, savedEntity);
+      BeanUtils.copyProperties(toSave, savedEntity);
       savedEntity.setId(DEFAULT_ID);
       return savedEntity;
     });

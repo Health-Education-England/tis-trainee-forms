@@ -751,9 +751,9 @@ class FormRPartBServiceTest {
     FormRPartBDto dto = mapper.toDto(entity);
 
     when(repositoryMock.save(any())).thenAnswer(invocation -> {
-      FormRPartB entity = invocation.getArgument(0);
+      FormRPartB toSave = invocation.getArgument(0);
       FormRPartB savedEntity = new FormRPartB();
-      BeanUtils.copyProperties(entity, savedEntity);
+      BeanUtils.copyProperties(toSave, savedEntity);
       savedEntity.setId(DEFAULT_ID);
       return savedEntity;
     });
@@ -778,9 +778,9 @@ class FormRPartBServiceTest {
     FormRPartBDto dto = mapper.toDto(entity);
 
     when(repositoryMock.save(any())).thenAnswer(invocation -> {
-      FormRPartB entity = invocation.getArgument(0);
+      FormRPartB toSave = invocation.getArgument(0);
       FormRPartB savedEntity = new FormRPartB();
-      BeanUtils.copyProperties(entity, savedEntity);
+      BeanUtils.copyProperties(toSave, savedEntity);
       savedEntity.setId(DEFAULT_ID);
       return savedEntity;
     });

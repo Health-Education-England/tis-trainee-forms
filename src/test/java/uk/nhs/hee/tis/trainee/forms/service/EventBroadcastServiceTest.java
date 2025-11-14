@@ -125,7 +125,9 @@ class EventBroadcastServiceTest {
 
   @Test
   void shouldSetArbitraryMessageGroupIdOnIssuedEventIfNoId() {
-    LtftFormDto ltftFormDto = LtftFormDto.builder().build();
+    LtftFormDto ltftFormDto = LtftFormDto.builder()
+        .id(FORM_ID)
+        .build();
 
     service.publishLtftFormUpdateEvent(ltftFormDto, MESSAGE_ATTRIBUTE, SNS_TOPIC);
 
@@ -140,7 +142,9 @@ class EventBroadcastServiceTest {
 
   @Test
   void shouldIncludeDefaultMessageAttributeIfNotProvided() {
-    LtftFormDto ltftFormDto = LtftFormDto.builder().build();
+    LtftFormDto ltftFormDto = LtftFormDto.builder()
+        .id(FORM_ID)
+        .build();
 
     service.publishLtftFormUpdateEvent(ltftFormDto, null, SNS_TOPIC);
 
@@ -277,6 +281,33 @@ class EventBroadcastServiceTest {
         messageAttributes.get(MESSAGE_ATTRIBUTE_KEY).dataType(), is("String"));
 
     verifyNoMoreInteractions(snsClient);
+  }
+
+  @Test
+  void shouldNotPublishLtftFormEventIfEventJsonIsEmpty() {
+    LtftFormDto ltftFormDto = LtftFormDto.builder().build();
+
+    service.publishLtftFormUpdateEvent(ltftFormDto, MESSAGE_ATTRIBUTE, SNS_TOPIC);
+
+    verifyNoInteractions(snsClient);
+  }
+
+  @Test
+  void shouldNotPublishFormRPartAEventIfEventJsonIsEmpty() {
+    FormRPartADto formRPartADto = new FormRPartADto();
+
+    service.publishFormRPartAEvent(formRPartADto, MESSAGE_ATTRIBUTE, SNS_TOPIC);
+
+    verifyNoInteractions(snsClient);
+  }
+
+  @Test
+  void shouldNotPublishFormRPartBEventIfEventJsonIsEmpty() {
+    FormRPartBDto formRPartBDto = new FormRPartBDto();
+
+    service.publishFormRPartBEvent(formRPartBDto, MESSAGE_ATTRIBUTE, SNS_TOPIC);
+
+    verifyNoInteractions(snsClient);
   }
 
   /**

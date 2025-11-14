@@ -99,7 +99,7 @@ public class EventBroadcastService {
   /**
    * Publish a Form R Part B event to SNS.
    *
-   * @param formDto          The Form R Part A DTO to publish.
+   * @param formDto          The Form R Part B DTO to publish.
    * @param messageAttribute The message attribute to include in the request (a default is used if
    *                         this is missing).
    * @param snsTopic         The SNS topic ARN to publish to.
@@ -126,8 +126,8 @@ public class EventBroadcastService {
   private void publishJsonEvent(JsonNode eventJson, String messageAttribute,
       String snsTopic, String id) {
 
-    if (eventJson == null) {
-      log.warn("Event JSON is null, skipping SNS publish.");
+    if (isJsonNodeEmpty(eventJson)) {
+      log.warn("Event JSON is empty, skipping SNS publish.");
       return;
     }
 
@@ -178,5 +178,26 @@ public class EventBroadcastService {
     request.messageGroupId(groupId);
 
     return request.build();
+  }
+
+  /**
+   * Check if a JsonNode is empty (no fields or all fields are null).
+   *
+   * @param jsonNode The JSON node to check.
+   * @return true if the node is empty or contains only nulls, false otherwise.
+   */
+  private boolean isJsonNodeEmpty(JsonNode jsonNode) {
+    if (jsonNode.isEmpty()) {
+      return true;
+    }
+
+    // Check if all fields are null
+    var iterator = jsonNode.fields();
+    while (iterator.hasNext()) {
+      if (!iterator.next().getValue().isNull()) {
+        return false;
+      }
+    }
+    return true;
   }
 }
