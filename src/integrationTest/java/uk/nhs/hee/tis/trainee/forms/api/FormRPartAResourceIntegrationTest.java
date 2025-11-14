@@ -35,6 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
+import java.util.Map;
 import org.mockito.ArgumentCaptor;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -405,7 +406,8 @@ class FormRPartAResourceIntegrationTest {
 
     ArgumentCaptor<FormRPartADto> dtoCaptor = ArgumentCaptor.forClass(FormRPartADto.class);
     verify(eventBroadcastService).publishFormRPartAEvent(
-        dtoCaptor.capture(), eq("formr-a"), org.mockito.ArgumentMatchers.anyString());
+        dtoCaptor.capture(), eq(Map.of("formType","formr-a")),
+        org.mockito.ArgumentMatchers.anyString());
 
     FormRPartADto publishedDto = dtoCaptor.getValue();
     assertThat("Unexpected forename.", publishedDto.getForename(), is(FORENAME));

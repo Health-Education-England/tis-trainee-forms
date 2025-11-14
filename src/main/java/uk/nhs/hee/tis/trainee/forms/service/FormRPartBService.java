@@ -27,6 +27,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -112,7 +113,10 @@ public class FormRPartBService {
     FormRPartBDto formDto = formRPartBMapper.toDto(formRPartB);
     if (formRPartB.getLifecycleState() == LifecycleState.SUBMITTED) {
       log.debug("Publishing FormRPartB submitted event for form id: {}", formRPartB.getId());
-      eventBroadcastService.publishFormRPartBEvent(formDto, "formr-b", formRPartBSubmittedTopic);
+      eventBroadcastService.publishFormRPartBEvent(
+          formDto,
+          Map.of(EventBroadcastService.MESSAGE_ATTRIBUTE_KEY_FORM_TYPE, FORM_TYPE),
+          formRPartBSubmittedTopic);
     }
     return formDto;
   }

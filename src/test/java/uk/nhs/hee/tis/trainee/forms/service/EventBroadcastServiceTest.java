@@ -33,6 +33,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService.MESSAGE_ATTRIBUTE_DEFAULT_VALUE;
 import static uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService.MESSAGE_ATTRIBUTE_KEY;
+import static uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService.MESSAGE_ATTRIBUTE_KEY_FORM_TYPE;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -60,6 +61,8 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
  */
 class EventBroadcastServiceTest {
   private static final String MESSAGE_ATTRIBUTE = "message-attribute";
+  private static final String FORM_TYPE_PART_A = "formr-a";
+  private static final String FORM_TYPE_PART_B = "formr-b";
   private static final String SNS_TOPIC = "some.sns.topic";
 
   private static final String TRAINEE_ID = "40";
@@ -197,7 +200,7 @@ class EventBroadcastServiceTest {
 
   @Test
   void shouldNotPublishFormRPartAEventIfEventDtoIsNull() {
-    service.publishFormRPartAEvent(null, MESSAGE_ATTRIBUTE, SNS_TOPIC);
+    service.publishFormRPartAEvent(null, null, SNS_TOPIC);
 
     verifyNoInteractions(snsClient);
   }
@@ -206,7 +209,7 @@ class EventBroadcastServiceTest {
   @NullAndEmptySource
   void shouldNotPublishFormRPartAEventIfSnsTopicMissing(String snsTopic) {
     FormRPartADto formRPartADto = buildDummyFormRPartADto();
-    service.publishFormRPartAEvent(formRPartADto, MESSAGE_ATTRIBUTE, snsTopic);
+    service.publishFormRPartAEvent(formRPartADto, null, snsTopic);
 
     verifyNoInteractions(snsClient);
   }
@@ -215,7 +218,7 @@ class EventBroadcastServiceTest {
   void shouldPublishFormRPartAEvent() throws JsonProcessingException {
     FormRPartADto formRPartADto = buildDummyFormRPartADto();
 
-    service.publishFormRPartAEvent(formRPartADto, MESSAGE_ATTRIBUTE, SNS_TOPIC);
+    service.publishFormRPartAEvent(formRPartADto, Map.of("formType", "formr-a"), SNS_TOPIC);
 
     ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
     verify(snsClient).publish(requestCaptor.capture());
@@ -232,16 +235,17 @@ class EventBroadcastServiceTest {
 
     Map<String, MessageAttributeValue> messageAttributes = request.messageAttributes();
     assertThat("Unexpected message attribute value.",
-        messageAttributes.get(MESSAGE_ATTRIBUTE_KEY).stringValue(), is(MESSAGE_ATTRIBUTE));
+        messageAttributes.get(MESSAGE_ATTRIBUTE_KEY_FORM_TYPE).stringValue(),
+        is(FORM_TYPE_PART_A));
     assertThat("Unexpected message attribute data type.",
-        messageAttributes.get(MESSAGE_ATTRIBUTE_KEY).dataType(), is("String"));
+        messageAttributes.get(MESSAGE_ATTRIBUTE_KEY_FORM_TYPE).dataType(), is("String"));
 
     verifyNoMoreInteractions(snsClient);
   }
 
   @Test
   void shouldNotPublishFormRPartBEventIfEventDtoIsNull() {
-    service.publishFormRPartBEvent(null, MESSAGE_ATTRIBUTE, SNS_TOPIC);
+    service.publishFormRPartBEvent(null, null, SNS_TOPIC);
 
     verifyNoInteractions(snsClient);
   }
@@ -250,7 +254,7 @@ class EventBroadcastServiceTest {
   @NullAndEmptySource
   void shouldNotPublishFormRPartBEventIfSnsTopicMissing(String snsTopic) {
     FormRPartBDto formRPartBDto = buildDummyFormRPartBDto();
-    service.publishFormRPartBEvent(formRPartBDto, MESSAGE_ATTRIBUTE, snsTopic);
+    service.publishFormRPartBEvent(formRPartBDto, null, snsTopic);
 
     verifyNoInteractions(snsClient);
   }
@@ -259,7 +263,7 @@ class EventBroadcastServiceTest {
   void shouldPublishFormRPartBEvent() throws JsonProcessingException {
     FormRPartBDto formRPartBDto = buildDummyFormRPartBDto();
 
-    service.publishFormRPartBEvent(formRPartBDto, MESSAGE_ATTRIBUTE, SNS_TOPIC);
+    service.publishFormRPartBEvent(formRPartBDto, Map.of("formType", "formr-b"), SNS_TOPIC);
 
     ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
     verify(snsClient).publish(requestCaptor.capture());
@@ -276,9 +280,10 @@ class EventBroadcastServiceTest {
 
     Map<String, MessageAttributeValue> messageAttributes = request.messageAttributes();
     assertThat("Unexpected message attribute value.",
-        messageAttributes.get(MESSAGE_ATTRIBUTE_KEY).stringValue(), is(MESSAGE_ATTRIBUTE));
+        messageAttributes.get(MESSAGE_ATTRIBUTE_KEY_FORM_TYPE).stringValue(),
+        is(FORM_TYPE_PART_B));
     assertThat("Unexpected message attribute data type.",
-        messageAttributes.get(MESSAGE_ATTRIBUTE_KEY).dataType(), is("String"));
+        messageAttributes.get(MESSAGE_ATTRIBUTE_KEY_FORM_TYPE).dataType(), is("String"));
 
     verifyNoMoreInteractions(snsClient);
   }
@@ -296,7 +301,7 @@ class EventBroadcastServiceTest {
   void shouldNotPublishFormRPartAEventIfEventJsonIsEmpty() {
     FormRPartADto formRPartADto = new FormRPartADto();
 
-    service.publishFormRPartAEvent(formRPartADto, MESSAGE_ATTRIBUTE, SNS_TOPIC);
+    service.publishFormRPartAEvent(formRPartADto, null, SNS_TOPIC);
 
     verifyNoInteractions(snsClient);
   }
@@ -305,9 +310,144 @@ class EventBroadcastServiceTest {
   void shouldNotPublishFormRPartBEventIfEventJsonIsEmpty() {
     FormRPartBDto formRPartBDto = new FormRPartBDto();
 
-    service.publishFormRPartBEvent(formRPartBDto, MESSAGE_ATTRIBUTE, SNS_TOPIC);
+    service.publishFormRPartBEvent(formRPartBDto, null, SNS_TOPIC);
 
     verifyNoInteractions(snsClient);
+  }
+
+  @Test
+  void shouldRethrowSnsExceptionWhenPublishingFormRPartAEventWithAttributes() {
+    FormRPartADto formRPartADto = buildDummyFormRPartADto();
+
+    when(snsClient.publish(any(PublishRequest.class))).thenThrow(SnsException.builder().build());
+
+    assertThrows(SnsException.class,
+        () -> service.publishFormRPartAEvent(formRPartADto, Map.of("formType", "formr-a"), SNS_TOPIC));
+  }
+
+  @Test
+  void shouldRethrowSnsExceptionWhenPublishingFormRPartBEventWithAttributes() {
+    FormRPartBDto formRPartBDto = buildDummyFormRPartBDto();
+
+    when(snsClient.publish(any(PublishRequest.class))).thenThrow(SnsException.builder().build());
+
+    assertThrows(SnsException.class,
+        () -> service.publishFormRPartBEvent(formRPartBDto, Map.of("formType", "formr-b"),
+            SNS_TOPIC));
+  }
+
+  @Test
+  void shouldPublishFormRPartAEventWithNullAttributes() throws JsonProcessingException {
+    FormRPartADto formRPartADto = buildDummyFormRPartADto();
+
+    service.publishFormRPartAEvent(formRPartADto, null, SNS_TOPIC);
+
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
+    verify(snsClient).publish(requestCaptor.capture());
+
+    PublishRequest request = requestCaptor.getValue();
+    assertThat("Unexpected topic ARN.", request.topicArn(), is(SNS_TOPIC));
+    assertThat("Unexpected message group id.", request.messageGroupId(), is(FORM_ID_STRING));
+
+    Map<String, MessageAttributeValue> messageAttributes = request.messageAttributes();
+    assertThat("Message attributes should be empty or not set.", messageAttributes.isEmpty());
+
+    verifyNoMoreInteractions(snsClient);
+  }
+
+  @Test
+  void shouldPublishFormRPartAEventWithEmptyAttributes() throws JsonProcessingException {
+    FormRPartADto formRPartADto = buildDummyFormRPartADto();
+
+    service.publishFormRPartAEvent(formRPartADto, Map.of(), SNS_TOPIC);
+
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
+    verify(snsClient).publish(requestCaptor.capture());
+
+    PublishRequest request = requestCaptor.getValue();
+    assertThat("Unexpected topic ARN.", request.topicArn(), is(SNS_TOPIC));
+    assertThat("Unexpected message group id.", request.messageGroupId(), is(FORM_ID_STRING));
+
+    Map<String, MessageAttributeValue> messageAttributes = request.messageAttributes();
+    assertThat("Message attributes should be empty or not set.", messageAttributes.isEmpty());
+
+    verifyNoMoreInteractions(snsClient);
+  }
+
+  @Test
+  void shouldPublishFormRPartBEventWithNullAttributes() throws JsonProcessingException {
+    FormRPartBDto formRPartBDto = buildDummyFormRPartBDto();
+
+    service.publishFormRPartBEvent(formRPartBDto, null, SNS_TOPIC);
+
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
+    verify(snsClient).publish(requestCaptor.capture());
+
+    PublishRequest request = requestCaptor.getValue();
+    assertThat("Unexpected topic ARN.", request.topicArn(), is(SNS_TOPIC));
+    assertThat("Unexpected message group id.", request.messageGroupId(), is(FORM_ID_STRING));
+
+    Map<String, MessageAttributeValue> messageAttributes = request.messageAttributes();
+    assertThat("Message attributes should be empty or not set.", messageAttributes.isEmpty());
+
+    verifyNoMoreInteractions(snsClient);
+  }
+
+  @Test
+  void shouldPublishFormRPartBEventWithEmptyAttributes() throws JsonProcessingException {
+    FormRPartBDto formRPartBDto = buildDummyFormRPartBDto();
+
+    service.publishFormRPartBEvent(formRPartBDto, Map.of(), SNS_TOPIC);
+
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
+    verify(snsClient).publish(requestCaptor.capture());
+
+    PublishRequest request = requestCaptor.getValue();
+    assertThat("Unexpected topic ARN.", request.topicArn(), is(SNS_TOPIC));
+    assertThat("Unexpected message group id.", request.messageGroupId(), is(FORM_ID_STRING));
+
+    Map<String, MessageAttributeValue> messageAttributes = request.messageAttributes();
+    assertThat("Message attributes should be empty or not set.", messageAttributes.isEmpty());
+
+    verifyNoMoreInteractions(snsClient);
+  }
+
+  @Test
+  void shouldPublishFormRPartAEventWithNullId() throws JsonProcessingException {
+    FormRPartADto formRPartADto = new FormRPartADto();
+    formRPartADto.setTraineeTisId(TRAINEE_ID);
+    formRPartADto.setLifecycleState(LifecycleState.SUBMITTED);
+    // id is null
+
+    service.publishFormRPartAEvent(formRPartADto, Map.of("formType", "formr-a"), SNS_TOPIC);
+
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
+    verify(snsClient).publish(requestCaptor.capture());
+
+    PublishRequest request = requestCaptor.getValue();
+    assertThat("Unexpected topic ARN.", request.topicArn(), is(SNS_TOPIC));
+    assertThat("Message group id should be generated UUID.", request.messageGroupId(), notNullValue());
+
+    verifyNoMoreInteractions(snsClient);
+  }
+
+  @Test
+  void shouldPublishFormRPartBEventWithNullId() throws JsonProcessingException {
+    FormRPartBDto formRPartBDto = new FormRPartBDto();
+    formRPartBDto.setTraineeTisId(TRAINEE_ID);
+    formRPartBDto.setLifecycleState(LifecycleState.SUBMITTED);
+    // id is null
+
+    service.publishFormRPartBEvent(formRPartBDto, Map.of("formType", "formr-b"), SNS_TOPIC);
+
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
+    verify(snsClient).publish(requestCaptor.capture());
+
+    PublishRequest request = requestCaptor.getValue();
+    assertThat("Unexpected topic ARN.", request.topicArn(), is(SNS_TOPIC));
+    assertThat("Message group id should be generated UUID.", request.messageGroupId(), notNullValue());
+
+    verifyNoMoreInteractions(snsClient);
   }
 
   /**

@@ -37,6 +37,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -527,7 +528,7 @@ class FormRPartAServiceTest {
 
     ArgumentCaptor<FormRPartADto> dtoCaptor = ArgumentCaptor.forClass(FormRPartADto.class);
     verify(eventBroadcastService).publishFormRPartAEvent(
-        dtoCaptor.capture(), eq("formr-a"), eq(FORM_R_PART_A_SUBMITTED_TOPIC));
+        dtoCaptor.capture(), eq(Map.of("formType","formr-a")), eq(FORM_R_PART_A_SUBMITTED_TOPIC));
 
     FormRPartADto publishedDto = dtoCaptor.getValue();
     assertThat("Unexpected form ID.", publishedDto.getId(), is(DEFAULT_ID_STRING));

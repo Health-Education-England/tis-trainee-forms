@@ -42,6 +42,7 @@ import java.net.URI;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -358,7 +359,8 @@ class FormRPartBResourceIntegrationTest {
 
     ArgumentCaptor<FormRPartBDto> dtoCaptor = ArgumentCaptor.forClass(FormRPartBDto.class);
     verify(eventBroadcastService).publishFormRPartBEvent(
-        dtoCaptor.capture(), eq("formr-b"), org.mockito.ArgumentMatchers.anyString());
+        dtoCaptor.capture(), eq(Map.of("formType","formr-b")),
+        org.mockito.ArgumentMatchers.anyString());
 
     FormRPartBDto publishedDto = dtoCaptor.getValue();
     assertThat("Unexpected forename.", publishedDto.getForename(), is(FORENAME));

@@ -39,6 +39,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -762,7 +763,7 @@ class FormRPartBServiceTest {
 
     ArgumentCaptor<FormRPartBDto> dtoCaptor = ArgumentCaptor.forClass(FormRPartBDto.class);
     verify(eventBroadcastService).publishFormRPartBEvent(
-        dtoCaptor.capture(), eq("formr-b"), eq(FORM_R_PART_B_SUBMITTED_TOPIC));
+        dtoCaptor.capture(), eq(Map.of("formType", "formr-b")), eq(FORM_R_PART_B_SUBMITTED_TOPIC));
 
     FormRPartBDto publishedDto = dtoCaptor.getValue();
     assertThat("Unexpected form ID.", publishedDto.getId(), is(DEFAULT_ID_STRING));
