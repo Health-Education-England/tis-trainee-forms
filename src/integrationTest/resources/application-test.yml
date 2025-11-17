@@ -2,6 +2,8 @@ application:
   signature:
     secret-key: test-secret-key
   aws:
+    sns:
+      formr-updated: dummy
     sqs:
       coj-received: dummy
       delete-event: dummy
