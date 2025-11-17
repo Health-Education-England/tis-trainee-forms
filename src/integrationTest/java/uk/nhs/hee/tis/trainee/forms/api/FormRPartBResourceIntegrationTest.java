@@ -24,9 +24,8 @@ package uk.nhs.hee.tis.trainee.forms.api;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -36,6 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.sns.core.SnsTemplate;
 import java.net.URI;
@@ -64,15 +64,16 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import software.amazon.awssdk.services.sns.SnsClient;
+import software.amazon.awssdk.services.sns.model.MessageAttributeValue;
+import software.amazon.awssdk.services.sns.model.PublishRequest;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
-import uk.nhs.hee.tis.trainee.forms.dto.DeclarationDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartBRepositoryImpl;
-import uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
 @SpringBootTest
@@ -105,7 +106,7 @@ class FormRPartBResourceIntegrationTest {
   S3FormRPartBRepositoryImpl s3FormRPartBRepository;
 
   @MockBean
-  EventBroadcastService eventBroadcastService;
+  SnsClient snsClient;
 
   @MockBean
   PdfService pdfService;
@@ -357,14 +358,22 @@ class FormRPartBResourceIntegrationTest {
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.lifecycleState").value("SUBMITTED"));
 
-    ArgumentCaptor<FormRPartBDto> dtoCaptor = ArgumentCaptor.forClass(FormRPartBDto.class);
-    verify(eventBroadcastService).publishFormRPartBEvent(
-        dtoCaptor.capture(), eq(Map.of("formType","formr-b")),
-        org.mockito.ArgumentMatchers.anyString());
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
+    verify(snsClient).publish(requestCaptor.capture());
 
-    FormRPartBDto publishedDto = dtoCaptor.getValue();
-    assertThat("Unexpected forename.", publishedDto.getForename(), is(FORENAME));
-    assertThat("Unexpected surname.", publishedDto.getSurname(), is(SURNAME));
+    PublishRequest publishRequest = requestCaptor.getValue();
+    JsonNode publishedJson = mapper.readTree(publishRequest.message());
+    assertThat("Unexpected trainee ID.", publishedJson.get("traineeTisId").asText(),
+        is(TRAINEE_ID));
+    assertThat("Unexpected forename.", publishedJson.get("forename").asText(), is(FORENAME));
+    assertThat("Unexpected surname.", publishedJson.get("surname").asText(), is(SURNAME));
+    //no checks on the remaining fields
+
+    Map<String, MessageAttributeValue> messageAttributes = publishRequest.messageAttributes();
+    assertThat("Message attributes should contain formType.",
+        messageAttributes.containsKey("formType"), is(true));
+    assertThat("formType should be 'formr-b'.",
+        messageAttributes.get("formType").stringValue(), is("formr-b"));
   }
 
   @Test
@@ -381,7 +390,7 @@ class FormRPartBResourceIntegrationTest {
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.lifecycleState").value("DRAFT"));
 
-    org.mockito.Mockito.verifyNoInteractions(eventBroadcastService);
+    verifyNoInteractions(snsClient);
   }
 
   /**
