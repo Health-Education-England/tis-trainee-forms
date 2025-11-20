@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.hee.tis.trainee"
-version = "0.56.0"
+version = "0.56.1"
 
 configurations {
   compileOnly {
@@ -31,6 +31,9 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
   implementation("org.springframework.boot:spring-boot-starter-web")
   implementation("org.springframework.boot:spring-boot-starter-validation")
+
+  implementation("org.springframework.boot:spring-boot-starter-security")
+  implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
 
   implementation(libs.bundles.shedlock.mongo)
 
@@ -89,6 +92,9 @@ testing {
         dependencies {
           implementation(project())
           implementation("org.springframework.boot:spring-boot-starter-test")
+
+          // TODO: move when WebMvcTests are moved to integrationTest.
+          implementation("org.springframework.security:spring-security-test")
         }
       }
     }

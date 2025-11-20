@@ -24,44 +24,60 @@ package uk.nhs.hee.tis.trainee.forms.interceptor;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 
 class TraineeIdentityInterceptorTest {
 
+  private static final String TRAINEE_ID = UUID.randomUUID().toString();
+  private static final String EMAIL = "trainee@example.com";
+  private static final String GIVEN_NAME = "Anthony";
+  private static final String FAMILY_NAME = "Gilliam";
+  private static final String FULL_NAME = "Anthony Gilliam";
+
   private TraineeIdentityInterceptor interceptor;
   private TraineeIdentity traineeIdentity;
+
+  private SecurityContext securityContext;
+  private Authentication auth;
 
   @BeforeEach
   void setUp() {
     traineeIdentity = new TraineeIdentity();
     interceptor = new TraineeIdentityInterceptor(traineeIdentity);
+
+    auth = mock(Authentication.class);
+    securityContext = mock(SecurityContext.class);
+    when(securityContext.getAuthentication()).thenReturn(auth);
+    SecurityContextHolder.setContext(securityContext);
+  }
+
+  @AfterEach
+  void tearDear() {
+    SecurityContextHolder.clearContext();
   }
 
   @Test
   void shouldReturnFalseAndNotSetTraineeIdWhenNoAuthToken() {
-    MockHttpServletRequest request = new MockHttpServletRequest();
+    when(securityContext.getAuthentication()).thenReturn(null);
 
-    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
-
-    assertThat("Unexpected result.", result, is(false));
-    assertThat("Unexpected trainee ID.", traineeIdentity.getTraineeId(), nullValue());
-  }
-
-  @Test
-  void shouldReturnFalseAndNotSetTraineeIdWhenTokenNotMap() {
-    MockHttpServletRequest request = new MockHttpServletRequest();
-    request.addHeader(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateToken("[]"));
-
-    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+    boolean result = interceptor.preHandle(new MockHttpServletRequest(),
+        new MockHttpServletResponse(), new Object());
 
     assertThat("Unexpected result.", result, is(false));
     assertThat("Unexpected trainee ID.", traineeIdentity.getTraineeId(), nullValue());
@@ -69,10 +85,11 @@ class TraineeIdentityInterceptorTest {
 
   @Test
   void shouldReturnFalseAndNotSetTraineeIdWhenNoTisIdInAuthToken() {
-    MockHttpServletRequest request = new MockHttpServletRequest();
-    request.addHeader(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateToken("{}"));
+    Jwt token = TestJwtUtil.createToken("{}");
+    when(auth.getPrincipal()).thenReturn(token);
 
-    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+    boolean result = interceptor.preHandle(new MockHttpServletRequest(),
+        new MockHttpServletResponse(), new Object());
 
     assertThat("Unexpected result.", result, is(false));
     assertThat("Unexpected trainee ID.", traineeIdentity.getTraineeId(), nullValue());
@@ -80,41 +97,61 @@ class TraineeIdentityInterceptorTest {
 
   @Test
   void shouldReturnTrueAndSetTraineeIdWhenTisIdInAuthToken() {
-    MockHttpServletRequest request = new MockHttpServletRequest();
-    request.addHeader(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId("40"));
+    Jwt token = TestJwtUtil.createToken("""
+        {
+          "custom:tisId": "%s"
+        }
+        """.formatted(TRAINEE_ID));
+    when(auth.getPrincipal()).thenReturn(token);
 
-    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+    boolean result = interceptor.preHandle(new MockHttpServletRequest(),
+        new MockHttpServletResponse(), new Object());
 
     assertThat("Unexpected result.", result, is(true));
-    assertThat("Unexpected trainee ID.", traineeIdentity.getTraineeId(), is("40"));
+    assertThat("Unexpected trainee ID.", traineeIdentity.getTraineeId(), is(TRAINEE_ID));
   }
 
   @Test
   void shouldReturnTrueAndIncludeOtherDetailsWhenInAuthToken() {
-    MockHttpServletRequest request = new MockHttpServletRequest();
-    request.addHeader(HttpHeaders.AUTHORIZATION,
-        TestJwtUtil.generateTokenForTrainee("40", "email", "John", "Doe"));
+    Jwt token = TestJwtUtil.createToken("""
+        {
+          "custom:tisId": "%s",
+          "email": "%s",
+          "given_name": "%s",
+          "family_name": "%s"
+        }
+        """.formatted(TRAINEE_ID, EMAIL, GIVEN_NAME, FAMILY_NAME));
+    when(auth.getPrincipal()).thenReturn(token);
 
-    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+    boolean result = interceptor.preHandle(new MockHttpServletRequest(),
+        new MockHttpServletResponse(), new Object());
 
     assertThat("Unexpected result.", result, is(true));
-    assertThat("Unexpected trainee ID.", traineeIdentity.getTraineeId(), is("40"));
-    assertThat("Unexpected email.", traineeIdentity.getEmail(), is("email"));
-    assertThat("Unexpected name.", traineeIdentity.getName(), is("John Doe"));
+    assertThat("Unexpected trainee ID.", traineeIdentity.getTraineeId(), is(TRAINEE_ID));
+    assertThat("Unexpected email.", traineeIdentity.getEmail(), is(EMAIL));
+    assertThat("Unexpected name.", traineeIdentity.getName(), is(FULL_NAME));
   }
 
   @ParameterizedTest
-  @CsvSource(value = {
-      "null, null",
-      "null, Doe",
-      "John, null" }, nullValues = { "null" })
+  @CsvSource(delimiter = '|', textBlock = """
+                 |
+                 | "Gilliam"
+       "Anthony" |
+      """)
   void shouldExcludeNameWhenGivenOrFamilyNameMissingInAuthToken(
       String givenName, String familyName) {
-    MockHttpServletRequest request = new MockHttpServletRequest();
-    request.addHeader(HttpHeaders.AUTHORIZATION,
-        TestJwtUtil.generateTokenForTrainee("40", "email", givenName, familyName));
+    Jwt token = TestJwtUtil.createToken("""
+        {
+          "custom:tisId": "%s",
+          "email": "%s",
+          "given_name": %s,
+          "family_name": %s
+        }
+        """.formatted(TRAINEE_ID, EMAIL, givenName, familyName));
+    when(auth.getPrincipal()).thenReturn(token);
 
-    interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+    interceptor.preHandle(new MockHttpServletRequest(), new MockHttpServletResponse(),
+        new Object());
 
     assertThat("Unexpected name.", traineeIdentity.getName(), is(nullValue()));
   }

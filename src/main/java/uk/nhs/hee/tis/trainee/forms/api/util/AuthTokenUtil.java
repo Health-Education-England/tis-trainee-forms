@@ -23,14 +23,9 @@ package uk.nhs.hee.tis.trainee.forms.api.util;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.oauth2.jwt.Jwt;
 import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto.FormFeatures;
 import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto.FormFeatures.LtftFeatures;
@@ -49,41 +44,15 @@ public class AuthTokenUtil {
   }
 
   /**
-   * Get a set of strings from the provided token.
-   *
-   * @param token          The token to use.
-   * @param arrayAttribute The attribute key of an array in the token.
-   * @return A set of strings from the token array.
-   * @throws IOException If the token's payload was not a Map.
-   */
-  public static Set<String> getAttributes(String token, String arrayAttribute) throws IOException {
-    List<String> groups = (List<String>) getTokenPayload(token).get(arrayAttribute);
-    return groups == null ? null : groups.stream().collect(Collectors.toUnmodifiableSet());
-  }
-
-  /**
-   * Get a string attribute value from the provided token.
-   *
-   * @param token     The token to use.
-   * @param attribute The attribute key.
-   * @return The string value of the attribute.
-   * @throws IOException If the token's payload was not a Map.
-   */
-  public static String getAttribute(String token, String attribute) throws IOException {
-    return (String) getTokenPayload(token).get(attribute);
-  }
-
-  /**
    * Get the features from the provided token.
    *
    * @param token The token to use.
    * @return The features DTO extracted from the token.
-   * @throws IOException If the token's payload was not a Map or if deserialization fails.
    */
-  public static FeaturesDto getFeatures(String token) throws IOException {
-    Map<?, ?> payload = getTokenPayload(token);
-    FeaturesDto features = mapper.convertValue(payload.get("features"), FeaturesDto.class);
-    if (features == null) {
+  public static FeaturesDto getFeatures(Jwt token) {
+    Map<String, Object> featuresClaim = token.getClaimAsMap("features");
+
+    if (featuresClaim == null) {
       log.warn("No features found in the token payload {}.", token);
       return FeaturesDto.builder()
           .forms(FormFeatures.builder()
@@ -91,21 +60,7 @@ public class AuthTokenUtil {
               .build())
           .build();
     }
-    return features;
-  }
 
-  /**
-   * Get the payload from the provided token.
-   *
-   * @param token The token to use.
-   * @return The extracted payload.
-   * @throws IOException If the token's payload was not a Map.
-   */
-  private static Map<?, ?> getTokenPayload(String token) throws IOException {
-    String[] tokenSections = token.split("\\.");
-    byte[] payloadBytes = Base64.getUrlDecoder()
-        .decode(tokenSections[1].getBytes(StandardCharsets.UTF_8));
-
-    return mapper.readValue(payloadBytes, Map.class);
+    return mapper.convertValue(featuresClaim, FeaturesDto.class);
   }
 }
