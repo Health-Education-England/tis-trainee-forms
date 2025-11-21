@@ -26,6 +26,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -56,9 +57,10 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.MongoDBContainer;
@@ -114,6 +116,9 @@ class FormRPartBResourceIntegrationTest {
   @Autowired
   private MongoTemplate template;
 
+  @MockBean
+  private JwtDecoder jwtDecoder;
+
   @AfterEach
   void tearDown() {
     template.findAllAndRemove(new Query(), FormRPartB.class);
@@ -150,9 +155,9 @@ class FormRPartBResourceIntegrationTest {
       """)
   void shouldReturnForbiddenWhenTokenLacksTraineeIdInUpdateRequests(HttpMethod method, URI uri)
       throws Exception {
-    String token = TestJwtUtil.generateToken("{}");
+    Jwt token = TestJwtUtil.createToken("{}");
     mockMvc.perform(request(method, uri)
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{}"))
         .andExpect(status().isForbidden())
@@ -161,9 +166,9 @@ class FormRPartBResourceIntegrationTest {
 
   @Test
   void shouldReturnForbiddenWhenCreatingFormRPartBForDifferentTrainee() throws Exception {
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/formr-partb")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"traineeTisId\": \"another id\"}"))
         .andExpect(status().isForbidden())
@@ -172,9 +177,9 @@ class FormRPartBResourceIntegrationTest {
 
   @Test
   void shouldReturnNotFoundWhenGettingNonExistentFormRPartB() throws Exception {
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(get("/api/formr-partb/" + UUID.randomUUID())
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$").doesNotExist());
   }
@@ -185,9 +190,9 @@ class FormRPartBResourceIntegrationTest {
 
     String formToSaveJson = mapper.writeValueAsString(formToSave);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/formr-partb")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToSaveJson))
         .andExpect(status().isCreated())
@@ -207,9 +212,9 @@ class FormRPartBResourceIntegrationTest {
     formToSave.setId(UUID.randomUUID().toString());
     String formToSaveJson = mapper.writeValueAsString(formToSave);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/formr-partb")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToSaveJson))
         .andExpect(status().isBadRequest());
@@ -224,9 +229,9 @@ class FormRPartBResourceIntegrationTest {
     form.setLifecycleState(LifecycleState.DRAFT);
     FormRPartB savedForm = template.save(form);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(get("/api/formr-partb/" + savedForm.getId())
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.id").value(savedForm.getId().toString()))
@@ -252,9 +257,9 @@ class FormRPartBResourceIntegrationTest {
     form2.setLifecycleState(LifecycleState.SUBMITTED);
     template.save(form2);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(get("/api/formr-partbs")
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$", hasSize(1)));
@@ -276,9 +281,9 @@ class FormRPartBResourceIntegrationTest {
 
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(put("/api/formr-partb")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToUpdateJson))
         .andExpect(status().isOk())
@@ -299,9 +304,9 @@ class FormRPartBResourceIntegrationTest {
 
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(put("/api/formr-partb")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToUpdateJson))
         .andExpect(status().isForbidden());
@@ -314,9 +319,9 @@ class FormRPartBResourceIntegrationTest {
     form.setLifecycleState(LifecycleState.DRAFT);
     FormRPartB savedForm = template.save(form);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(delete("/api/formr-partb/" + savedForm.getId())
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isNoContent());
 
     assertThat("Unexpected saved record count.", template.count(new Query(), FormRPartB.class),
@@ -325,9 +330,9 @@ class FormRPartBResourceIntegrationTest {
 
   @Test
   void shouldReturnNotFoundWhenDeletingNonExistentFormRPartB() throws Exception {
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(delete("/api/formr-partb/" + UUID.randomUUID())
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isNotFound());
   }
 
@@ -338,9 +343,9 @@ class FormRPartBResourceIntegrationTest {
     form.setLifecycleState(LifecycleState.SUBMITTED);
     FormRPartB savedForm = template.save(form);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(delete("/api/formr-partb/" + savedForm.getId())
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isBadRequest());
   }
 
@@ -350,9 +355,9 @@ class FormRPartBResourceIntegrationTest {
 
     String formToSaveJson = mapper.writeValueAsString(formToSave);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/formr-partb")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToSaveJson))
         .andExpect(status().isCreated())
@@ -382,9 +387,9 @@ class FormRPartBResourceIntegrationTest {
 
     String formToSaveJson = mapper.writeValueAsString(formToSave);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/formr-partb")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToSaveJson))
         .andExpect(status().isCreated())

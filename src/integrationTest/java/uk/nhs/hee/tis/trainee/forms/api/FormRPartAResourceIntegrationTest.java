@@ -24,7 +24,9 @@ package uk.nhs.hee.tis.trainee.forms.api;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -33,7 +35,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.mockito.Mockito.verify;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -54,9 +55,10 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.MongoDBContainer;
@@ -110,6 +112,9 @@ class FormRPartAResourceIntegrationTest {
   @MockBean
   PdfService pdfService;
 
+  @MockBean
+  private JwtDecoder jwtDecoder;
+
   @AfterEach
   void tearDown() {
     template.findAllAndRemove(new Query(), FormRPartA.class);
@@ -146,9 +151,9 @@ class FormRPartAResourceIntegrationTest {
       """)
   void shouldReturnForbiddenWhenTokenLacksTraineeIdInUpdateRequests(HttpMethod method, URI uri)
       throws Exception {
-    String token = TestJwtUtil.generateToken("{}");
+    Jwt token = TestJwtUtil.createToken("{}");
     mockMvc.perform(request(method, uri)
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{}"))
         .andExpect(status().isForbidden())
@@ -165,27 +170,27 @@ class FormRPartAResourceIntegrationTest {
     form.setLifecycleState(LifecycleState.DRAFT);
     template.save(form);
 
-    String token = TestJwtUtil.generateTokenForTrainee("another trainee");
+    Jwt token = TestJwtUtil.createTokenForTrainee("another trainee");
     mockMvc.perform(get("/api/ltft/" + ID)
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$").doesNotExist());
   }
 
   @Test
   void shouldReturnNotFoundWhenGettingNonExistentFormRPartA() throws Exception {
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(get("/api/formr-parta/" + UUID.randomUUID())
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$").doesNotExist());
   }
 
   @Test
   void shouldReturnForbiddenWhenCreatingFormRPartAForDifferentTrainee() throws Exception {
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/formr-parta")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"traineeTisId\": \"another id\"}"))
         .andExpect(status().isForbidden())
@@ -202,9 +207,9 @@ class FormRPartAResourceIntegrationTest {
 
     String formToSaveJson = mapper.writeValueAsString(formToSave);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/formr-parta")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToSaveJson))
         .andExpect(status().isCreated())
@@ -228,9 +233,9 @@ class FormRPartAResourceIntegrationTest {
     formToSave.setLifecycleState(LifecycleState.DRAFT);
     String formToSaveJson = mapper.writeValueAsString(formToSave);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/formr-parta")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToSaveJson))
         .andExpect(status().isBadRequest());
@@ -245,9 +250,9 @@ class FormRPartAResourceIntegrationTest {
     form.setLifecycleState(LifecycleState.DRAFT);
     FormRPartA savedForm = template.save(form);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(get("/api/formr-parta/" + savedForm.getId())
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.id").value(savedForm.getId().toString()))
@@ -273,9 +278,9 @@ class FormRPartAResourceIntegrationTest {
     form2.setLifecycleState(LifecycleState.SUBMITTED);
     template.save(form2);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(get("/api/formr-partas")
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$", hasSize(1)));
@@ -299,9 +304,9 @@ class FormRPartAResourceIntegrationTest {
 
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(put("/api/formr-parta")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToUpdateJson))
         .andExpect(status().isOk())
@@ -322,9 +327,9 @@ class FormRPartAResourceIntegrationTest {
 
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(put("/api/formr-parta")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToUpdateJson))
         .andExpect(status().isForbidden());
@@ -337,9 +342,9 @@ class FormRPartAResourceIntegrationTest {
     form.setLifecycleState(LifecycleState.DRAFT);
     FormRPartA savedForm = template.save(form);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(delete("/api/formr-parta/" + savedForm.getId())
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isNoContent());
 
     assertThat("Unexpected saved record count.", template.count(new Query(), FormRPartA.class),
@@ -348,9 +353,9 @@ class FormRPartAResourceIntegrationTest {
 
   @Test
   void shouldReturnNotFoundWhenDeletingNonExistentFormRPartA() throws Exception {
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(delete("/api/formr-parta/" + UUID.randomUUID())
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isNotFound());
   }
 
@@ -361,9 +366,9 @@ class FormRPartAResourceIntegrationTest {
     form.setLifecycleState(LifecycleState.SUBMITTED);
     FormRPartA savedForm = template.save(form);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(delete("/api/formr-parta/" + savedForm.getId())
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isBadRequest());
   }
 
@@ -398,9 +403,9 @@ class FormRPartAResourceIntegrationTest {
 
     String formToSaveJson = mapper.writeValueAsString(formToSave);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/formr-parta")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToSaveJson))
         .andExpect(status().isCreated())
@@ -434,9 +439,9 @@ class FormRPartAResourceIntegrationTest {
 
     String formToSaveJson = mapper.writeValueAsString(formToSave);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/formr-parta")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToSaveJson))
         .andExpect(status().isCreated())

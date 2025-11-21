@@ -23,13 +23,14 @@ package uk.nhs.hee.tis.trainee.forms.interceptor;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.Set;
+import java.util.HashSet;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.servlet.HandlerInterceptor;
-import uk.nhs.hee.tis.trainee.forms.api.util.AuthTokenUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 
 /**
@@ -42,7 +43,6 @@ public class AdminIdentityInterceptor implements HandlerInterceptor {
   private static final String GIVEN_NAME_ATTRIBUTE = "given_name";
   private static final String FAMILY_NAME_ATTRIBUTE = "family_name";
   private static final String GROUPS_ATTRIBUTE = "cognito:groups";
-  private static final String ROLES_ATTRIBUTE = "cognito:roles";
 
   private final AdminIdentity adminIdentity;
 
@@ -53,36 +53,25 @@ public class AdminIdentityInterceptor implements HandlerInterceptor {
   @Override
   public boolean preHandle(HttpServletRequest request, HttpServletResponse response,
       Object handler) {
-    Set<String> adminRoles = null;
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
-    String authToken = request.getHeader(HttpHeaders.AUTHORIZATION);
+    if (auth != null && auth.getPrincipal() instanceof Jwt authToken) {
+      String email = authToken.getClaimAsString(EMAIL_ATTRIBUTE);
+      adminIdentity.setEmail(email);
 
-    if (authToken != null) {
-      try {
-        String email = AuthTokenUtil.getAttribute(authToken, EMAIL_ATTRIBUTE);
-        adminIdentity.setEmail(email);
-        Set<String> adminGroups = AuthTokenUtil.getAttributes(authToken, GROUPS_ATTRIBUTE);
-        adminIdentity.setGroups(adminGroups);
-        adminRoles = AuthTokenUtil.getAttributes(authToken, ROLES_ATTRIBUTE);
+      List<String> adminGroups = authToken.getClaimAsStringList(GROUPS_ATTRIBUTE);
+      if (adminGroups != null) {
+        adminIdentity.setGroups(new HashSet<>(adminGroups));
+      }
 
-        String givenName = AuthTokenUtil.getAttribute(authToken, GIVEN_NAME_ATTRIBUTE);
-        String familyName = AuthTokenUtil.getAttribute(authToken, FAMILY_NAME_ATTRIBUTE);
-        if (givenName != null && familyName != null) {
-          adminIdentity.setName("%s %s".formatted(givenName, familyName));
-        }
-      } catch (IOException e) {
-        log.warn("Unable to extract the admin identity from authorization token.", e);
+      String givenName = authToken.getClaimAsString(GIVEN_NAME_ATTRIBUTE);
+      String familyName = authToken.getClaimAsString(FAMILY_NAME_ATTRIBUTE);
+      if (givenName != null && familyName != null) {
+        adminIdentity.setName("%s %s".formatted(givenName, familyName));
       }
     }
 
     if (!adminIdentity.isComplete()) {
-      response.setStatus(HttpStatus.FORBIDDEN.value());
-      return false;
-    }
-
-    // LTFT endpoints require the appropriate role to access.
-    if (request.getRequestURI().matches("^/forms/api/admin/ltft(/.+)?$")
-        && (adminRoles == null || !adminRoles.contains("NHSE LTFT Admin"))) {
       response.setStatus(HttpStatus.FORBIDDEN.value());
       return false;
     }

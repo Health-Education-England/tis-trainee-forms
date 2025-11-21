@@ -28,12 +28,13 @@ import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.startsWith;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.startsWith;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
 import static org.springframework.http.MediaType.APPLICATION_PDF;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -53,12 +54,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.sns.core.SnsTemplate;
 import java.net.URI;
 import java.time.Duration;
-import java.time.format.DateTimeFormatter;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
-import java.time.ZonedDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import org.apache.pdfbox.Loader;
@@ -86,6 +87,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -107,8 +110,8 @@ import uk.nhs.hee.tis.trainee.forms.model.Person;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChangeType;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
-import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ProgrammeMembership;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Discussions;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ProgrammeMembership;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -136,7 +139,10 @@ class LtftResourceIntegrationTest {
   private ZoneId timezone;
 
   @MockBean
-  SnsTemplate snsTemplate;
+  private SnsTemplate snsTemplate;
+
+  @MockBean
+  private JwtDecoder jwtDecoder;
 
   @Autowired
   private MongoTemplate template;
@@ -184,9 +190,9 @@ class LtftResourceIntegrationTest {
       """)
   void shouldReturnForbiddenWhenTokenLacksTraineeIdInUpdateRequests(HttpMethod method, URI uri)
       throws Exception {
-    String token = TestJwtUtil.generateToken("{}");
+    Jwt token = TestJwtUtil.createToken("{}");
     mockMvc.perform(request(method, uri)
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{}"))
         .andExpect(status().isForbidden())
@@ -207,9 +213,9 @@ class LtftResourceIntegrationTest {
         .traineeTisId("another trainee")
         .build();
     String formToUpdateJson = mapper.writeValueAsString(form);
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(request(method, uri)
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToUpdateJson))
         .andExpect(status().isBadRequest())
@@ -218,9 +224,9 @@ class LtftResourceIntegrationTest {
 
   @Test
   void shouldBeBadRequestWhenCreatingLtftFormForDifferentTrainee() throws Exception {
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/ltft")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"traineeTisId\": \"another id\"}"))
         .andExpect(status().isBadRequest())
@@ -238,9 +244,9 @@ class LtftResourceIntegrationTest {
         .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/ltft")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToSaveJson))
         .andExpect(status().isBadRequest())
@@ -249,9 +255,9 @@ class LtftResourceIntegrationTest {
 
   @Test
   void shouldNotFindLtftFormWhenNoneExist() throws Exception {
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(get("/api/ltft/" + UUID.randomUUID())
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$").doesNotExist());
   }
@@ -263,9 +269,9 @@ class LtftResourceIntegrationTest {
     ltft.setTraineeTisId("another trainee");
     template.insert(ltft);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(get("/api/ltft/" + ID)
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$").doesNotExist());
   }
@@ -290,9 +296,9 @@ class LtftResourceIntegrationTest {
     ltft.setContent(content);
     template.insert(ltft);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(get("/api/ltft/" + ID)
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.id").value(ID.toString()))
@@ -318,9 +324,9 @@ class LtftResourceIntegrationTest {
     ltft.setAssignedAdmin(admin, admin);
     template.insert(ltft);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(get("/api/ltft/" + ID)
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.id", is(ID.toString())))
@@ -343,9 +349,9 @@ class LtftResourceIntegrationTest {
         .traineeTisId(TRAINEE_ID)
         .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/ltft")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToSaveJson))
         .andExpect(status().isBadRequest())
@@ -372,9 +378,9 @@ class LtftResourceIntegrationTest {
         .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/ltft")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToSaveJson))
         .andExpect(status().isOk())
@@ -405,9 +411,9 @@ class LtftResourceIntegrationTest {
         .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/ltft")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToSaveJson))
         .andExpect(status().isOk())
@@ -425,10 +431,10 @@ class LtftResourceIntegrationTest {
         .revision(123)
         .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
 
     mockMvc.perform(post("/api/ltft")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToSaveJson))
         .andExpect(status().isOk())
@@ -460,9 +466,9 @@ class LtftResourceIntegrationTest {
         .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/ltft")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToSaveJson))
         .andExpect(status().isOk())
@@ -504,10 +510,10 @@ class LtftResourceIntegrationTest {
         .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID, "anthony.gilliam@example.com",
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID, "anthony.gilliam@example.com",
         "Anthony", "Gilliam");
     mockMvc.perform(post("/api/ltft")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToSaveJson))
         .andExpect(status().isOk())
@@ -540,9 +546,9 @@ class LtftResourceIntegrationTest {
         .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/ltft")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToSaveJson))
         .andExpect(status().isOk())
@@ -575,9 +581,9 @@ class LtftResourceIntegrationTest {
         .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/ltft")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToSaveJson))
         .andExpect(status().isOk())
@@ -606,9 +612,9 @@ class LtftResourceIntegrationTest {
         .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/ltft")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToSaveJson))
         .andExpect(status().isOk())
@@ -627,9 +633,9 @@ class LtftResourceIntegrationTest {
             .build())
         .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/ltft")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToSaveJson))
         .andExpect(status().isOk())
@@ -642,9 +648,9 @@ class LtftResourceIntegrationTest {
         .traineeTisId(TRAINEE_ID)
         .build();
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(put("/api/ltft/someId")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToUpdateJson))
         .andExpect(status().isBadRequest())
@@ -663,9 +669,9 @@ class LtftResourceIntegrationTest {
         .traineeTisId(TRAINEE_ID)
         .build();
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(put("/api/ltft/" + UUID.randomUUID())
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToUpdateJson))
         .andExpect(status().isBadRequest())
@@ -679,9 +685,9 @@ class LtftResourceIntegrationTest {
         .traineeTisId(TRAINEE_ID)
         .build();
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(put("/api/ltft/" + ID)
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToUpdateJson))
         .andExpect(status().isBadRequest())
@@ -707,9 +713,9 @@ class LtftResourceIntegrationTest {
 
     sleep(10); // Ensure lastModified is different from created
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(put("/api/ltft/" + savedId)
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToUpdateJson))
         .andExpect(status().isOk())
@@ -750,9 +756,9 @@ class LtftResourceIntegrationTest {
         .build();
 
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(put("/api/ltft/" + savedId)
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToUpdateJson))
         .andExpect(status().isBadRequest())
@@ -796,9 +802,9 @@ class LtftResourceIntegrationTest {
 
     sleep(10); // Ensure lastModified is different from created
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(put("/api/ltft/" + savedId)
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToUpdateJson))
         .andExpect(status().isOk())
@@ -840,9 +846,9 @@ class LtftResourceIntegrationTest {
         .build();
 
     String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(put("/api/ltft/" + savedId)
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToUpdateJson))
         .andExpect(status().isOk())
@@ -859,9 +865,9 @@ class LtftResourceIntegrationTest {
 
   @Test
   void shouldReturnNotFoundWhenDeletingNonExistentLtftForm() throws Exception {
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(delete("/api/ltft/" + UUID.randomUUID())
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$").doesNotExist());
   }
@@ -876,9 +882,9 @@ class LtftResourceIntegrationTest {
     LtftForm formSaved = template.save(form);
 
     UUID savedId = formSaved.getId();
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(delete("/api/ltft/" + savedId)
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$").doesNotExist());
   }
@@ -891,9 +897,9 @@ class LtftResourceIntegrationTest {
     LtftForm formSaved = template.save(form);
 
     UUID savedId = formSaved.getId();
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(delete("/api/ltft/" + savedId)
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$").doesNotExist());
 
@@ -912,9 +918,9 @@ class LtftResourceIntegrationTest {
     ltft.setContent(LtftContent.builder().name("test").build());
     template.insert(ltft);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(put("/api/ltft/{id}/submit", ID)
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{}"))
         .andExpect(status().isBadRequest())
@@ -934,9 +940,9 @@ class LtftResourceIntegrationTest {
     LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
         = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
     String detailJson = mapper.writeValueAsString(detail);
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID, "email", "given", "family");
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID, "email", "given", "family");
     mockMvc.perform(put("/api/ltft/{id}/submit", ID)
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(detailJson))
         .andExpect(status().isOk())
@@ -968,9 +974,9 @@ class LtftResourceIntegrationTest {
     LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
         = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
     String detailJson = mapper.writeValueAsString(detail);
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID, "email", "given", "family");
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID, "email", "given", "family");
     mockMvc.perform(put("/api/ltft/{id}/submit", ID)
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(detailJson))
         .andExpect(status().isOk())
@@ -999,10 +1005,10 @@ class LtftResourceIntegrationTest {
     ltft.setContent(LtftContent.builder().name("test").build());
     template.insert(ltft);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
 
     mockMvc.perform(request(method, uri)
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{}"))
         .andExpect(status().isBadRequest())
@@ -1024,9 +1030,9 @@ class LtftResourceIntegrationTest {
         = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
     String detailJson = mapper.writeValueAsString(detail);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(put("/api/ltft/{id}/unsubmit", ID)
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(detailJson))
         .andExpect(status().isBadRequest())
@@ -1047,9 +1053,9 @@ class LtftResourceIntegrationTest {
     LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
         = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
     String detailJson = mapper.writeValueAsString(detail);
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID, "email", "given", "family");
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID, "email", "given", "family");
     mockMvc.perform(put("/api/ltft/{id}/unsubmit", ID)
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(detailJson))
         .andExpect(status().isOk())
@@ -1082,9 +1088,9 @@ class LtftResourceIntegrationTest {
     LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
         = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
     String detailJson = mapper.writeValueAsString(detail);
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID, "email", "given", "family");
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID, "email", "given", "family");
     mockMvc.perform(put("/api/ltft/{id}/unsubmit", ID)
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(detailJson))
         .andExpect(status().isOk())
@@ -1115,9 +1121,9 @@ class LtftResourceIntegrationTest {
         = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
     String detailJson = mapper.writeValueAsString(detail);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(put("/api/ltft/{id}/withdraw", ID)
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(detailJson))
         .andExpect(status().isBadRequest())
@@ -1137,9 +1143,9 @@ class LtftResourceIntegrationTest {
     LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
         = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
     String detailJson = mapper.writeValueAsString(detail);
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID, "email", "given", "family");
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID, "email", "given", "family");
     mockMvc.perform(put("/api/ltft/{id}/withdraw", ID)
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(detailJson))
         .andExpect(status().isOk())
@@ -1169,9 +1175,9 @@ class LtftResourceIntegrationTest {
     LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
         = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
     String detailJson = mapper.writeValueAsString(detail);
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID, "email", "given", "family");
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID, "email", "given", "family");
     mockMvc.perform(put("/api/ltft/{id}/withdraw", ID)
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(detailJson))
         .andExpect(status().isOk())
@@ -1228,7 +1234,8 @@ class LtftResourceIntegrationTest {
 
   @ParameterizedTest
   @EnumSource(LifecycleState.class)
-  void shouldReturnPdfAndShowCorrectStatusForAllNonDraftLtftStatus(LifecycleState status) throws Exception {
+  void shouldReturnPdfAndShowCorrectStatusForAllNonDraftLtftStatus(LifecycleState status)
+      throws Exception {
     LtftForm ltft = new LtftForm();
     ltft.setTraineeTisId(TRAINEE_ID);
     ltft.setFormRef("ltft_47165_001");
@@ -1255,16 +1262,17 @@ class LtftResourceIntegrationTest {
         .current(statusInfo)
         .history(List.of(
             statusInfo,
-            AbstractAuditedForm.Status.StatusInfo.builder().state(status).timestamp(latestSubmitted).build()))
+            AbstractAuditedForm.Status.StatusInfo.builder().state(status).timestamp(latestSubmitted)
+                .build()))
         .build()
     );
 
     ltft = template.insert(ltft);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
             .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_PDF))
         .andReturn();
@@ -1285,8 +1293,7 @@ class LtftResourceIntegrationTest {
           not(containsString(status + " date " + modifiedString + System.lineSeparator())));
       assertThat("Unexpected form ref.", pdfText,
           not(containsString("Reference")));
-    }
-    else {
+    } else {
       assertThat("Unexpected modified timestamp.", pdfText,
           containsString(status + " date " + modifiedString + System.lineSeparator()));
     }
@@ -1294,7 +1301,8 @@ class LtftResourceIntegrationTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, names = {"UNSUBMITTED", "WITHDRAWN", "REJECTED"})
-  void shouldGetDetailPdfFormStatusReasonIfLtftUnsubmittedRejected(LifecycleState status) throws Exception {
+  void shouldGetDetailPdfFormStatusReasonIfLtftUnsubmittedRejected(LifecycleState status)
+      throws Exception {
     LtftForm ltft = new LtftForm();
     ltft.setTraineeTisId(TRAINEE_ID);
     ltft.setFormRef("ltft_47165_001");
@@ -1327,16 +1335,17 @@ class LtftResourceIntegrationTest {
         .current(statusInfo)
         .history(List.of(
             statusInfo,
-            AbstractAuditedForm.Status.StatusInfo.builder().state(status).timestamp(latestSubmitted).build()))
+            AbstractAuditedForm.Status.StatusInfo.builder().state(status).timestamp(latestSubmitted)
+                .build()))
         .build()
     );
 
     ltft = template.insert(ltft);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
             .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_PDF))
         .andReturn();
@@ -1415,16 +1424,17 @@ class LtftResourceIntegrationTest {
         .current(statusInfo)
         .history(List.of(
             statusInfo,
-            AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED).timestamp(latestSubmitted).build()))
+            AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED)
+                .timestamp(latestSubmitted).build()))
         .build()
     );
 
     ltft = template.insert(ltft);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
             .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_PDF))
         .andReturn();
@@ -1509,16 +1519,17 @@ class LtftResourceIntegrationTest {
         .current(statusInfo)
         .history(List.of(
             statusInfo,
-            AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED).timestamp(latestSubmitted).build()))
+            AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED)
+                .timestamp(latestSubmitted).build()))
         .build()
     );
 
     ltft = template.insert(ltft);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
             .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_PDF))
         .andReturn();
@@ -1573,16 +1584,17 @@ class LtftResourceIntegrationTest {
         .current(statusInfo)
         .history(List.of(
             statusInfo,
-            AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED).timestamp(latestSubmitted).build()))
+            AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED)
+                .timestamp(latestSubmitted).build()))
         .build()
     );
 
     ltft = template.insert(ltft);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
             .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_PDF))
         .andReturn();
@@ -1600,83 +1612,85 @@ class LtftResourceIntegrationTest {
     assertThat("Unexpected other reason.", pdfText,
         containsString("Other reason other-detail" + System.lineSeparator()));
     assertThat("Unexpected visa holder.", pdfText.replaceAll("[\r\n]+", ""),
-        containsString("Please provide any additional information to support your application (if needed).supporting-information"));
+        containsString(
+            "Please provide any additional information to support your application (if needed).supporting-information"));
   }
 
   @Test
   void shouldGetDetailPdfPersonalDetails() throws Exception {
-      LtftForm ltft = new LtftForm();
-      ltft.setTraineeTisId(TRAINEE_ID);
+    LtftForm ltft = new LtftForm();
+    ltft.setTraineeTisId(TRAINEE_ID);
 
-      LtftContent content = LtftContent.builder()
-          .personalDetails(LtftContent.PersonalDetails.builder()
-              .title("Dr")
-              .forenames("Anthony")
-              .surname("Gilliam")
-              .email("anthony.gilliam@example.com")
-              .gmcNumber("1234567")
-              .gdcNumber("D123456")
-              .telephoneNumber("07700900000")
-              .mobileNumber("07700900001")
-              .skilledWorkerVisaHolder(true)
-              .build())
-          .programmeMembership(ProgrammeMembership.builder().build())
-          .change(CctChange.builder().build())
-          .reasons(LtftContent.Reasons.builder().build())
-          .declarations(LtftContent.Declarations.builder().build())
-          .discussions(LtftContent.Discussions.builder().build())
-          .build();
-      ltft.setContent(content);
+    LtftContent content = LtftContent.builder()
+        .personalDetails(LtftContent.PersonalDetails.builder()
+            .title("Dr")
+            .forenames("Anthony")
+            .surname("Gilliam")
+            .email("anthony.gilliam@example.com")
+            .gmcNumber("1234567")
+            .gdcNumber("D123456")
+            .telephoneNumber("07700900000")
+            .mobileNumber("07700900001")
+            .skilledWorkerVisaHolder(true)
+            .build())
+        .programmeMembership(ProgrammeMembership.builder().build())
+        .change(CctChange.builder().build())
+        .reasons(LtftContent.Reasons.builder().build())
+        .declarations(LtftContent.Declarations.builder().build())
+        .discussions(LtftContent.Discussions.builder().build())
+        .build();
+    ltft.setContent(content);
 
-      Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
 
-      AbstractAuditedForm.Status.StatusInfo statusInfo = AbstractAuditedForm.Status.StatusInfo.builder()
-          .state(SUBMITTED)
-          .assignedAdmin(Person.builder().build())
-          .timestamp(Instant.now())
-          .build();
-      ltft.setStatus(AbstractAuditedForm.Status.builder()
-            .current(statusInfo)
-            .history(List.of(
-                statusInfo,
-                AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED).timestamp(latestSubmitted).build()))
-            .build()
-        );
+    AbstractAuditedForm.Status.StatusInfo statusInfo = AbstractAuditedForm.Status.StatusInfo.builder()
+        .state(SUBMITTED)
+        .assignedAdmin(Person.builder().build())
+        .timestamp(Instant.now())
+        .build();
+    ltft.setStatus(AbstractAuditedForm.Status.builder()
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED)
+                .timestamp(latestSubmitted).build()))
+        .build()
+    );
 
-      ltft = template.insert(ltft);
+    ltft = template.insert(ltft);
 
-      String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
-      MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
-              .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
-              .header(HttpHeaders.AUTHORIZATION, token))
-          .andExpect(status().isOk())
-          .andExpect(content().contentType(APPLICATION_PDF))
-          .andReturn();
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
+    MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
+            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+            .with(jwt().jwt(token)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_PDF))
+        .andReturn();
 
-      byte[] response = result.getResponse().getContentAsByteArray();
-      PDDocument pdf = Loader.loadPDF(response);
-      PDFTextStripper textStripper = new PDFTextStripper();
-      textStripper.setAddMoreFormatting(false);
-      String pdfText = textStripper.getText(pdf);
+    byte[] response = result.getResponse().getContentAsByteArray();
+    PDDocument pdf = Loader.loadPDF(response);
+    PDFTextStripper textStripper = new PDFTextStripper();
+    textStripper.setAddMoreFormatting(false);
+    String pdfText = textStripper.getText(pdf);
 
-      assertThat("Unexpected section header.", pdfText,
-          containsString("Personal Details" + System.lineSeparator()));
-      assertThat("Unexpected forename.", pdfText,
-          containsString("Forename Anthony" + System.lineSeparator()));
-      assertThat("Unexpected surname.", pdfText,
-          containsString("Surname (GMC-Registered) Gilliam" + System.lineSeparator()));
-      assertThat("Unexpected contact telphone.", pdfText,
-          containsString("Contact Telephone 07700900000" + System.lineSeparator()));
-      assertThat("Unexpected contact mobile.", pdfText,
-          containsString("Contact Mobile 07700900001" + System.lineSeparator()));
+    assertThat("Unexpected section header.", pdfText,
+        containsString("Personal Details" + System.lineSeparator()));
+    assertThat("Unexpected forename.", pdfText,
+        containsString("Forename Anthony" + System.lineSeparator()));
+    assertThat("Unexpected surname.", pdfText,
+        containsString("Surname (GMC-Registered) Gilliam" + System.lineSeparator()));
+    assertThat("Unexpected contact telphone.", pdfText,
+        containsString("Contact Telephone 07700900000" + System.lineSeparator()));
+    assertThat("Unexpected contact mobile.", pdfText,
+        containsString("Contact Mobile 07700900001" + System.lineSeparator()));
     assertThat("Unexpected email.", pdfText,
         containsString("Email Address anthony.gilliam@example.com" + System.lineSeparator()));
-      assertThat("Unexpected GMC.", pdfText,
-          containsString("GMC Number 1234567" + System.lineSeparator()));
-      assertThat("Unexpected GDC.", pdfText,
-          containsString("GDC Number (if applicable) D123456" + System.lineSeparator()));
-      assertThat("Unexpected visa holder.", pdfText.replaceAll("[\r\n]+", ""),
-          containsString("Are you a Tier 2 / Skilled Worker Visa holder?true"));
+    assertThat("Unexpected GMC.", pdfText,
+        containsString("GMC Number 1234567" + System.lineSeparator()));
+    assertThat("Unexpected GDC.", pdfText,
+        containsString("GDC Number (if applicable) D123456" + System.lineSeparator()));
+    assertThat("Unexpected visa holder.", pdfText.replaceAll("[\r\n]+", ""),
+        containsString("Are you a Tier 2 / Skilled Worker Visa holder?true"));
   }
 
   @Test
@@ -1710,16 +1724,17 @@ class LtftResourceIntegrationTest {
         .current(statusInfo)
         .history(List.of(
             statusInfo,
-            AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED).timestamp(latestSubmitted).build()))
+            AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED)
+                .timestamp(latestSubmitted).build()))
         .build()
     );
 
     ltft = template.insert(ltft);
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
             .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_PDF))
         .andReturn();
@@ -1733,9 +1748,11 @@ class LtftResourceIntegrationTest {
     assertThat("Unexpected section header.", pdfText,
         containsString("Declarations" + System.lineSeparator()));
     assertThat("Unexpected declaration.", pdfText.replaceAll("[\r\n]+", ""),
-        containsString("I confirm that the information I have provided is correct and accurate to the best of my knowledge.true"));
+        containsString(
+            "I confirm that the information I have provided is correct and accurate to the best of my knowledge.true"));
     assertThat("Unexpected declaration.", pdfText.replaceAll("[\r\n]+", ""),
-        containsString("I have discussed the proposals outlined in the CCT Calculation with my Training Programme Director (TPD).true"));
+        containsString(
+            "I have discussed the proposals outlined in the CCT Calculation with my Training Programme Director (TPD).true"));
     assertThat("Unexpected declaration.", pdfText.replaceAll("[\r\n]+", ""),
         containsString("I understand that approval of my application is not guaranteed.true"));
   }
@@ -1779,7 +1796,7 @@ class LtftResourceIntegrationTest {
     String fromTraineeId = TRAINEE_ID;
     String toTraineeId = "50";
 
-    String token = TestJwtUtil.generateTokenForTrainee(TRAINEE_ID);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
 
     // Create and submit form
     LtftFormDto formToSave = LtftFormDto.builder()
@@ -1791,7 +1808,7 @@ class LtftResourceIntegrationTest {
         .build();
     String formToSaveJson = mapper.writeValueAsString(formToSave);
     mockMvc.perform(post("/api/ltft")
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(formToSaveJson))
         .andExpect(status().isOk());
@@ -1801,7 +1818,7 @@ class LtftResourceIntegrationTest {
 
     String reasonJson = "{\"reason\": \"its ok\", \"message\": \"some message\"}";
     mockMvc.perform(put("/api/ltft/{id}/submit", form1id)
-            .header(HttpHeaders.AUTHORIZATION, token)
+            .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
             .content(reasonJson))
         .andExpect(status().isOk());

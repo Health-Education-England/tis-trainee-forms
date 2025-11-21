@@ -26,14 +26,18 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 
@@ -45,35 +49,35 @@ class AdminIdentityInterceptorTest {
   private static final String FULL_NAME = "Ad Min";
   private static final String GROUP_1 = "123456";
   private static final String GROUP_2 = "ABCDEF";
-  private static final String ROLE_1 = "TSS Support Admin";
-  private static final String ROLE_2 = "NHSE LTFT Admin";
 
   private AdminIdentityInterceptor interceptor;
   private AdminIdentity adminIdentity;
+
+  private SecurityContext securityContext;
+  private Authentication auth;
 
   @BeforeEach
   void setUp() {
     adminIdentity = new AdminIdentity();
     interceptor = new AdminIdentityInterceptor(adminIdentity);
+
+    auth = mock(Authentication.class);
+    securityContext = mock(SecurityContext.class);
+    when(securityContext.getAuthentication()).thenReturn(auth);
+    SecurityContextHolder.setContext(securityContext);
+  }
+
+  @AfterEach
+  void tearDear() {
+    SecurityContextHolder.clearContext();
   }
 
   @Test
   void shouldReturnFalseAndNotPopulateIdentityWhenNoAuthToken() {
-    MockHttpServletRequest request = new MockHttpServletRequest();
+    when(securityContext.getAuthentication()).thenReturn(null);
 
-    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
-
-    assertThat("Unexpected result.", result, is(false));
-    assertThat("Unexpected admin email.", adminIdentity.getEmail(), nullValue());
-    assertThat("Unexpected admin groups.", adminIdentity.getGroups(), nullValue());
-  }
-
-  @Test
-  void shouldReturnFalseAndNotPopulateIdentityWhenTokenNotMap() {
-    MockHttpServletRequest request = new MockHttpServletRequest();
-    request.addHeader(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateToken("[]"));
-
-    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+    boolean result = interceptor.preHandle(new MockHttpServletRequest(),
+        new MockHttpServletResponse(), new Object());
 
     assertThat("Unexpected result.", result, is(false));
     assertThat("Unexpected admin email.", adminIdentity.getEmail(), nullValue());
@@ -82,10 +86,11 @@ class AdminIdentityInterceptorTest {
 
   @Test
   void shouldReturnFalseAndNotPopulateIdentityWhenNoAttributesInAuthToken() {
-    MockHttpServletRequest request = new MockHttpServletRequest();
-    request.addHeader(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateToken("{}"));
+    Jwt token = TestJwtUtil.createToken("{}");
+    when(auth.getPrincipal()).thenReturn(token);
 
-    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+    boolean result = interceptor.preHandle(new MockHttpServletRequest(),
+        new MockHttpServletResponse(), new Object());
 
     assertThat("Unexpected result.", result, is(false));
     assertThat("Unexpected admin email.", adminIdentity.getEmail(), nullValue());
@@ -94,8 +99,7 @@ class AdminIdentityInterceptorTest {
 
   @Test
   void shouldReturnFalseAndPartiallyPopulateIdentityWhenNoEmailInAuthToken() {
-    MockHttpServletRequest request = new MockHttpServletRequest();
-    String token = TestJwtUtil.generateToken("""
+    Jwt token = TestJwtUtil.createToken("""
         {
           "given_name": "%s",
           "family_name": "%s",
@@ -105,9 +109,10 @@ class AdminIdentityInterceptorTest {
           ]
         }
         """.formatted(GIVEN_NAME, FAMILY_NAME, GROUP_1, GROUP_2));
-    request.addHeader(HttpHeaders.AUTHORIZATION, token);
+    when(auth.getPrincipal()).thenReturn(token);
 
-    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+    boolean result = interceptor.preHandle(new MockHttpServletRequest(),
+        new MockHttpServletResponse(), new Object());
 
     assertThat("Unexpected result.", result, is(false));
     assertThat("Unexpected admin email.", adminIdentity.getEmail(), nullValue());
@@ -118,8 +123,7 @@ class AdminIdentityInterceptorTest {
 
   @Test
   void shouldReturnFalseAndPartiallyPopulateIdentityWhenNoGivenNameInAuthToken() {
-    MockHttpServletRequest request = new MockHttpServletRequest();
-    String token = TestJwtUtil.generateToken("""
+    Jwt token = TestJwtUtil.createToken("""
         {
           "email": "%s",
           "family_name": "%s",
@@ -129,9 +133,10 @@ class AdminIdentityInterceptorTest {
           ]
         }
         """.formatted(EMAIL, FAMILY_NAME, GROUP_1, GROUP_2));
-    request.addHeader(HttpHeaders.AUTHORIZATION, token);
+    when(auth.getPrincipal()).thenReturn(token);
 
-    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+    boolean result = interceptor.preHandle(new MockHttpServletRequest(),
+        new MockHttpServletResponse(), new Object());
 
     assertThat("Unexpected result.", result, is(false));
     assertThat("Unexpected admin email.", adminIdentity.getEmail(), is(EMAIL));
@@ -142,8 +147,7 @@ class AdminIdentityInterceptorTest {
 
   @Test
   void shouldReturnFalseAndPartiallyPopulateIdentityWhenNoFamilyNameInAuthToken() {
-    MockHttpServletRequest request = new MockHttpServletRequest();
-    String token = TestJwtUtil.generateToken("""
+    Jwt token = TestJwtUtil.createToken("""
         {
           "email": "%s",
           "given_name": "%s",
@@ -153,9 +157,10 @@ class AdminIdentityInterceptorTest {
           ]
         }
         """.formatted(EMAIL, GIVEN_NAME, GROUP_1, GROUP_2));
-    request.addHeader(HttpHeaders.AUTHORIZATION, token);
+    when(auth.getPrincipal()).thenReturn(token);
 
-    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+    boolean result = interceptor.preHandle(new MockHttpServletRequest(),
+        new MockHttpServletResponse(), new Object());
 
     assertThat("Unexpected result.", result, is(false));
     assertThat("Unexpected admin email.", adminIdentity.getEmail(), is(EMAIL));
@@ -166,17 +171,17 @@ class AdminIdentityInterceptorTest {
 
   @Test
   void shouldReturnFalseAndPartiallyPopulateIdentityWhenNoGroupsInAuthToken() {
-    MockHttpServletRequest request = new MockHttpServletRequest();
-    String token = TestJwtUtil.generateToken("""
+    Jwt token = TestJwtUtil.createToken("""
         {
           "email": "%s",
           "given_name": "%s",
           "family_name": "%s"
         }
         """.formatted(EMAIL, GIVEN_NAME, FAMILY_NAME));
-    request.addHeader(HttpHeaders.AUTHORIZATION, token);
+    when(auth.getPrincipal()).thenReturn(token);
 
-    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+    boolean result = interceptor.preHandle(new MockHttpServletRequest(),
+        new MockHttpServletResponse(), new Object());
 
     assertThat("Unexpected result.", result, is(false));
     assertThat("Unexpected admin email.", adminIdentity.getEmail(), is(EMAIL));
@@ -186,8 +191,7 @@ class AdminIdentityInterceptorTest {
 
   @Test
   void shouldReturnFalseAndPopulateIdentityWhenAllFieldsAndEmptyGroupsInAuthToken() {
-    MockHttpServletRequest request = new MockHttpServletRequest();
-    String token = TestJwtUtil.generateToken("""
+    Jwt token = TestJwtUtil.createToken("""
         {
           "email": "%s",
           "given_name": "%s",
@@ -195,9 +199,10 @@ class AdminIdentityInterceptorTest {
           "cognito:groups": []
         }
         """.formatted(EMAIL, GIVEN_NAME, FAMILY_NAME));
-    request.addHeader(HttpHeaders.AUTHORIZATION, token);
+    when(auth.getPrincipal()).thenReturn(token);
 
-    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+    boolean result = interceptor.preHandle(new MockHttpServletRequest(),
+        new MockHttpServletResponse(), new Object());
 
     assertThat("Unexpected result.", result, is(false));
     assertThat("Unexpected admin email.", adminIdentity.getEmail(), is(EMAIL));
@@ -205,57 +210,9 @@ class AdminIdentityInterceptorTest {
     assertThat("Unexpected admin group count.", adminIdentity.getGroups(), hasSize(0));
   }
 
-  @ParameterizedTest
-  @ValueSource(strings = {"/forms/api/admin/ltft", "/forms/api/admin/ltft/abc"})
-  void shouldReturnFalseAndPopulateIdentityWhenAllFieldsAndNoRolesInAuthToken(String uri) {
-    MockHttpServletRequest request = new MockHttpServletRequest();
-    request.setRequestURI(uri);
-    String token = TestJwtUtil.generateToken("""
-        {
-          "email": "%s",
-          "given_name": "%s",
-          "family_name": "%s",
-          "cognito:groups": [
-            "%s",
-            "%s"
-          ]
-        }
-        """.formatted(EMAIL, GIVEN_NAME, FAMILY_NAME, GROUP_1, GROUP_2));
-    request.addHeader(HttpHeaders.AUTHORIZATION, token);
-
-    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
-
-    assertThat("Unexpected result.", result, is(false));
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = {"/forms/api/admin/ltft", "/forms/api/admin/ltft/abc"})
-  void shouldReturnFalseAndPopulateIdentityWhenAllFieldsAndEmptyRolesInAuthToken(String uri) {
-    MockHttpServletRequest request = new MockHttpServletRequest();
-    request.setRequestURI(uri);
-    String token = TestJwtUtil.generateToken("""
-        {
-          "email": "%s",
-          "given_name": "%s",
-          "family_name": "%s",
-          "cognito:groups": [
-            "%s",
-            "%s"
-          ],
-          "cognito:roles": []
-        }
-        """.formatted(EMAIL, GIVEN_NAME, FAMILY_NAME, GROUP_1, GROUP_2));
-    request.addHeader(HttpHeaders.AUTHORIZATION, token);
-
-    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
-
-    assertThat("Unexpected result.", result, is(false));
-  }
-
   @Test
   void shouldReturnTrueAndPopulateIdentityWhenAllFieldsAndGroupsInAuthToken() {
-    MockHttpServletRequest request = new MockHttpServletRequest();
-    String token = TestJwtUtil.generateToken("""
+    Jwt token = TestJwtUtil.createToken("""
         {
           "email": "%s",
           "given_name": "%s",
@@ -266,40 +223,10 @@ class AdminIdentityInterceptorTest {
           ]
         }
         """.formatted(EMAIL, GIVEN_NAME, FAMILY_NAME, GROUP_1, GROUP_2));
-    request.addHeader(HttpHeaders.AUTHORIZATION, token);
+    when(auth.getPrincipal()).thenReturn(token);
 
-    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
-
-    assertThat("Unexpected result.", result, is(true));
-    assertThat("Unexpected admin email.", adminIdentity.getEmail(), is(EMAIL));
-    assertThat("Unexpected admin name.", adminIdentity.getName(), is(FULL_NAME));
-    assertThat("Unexpected admin group count.", adminIdentity.getGroups(), hasSize(2));
-    assertThat("Unexpected admin groups.", adminIdentity.getGroups(), hasItems(GROUP_1, GROUP_2));
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = {"/forms/api/admin/ltft", "/forms/api/admin/ltft/abc"})
-  void shouldReturnTrueAndPopulateIdentityWhenAllFieldsAndLtftRoleInAuthToken(String uri) {
-    MockHttpServletRequest request = new MockHttpServletRequest();
-    request.setRequestURI(uri);
-    String token = TestJwtUtil.generateToken("""
-        {
-          "email": "%s",
-          "given_name": "%s",
-          "family_name": "%s",
-          "cognito:groups": [
-            "%s",
-            "%s"
-          ],
-          "cognito:roles": [
-            "%s",
-            "%s"
-          ]
-        }
-        """.formatted(EMAIL, GIVEN_NAME, FAMILY_NAME, GROUP_1, GROUP_2, ROLE_1, ROLE_2));
-    request.addHeader(HttpHeaders.AUTHORIZATION, token);
-
-    boolean result = interceptor.preHandle(request, new MockHttpServletResponse(), new Object());
+    boolean result = interceptor.preHandle(new MockHttpServletRequest(),
+        new MockHttpServletResponse(), new Object());
 
     assertThat("Unexpected result.", result, is(true));
     assertThat("Unexpected admin email.", adminIdentity.getEmail(), is(EMAIL));

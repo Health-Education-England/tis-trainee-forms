@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
@@ -43,7 +44,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpHeaders;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -73,14 +74,14 @@ class AdminIdentityInterceptorIntegrationTest {
   @ParameterizedTest
   @ValueSource(strings = {"/api/admin", "/api/admin/abc", "/api/admin/abc/xyz"})
   void shouldAddAdminIdentityToRequest(String apiPath) throws Exception {
-    String token = TestJwtUtil.generateToken("""
+    Jwt token = TestJwtUtil.createToken("""
         {
            "email": "%s",
            "cognito:groups": []
         }
         """.formatted(EMAIL_1));
     mockMvc.perform(get(apiPath)
-            .header(HttpHeaders.AUTHORIZATION, token))
+            .with(jwt().jwt(token)))
         .andExpect(request().attribute(BEAN_NAME, nullValue()))
         .andExpect(
             request().attribute(TARGET_BEAN_NAME, hasProperty(ADMIN_EMAIL, is(EMAIL_1))));
@@ -91,7 +92,7 @@ class AdminIdentityInterceptorIntegrationTest {
   @ParameterizedTest
   @ValueSource(strings = {"/api/admin", "/api/admin/xxx", "/api/admin/xxx/yyy"})
   void shouldAddNewAdminIdentityOnEachRequest(String apiPath) throws Exception {
-    String token1 = TestJwtUtil.generateToken("""
+    Jwt token1 = TestJwtUtil.createToken("""
         {
            "email": "%s",
            "given_name": "Ad",
@@ -100,12 +101,12 @@ class AdminIdentityInterceptorIntegrationTest {
         }
         """.formatted(EMAIL_1));
     mockMvc.perform(get(apiPath)
-            .header(HttpHeaders.AUTHORIZATION, token1))
+            .with(jwt().jwt(token1)))
         .andExpect(request().attribute(BEAN_NAME, nullValue()))
         .andExpect(
             request().attribute(TARGET_BEAN_NAME, hasProperty(ADMIN_EMAIL, is(EMAIL_1))));
 
-    String token2 = TestJwtUtil.generateToken("""
+    Jwt token2 = TestJwtUtil.createToken("""
         {
            "email": "%s",
            "given_name": "Ad",
@@ -114,7 +115,7 @@ class AdminIdentityInterceptorIntegrationTest {
         }
         """.formatted(EMAIL_2));
     mockMvc.perform(get(API_PATH)
-            .header(HttpHeaders.AUTHORIZATION, token2))
+            .with(jwt().jwt(token2)))
         .andExpect(request().attribute(BEAN_NAME, nullValue()))
         .andExpect(
             request().attribute(TARGET_BEAN_NAME, hasProperty(ADMIN_EMAIL, is(EMAIL_2))));
@@ -126,7 +127,7 @@ class AdminIdentityInterceptorIntegrationTest {
   @ValueSource(strings = {"/api", "/api/xxx", "/api/xxx/yyy"})
   void shouldNotAddAdminIdentityToNonInterceptedRequests(String apiPath) throws Exception {
     mockMvc.perform(get(apiPath)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(EMAIL_1)))
+            .with(jwt().jwt(TestJwtUtil.createTokenForTisId(EMAIL_1))))
         .andExpect(request().attribute(BEAN_NAME, nullValue()))
         .andExpect(request().attribute(TARGET_BEAN_NAME, nullValue()));
 
@@ -135,7 +136,7 @@ class AdminIdentityInterceptorIntegrationTest {
 
   @Test
   void shouldMakeAdminIdentityAvailableToControllers() throws Exception {
-    String token1 = TestJwtUtil.generateToken("""
+    Jwt token1 = TestJwtUtil.createToken("""
         {
            "email": "%s",
            "given_name": "Ad",
@@ -144,10 +145,10 @@ class AdminIdentityInterceptorIntegrationTest {
         }
         """.formatted(EMAIL_1));
     mockMvc.perform(get(API_PATH)
-            .header(HttpHeaders.AUTHORIZATION, token1))
+            .with(jwt().jwt(token1)))
         .andExpect(content().string(EMAIL_1));
 
-    String token2 = TestJwtUtil.generateToken("""
+    Jwt token2 = TestJwtUtil.createToken("""
         {
            "email": "%s",
            "given_name": "Ad",
@@ -156,7 +157,7 @@ class AdminIdentityInterceptorIntegrationTest {
         }
         """.formatted(EMAIL_2));
     mockMvc.perform(get(API_PATH)
-            .header(HttpHeaders.AUTHORIZATION, token2))
+            .with(jwt().jwt(token2)))
         .andExpect(content().string(EMAIL_2));
   }
 

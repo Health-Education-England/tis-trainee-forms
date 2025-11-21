@@ -47,6 +47,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -93,6 +94,9 @@ class LtftServiceIntegrationTest {
 
   @MockBean
   private SnsTemplate snsTemplate;
+
+  @MockBean
+  private JwtDecoder jwtDecoder;
 
   @BeforeEach
   void setUp() {

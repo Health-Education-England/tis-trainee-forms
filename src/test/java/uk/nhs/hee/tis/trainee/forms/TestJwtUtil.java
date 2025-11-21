@@ -21,59 +21,53 @@
 
 package uk.nhs.hee.tis.trainee.forms;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.UncheckedIOException;
+import java.util.Map;
+import java.util.UUID;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtClaimNames;
 
 /**
  * A utility for generating test JWT tokens.
  */
 public class TestJwtUtil {
 
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+
   public static final String TIS_ID_ATTRIBUTE = "custom:tisId";
-  public static final String EMAIL_ATTRIBUTE = "email";
-  public static final String GIVEN_NAME_ATTRIBUTE = "given_name";
-  public static final String FAMILY_NAME_ATTRIBUTE = "family_name";
 
   /**
-   * Generate a token with the given payload.
-   *
-   * @param payload The payload to inject in to the token.
-   * @return The generated token.
-   */
-  public static String generateToken(String payload) {
-    String encodedPayload = Base64.getUrlEncoder()
-        .encodeToString(payload.getBytes(StandardCharsets.UTF_8));
-    return String.format("aGVhZGVy.%s.c2lnbmF0dXJl", encodedPayload);
-  }
-
-  /**
-   * Generate a token with the TIS ID attribute as the payload.
+   * Create a token with the TIS ID attribute as the payload.
    *
    * @param traineeTisId The TIS ID to inject in to the payload.
    * @return The generated token.
    */
-  public static String generateTokenForTisId(String traineeTisId) {
+  public static Jwt createTokenForTisId(String traineeTisId) {
     String payload = String.format("{\"%s\":\"%s\"}", TIS_ID_ATTRIBUTE, traineeTisId);
-    return generateToken(payload);
+    return createToken(payload);
   }
 
   /**
-   * Generate a token with the various attributes as the payload.
+   * Create a token with the given claims.
    *
-   * @param traineeTisId The TIS ID to inject in to the payload.
-   * @param email        The email to inject in to the payload.
-   * @param givenName    The given name to inject in to the payload.
-   * @param familyName   The family name to inject in to the payload.
-   * @return The generated token.
+   * @param claimsJson The claims as a JSON string.
+   * @return The built token.
    */
-  public static String generateTokenForTrainee(String traineeTisId, String email, String givenName,
-      String familyName) {
-    String payload = String.format("{\"%s\":\"%s\"", TIS_ID_ATTRIBUTE, traineeTisId)
-        + (email == null ? "" : String.format(",\"%s\":\"%s\"", EMAIL_ATTRIBUTE, email)
-        + (givenName == null ? "" : String.format(",\"%s\":\"%s\"", GIVEN_NAME_ATTRIBUTE, givenName)
-        + (familyName == null ? "" : String.format(",\"%s\":\"%s\"", FAMILY_NAME_ATTRIBUTE,
-        familyName))))
-        + "}"; // :tears:
-    return generateToken(payload);
+  public static Jwt createToken(String claimsJson) {
+    try {
+      Map<String, Object> claims = MAPPER.readValue(claimsJson, new TypeReference<>() {
+      });
+      claims.put(JwtClaimNames.SUB, UUID.randomUUID());
+
+      return Jwt.withTokenValue("mock-token")
+          .header("alg", "none")
+          .claims(c -> c.putAll(claims))
+          .build();
+    } catch (JsonProcessingException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 }
