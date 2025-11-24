@@ -90,10 +90,15 @@ public class TestJwtUtil {
    * Create an admin token with the given groups and default attributes for other fields.
    *
    * @param groups The groups to add in to the token.
+   * @param roles  The roles to add in to the token.
    * @return The created token.
    */
-  public static JwtRequestPostProcessor createAdminTokenForGroups(List<String> groups) {
+  public static JwtRequestPostProcessor createAdminToken(List<String> groups, List<String> roles) {
     String groupString = groups.stream()
+        .map(s -> s.replaceAll("^|$", "\""))
+        .collect(Collectors.joining(","));
+
+    String roleString = groups.stream()
         .map(s -> s.replaceAll("^|$", "\""))
         .collect(Collectors.joining(","));
 
@@ -103,13 +108,18 @@ public class TestJwtUtil {
           "given_name": "Ad",
           "family_name": "Min",
           "cognito:groups": [%s],
-          "cognito:roles": ["NHSE LTFT Admin"]
+          "cognito:roles": [%s]
         }
-        """.formatted(groupString);
+        """.formatted(groupString, roleString);
 
-    return jwt()
-        .jwt(createToken(payload))
-        .authorities(new SimpleGrantedAuthority("ROLE_NHSE_LTFT_Admin"));
+    JwtRequestPostProcessor jwt = jwt()
+        .jwt(createToken(payload));
+
+    for (String role : roles) {
+      jwt.authorities(new SimpleGrantedAuthority("ROLE_" + role.replace(" ", "_")));
+    }
+
+    return jwt;
   }
 
   /**
