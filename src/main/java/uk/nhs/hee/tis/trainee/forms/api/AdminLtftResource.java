@@ -38,6 +38,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.data.web.PagedModel;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -58,6 +59,7 @@ import uk.nhs.hee.tis.trainee.forms.service.PdfService;
  */
 @Slf4j
 @RestController
+@PreAuthorize("hasRole('NHSE_LTFT_Admin')")
 @RequestMapping("/api/admin/ltft")
 @XRayEnabled
 public class AdminLtftResource {

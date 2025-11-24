@@ -23,10 +23,12 @@ package uk.nhs.hee.tis.trainee.forms.interceptor;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.servlet.HandlerInterceptor;
 import uk.nhs.hee.tis.trainee.forms.api.util.AuthTokenUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
@@ -51,22 +53,26 @@ public class TraineeIdentityInterceptor implements HandlerInterceptor {
   @Override
   public boolean preHandle(HttpServletRequest request, HttpServletResponse response,
       Object handler) {
-    String authToken = request.getHeader(HttpHeaders.AUTHORIZATION);
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
-    if (authToken != null) {
-      try {
-        String traineeId = AuthTokenUtil.getAttribute(authToken, TIS_ID_ATTRIBUTE);
-        traineeIdentity.setTraineeId(traineeId);
-        String email = AuthTokenUtil.getAttribute(authToken, EMAIL_ATTRIBUTE);
-        traineeIdentity.setEmail(email);
-        String givenName = AuthTokenUtil.getAttribute(authToken, GIVEN_NAME_ATTRIBUTE);
-        String familyName = AuthTokenUtil.getAttribute(authToken, FAMILY_NAME_ATTRIBUTE);
-        if (givenName != null && familyName != null) {
-          traineeIdentity.setName("%s %s".formatted(givenName, familyName));
-        }
+    if (auth != null && auth.getPrincipal() instanceof Jwt authToken) {
+      String traineeId = authToken.getClaimAsString(TIS_ID_ATTRIBUTE);
+      traineeIdentity.setTraineeId(traineeId);
+
+      String email = authToken.getClaimAsString(EMAIL_ATTRIBUTE);
+      traineeIdentity.setEmail(email);
+
+      String givenName = authToken.getClaimAsString(GIVEN_NAME_ATTRIBUTE);
+      String familyName = authToken.getClaimAsString(FAMILY_NAME_ATTRIBUTE);
+      if (givenName != null && familyName != null) {
+        traineeIdentity.setName("%s %s".formatted(givenName, familyName));
+      }
+
+      Map<String, Object> features = authToken.getClaimAsMap("features");
+      if (features != null) {
         traineeIdentity.setFeatures(AuthTokenUtil.getFeatures(authToken));
-      } catch (IOException e) {
-        log.warn("Unable to extract trainee ID from authorization token.", e);
+      } else {
+        log.warn("No features found in token claims {}.", authToken.getClaims());
       }
     }
 

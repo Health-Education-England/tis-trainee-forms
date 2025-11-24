@@ -31,6 +31,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -56,6 +57,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.web.servlet.MockMvc;
 import uk.nhs.hee.tis.trainee.forms.SignatureTestUtil;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
@@ -72,6 +74,7 @@ class ConditionsOfJoiningResourceTest {
 
   @TestConfiguration
   static class TestConfig {
+
     @Bean
     public MongoMappingContext mongoMappingContext() {
       return mock(MongoMappingContext.class);
@@ -93,6 +96,9 @@ class ConditionsOfJoiningResourceTest {
   @MockBean
   private RestTemplateBuilder restTemplateBuilder;
 
+  @MockBean
+  private JwtDecoder jwtDecoder;
+
   @Value("${application.signature.secret-key}")
   private String secretKey;
 
@@ -113,7 +119,7 @@ class ConditionsOfJoiningResourceTest {
     mockMvc.perform(put("/api/coj")
             .contentType(MediaType.APPLICATION_JSON)
             .content(unsignedBody)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId("40")))
+            .with(jwt().jwt(TestJwtUtil.createTokenForTisId("40"))))
         .andExpect(status().isForbidden());
 
     verifyNoInteractions(service);
@@ -196,7 +202,7 @@ class ConditionsOfJoiningResourceTest {
     mockMvc.perform(put("/api/coj")
             .contentType(MediaType.APPLICATION_JSON)
             .content(signedBody)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateToken("{}")))
+            .with(jwt().jwt(jwt -> jwt.claim("claim1", "value1"))))
         .andExpect(status().isForbidden());
 
     verifyNoInteractions(service);
@@ -223,7 +229,7 @@ class ConditionsOfJoiningResourceTest {
     mockMvc.perform(put("/api/coj")
             .contentType(MediaType.APPLICATION_JSON)
             .content(signedBody)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId("40")))
+            .with(jwt().jwt(TestJwtUtil.createTokenForTisId("40"))))
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
@@ -251,7 +257,7 @@ class ConditionsOfJoiningResourceTest {
     mockMvc.perform(put("/api/coj")
             .contentType(MediaType.APPLICATION_JSON)
             .content(signedBody)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId("40")))
+            .with(jwt().jwt(TestJwtUtil.createTokenForTisId("40"))))
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
@@ -273,7 +279,7 @@ class ConditionsOfJoiningResourceTest {
     mockMvc.perform(put("/api/coj")
             .contentType(MediaType.APPLICATION_JSON)
             .content(signedBody)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId("40")))
+            .with(jwt().jwt(TestJwtUtil.createTokenForTisId("40"))))
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
@@ -309,7 +315,7 @@ class ConditionsOfJoiningResourceTest {
     mockMvc.perform(put("/api/coj")
             .contentType(MediaType.APPLICATION_JSON)
             .content(signedBody)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId("40")))
+            .with(jwt().jwt(TestJwtUtil.createTokenForTisId("40"))))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_PDF))
         .andExpect(content().bytes(response));
@@ -350,7 +356,7 @@ class ConditionsOfJoiningResourceTest {
     mockMvc.perform(put("/api/coj")
             .contentType(MediaType.APPLICATION_JSON)
             .content(signedBody)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId("40")))
+            .with(jwt().jwt(TestJwtUtil.createTokenForTisId("40"))))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_PDF))
         .andExpect(content().bytes(response));
@@ -391,7 +397,7 @@ class ConditionsOfJoiningResourceTest {
     mockMvc.perform(put("/api/coj")
             .contentType(MediaType.APPLICATION_JSON)
             .content(signedBody)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId("40")))
+            .with(jwt().jwt(TestJwtUtil.createTokenForTisId("40"))))
         .andExpect(status().isOk());
 
     ConditionsOfJoiningPdfRequestDto request = requestCaptor.getValue();
@@ -437,7 +443,7 @@ class ConditionsOfJoiningResourceTest {
     mockMvc.perform(put("/api/coj")
             .contentType(MediaType.APPLICATION_JSON)
             .content(signedBody)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId("40")))
+            .with(jwt().jwt(TestJwtUtil.createTokenForTisId("40"))))
         .andExpect(status().isOk());
 
     verify(service).generateConditionsOfJoining(any(), eq(false));
@@ -472,7 +478,7 @@ class ConditionsOfJoiningResourceTest {
     mockMvc.perform(put("/api/coj")
             .contentType(MediaType.APPLICATION_JSON)
             .content(signedBody)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId("40")))
+            .with(jwt().jwt(TestJwtUtil.createTokenForTisId("40"))))
         .andExpect(status().isUnprocessableEntity());
   }
 }
