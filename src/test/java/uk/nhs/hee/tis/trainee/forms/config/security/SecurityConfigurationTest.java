@@ -22,6 +22,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.config.security;
 
+import static java.time.temporal.ChronoUnit.SECONDS;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
@@ -33,9 +34,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Base64;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
@@ -140,6 +144,21 @@ class SecurityConfigurationTest {
     assertThat("Unexpected claim size.", jwt.getClaim(ARRAY_ATTRIBUTE), hasSize(2));
     assertThat("Unexpected claim values.", jwt.getClaim(ARRAY_ATTRIBUTE),
         hasItems("123456", "ABCDEF"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"iat", "exp", "nbf", "auth_time"})
+  void shouldDecodeTimestamps(String timestampClaim) {
+    Instant now = Instant.now();
+    String payload = String.format("{\"%s\":%s}", timestampClaim, now.getEpochSecond());
+    String encodedPayload = Base64.getEncoder()
+        .encodeToString(payload.getBytes(StandardCharsets.UTF_8));
+    String token = String.format("aa.%s.cc", encodedPayload);
+
+    Jwt jwt = decoder.decode(token);
+
+    assertThat("Unexpected claim value.", jwt.getClaimAsInstant(timestampClaim),
+        is(now.truncatedTo(SECONDS)));
   }
 
   @Test

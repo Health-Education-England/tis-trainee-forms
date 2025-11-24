@@ -30,7 +30,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -126,6 +128,13 @@ public class SecurityConfiguration {
 
       try {
         Map<String, Object> payload = new ObjectMapper().readValue(payloadBytes, Map.class);
+
+        // Convert epoch second timestamps to Instants.
+        for (String timestampClaim : List.of("iat", "exp", "nbf", "auth_time")) {
+          if (payload.get(timestampClaim) instanceof Integer intValue) {
+            payload.put(timestampClaim, Instant.ofEpochSecond(intValue));
+          }
+        }
 
         return Jwt.withTokenValue(token)
             .header("alg", "none")
