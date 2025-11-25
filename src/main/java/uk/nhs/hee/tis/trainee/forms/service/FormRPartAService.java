@@ -225,14 +225,17 @@ public class FormRPartAService {
         repository.save(formRPartA);
         log.info("Partial delete successfully for trainee {} with form Id {} (FormRPartA)",
             traineeTisId, id);
+
+        // TODO: remove S3 update when fully migrated.
+        cloudObjectRepository.save(formRPartA);
       } else {
-        log.error("FormRPartB with ID '{}' not found", id);
+        log.error("FormRPartA with ID '{}' not found", id);
       }
 
       return mapper.toDto(formRPartA);
 
     } catch (Exception e) {
-      log.error("Fail to partial delete FormRPartA: {}", e);
+      log.error("Fail to partial delete FormRPartA: {}", id);
       throw new ApplicationException("Fail to partial delete FormRPartA:", e);
     }
   }

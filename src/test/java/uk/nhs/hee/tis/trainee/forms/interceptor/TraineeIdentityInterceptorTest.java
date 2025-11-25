@@ -68,7 +68,7 @@ class TraineeIdentityInterceptorTest {
   }
 
   @AfterEach
-  void tearDear() {
+  void tearDown() {
     SecurityContextHolder.clearContext();
   }
 

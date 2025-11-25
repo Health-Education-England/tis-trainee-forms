@@ -68,7 +68,7 @@ class AdminIdentityInterceptorTest {
   }
 
   @AfterEach
-  void tearDear() {
+  void tearDown() {
     SecurityContextHolder.clearContext();
   }
 
