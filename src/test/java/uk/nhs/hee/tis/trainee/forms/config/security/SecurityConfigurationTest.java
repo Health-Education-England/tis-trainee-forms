@@ -22,6 +22,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.config.security;
 
+import static java.time.temporal.ChronoUnit.SECONDS;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
@@ -31,11 +32,13 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Base64;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
@@ -44,6 +47,15 @@ class SecurityConfigurationTest {
 
   private static final String STRING_ATTRIBUTE = "custom:my-string";
   private static final String ARRAY_ATTRIBUTE = "my-array";
+
+  private static final String TOKEN_HEADER = Base64.getEncoder().encodeToString("""
+      {
+        "alg": "HS256",
+        "type": "JWT"
+      }
+      """.getBytes());
+  private static final String TOKEN_SIGNATURE = Base64.getEncoder().encodeToString("{}".getBytes());
+  private static final String TOKEN_TEMPLATE = TOKEN_HEADER + ".%s." + TOKEN_SIGNATURE;
 
   private SecurityConfiguration configuration;
   private JwtDecoder decoder;
@@ -55,31 +67,19 @@ class SecurityConfigurationTest {
   }
 
   @Test
-  void shouldDecodeWithoutSignatureVerification() {
-    String payload = String.format("{\"%s\":\"%s\"}", STRING_ATTRIBUTE, "40");
-    String encodedPayload = Base64.getEncoder()
-        .encodeToString(payload.getBytes(StandardCharsets.UTF_8));
-    String token = String.format("aa.%s.cc", encodedPayload);
-
-    Jwt jwt = decoder.decode(token);
-
-    assertThat("Unexpected algorithm.", jwt.getHeaders().get("alg"), is("none"));
-  }
-
-  @Test
   void shouldThrowExceptionDecodingWhenPayloadNotMap() {
     String encodedPayload = Base64.getEncoder()
         .encodeToString("[]".getBytes(StandardCharsets.UTF_8));
-    String token = String.format("aa.%s.cc", encodedPayload);
+    String token = String.format(TOKEN_TEMPLATE, encodedPayload);
 
-    assertThrows(UncheckedIOException.class, () -> decoder.decode(token));
+    assertThrows(IllegalArgumentException.class, () -> decoder.decode(token));
   }
 
   @Test
   void shouldThrowExceptionDecodingWhenPayloadEmpty() {
     String encodedPayload = Base64.getEncoder()
         .encodeToString("{}".getBytes(StandardCharsets.UTF_8));
-    String token = String.format("aa.%s.cc", encodedPayload);
+    String token = String.format(TOKEN_TEMPLATE, encodedPayload);
 
     assertThrows(IllegalArgumentException.class, () -> decoder.decode(token));
   }
@@ -93,7 +93,7 @@ class SecurityConfigurationTest {
              }
             """
             .getBytes(StandardCharsets.UTF_8));
-    String token = String.format("aa.%s.cc", encodedPayload);
+    String token = String.format(TOKEN_TEMPLATE, encodedPayload);
 
     Jwt jwt = decoder.decode(token);
 
@@ -103,7 +103,7 @@ class SecurityConfigurationTest {
   @Test
   void shouldDecodeArrayWithUrlCharactersInToken() {
     // The payload is specifically crafted to include an underscore, the group is 123.
-    String token = "aGVhZGVy.eyJteS1hcnJheSI6WyIxMjMiXSwibmFtZSI6IkpvaG4gRG_DqyJ9.c2ln";
+    String token = TOKEN_HEADER + ".eyJteS1hcnJheSI6WyIxMjMiXSwibmFtZSI6IkpvaG4gRG_DqyJ9.c2ln";
 
     Jwt jwt = decoder.decode(token);
 
@@ -114,7 +114,8 @@ class SecurityConfigurationTest {
   @Test
   void shouldDecodeStringWithUrlCharactersInToken() {
     // The payload is specifically crafted to include an underscore, the ID is 123.
-    String token = "aGVhZGVy.eyJjdXN0b206bXktc3RyaW5nIjoiMTIzIiwibmFtZSI6IkpvaG4gRG_DqyJ9.c2ln";
+    String token =
+        TOKEN_HEADER + ".eyJjdXN0b206bXktc3RyaW5nIjoiMTIzIiwibmFtZSI6IkpvaG4gRG_DqyJ9.c2ln";
 
     Jwt jwt = assertDoesNotThrow(() -> decoder.decode(token));
 
@@ -133,7 +134,7 @@ class SecurityConfigurationTest {
              }
             """
             .getBytes(StandardCharsets.UTF_8));
-    String token = String.format("aa.%s.cc", encodedPayload);
+    String token = String.format(TOKEN_TEMPLATE, encodedPayload);
 
     Jwt jwt = decoder.decode(token);
 
@@ -142,12 +143,27 @@ class SecurityConfigurationTest {
         hasItems("123456", "ABCDEF"));
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"iat", "exp", "nbf", "auth_time"})
+  void shouldDecodeTimestamps(String timestampClaim) {
+    Instant now = Instant.now();
+    String payload = String.format("{\"%s\":%s}", timestampClaim, now.getEpochSecond());
+    String encodedPayload = Base64.getEncoder()
+        .encodeToString(payload.getBytes(StandardCharsets.UTF_8));
+    String token = String.format(TOKEN_TEMPLATE, encodedPayload);
+
+    Jwt jwt = decoder.decode(token);
+
+    assertThat("Unexpected claim value.", jwt.getClaimAsInstant(timestampClaim),
+        is(now.truncatedTo(SECONDS)));
+  }
+
   @Test
   void shouldDecodeString() {
     String payload = String.format("{\"%s\":\"%s\"}", STRING_ATTRIBUTE, "40");
     String encodedPayload = Base64.getEncoder()
         .encodeToString(payload.getBytes(StandardCharsets.UTF_8));
-    String token = String.format("aa.%s.cc", encodedPayload);
+    String token = String.format(TOKEN_TEMPLATE, encodedPayload);
 
     Jwt jwt = decoder.decode(token);
 

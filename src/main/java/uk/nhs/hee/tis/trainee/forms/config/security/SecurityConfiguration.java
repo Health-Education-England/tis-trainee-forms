@@ -22,15 +22,13 @@
 
 package uk.nhs.hee.tis.trainee.forms.config.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nimbusds.jwt.SignedJWT;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
+import java.text.ParseException;
 import java.util.Map;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -41,7 +39,10 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.security.oauth2.jwt.MappedJwtClaimSetConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -120,20 +121,24 @@ public class SecurityConfiguration {
   public JwtDecoder unsafeJwtDecoder() {
     // TODO: replace with safe JWT Decoder.
     return token -> {
-      String[] tokenSections = token.split("\\.");
-      byte[] payloadBytes = Base64.getUrlDecoder()
-          .decode(tokenSections[1].getBytes(StandardCharsets.UTF_8));
-
       try {
-        Map<String, Object> payload = new ObjectMapper().readValue(payloadBytes, Map.class);
+        SignedJWT signedJwt = SignedJWT.parse(token);
+        Map<String, Object> tokenClaims = signedJwt.getJWTClaimsSet().getClaims();
 
-        return Jwt.withTokenValue(token)
-            .header("alg", "none")
-            .claims(claims -> claims.putAll(payload))
+        JwtClaimsSet claimsSet = JwtClaimsSet.builder()
+            .claims(claims -> claims.putAll(tokenClaims))
             .build();
 
-      } catch (IOException e) {
-        throw new UncheckedIOException(e);
+        // Convert handles Date -> Instant conversion for common timestamps.
+        Map<String, Object> convertedClaims = MappedJwtClaimSetConverter.withDefaults(Map.of())
+            .convert(claimsSet.getClaims());
+
+        return Jwt.withTokenValue(token)
+            .headers(headers -> headers.putAll(signedJwt.getHeader().toJSONObject()))
+            .claims(claims -> claims.putAll(convertedClaims))
+            .build();
+      } catch (ParseException e) {
+        throw new JwtException("Failed to parse JWT.", e);
       }
     };
   }
