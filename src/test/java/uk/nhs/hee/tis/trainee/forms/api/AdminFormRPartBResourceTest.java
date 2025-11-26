@@ -23,24 +23,18 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.hasItems;
-import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.sameInstance;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.OK;
 
-import java.util.Set;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.http.ResponseEntity;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
@@ -48,8 +42,6 @@ import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 class AdminFormRPartBResourceTest {
 
   private static final UUID FORM_ID = UUID.randomUUID();
-  private static final String FORM_ID_STRING = FORM_ID.toString();
-  private static final String TRAINEE_ID = UUID.randomUUID().toString();
 
   private AdminFormRPartBResource controller;
   private FormRPartBService service;
@@ -61,24 +53,10 @@ class AdminFormRPartBResourceTest {
   }
 
   @Test
-  void shouldPartiallyDeleteFormContents() {
-    controller.deleteById(TRAINEE_ID, FORM_ID);
-
-    ArgumentCaptor<Set<String>> fieldsCaptor = ArgumentCaptor.captor();
-    verify(service).partialDeleteFormRPartBById(any(), any(), fieldsCaptor.capture());
-
-    Set<String> fields = fieldsCaptor.getValue();
-    assertThat("Unexpected field count.", fields, hasSize(5));
-    assertThat("Unexpected fields.", fields,
-        hasItems("id", "traineeTisId", "lifecycleState", "submissionDate", "lastModifiedDate"));
-  }
-
-  @Test
   void shouldReturnNotFoundWhenDeletingAndFormNotFound() {
-    when(service.partialDeleteFormRPartBById(eq(FORM_ID_STRING), eq(TRAINEE_ID), any()))
-        .thenReturn(null);
+    when(service.partialDeleteFormRPartBById(FORM_ID)).thenReturn(Optional.empty());
 
-    ResponseEntity<FormRPartBDto> response = controller.deleteById(TRAINEE_ID, FORM_ID);
+    ResponseEntity<FormRPartBDto> response = controller.deleteById(FORM_ID);
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(NOT_FOUND));
     assertThat("Unexpected response body.", response.getBody(), nullValue());
@@ -87,12 +65,11 @@ class AdminFormRPartBResourceTest {
   @Test
   void shouldReturnPartiallyDeletedFormWhenDeletingAndFormFound() {
     FormRPartBDto dto = new FormRPartBDto();
-    dto.setId(FORM_ID_STRING);
+    dto.setId(FORM_ID.toString());
 
-    when(service.partialDeleteFormRPartBById(eq(FORM_ID_STRING), eq(TRAINEE_ID), any()))
-        .thenReturn(dto);
+    when(service.partialDeleteFormRPartBById(FORM_ID)).thenReturn(Optional.of(dto));
 
-    ResponseEntity<FormRPartBDto> response = controller.deleteById(TRAINEE_ID, FORM_ID);
+    ResponseEntity<FormRPartBDto> response = controller.deleteById(FORM_ID);
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), sameInstance(dto));

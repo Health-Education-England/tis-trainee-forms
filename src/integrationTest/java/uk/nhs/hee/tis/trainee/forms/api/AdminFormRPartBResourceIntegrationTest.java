@@ -32,6 +32,7 @@ import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +41,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.test.context.ActiveProfiles;
@@ -80,9 +82,14 @@ class AdminFormRPartBResourceIntegrationTest {
   @MockBean
   private S3Client s3Client;
 
+  @AfterEach
+  void tearDown() {
+    template.findAllAndRemove(new Query(), FormRPartB.class);
+  }
+
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      DELETE | /api/admin/formr-partb/123/456
+      DELETE | /api/admin/formr-partb/123
       """)
   void shouldReturnForbiddenWhenNoToken(HttpMethod method, URI uri) throws Exception {
     mockMvc.perform(request(method, uri))
@@ -92,7 +99,7 @@ class AdminFormRPartBResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      DELETE | /api/admin/formr-partb/123/456
+      DELETE | /api/admin/formr-partb/123
       """)
   void shouldReturnForbiddenWhenEmptyToken(HttpMethod method, URI uri) throws Exception {
     Jwt token = TestJwtUtil.createToken("{}");
@@ -104,7 +111,7 @@ class AdminFormRPartBResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      DELETE | /api/admin/formr-partb/123/456
+      DELETE | /api/admin/formr-partb/123
       """)
   void shouldReturnForbiddenWhenNoGroupsInToken(HttpMethod method, URI uri) throws Exception {
     mockMvc.perform(request(method, uri)
@@ -115,7 +122,7 @@ class AdminFormRPartBResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      DELETE | /api/admin/formr-partb/123/456
+      DELETE | /api/admin/formr-partb/123
       """)
   void shouldReturnBadRequestWhenHasInvalidFormId(HttpMethod method, URI uri) throws Exception {
     mockMvc.perform(request(method, uri)
@@ -125,7 +132,7 @@ class AdminFormRPartBResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      DELETE | /api/admin/formr-partb/123/{id}
+      DELETE | /api/admin/formr-partb/{id}
       """)
   void shouldReturnForbiddenWhenNoRequiredPermission(HttpMethod method, String uriTemplate)
       throws Exception {
@@ -137,7 +144,7 @@ class AdminFormRPartBResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      DELETE | /api/admin/formr-partb/123/{id}
+      DELETE | /api/admin/formr-partb/{id}
       """)
   void shouldReturnNotFoundWhenHasRequiredPermissionAndFormMissing(HttpMethod method,
       String uriTemplate)
@@ -149,7 +156,7 @@ class AdminFormRPartBResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      DELETE | /api/admin/formr-partb/{traineeId}/{formId}
+      DELETE | /api/admin/formr-partb/{formId}
       """)
   void shouldReturnOkWhenHasRequiredPermissionAndFormFound(HttpMethod method, String uriTemplate)
       throws Exception {
@@ -159,7 +166,7 @@ class AdminFormRPartBResourceIntegrationTest {
     form.setSubmissionDate(LocalDateTime.now());
     template.insert(form);
 
-    mockMvc.perform(request(method, uriTemplate, TRAINEE_ID, FORM_ID)
+    mockMvc.perform(request(method, uriTemplate, FORM_ID)
             .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of("TSS Support Admin"))))
         .andExpect(status().isOk());
   }
