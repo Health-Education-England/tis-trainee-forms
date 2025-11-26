@@ -23,6 +23,7 @@ package uk.nhs.hee.tis.trainee.forms.event;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -30,12 +31,13 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.GoldGuideVersion.GG9;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.time.Instant;
-import java.util.Set;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -100,6 +102,40 @@ class FormEventListenerTest {
   }
 
   @Test
+  void shouldNotThrowExceptionDeletingFormAWhenNotFound() {
+    when(formRPartAService.partialDeleteFormRPartAById(any(), any())).thenReturn(Optional.empty());
+
+    final String message = """
+        {
+        "deleteType": "PARTIAL",
+        "bucket": "document-upload",
+        "key": "1/forms/formr-a/1000a.json",
+        "fixedFields": ["id", "traineeTisId"]
+        }
+        """;
+
+    assertDoesNotThrow(() -> listener.handleFormDeleteEvent(message));
+    verify(formRPartAService).partialDeleteFormRPartAById(any(), any());
+  }
+
+  @Test
+  void shouldNotThrowExceptionDeletingFormBWhenNotFound() {
+    when(formRPartBService.partialDeleteFormRPartBById(any(), any())).thenReturn(Optional.empty());
+
+    final String message = """
+        {
+        "deleteType": "PARTIAL",
+        "bucket": "document-upload",
+        "key": "1/forms/formr-b/1000b.json",
+        "fixedFields": ["id", "traineeTisId"]
+        }
+        """;
+
+    assertDoesNotThrow(() -> listener.handleFormDeleteEvent(message));
+    verify(formRPartBService).partialDeleteFormRPartBById(any(), any());
+  }
+
+  @Test
   void shouldPartialDeleteFormA() {
     final String message = """
         {
@@ -112,8 +148,7 @@ class FormEventListenerTest {
 
     listener.handleFormDeleteEvent(message);
 
-    verify(formRPartAService).partialDeleteFormRPartAById(
-        "1000a", "1", Set.of("id", "traineeTisId"));
+    verify(formRPartAService).partialDeleteFormRPartAById("1000a", "1");
   }
 
   @Test
@@ -129,8 +164,7 @@ class FormEventListenerTest {
 
     listener.handleFormDeleteEvent(message);
 
-    verify(formRPartBService).partialDeleteFormRPartBById(
-        "2000b", "1", Set.of("id", "traineeTisId"));
+    verify(formRPartBService).partialDeleteFormRPartBById("2000b", "1");
   }
 
   @Test
@@ -178,7 +212,7 @@ class FormEventListenerTest {
         """;
 
     doThrow(ApplicationException.class)
-        .when(formRPartAService).partialDeleteFormRPartAById(any(), any(), any());
+        .when(formRPartAService).partialDeleteFormRPartAById(any(), any());
     assertThrows(ApplicationException.class, () -> listener.handleFormDeleteEvent(message));
   }
 }

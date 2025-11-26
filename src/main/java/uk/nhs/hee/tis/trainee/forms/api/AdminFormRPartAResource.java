@@ -23,7 +23,6 @@ package uk.nhs.hee.tis.trainee.forms.api;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -44,14 +43,6 @@ import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 @XRayEnabled
 public class AdminFormRPartAResource {
 
-  private static final Set<String> FIXED_FIELDS = Set.of(
-      "id",
-      "traineeTisId",
-      "lifecycleState",
-      "submissionDate",
-      "lastModifiedDate"
-  );
-
   private final FormRPartAService service;
 
   public AdminFormRPartAResource(FormRPartAService service) {
@@ -61,17 +52,14 @@ public class AdminFormRPartAResource {
   /**
    * Delete a Form-R with the given ID.
    *
-   * @param traineeId The ID of the trainee.
-   * @param formId    The ID of the form.
+   * @param formId The ID of the form.
    * @return the status of the deletion.
    */
   @PreAuthorize("hasRole('TSS_Support_Admin')")
-  @DeleteMapping("/{traineeId}/{formId}")
-  public ResponseEntity<FormRPartADto> deleteById(@PathVariable String traineeId,
-      @PathVariable UUID formId) {
-    log.info("Admin request to delete trainee {}'s FormRPartA with id {}", traineeId, formId);
-    FormRPartADto deleted = service.partialDeleteFormRPartAById(formId.toString(), traineeId,
-        FIXED_FIELDS);
-    return ResponseEntity.of(Optional.ofNullable(deleted));
+  @DeleteMapping("/{formId}")
+  public ResponseEntity<FormRPartADto> deleteById(@PathVariable UUID formId) {
+    log.info("Admin request to delete FormRPartA with id {}", formId);
+    Optional<FormRPartADto> deleted = service.partialDeleteFormRPartAById(formId);
+    return ResponseEntity.of(deleted);
   }
 }

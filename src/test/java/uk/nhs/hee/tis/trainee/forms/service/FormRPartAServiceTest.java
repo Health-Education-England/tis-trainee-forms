@@ -38,7 +38,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -71,8 +70,6 @@ class FormRPartAServiceTest {
   private static final String DEFAULT_FORENAME = "DEFAULT_FORENAME";
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";
   private static final LocalDateTime DEFAULT_SUBMISSION_DATE = LocalDateTime.now();
-  private static final Set<String> FIXED_FIELDS =
-      Set.of("id", "traineeTisId", "lifecycleState");
   private static final String FORM_R_PART_A_SUBMITTED_TOPIC = "arn:aws:sns:topic";
 
   private FormRPartAService service;
@@ -468,38 +465,68 @@ class FormRPartAServiceTest {
 
   @Test
   void shouldPartialDeleteFormRPartAById() {
-    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
-        .thenReturn(Optional.of(entity));
+    when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
+    when(cloudObjectRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    FormRPartADto resultDto = service.partialDeleteFormRPartAById(
-        DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID, FIXED_FIELDS);
+    Optional<FormRPartADto> resultDto = service.partialDeleteFormRPartAById(DEFAULT_ID);
+
+    assertThat("Unexpected DTO presence.", resultDto.isPresent(), is(true));
 
     FormRPartADto expectedDto = new FormRPartADto();
     expectedDto.setId(DEFAULT_ID.toString());
     expectedDto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     expectedDto.setLifecycleState(LifecycleState.DELETED);
+    assertThat("Unexpected DTO.", resultDto.get(), is(expectedDto));
 
     verify(repositoryMock).save(any());
-    assertThat("Unexpected DTO.", resultDto, is(expectedDto));
+    verify(cloudObjectRepository).save(any());
   }
 
   @Test
-  void shouldNotPartialDeleteWhenFormRPartANotFoundInDb() {
-    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
-        .thenReturn(Optional.empty());
+  void shouldNotPartialDeleteWhenTraineeFormRPartANotFoundInDb() {
+    when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.empty());
 
-    service.partialDeleteFormRPartAById(
-        DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID, FIXED_FIELDS);
+    service.partialDeleteFormRPartAById(DEFAULT_ID);
 
     verify(repositoryMock, never()).save(formRPartACaptor.capture());
   }
 
   @Test
-  void shouldThrowExceptionWhenFailToPartialDeleteFormRPartA() throws ApplicationException {
+  void shouldPartialDeleteFormRPartAByIdWithTraineeId() {
+    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
+        .thenReturn(Optional.of(entity));
+
+    Optional<FormRPartADto> resultDto = service.partialDeleteFormRPartAById(DEFAULT_ID_STRING,
+        DEFAULT_TRAINEE_TIS_ID);
+
+    assertThat("Unexpected DTO presence.", resultDto.isPresent(), is(true));
+
+    FormRPartADto expectedDto = new FormRPartADto();
+    expectedDto.setId(DEFAULT_ID.toString());
+    expectedDto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    expectedDto.setLifecycleState(LifecycleState.DELETED);
+    assertThat("Unexpected DTO.", resultDto.get(), is(expectedDto));
+
+    verify(repositoryMock).save(any());
+  }
+
+  @Test
+  void shouldNotPartialDeleteWhenTraineeFormRPartANotFoundInDbWithTraineeId() {
+    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
+        .thenReturn(Optional.empty());
+
+    service.partialDeleteFormRPartAById(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID);
+
+    verify(repositoryMock, never()).save(formRPartACaptor.capture());
+  }
+
+  @Test
+  void shouldThrowExceptionWhenFailToPartialDeleteFormRPartAWithTraineeId()
+      throws ApplicationException {
     when(repositoryMock.findByIdAndTraineeTisId(any(), any()))
         .thenThrow(IllegalArgumentException.class);
     assertThrows(ApplicationException.class, () -> service.partialDeleteFormRPartAById(
-        DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID, FIXED_FIELDS));
+        DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID));
   }
 
   @Test

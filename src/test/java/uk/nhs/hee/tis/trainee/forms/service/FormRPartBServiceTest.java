@@ -40,7 +40,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -112,8 +111,6 @@ class FormRPartBServiceTest {
 
   private static final Boolean DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS = true;
   private static final Boolean DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS = true;
-  private static final Set<String> FIXED_FIELDS =
-      Set.of("id", "traineeTisId", "lifecycleState");
   private static final String FORM_R_PART_B_SUBMITTED_TOPIC = "arn:aws:sns:topic";
 
   private FormRPartBService service;
@@ -709,38 +706,68 @@ class FormRPartBServiceTest {
 
   @Test
   void shouldPartialDeleteFormRPartBById() {
-    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
-        .thenReturn(Optional.of(entity));
+    when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
+    when(s3FormRPartBRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    FormRPartBDto resultDto = service.partialDeleteFormRPartBById(
-        DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID, FIXED_FIELDS);
+    Optional<FormRPartBDto> resultDto = service.partialDeleteFormRPartBById(DEFAULT_ID);
+
+    assertThat("Unexpected DTO presence.", resultDto.isPresent(), is(true));
 
     FormRPartB expectedForm = new FormRPartB();
     expectedForm.setId(DEFAULT_ID);
     expectedForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     expectedForm.setLifecycleState(LifecycleState.DELETED);
+    assertThat("Unexpected DTO.", resultDto.get(), is(mapper.toDto(expectedForm)));
 
     verify(repositoryMock).save(any());
-    assertThat("Unexpected DTO.", resultDto, is(mapper.toDto(expectedForm)));
+    verify(s3FormRPartBRepository).save(any());
   }
 
   @Test
   void shouldNotPartialDeleteWhenFormRPartBNotFoundInDb() {
-    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
-        .thenReturn(Optional.empty());
+    when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.empty());
 
-    service.partialDeleteFormRPartBById(
-        DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID, FIXED_FIELDS);
+    service.partialDeleteFormRPartBById(DEFAULT_ID);
 
     verify(repositoryMock, never()).save(formRPartBCaptor.capture());
   }
 
   @Test
-  void shouldThrowExceptionWhenFailToPartialDeleteFormRPartB() throws ApplicationException {
+  void shouldPartialDeleteFormRPartBByIdWithTraineeId() {
+    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
+        .thenReturn(Optional.of(entity));
+
+    Optional<FormRPartBDto> resultDto = service.partialDeleteFormRPartBById(DEFAULT_ID_STRING,
+        DEFAULT_TRAINEE_TIS_ID);
+
+    assertThat("Unexpected DTO presence.", resultDto.isPresent(), is(true));
+
+    FormRPartB expectedForm = new FormRPartB();
+    expectedForm.setId(DEFAULT_ID);
+    expectedForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    expectedForm.setLifecycleState(LifecycleState.DELETED);
+    assertThat("Unexpected DTO.", resultDto.get(), is(mapper.toDto(expectedForm)));
+
+    verify(repositoryMock).save(any());
+  }
+
+  @Test
+  void shouldNotPartialDeleteWhenFormRPartBNotFoundInDbWithTraineeId() {
+    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
+        .thenReturn(Optional.empty());
+
+    service.partialDeleteFormRPartBById(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID);
+
+    verify(repositoryMock, never()).save(formRPartBCaptor.capture());
+  }
+
+  @Test
+  void shouldThrowExceptionWhenFailToPartialDeleteFormRPartBWithTraineeId()
+      throws ApplicationException {
     when(repositoryMock.findByIdAndTraineeTisId(any(), any()))
         .thenThrow(IllegalArgumentException.class);
     assertThrows(ApplicationException.class, () -> service.partialDeleteFormRPartBById(
-        DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID, FIXED_FIELDS));
+        DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID));
   }
 
   @Test

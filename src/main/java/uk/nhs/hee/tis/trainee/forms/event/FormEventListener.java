@@ -24,7 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.event;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import java.io.IOException;
-import java.util.Set;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
@@ -85,17 +85,19 @@ public class FormEventListener {
             deleteEvent.getKey().split("/");
         final String formId = eventDetails[3].split(".json")[0];
         final String traineeTisId = eventDetails[0];
-        final String[] fixFields = deleteEvent.getFixedFields();
 
-        switch (eventDetails[2]) {
-          case "formr-a":
-            formRPartAService.partialDeleteFormRPartAById(formId, traineeTisId, Set.of(fixFields));
-            break;
-          case "formr-b":
-            formRPartBService.partialDeleteFormRPartBById(formId, traineeTisId, Set.of(fixFields));
-            break;
-          default:
+        Optional<?> deletedForm = switch (eventDetails[2]) {
+          case "formr-a" -> formRPartAService.partialDeleteFormRPartAById(formId, traineeTisId);
+          case "formr-b" -> formRPartBService.partialDeleteFormRPartBById(formId, traineeTisId);
+          default -> {
             log.error("Unknown form type: {}", eventDetails[2]);
+            // Yield a populated optional so missing forms can still be identified.
+            yield Optional.of("");
+          }
+        };
+
+        if (deletedForm.isEmpty()) {
+          log.error("FormR with ID '{}' not found", formId);
         }
       } else {
         log.error("Unexpected deleteType of form: {}" + deleteEvent.getDeleteType());
