@@ -55,6 +55,14 @@ public class FormRPartBService {
 
   private static final String ATTRIBUTE_NAME_LIFE_CYCLE_STATE = "lifecycleState";
 
+  private static final Set<String> FIXED_FIELDS = Set.of(
+      "id",
+      "traineeTisId",
+      ATTRIBUTE_NAME_LIFE_CYCLE_STATE,
+      "submissionDate",
+      "lastModifiedDate"
+  );
+
   private final FormRPartBMapper formRPartBMapper;
 
   private final FormRPartBRepository formRPartBRepository;
@@ -75,12 +83,12 @@ public class FormRPartBService {
   /**
    * Constructor for a FormR PartB service.
    *
-   * @param formRPartBRepository    spring data repository
-   * @param s3ObjectRepository      S3 Repository for forms
-   * @param formRPartBMapper        maps between the form entity and dto
-   * @param objectMapper            The object mapper.
-   * @param traineeIdentity         The trainee identity.
-   * @param eventBroadcastService   The event broadcast service.
+   * @param formRPartBRepository     spring data repository
+   * @param s3ObjectRepository       S3 Repository for forms
+   * @param formRPartBMapper         maps between the form entity and dto
+   * @param objectMapper             The object mapper.
+   * @param traineeIdentity          The trainee identity.
+   * @param eventBroadcastService    The event broadcast service.
    * @param formRPartBSubmittedTopic The SNS topic for FormR PartB submitted events.
    */
   public FormRPartBService(FormRPartBRepository formRPartBRepository,
@@ -165,7 +173,7 @@ public class FormRPartBService {
   /**
    * Delete the form for the given ID, only DRAFT forms are supported.
    *
-   * @param id           The ID of the form to delete.
+   * @param id The ID of the form to delete.
    * @return true if the form was found and deleted, false if not found.
    */
   public boolean deleteFormRPartBById(String id) {
@@ -195,43 +203,64 @@ public class FormRPartBService {
   }
 
   /**
-   * Partial delete a form by id.
+   * Partially delete a form, leaving only the fixed fields (e.g. IDs, timestamps and state).
+   *
+   * @param id The ID of the target form.
+   * @return The partially deleted form, or empty if the form was not found.
    */
-  public FormRPartBDto partialDeleteFormRPartBById(
-      String id, String traineeTisId, Set<String> fixedFields) {
-    log.info("Request to partial delete FormRPartB by id : {}", id);
+  public Optional<FormRPartBDto> partialDeleteFormRPartBById(UUID id) {
+    log.info("Request to partial delete FormRPartB with id : {}", id);
+
+    return formRPartBRepository.findById(id)
+        .map(this::partialDelete)
+        .map(s3ObjectRepository::save) // TODO: remove S3 update when fully migrated.
+        .map(formRPartBMapper::toDto);
+  }
+
+  /**
+   * Partially delete a form, leaving only the fixed fields (e.g. IDs, timestamps and state).
+   *
+   * @param id           The ID of the target form.
+   * @param traineeTisId The ID of the owning trainee.
+   * @return The partially deleted form, or empty if the form was not found.
+   */
+  public Optional<FormRPartBDto> partialDeleteFormRPartBById(String id, String traineeTisId) {
+    log.info("Request to partial delete FormRPartB for trainee {} with id : {}", traineeTisId, id);
 
     try {
-      FormRPartB formRPartB = formRPartBRepository
-          .findByIdAndTraineeTisId(UUID.fromString(id), traineeTisId)
-          .orElse(null);
-
-      if (formRPartB != null) {
-        JsonNode jsonForm = objectMapper.valueToTree(formRPartB);
-
-        for (Iterator<String> fieldIterator = jsonForm.fieldNames(); fieldIterator.hasNext(); ) {
-          String fieldName = fieldIterator.next();
-
-          if (!fixedFields.contains(fieldName)) {
-            fieldIterator.remove();
-          }
-        }
-        ((ObjectNode) jsonForm).put(ATTRIBUTE_NAME_LIFE_CYCLE_STATE,
-            LifecycleState.DELETED.name());
-        formRPartB = objectMapper.convertValue(jsonForm, FormRPartB.class);
-
-        formRPartBRepository.save(formRPartB);
-        log.info("Partial delete successfully for trainee {} with form Id {} (FormRPartB)",
-            traineeTisId, id);
-      } else {
-        log.error("FormRPartB with ID '{}' not found", id);
-      }
-
-      return formRPartBMapper.toDto(formRPartB);
-
+      return formRPartBRepository.findByIdAndTraineeTisId(UUID.fromString(id), traineeTisId)
+          .map(this::partialDelete)
+          .map(formRPartBMapper::toDto);
     } catch (Exception e) {
-      log.error("Fail to partial delete FormRPartB: {}", e);
+      log.error("Fail to partial delete FormRPartB: {}", id);
       throw new ApplicationException("Fail to partial delete FormRPartB:", e);
     }
+  }
+
+  /**
+   * Partially delete a form, leaving only the fixed fields (e.g. IDs, timestamps and state).
+   *
+   * @param form The form to partially delete.
+   * @return The partially deleted form.
+   */
+  private FormRPartB partialDelete(FormRPartB form) {
+    JsonNode jsonForm = objectMapper.valueToTree(form);
+
+    for (Iterator<String> fieldIterator = jsonForm.fieldNames(); fieldIterator.hasNext(); ) {
+      String fieldName = fieldIterator.next();
+
+      if (!FIXED_FIELDS.contains(fieldName)) {
+        fieldIterator.remove();
+      }
+    }
+    ((ObjectNode) jsonForm).put(ATTRIBUTE_NAME_LIFE_CYCLE_STATE,
+        LifecycleState.DELETED.name());
+    form = objectMapper.convertValue(jsonForm, FormRPartB.class);
+
+    formRPartBRepository.save(form);
+    log.info("Partial delete successfully for trainee {} with form Id {} (FormRPartB)",
+        form.getTraineeTisId(), form.getId());
+
+    return form;
   }
 }

@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
@@ -43,7 +44,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -57,6 +57,7 @@ import uk.nhs.hee.tis.trainee.forms.interceptor.TraineeIdentityInterceptorIntegr
 class TraineeIdentityInterceptorIntegrationTest {
 
   private static final String API_PATH = "/api/formr-partas";
+
   private static final String ID_1 = "40";
   private static final String ID_2 = "41";
 
@@ -79,7 +80,7 @@ class TraineeIdentityInterceptorIntegrationTest {
       "/api/ltft", "/api/ltft/xxx", "/api/ltft/xxx/yyy"})
   void shouldAddTraineeIdToRequest(String apiPath) throws Exception {
     mockMvc.perform(get(apiPath)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(ID_1)))
+            .with(jwt().jwt(TestJwtUtil.createTokenForTisId(ID_1))))
         .andExpect(request().attribute(BEAN_NAME, nullValue()))
         .andExpect(request().attribute(TARGET_BEAN_NAME, hasProperty(TRAINEE_ID, is(ID_1))));
 
@@ -95,12 +96,12 @@ class TraineeIdentityInterceptorIntegrationTest {
       "/api/ltft", "/api/ltft/xxx", "/api/ltft/xxx/yyy"})
   void shouldAddNewTraineeIdOnEachRequest(String apiPath) throws Exception {
     mockMvc.perform(get(apiPath)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(ID_1)))
+            .with(jwt().jwt(TestJwtUtil.createTokenForTisId(ID_1))))
         .andExpect(request().attribute(BEAN_NAME, nullValue()))
         .andExpect(request().attribute(TARGET_BEAN_NAME, hasProperty(TRAINEE_ID, is(ID_1))));
 
     mockMvc.perform(get(API_PATH)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(ID_2)))
+            .with(jwt().jwt(TestJwtUtil.createTokenForTisId(ID_2))))
         .andExpect(request().attribute(BEAN_NAME, nullValue()))
         .andExpect(request().attribute(TARGET_BEAN_NAME, hasProperty(TRAINEE_ID, is(ID_2))));
 
@@ -112,7 +113,7 @@ class TraineeIdentityInterceptorIntegrationTest {
       "/api/form-relocate/xxx"})
   void shouldNotAddTraineeIdToNonInterceptedRequests(String apiPath) throws Exception {
     mockMvc.perform(get(apiPath)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(ID_1)))
+            .with(jwt().jwt(TestJwtUtil.createTokenForTisId(ID_1))))
         .andExpect(request().attribute(BEAN_NAME, nullValue()))
         .andExpect(request().attribute(TARGET_BEAN_NAME, nullValue()));
 
@@ -122,11 +123,11 @@ class TraineeIdentityInterceptorIntegrationTest {
   @Test
   void shouldMakeTraineeIdentityAvailableToControllers() throws Exception {
     mockMvc.perform(get(API_PATH)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(ID_1)))
+            .with(jwt().jwt(TestJwtUtil.createTokenForTisId(ID_1))))
         .andExpect(content().string(ID_1));
 
     mockMvc.perform(get(API_PATH)
-            .header(HttpHeaders.AUTHORIZATION, TestJwtUtil.generateTokenForTisId(ID_2)))
+            .with(jwt().jwt(TestJwtUtil.createTokenForTisId(ID_2))))
         .andExpect(content().string(ID_2));
   }
 
@@ -145,6 +146,5 @@ class TraineeIdentityInterceptorIntegrationTest {
       assertThat("Unexpected trainee identity.", traineeIdentity, notNullValue());
       return traineeIdentity.getTraineeId();
     }
-
   }
 }

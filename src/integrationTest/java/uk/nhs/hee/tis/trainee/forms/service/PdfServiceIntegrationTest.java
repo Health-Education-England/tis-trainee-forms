@@ -45,7 +45,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -86,6 +88,9 @@ class PdfServiceIntegrationTest {
 
   @Value("${application.timezone}")
   private ZoneId zoneId;
+
+  @MockBean
+  private JwtDecoder jwtDecoder;
 
   @Test
   void shouldMatchEmptyLtftPdfWhenDtoEmpty() throws IOException {
@@ -298,7 +303,7 @@ class PdfServiceIntegrationTest {
     dto.setIsWarned(true);
     dto.setIsComplying(true);
     dto.setHealthStatement("health statement");
-    
+
     dto.setHavePreviousDeclarations(true);
     DeclarationDto prevDeclaration1 = new DeclarationDto();
     prevDeclaration1.setDeclarationType("declaration type 1");
@@ -311,11 +316,11 @@ class PdfServiceIntegrationTest {
     prevDeclaration1.setTitle("title 2");
     prevDeclaration1.setLocationOfEntry("location 2");
     dto.setPreviousDeclarations(List.of(prevDeclaration1, prevDeclaration2));
-    
+
     dto.setHavePreviousUnresolvedDeclarations(true);
     dto.setPreviousDeclarationSummary("Previous declaration summary which could be a fairly long " +
         "piece of text to cover the various points that need to be made.");
-    
+
     dto.setHaveCurrentDeclarations(true);
     DeclarationDto curDeclaration1 = new DeclarationDto();
     curDeclaration1.setDeclarationType("declaration type 11");
