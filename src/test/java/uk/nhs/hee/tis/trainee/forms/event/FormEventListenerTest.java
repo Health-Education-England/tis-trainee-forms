@@ -23,50 +23,33 @@ package uk.nhs.hee.tis.trainee.forms.event;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.GoldGuideVersion.GG9;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.time.Instant;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoining;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
-import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
-import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
-import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
 class FormEventListenerTest {
 
   private FormEventListener listener;
-  private FormRPartAService formRPartAService;
-  private FormRPartBService formRPartBService;
   private PdfService pdfService;
 
   @BeforeEach
   void setUp() {
-    formRPartAService = mock(FormRPartAService.class);
-    formRPartBService = mock(FormRPartBService.class);
     pdfService = mock(PdfService.class);
-    listener = new FormEventListener(
-        formRPartAService,
-        formRPartBService,
-        pdfService,
-        new ObjectMapper()
-    );
+    listener = new FormEventListener(pdfService);
   }
 
   @Test
@@ -99,120 +82,5 @@ class FormEventListenerTest {
     doThrow(IOException.class).when(pdfService).generateConditionsOfJoining(any(), eq(true));
 
     assertThrows(IOException.class, () -> listener.handleCojReceivedEvent(event));
-  }
-
-  @Test
-  void shouldNotThrowExceptionDeletingFormAWhenNotFound() {
-    when(formRPartAService.partialDeleteFormRPartAById(any(), any())).thenReturn(Optional.empty());
-
-    final String message = """
-        {
-        "deleteType": "PARTIAL",
-        "bucket": "document-upload",
-        "key": "1/forms/formr-a/1000a.json",
-        "fixedFields": ["id", "traineeTisId"]
-        }
-        """;
-
-    assertDoesNotThrow(() -> listener.handleFormDeleteEvent(message));
-    verify(formRPartAService).partialDeleteFormRPartAById(any(), any());
-  }
-
-  @Test
-  void shouldNotThrowExceptionDeletingFormBWhenNotFound() {
-    when(formRPartBService.partialDeleteFormRPartBById(any(), any())).thenReturn(Optional.empty());
-
-    final String message = """
-        {
-        "deleteType": "PARTIAL",
-        "bucket": "document-upload",
-        "key": "1/forms/formr-b/1000b.json",
-        "fixedFields": ["id", "traineeTisId"]
-        }
-        """;
-
-    assertDoesNotThrow(() -> listener.handleFormDeleteEvent(message));
-    verify(formRPartBService).partialDeleteFormRPartBById(any(), any());
-  }
-
-  @Test
-  void shouldPartialDeleteFormA() {
-    final String message = """
-        {
-        "deleteType": "PARTIAL",
-        "bucket": "document-upload",
-        "key": "1/forms/formr-a/1000a.json",
-        "fixedFields": ["id", "traineeTisId"]
-        }
-        """;
-
-    listener.handleFormDeleteEvent(message);
-
-    verify(formRPartAService).partialDeleteFormRPartAById("1000a", "1");
-  }
-
-  @Test
-  void shouldPartialDeleteFormB() {
-    final String message = """
-        {
-        "deleteType": "PARTIAL",
-        "bucket": "document-upload",
-        "key": "1/forms/formr-b/2000b.json",
-        "fixedFields": ["id", "traineeTisId"]
-        }
-        """;
-
-    listener.handleFormDeleteEvent(message);
-
-    verify(formRPartBService).partialDeleteFormRPartBById("2000b", "1");
-  }
-
-  @Test
-  void shouldNotPartialDeleteFormsIfFormNameNotMatch() {
-    final String message = """
-        {
-        "deleteType": "PARTIAL",
-        "bucket": "document-upload",
-        "key": "1/forms/formr-c/1000a.json",
-        "fixedFields": ["id", "traineeTisId"]
-        }
-        """;
-
-    listener.handleFormDeleteEvent(message);
-
-    verifyNoInteractions(formRPartAService);
-    verifyNoInteractions(formRPartBService);
-  }
-
-  @Test
-  void shouldThrowExceptionWhenDeleteTypeNotPartial() {
-    final String message = """
-        {
-        "deleteType": "HARD",
-        "bucket": "document-upload",
-        "key": "1/forms/formr-a/1000a.json",
-        "fixedFields": ["id", "traineeTisId"]
-        }
-        """;
-
-    verifyNoInteractions(formRPartAService);
-    verifyNoInteractions(formRPartBService);
-    assertThrows(ApplicationException.class, () -> listener.handleFormDeleteEvent(message));
-  }
-
-  @Test
-  void shouldThrowExceptionWhenFailToPartialDeleteForm() {
-    final String message = """
-        {
-        "deleteType": "HARD",
-        "bucket": "document-upload",
-        "key": "1/forms/formr-a/1000a.json",
-        "fixedFields": ["id", "traineeTisId"]
-        }
-        """;
-
-    doThrow(ApplicationException.class)
-        .when(formRPartAService).partialDeleteFormRPartAById(any(), any());
-    assertThrows(ApplicationException.class, () -> listener.handleFormDeleteEvent(message));
   }
 }

@@ -733,44 +733,6 @@ class FormRPartBServiceTest {
   }
 
   @Test
-  void shouldPartialDeleteFormRPartBByIdWithTraineeId() {
-    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
-        .thenReturn(Optional.of(entity));
-
-    Optional<FormRPartBDto> resultDto = service.partialDeleteFormRPartBById(DEFAULT_ID_STRING,
-        DEFAULT_TRAINEE_TIS_ID);
-
-    assertThat("Unexpected DTO presence.", resultDto.isPresent(), is(true));
-
-    FormRPartB expectedForm = new FormRPartB();
-    expectedForm.setId(DEFAULT_ID);
-    expectedForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    expectedForm.setLifecycleState(LifecycleState.DELETED);
-    assertThat("Unexpected DTO.", resultDto.get(), is(mapper.toDto(expectedForm)));
-
-    verify(repositoryMock).save(any());
-  }
-
-  @Test
-  void shouldNotPartialDeleteWhenFormRPartBNotFoundInDbWithTraineeId() {
-    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
-        .thenReturn(Optional.empty());
-
-    service.partialDeleteFormRPartBById(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID);
-
-    verify(repositoryMock, never()).save(formRPartBCaptor.capture());
-  }
-
-  @Test
-  void shouldThrowExceptionWhenFailToPartialDeleteFormRPartBWithTraineeId()
-      throws ApplicationException {
-    when(repositoryMock.findByIdAndTraineeTisId(any(), any()))
-        .thenThrow(IllegalArgumentException.class);
-    assertThrows(ApplicationException.class, () -> service.partialDeleteFormRPartBById(
-        DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID));
-  }
-
-  @Test
   void shouldPublishEventWhenSavingSubmittedFormRPartB() {
     entity.setId(null);
     entity.setLifecycleState(LifecycleState.SUBMITTED);

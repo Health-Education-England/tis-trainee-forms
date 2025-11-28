@@ -10,7 +10,6 @@ application:
       ltft-status-updated: arn:aws:sns:eu-west-2:${local.account-id}:tis-trainee-update-form-event
     sqs:
       coj-received: ${local.sqs-path}/tis-trainee-forms-local-coj-received
-      delete-event: ${local.sqs-path}/tis-trainee-forms-local-delete-event
       notification-event: ${local.sqs-path}/tis-trainee-forms-local-notification-event
       profile-move: ${local.sqs-path}/tis-trainee-forms-local-profile-move
   schedules:

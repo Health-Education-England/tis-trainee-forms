@@ -6,7 +6,6 @@ application:
       formr-updated: dummy
     sqs:
       coj-received: dummy
-      delete-event: dummy
       notification-event: dummy
       profile-move: dummy
   schedules:
