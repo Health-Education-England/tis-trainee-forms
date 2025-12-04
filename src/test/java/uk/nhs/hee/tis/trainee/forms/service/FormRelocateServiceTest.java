@@ -79,6 +79,9 @@ class FormRelocateServiceTest {
   @Mock
   private S3Client amazonS3Mock;
 
+  @Mock
+  private LtftService ltftServiceMock;
+
   @Captor
   private ArgumentCaptor<FormRPartA> formRPartACaptor;
   @Captor
@@ -95,7 +98,8 @@ class FormRelocateServiceTest {
         formRPartARepositoryMock,
         formRPartBRepositoryMock,
         abstractCloudRepositoryAMock,
-        abstractCloudRepositoryBMock
+        abstractCloudRepositoryBMock,
+        ltftServiceMock
     );
 
     formRPartA = new FormRPartA();
@@ -474,6 +478,7 @@ class FormRelocateServiceTest {
     for (FormRPartB partB : savedFormRPartBs) {
       assertThat("Unexpected trainee ID.", partB.getTraineeTisId(), is(TARGET_TRAINEE_ID));
     }
+    verify(ltftServiceMock).moveLtftForms(DEFAULT_TRAINEE_ID, TARGET_TRAINEE_ID);
   }
 
   @Test
@@ -501,6 +506,7 @@ class FormRelocateServiceTest {
 
     verify(formRPartARepositoryMock, never()).save(any());
     verify(formRPartBRepositoryMock).save(any());
+    verify(ltftServiceMock).moveLtftForms(DEFAULT_TRAINEE_ID, TARGET_TRAINEE_ID);
   }
 
   @Test
@@ -529,6 +535,7 @@ class FormRelocateServiceTest {
 
     verify(formRPartBRepositoryMock, never()).save(any());
     verify(formRPartARepositoryMock).save(any());
+    verify(ltftServiceMock).moveLtftForms(DEFAULT_TRAINEE_ID, TARGET_TRAINEE_ID);
   }
 
   @Test

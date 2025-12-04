@@ -60,6 +60,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
+import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
+import uk.nhs.hee.tis.trainee.forms.model.LtftSubmissionHistory;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -127,6 +129,8 @@ class ProfileMoveListenerIntegrationTest {
   void cleanUp() {
     template.findAllAndRemove(new Query(), FormRPartA.class);
     template.findAllAndRemove(new Query(), FormRPartB.class);
+    template.findAllAndRemove(new Query(), LtftForm.class);
+    template.findAllAndRemove(new Query(), LtftSubmissionHistory.class);
   }
 
   @Test
@@ -418,5 +422,106 @@ class ProfileMoveListenerIntegrationTest {
           var sourceResult = localstack.execInContainer(checkSourceCmd);
           assertThat("Source S3 file should be deleted", sourceResult.getExitCode(), is(255));
         });
+  }
+
+  @Test
+  void shouldMoveAllRelevantLtftFormsWhenProfileMove() throws Exception {
+    // LTFT forms to move
+    UUID id1 = UUID.randomUUID();
+    LtftForm ltftForm1 = new LtftForm();
+    ltftForm1.setId(id1);
+    ltftForm1.setTraineeTisId(FROM_TRAINEE_ID);
+    ltftForm1.setFormRef("one");
+    template.insert(ltftForm1);
+
+    UUID id2 = UUID.randomUUID();
+    LtftForm ltftForm2 = new LtftForm();
+    ltftForm2.setId(id2);
+    ltftForm2.setTraineeTisId(FROM_TRAINEE_ID);
+    ltftForm2.setFormRef("two");
+    template.insert(ltftForm2);
+
+    String eventString = """
+        {
+          "fromTraineeId": "%s",
+          "toTraineeId": "%s"
+        }""".formatted(FROM_TRAINEE_ID, TO_TRAINEE_ID);
+    JsonNode eventJson = JsonMapper.builder().build().readTree(eventString);
+    sqsTemplate.send(PROFILE_MOVE_QUEUE, eventJson);
+
+    Criteria criteria = Criteria.where("traineeTisId").is(TO_TRAINEE_ID);
+    Query query = Query.query(criteria);
+    List<LtftForm> movedLtftForms = new ArrayList<>();
+    await()
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> {
+          List<LtftForm> found = template.find(query, LtftForm.class);
+          assertThat("Unexpected moved LtftForm count.", found.size(), is(2));
+          movedLtftForms.addAll(found);
+        });
+    // Ignore timestamps
+    LtftForm moved1 = movedLtftForms.stream().filter(f -> f.getId().equals(id1)).findFirst().orElseThrow();
+    assertThat(moved1.getId(), is(ltftForm1.getId()));
+    assertThat(moved1.getTraineeTisId(), is(TO_TRAINEE_ID));
+    assertThat(moved1.getFormRef(), is(ltftForm1.getFormRef()));
+    LtftForm moved2 = movedLtftForms.stream().filter(f -> f.getId().equals(id2)).findFirst().orElseThrow();
+    assertThat(moved2.getId(), is(ltftForm2.getId()));
+    assertThat(moved2.getTraineeTisId(), is(TO_TRAINEE_ID));
+    assertThat(moved2.getFormRef(), is(ltftForm2.getFormRef()));
+    assertThat(moved2.getContent(), is(ltftForm2.getContent()));
+  }
+
+  @Test
+  void shouldMoveAllRelevantLtftSubmissionHistoriesWhenProfileMove() throws Exception {
+    // LTFT submission histories to move
+    UUID id1 = UUID.randomUUID();
+    LtftSubmissionHistory sub1 = new LtftSubmissionHistory();
+    sub1.setId(id1);
+    sub1.setTraineeTisId(FROM_TRAINEE_ID);
+    sub1.setFormRef("one");
+    sub1.setRevision(0);
+    template.insert(sub1);
+
+    UUID id2 = UUID.randomUUID();
+    LtftSubmissionHistory sub2 = new LtftSubmissionHistory();
+    sub2.setId(id2);
+    sub2.setTraineeTisId(FROM_TRAINEE_ID);
+    sub2.setFormRef("two");
+    sub2.setRevision(1);
+    template.insert(sub2);
+
+    String eventString = """
+        {
+          "fromTraineeId": "%s",
+          "toTraineeId": "%s"
+        }""".formatted(FROM_TRAINEE_ID, TO_TRAINEE_ID);
+    JsonNode eventJson = JsonMapper.builder().build().readTree(eventString);
+    sqsTemplate.send(PROFILE_MOVE_QUEUE, eventJson);
+
+    Criteria criteria = Criteria.where("traineeTisId").is(TO_TRAINEE_ID);
+    Query query = Query.query(criteria);
+    List<LtftSubmissionHistory> movedSubs = new ArrayList<>();
+    await()
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> {
+          List<LtftSubmissionHistory> found = template.find(query, LtftSubmissionHistory.class);
+          assertThat("Unexpected moved LtftSubmissionHistory count.", found.size(), is(2));
+          movedSubs.addAll(found);
+        });
+    // Ignore timestamps
+    LtftSubmissionHistory moved1 = movedSubs.stream().filter(f -> f.getId().equals(id1)).findFirst().orElseThrow();
+    assertThat(moved1.getId(), is(sub1.getId()));
+    assertThat(moved1.getTraineeTisId(), is(TO_TRAINEE_ID));
+    assertThat(moved1.getFormRef(), is(sub1.getFormRef()));
+    assertThat(moved1.getRevision(), is(sub1.getRevision()));
+    LtftSubmissionHistory moved2 = movedSubs.stream().filter(f -> f.getId().equals(id2)).findFirst().orElseThrow();
+    assertThat(moved2.getId(), is(sub2.getId()));
+    assertThat(moved2.getTraineeTisId(), is(TO_TRAINEE_ID));
+    assertThat(moved2.getFormRef(), is(sub2.getFormRef()));
+    assertThat(moved2.getRevision(), is(sub2.getRevision()));
   }
 }

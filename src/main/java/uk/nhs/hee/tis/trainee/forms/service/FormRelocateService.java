@@ -23,6 +23,7 @@ package uk.nhs.hee.tis.trainee.forms.service;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
@@ -51,6 +52,8 @@ public class FormRelocateService {
   private final S3FormRPartARepositoryImpl abstractCloudRepositoryA;
   private final S3FormRPartBRepositoryImpl abstractCloudRepositoryB;
 
+  private final LtftService ltftService;
+
   /**
    * Constructor for Form Relocate service.
    *
@@ -58,20 +61,23 @@ public class FormRelocateService {
    * @param formRPartBRepository  spring data repository (Form R Part B)
    * @param abstractCloudRepositoryA  abstract cloud repository (Form R Part A)
    * @param abstractCloudRepositoryB  abstract cloud repository (Form R Part B)
+   * @param ltftService           LTFT service
    */
   public FormRelocateService(FormRPartARepository formRPartARepository,
                              FormRPartBRepository formRPartBRepository,
                              S3FormRPartARepositoryImpl abstractCloudRepositoryA,
-                             S3FormRPartBRepositoryImpl abstractCloudRepositoryB) {
+                             S3FormRPartBRepositoryImpl abstractCloudRepositoryB,
+                             LtftService ltftService) {
     this.formRPartARepository = formRPartARepository;
     this.formRPartBRepository = formRPartBRepository;
     this.abstractCloudRepositoryA = abstractCloudRepositoryA;
     this.abstractCloudRepositoryB = abstractCloudRepositoryB;
+    this.ltftService = ltftService;
   }
 
   /**
-   * Move all FormR forms from source trainee to target trainee. Errors are logged but do not stop
-   * the process.
+   * Move all FormR and LTFT forms from source trainee to target trainee.
+   * Errors are logged but do not stop the process.
    *
    * @param sourceTraineeTisId The TIS ID of the source trainee.
    * @param targetTraineeTisId The TIS ID of the target trainee.
@@ -106,6 +112,13 @@ public class FormRelocateService {
     });
     log.debug("Moved {} of {} FormR PartB from {} to {}.",
         movedFormB.get(), formRPartBs.size(), sourceTraineeTisId, targetTraineeTisId);
+
+    // Move LTFT forms
+    Map<String, Integer> movedStats
+        = ltftService.moveLtftForms(sourceTraineeTisId, targetTraineeTisId);
+    log.debug("Moved {} LTFT forms and {} submission histories from {} to {}.",
+        movedStats.get("ltft"), movedStats.get("ltft-submission"), sourceTraineeTisId,
+        targetTraineeTisId);
   }
 
   /**
