@@ -28,7 +28,6 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.sameInstance;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
@@ -38,7 +37,6 @@ import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -325,21 +323,5 @@ class LtftResourceTest {
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), sameInstance(body));
-  }
-
-  @Test
-  void shouldMoveLtftFormsWhenTraineeIdsProvided() {
-    String fromTraineeId = "40";
-    String toTraineeId = "50";
-    Map<String, Integer> serviceResponse = Map.of("dummy", 1);
-    when(service.moveLtftForms(fromTraineeId, toTraineeId)).thenReturn(serviceResponse);
-
-    ResponseEntity<Map<String, Integer>> response
-        = controller.moveLtfts(fromTraineeId, toTraineeId);
-
-    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
-    assertThat("Unexpected response body.", response.getBody(), is(serviceResponse));
-
-    verify(service).moveLtftForms(fromTraineeId, toTraineeId);
   }
 }
