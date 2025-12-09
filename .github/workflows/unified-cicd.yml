@@ -18,9 +18,10 @@ jobs:
     needs: get-context
     uses: health-education-england/.github/.github/workflows/unified-cicd.yml@TIS21-7971-investigate-composite-action-approach-for-unified-workflows
     with:
-      cluster-prefix: test
+      cluster-prefix: test-pipleine
       publish-build-scan: ${{ needs.get-context.outputs.runner-debug == '1' }}
-      ecr-repository: test
+      ecr-repository: test-test-pipeline
+      use-codeartifact: true
     secrets:
       sonar-token: ${{ secrets.SONAR_TOKEN }}
       reject-pat: ${{ secrets.PAT_REJECT_APPROVALS }}
