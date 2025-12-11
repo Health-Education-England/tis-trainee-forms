@@ -43,7 +43,6 @@ import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
 import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartBRepositoryImpl;
-import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
 @Slf4j
 @Service
@@ -215,26 +214,6 @@ public class FormRPartBService {
         .map(this::partialDelete)
         .map(s3ObjectRepository::save) // TODO: remove S3 update when fully migrated.
         .map(formRPartBMapper::toDto);
-  }
-
-  /**
-   * Partially delete a form, leaving only the fixed fields (e.g. IDs, timestamps and state).
-   *
-   * @param id           The ID of the target form.
-   * @param traineeTisId The ID of the owning trainee.
-   * @return The partially deleted form, or empty if the form was not found.
-   */
-  public Optional<FormRPartBDto> partialDeleteFormRPartBById(String id, String traineeTisId) {
-    log.info("Request to partial delete FormRPartB for trainee {} with id : {}", traineeTisId, id);
-
-    try {
-      return formRPartBRepository.findByIdAndTraineeTisId(UUID.fromString(id), traineeTisId)
-          .map(this::partialDelete)
-          .map(formRPartBMapper::toDto);
-    } catch (Exception e) {
-      log.error("Fail to partial delete FormRPartB: {}", id);
-      throw new ApplicationException("Fail to partial delete FormRPartB:", e);
-    }
   }
 
   /**

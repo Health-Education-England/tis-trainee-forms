@@ -225,21 +225,4 @@ public class LtftResource {
         ? ResponseEntity.ok().build()
         : ResponseEntity.badRequest().build();
   }
-
-  /**
-   * Move all LTFT from one trainee to another.
-   *
-   * @param fromTraineeId The TIS ID of the trainee to move LTFT forms from.
-   * @param toTraineeId   The TIS ID of the trainee to move LTFT forms to.
-   * @return True if the LTFT were moved.
-   */
-  @PatchMapping("/move/{fromTraineeId}/to/{toTraineeId}")
-  public ResponseEntity<Map<String, Integer>> moveLtfts(@PathVariable String fromTraineeId,
-      @PathVariable String toTraineeId) {
-    log.info("Request to move LTFT forms from trainee {} to trainee {}",
-        fromTraineeId, toTraineeId);
-
-    Map<String, Integer> movedStats = service.moveLtftForms(fromTraineeId, toTraineeId);
-    return ResponseEntity.ok(movedStats);
-  }
 }

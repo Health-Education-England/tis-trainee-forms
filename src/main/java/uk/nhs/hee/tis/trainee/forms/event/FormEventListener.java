@@ -21,19 +21,12 @@
 
 package uk.nhs.hee.tis.trainee.forms.event;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import java.io.IOException;
-import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
-import uk.nhs.hee.tis.trainee.forms.dto.DeleteEventDto;
-import uk.nhs.hee.tis.trainee.forms.dto.enumeration.DeleteType;
-import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
-import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
-import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
 /**
  * Listener for receiving form events from SQS queue.
@@ -42,18 +35,10 @@ import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 @Component
 public class FormEventListener {
 
-  private final FormRPartAService formRPartAService;
-  private final FormRPartBService formRPartBService;
   private final PdfService pdfService;
-  private final ObjectMapper objectMapper;
 
-  FormEventListener(FormRPartAService formRPartAService,
-      FormRPartBService formRPartBService, PdfService pdfService,
-      ObjectMapper objectMapper) {
-    this.formRPartAService = formRPartAService;
-    this.formRPartBService = formRPartBService;
+  FormEventListener(PdfService pdfService) {
     this.pdfService = pdfService;
-    this.objectMapper = objectMapper;
   }
 
   /**
@@ -69,44 +54,5 @@ public class FormEventListener {
         event.traineeId(), event.programmeMembershipId(), event.programmeName(),
         event.conditionsOfJoining());
     pdfService.generateConditionsOfJoining(request, true);
-  }
-
-  /**
-   * Listener for handling form delete form event.
-   */
-  @SqsListener("${application.aws.sqs.delete-event}")
-  public void handleFormDeleteEvent(String message) {
-    try {
-      log.info("Form delete event received: {}", message);
-      DeleteEventDto deleteEvent = objectMapper.readValue(message, DeleteEventDto.class);
-
-      if (deleteEvent.getDeleteType() == DeleteType.PARTIAL) {
-        final String[] eventDetails =
-            deleteEvent.getKey().split("/");
-        final String formId = eventDetails[3].split(".json")[0];
-        final String traineeTisId = eventDetails[0];
-
-        Optional<?> deletedForm = switch (eventDetails[2]) {
-          case "formr-a" -> formRPartAService.partialDeleteFormRPartAById(formId, traineeTisId);
-          case "formr-b" -> formRPartBService.partialDeleteFormRPartBById(formId, traineeTisId);
-          default -> {
-            log.error("Unknown form type: {}", eventDetails[2]);
-            // Yield a populated optional so missing forms can still be identified.
-            yield Optional.of("");
-          }
-        };
-
-        if (deletedForm.isEmpty()) {
-          log.error("FormR with ID '{}' not found", formId);
-        }
-      } else {
-        log.error("Unexpected deleteType of form: {}" + deleteEvent.getDeleteType());
-        throw new ApplicationException("Unexpected deleteType of form: "
-            + deleteEvent.getDeleteType());
-      }
-    } catch (Exception e) {
-      log.error("Fail to delete form: {}", e);
-      throw new ApplicationException("Fail to delete form:", e);
-    }
   }
 }
