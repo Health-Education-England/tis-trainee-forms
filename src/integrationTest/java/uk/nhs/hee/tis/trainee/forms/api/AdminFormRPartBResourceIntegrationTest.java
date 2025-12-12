@@ -89,6 +89,7 @@ class AdminFormRPartBResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
+      PUT | /api/admin/formr-partb/123/unsubmit
       DELETE | /api/admin/formr-partb/123
       """)
   void shouldReturnForbiddenWhenNoToken(HttpMethod method, URI uri) throws Exception {
@@ -99,6 +100,7 @@ class AdminFormRPartBResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
+      PUT | /api/admin/formr-partb/123/unsubmit
       DELETE | /api/admin/formr-partb/123
       """)
   void shouldReturnForbiddenWhenEmptyToken(HttpMethod method, URI uri) throws Exception {
@@ -111,6 +113,7 @@ class AdminFormRPartBResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
+      PUT | /api/admin/formr-partb/123/unsubmit
       DELETE | /api/admin/formr-partb/123
       """)
   void shouldReturnForbiddenWhenNoGroupsInToken(HttpMethod method, URI uri) throws Exception {
@@ -122,6 +125,7 @@ class AdminFormRPartBResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
+      PUT | /api/admin/formr-partb/123/unsubmit
       DELETE | /api/admin/formr-partb/123
       """)
   void shouldReturnBadRequestWhenHasInvalidFormId(HttpMethod method, URI uri) throws Exception {
@@ -132,6 +136,7 @@ class AdminFormRPartBResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
+      PUT | /api/admin/formr-partb/{id}/unsubmit
       DELETE | /api/admin/formr-partb/{id}
       """)
   void shouldReturnForbiddenWhenNoRequiredPermission(HttpMethod method, String uriTemplate)
@@ -144,6 +149,7 @@ class AdminFormRPartBResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
+      PUT | /api/admin/formr-partb/{id}/unsubmit
       DELETE | /api/admin/formr-partb/{id}
       """)
   void shouldReturnNotFoundWhenHasRequiredPermissionAndFormMissing(HttpMethod method,
@@ -156,6 +162,7 @@ class AdminFormRPartBResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
+      PUT | /api/admin/formr-partb/{formId}/unsubmit
       DELETE | /api/admin/formr-partb/{formId}
       """)
   void shouldReturnOkWhenHasRequiredPermissionAndFormFound(HttpMethod method, String uriTemplate)
