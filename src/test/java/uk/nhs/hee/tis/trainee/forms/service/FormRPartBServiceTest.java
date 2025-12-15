@@ -778,4 +778,35 @@ class FormRPartBServiceTest {
 
     verifyNoInteractions(eventBroadcastService);
   }
+
+  @Test
+  void shouldUnsubmitFormRPartBById() {
+    when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
+    when(s3FormRPartBRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<FormRPartBDto> resultDtoOptional = service.unsubmitFormRPartBById(DEFAULT_ID);
+
+    assertThat("Unexpected DTO presence.", resultDtoOptional.isPresent(), is(true));
+    FormRPartBDto resultDto = resultDtoOptional.get();
+
+    assertThat("Unexpected Id.", resultDto.getId(), is(DEFAULT_ID_STRING));
+    assertThat("Unexpected Trainee TIS Id.", resultDto.getTraineeTisId(),
+        is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected forename.", resultDto.getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", resultDto.getSurname(), is(DEFAULT_SURNAME));
+    assertThat("Unexpected lifecycle state.", resultDto.getLifecycleState(),
+        is(LifecycleState.UNSUBMITTED));
+
+    verify(repositoryMock).save(any());
+    verify(s3FormRPartBRepository).save(any());
+  }
+
+  @Test
+  void shouldNotUnsubmitWhenFormRPartBNotFoundInDb() {
+    when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.empty());
+
+    service.unsubmitFormRPartBById(DEFAULT_ID);
+
+    verify(repositoryMock, never()).save(formRPartBCaptor.capture());
+  }
 }
