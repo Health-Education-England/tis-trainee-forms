@@ -52,6 +52,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.BeanUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
@@ -554,17 +555,18 @@ class FormRPartAServiceTest {
     when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
     when(cloudObjectRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    Optional<FormRPartADto> resultDto = service.unsubmitFormRPartAById(DEFAULT_ID);
+    Optional<FormRPartADto> resultDtoOptional = service.unsubmitFormRPartAById(DEFAULT_ID);
 
-    assertThat("Unexpected DTO presence.", resultDto.isPresent(), is(true));
+    assertThat("Unexpected DTO presence.", resultDtoOptional.isPresent(), is(true));
+    FormRPartADto resultDto = resultDtoOptional.get();
 
-    FormRPartADto expectedDto = new FormRPartADto();
-    expectedDto.setId(DEFAULT_ID.toString());
-    expectedDto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    expectedDto.setForename(DEFAULT_FORENAME);
-    expectedDto.setSurname(DEFAULT_SURNAME);
-    expectedDto.setLifecycleState(LifecycleState.UNSUBMITTED);
-    assertThat("Unexpected DTO.", resultDto.get(), is(expectedDto));
+    assertThat("Unexpected Id.", resultDto.getId(), is(DEFAULT_ID_STRING));
+    assertThat("Unexpected Trainee TIS Id.", resultDto.getTraineeTisId(),
+        is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected forename.", resultDto.getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", resultDto.getSurname(), is(DEFAULT_SURNAME));
+    assertThat("Unexpected lifecycle state.", resultDto.getLifecycleState(),
+        is(LifecycleState.UNSUBMITTED));
 
     verify(repositoryMock).save(any());
     verify(cloudObjectRepository).save(any());

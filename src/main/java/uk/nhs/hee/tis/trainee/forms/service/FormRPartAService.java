@@ -247,7 +247,7 @@ public class FormRPartAService {
   }
 
   /**
-   * Unsubmit a form.
+   * Unsubmit a form, set lifecycle state to UNSUBMITTED.
    *
    * @param id The ID of the target form.
    * @return The unsubmitted form, or empty if the form was not found.
@@ -256,24 +256,14 @@ public class FormRPartAService {
     log.info("Request to unsubmit FormRPartA with id : {}", id);
 
     return repository.findById(id)
-        .map(this::unsubmit)
+        .map(form -> {
+          form.setLifecycleState(LifecycleState.UNSUBMITTED);
+          repository.save(form);
+          log.info("Unsubmitted successfully for trainee {} with form Id {} (FormRPartA)",
+              form.getTraineeTisId(), form.getId());
+          return form;
+        })
         .map(cloudObjectRepository::save) // TODO: remove S3 update when fully migrated.
         .map(mapper::toDto);
-  }
-
-  /**
-   * Unsubmit a form, set lifecycle state to UNSUBMITTED.
-   *
-   * @param form The form to unsubmit.
-   * @return The unsubmitted form.
-   */
-  private FormRPartA unsubmit(FormRPartA form) {
-    form.setLifecycleState(LifecycleState.UNSUBMITTED);
-
-    repository.save(form);
-    log.info("Unsubmitted successfully for trainee {} with form Id {} (FormRPartA)",
-        form.getTraineeTisId(), form.getId());
-
-    return form;
   }
 }
