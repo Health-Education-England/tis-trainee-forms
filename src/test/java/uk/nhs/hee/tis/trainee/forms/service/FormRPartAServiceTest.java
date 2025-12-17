@@ -552,6 +552,8 @@ class FormRPartAServiceTest {
   @Test
   void shouldUnsubmitFormRPartAById() {
     when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
+    entity.setLifecycleState(LifecycleState.UNSUBMITTED);
+    when(repositoryMock.save(entity)).thenReturn(entity);
     when(cloudObjectRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     Optional<FormRPartADto> resultDtoOptional = service.unsubmitFormRPartAById(DEFAULT_ID);

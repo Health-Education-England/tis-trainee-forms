@@ -782,6 +782,8 @@ class FormRPartBServiceTest {
   @Test
   void shouldUnsubmitFormRPartBById() {
     when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
+    entity.setLifecycleState(LifecycleState.UNSUBMITTED);
+    when(repositoryMock.save(entity)).thenReturn(entity);
     when(s3FormRPartBRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     Optional<FormRPartBDto> resultDtoOptional = service.unsubmitFormRPartBById(DEFAULT_ID);

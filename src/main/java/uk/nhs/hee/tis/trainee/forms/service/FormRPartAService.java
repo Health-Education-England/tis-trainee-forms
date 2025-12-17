@@ -258,10 +258,10 @@ public class FormRPartAService {
     return repository.findById(id)
         .map(form -> {
           form.setLifecycleState(LifecycleState.UNSUBMITTED);
-          repository.save(form);
+          FormRPartA formRPartA = repository.save(form);
           log.info("Unsubmitted successfully for trainee {} with form Id {} (FormRPartA)",
               form.getTraineeTisId(), form.getId());
-          return form;
+          return formRPartA;
         })
         .map(cloudObjectRepository::save) // TODO: remove S3 update when fully migrated.
         .map(mapper::toDto);
