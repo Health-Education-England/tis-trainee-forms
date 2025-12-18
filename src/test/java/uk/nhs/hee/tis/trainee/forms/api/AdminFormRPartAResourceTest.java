@@ -53,6 +53,29 @@ class AdminFormRPartAResourceTest {
   }
 
   @Test
+  void shouldReturnNotFoundWhenUnsubmittingAndFormNotFound() {
+    when(service.unsubmitFormRPartAById(FORM_ID)).thenReturn(Optional.empty());
+
+    ResponseEntity<FormRPartADto> response = controller.unsubmitFormRPartA(FORM_ID);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(NOT_FOUND));
+    assertThat("Unexpected response body.", response.getBody(), nullValue());
+  }
+
+  @Test
+  void shouldReturnUnsubmittedFormWhenUnsubmittingAndFormFound() {
+    FormRPartADto dto = new FormRPartADto();
+    dto.setId(FORM_ID.toString());
+
+    when(service.unsubmitFormRPartAById(FORM_ID)).thenReturn(Optional.of(dto));
+
+    ResponseEntity<FormRPartADto> response = controller.unsubmitFormRPartA(FORM_ID);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), sameInstance(dto));
+  }
+
+  @Test
   void shouldReturnNotFoundWhenDeletingAndFormNotFound() {
     when(service.partialDeleteFormRPartAById(FORM_ID)).thenReturn(Optional.empty());
 

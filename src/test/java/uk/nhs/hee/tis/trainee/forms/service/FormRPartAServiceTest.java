@@ -548,4 +548,37 @@ class FormRPartAServiceTest {
 
     verifyNoInteractions(eventBroadcastService);
   }
+
+  @Test
+  void shouldUnsubmitFormRPartAById() {
+    when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
+    entity.setLifecycleState(LifecycleState.UNSUBMITTED);
+    when(repositoryMock.save(entity)).thenReturn(entity);
+    when(cloudObjectRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<FormRPartADto> resultDtoOptional = service.unsubmitFormRPartAById(DEFAULT_ID);
+
+    assertThat("Unexpected DTO presence.", resultDtoOptional.isPresent(), is(true));
+    FormRPartADto resultDto = resultDtoOptional.get();
+
+    assertThat("Unexpected Id.", resultDto.getId(), is(DEFAULT_ID_STRING));
+    assertThat("Unexpected Trainee TIS Id.", resultDto.getTraineeTisId(),
+        is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected forename.", resultDto.getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", resultDto.getSurname(), is(DEFAULT_SURNAME));
+    assertThat("Unexpected lifecycle state.", resultDto.getLifecycleState(),
+        is(LifecycleState.UNSUBMITTED));
+
+    verify(repositoryMock).save(any());
+    verify(cloudObjectRepository).save(any());
+  }
+
+  @Test
+  void shouldNotUnsubmitWhenTraineeFormRPartANotFoundInDb() {
+    when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.empty());
+
+    service.unsubmitFormRPartAById(DEFAULT_ID);
+
+    verify(repositoryMock, never()).save(formRPartACaptor.capture());
+  }
 }
