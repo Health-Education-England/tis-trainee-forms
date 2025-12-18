@@ -242,4 +242,25 @@ public class FormRPartBService {
 
     return form;
   }
+
+  /**
+   * Unsubmit a form, set lifecycle state to UNSUBMITTED.
+   *
+   * @param id The ID of the target form.
+   * @return The unsubmitted form, or empty if the form was not found.
+   */
+  public Optional<FormRPartBDto> unsubmitFormRPartBById(UUID id) {
+    log.info("Request to unsubmit FormRPartB with id : {}", id);
+
+    return formRPartBRepository.findById(id)
+        .map(form -> {
+          form.setLifecycleState(LifecycleState.UNSUBMITTED);
+          FormRPartB formRPartB = formRPartBRepository.save(form);
+          log.info("Unsubmitted successfully for trainee {} with form Id {} (FormRPartB)",
+              form.getTraineeTisId(), form.getId());
+          return formRPartB;
+        })
+        .map(s3ObjectRepository::save) // TODO: remove S3 update when fully migrated.
+        .map(formRPartBMapper::toDto);
+  }
 }

@@ -29,6 +29,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
@@ -47,6 +48,20 @@ public class AdminFormRPartAResource {
 
   public AdminFormRPartAResource(FormRPartAService service) {
     this.service = service;
+  }
+
+  /**
+   * PUT  Unsubmit a FormRPartA with the given ID.
+   *
+   * @param formId The ID of the form to unsubmit.
+   * @return The unsubmitted form.
+   */
+  @PreAuthorize("hasRole('TSS_Support_Admin')")
+  @PutMapping("/{formId}/unsubmit")
+  public ResponseEntity<FormRPartADto> unsubmitFormRPartA(@PathVariable UUID formId) {
+    log.info("Admin request to unsubmit FormRPartA with id {}", formId);
+    Optional<FormRPartADto> unsubmitted = service.unsubmitFormRPartAById(formId);
+    return ResponseEntity.of(unsubmitted);
   }
 
   /**
