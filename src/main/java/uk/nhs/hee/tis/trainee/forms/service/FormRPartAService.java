@@ -33,6 +33,9 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
@@ -74,6 +77,8 @@ public class FormRPartAService {
 
   private final EventBroadcastService eventBroadcastService;
 
+  private final MongoTemplate mongoTemplate;
+
   private final String formRPartASubmittedTopic;
 
   @Value("${application.file-store.always-store}")
@@ -91,13 +96,16 @@ public class FormRPartAService {
    * @param objectMapper             The object mapper.
    * @param traineeIdentity          The trainee identity.
    * @param eventBroadcastService    The event broadcast service.
+   * @param mongoTemplate            The Mongo template.
    * @param formRPartASubmittedTopic The SNS topic for FormR PartA submitted events.
    */
   public FormRPartAService(FormRPartARepository repository,
       S3FormRPartARepositoryImpl cloudObjectRepository,
       FormRPartAMapper mapper,
-      ObjectMapper objectMapper, TraineeIdentity traineeIdentity,
+      ObjectMapper objectMapper,
+      TraineeIdentity traineeIdentity,
       EventBroadcastService eventBroadcastService,
+      MongoTemplate mongoTemplate,
       @Value("${application.aws.sns.formr-updated}") String formRPartASubmittedTopic) {
     this.eventBroadcastService = eventBroadcastService;
     this.formRPartASubmittedTopic = formRPartASubmittedTopic;
@@ -106,6 +114,7 @@ public class FormRPartAService {
     this.mapper = mapper;
     this.objectMapper = objectMapper;
     this.traineeIdentity = traineeIdentity;
+    this.mongoTemplate = mongoTemplate;
   }
 
   /**
@@ -137,11 +146,29 @@ public class FormRPartAService {
   public List<FormRPartSimpleDto> getFormRPartAs() {
     String traineeTisId = traineeIdentity.getTraineeId();
     log.info("Request to get FormRPartA list by trainee profileId : {}", traineeTisId);
+
     List<FormRPartA> storedFormRPartAs = cloudObjectRepository.findByTraineeTisId(traineeTisId);
-    List<FormRPartA> formRPartAList = repository
-        .findByTraineeTisIdAndLifecycleState(traineeTisId, LifecycleState.DRAFT);
+
+    Query query = buildFormRPartAQuery(traineeTisId);
+    List<FormRPartA> formRPartAList = mongoTemplate.find(query, FormRPartA.class);
+
     storedFormRPartAs.addAll(formRPartAList);
     return mapper.toSimpleDtos(storedFormRPartAs);
+  }
+
+  /**
+   * get FormRPartAs for specific trainee by trainee id.
+   *
+   * @param traineeId The ID of the requested trainee.
+   * @return a list of all the trainees submitted FormRPartAs.
+   */
+  public List<FormRPartSimpleDto> getFormRPartAs(String traineeId) {
+    log.info("Request to get FormRPartA list by trainee profileId : {}", traineeId);
+
+    Query query = buildFormRPartAQuery(traineeId);
+    List<FormRPartA> formRPartAList = mongoTemplate.find(query, FormRPartA.class);
+
+    return mapper.toSimpleDtos(formRPartAList);
   }
 
   /**
@@ -155,6 +182,37 @@ public class FormRPartAService {
         traineeTisId);
     Optional<FormRPartA> optionalDbForm = repository.findByIdAndTraineeTisId(UUID.fromString(id),
         traineeTisId);
+
+    FormRPartA latestForm = null;
+
+    if (optionalCloudForm.isPresent() && optionalDbForm.isPresent()) {
+      FormRPartA cloudForm = optionalCloudForm.get();
+      FormRPartA dbForm = optionalDbForm.get();
+      latestForm = cloudForm.getLastModifiedDate().isAfter(dbForm.getLastModifiedDate()) ? cloudForm
+          : dbForm;
+    } else if (optionalCloudForm.isPresent()) {
+      latestForm = optionalCloudForm.get();
+    } else if (optionalDbForm.isPresent()) {
+      latestForm = optionalDbForm.get();
+    }
+
+    return mapper.toDto(latestForm);
+  }
+
+  /**
+   * get FormRPartA by id for admins.
+   *
+   * @param id        The ID of the form to retrieve.
+   * @param traineeId The trainee ID associated with the form.
+   * @return the FormRPartA DTO.
+   */
+  public FormRPartADto getAdminsFormRPartAById(String id, String traineeId) {
+    log.info("Request to get FormRPartA by id : {} for trainee: {}", id, traineeId);
+
+    Optional<FormRPartA> optionalCloudForm = cloudObjectRepository.findByIdAndTraineeTisId(id,
+        traineeId);
+    Optional<FormRPartA> optionalDbForm = repository.findByIdAndTraineeTisId(UUID.fromString(id),
+        traineeId);
 
     FormRPartA latestForm = null;
 
@@ -265,5 +323,20 @@ public class FormRPartAService {
         })
         .map(cloudObjectRepository::save) // TODO: remove S3 update when fully migrated.
         .map(mapper::toDto);
+  }
+
+  /**
+   * Build a filtered query for FormRPartA forms.
+   *
+   * @param traineeTisId The trainee ID to filter by.
+   * @return The built query.
+   */
+  private Query buildFormRPartAQuery(String traineeTisId) {
+    Query query = new Query();
+
+    query.addCriteria(Criteria.where("traineeTisId").is(traineeTisId));
+
+    query.addCriteria(Criteria.where("status.submitted").ne(null));
+    return query;
   }
 }
