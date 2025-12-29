@@ -161,8 +161,8 @@ public class FormRPartAService {
     if (optionalCloudForm.isPresent() && optionalDbForm.isPresent()) {
       FormRPartA cloudForm = optionalCloudForm.get();
       FormRPartA dbForm = optionalDbForm.get();
-      latestForm = cloudForm.getLastModifiedDate().isAfter(dbForm.getLastModifiedDate()) ? cloudForm
-          : dbForm;
+      latestForm = cloudForm.getLastModifiedDate().isBefore(dbForm.getLastModifiedDate()) ? dbForm
+          : cloudForm;
     } else if (optionalCloudForm.isPresent()) {
       latestForm = optionalCloudForm.get();
     } else if (optionalDbForm.isPresent()) {
