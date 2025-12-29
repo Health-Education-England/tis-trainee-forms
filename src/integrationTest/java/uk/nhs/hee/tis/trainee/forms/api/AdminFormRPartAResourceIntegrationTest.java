@@ -89,7 +89,7 @@ class AdminFormRPartAResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      PUT | /api/admin/formr-parta/123/unsubmit
+      PUT    | /api/admin/formr-parta/123/unsubmit
       DELETE | /api/admin/formr-parta/123
       """)
   void shouldReturnForbiddenWhenNoToken(HttpMethod method, URI uri) throws Exception {
@@ -100,7 +100,7 @@ class AdminFormRPartAResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      PUT | /api/admin/formr-parta/123/unsubmit
+      PUT    | /api/admin/formr-parta/123/unsubmit
       DELETE | /api/admin/formr-parta/123
       """)
   void shouldReturnForbiddenWhenEmptyToken(HttpMethod method, URI uri) throws Exception {
@@ -113,7 +113,7 @@ class AdminFormRPartAResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      PUT | /api/admin/formr-parta/123/unsubmit
+      PUT    | /api/admin/formr-parta/123/unsubmit
       DELETE | /api/admin/formr-parta/123
       """)
   void shouldReturnForbiddenWhenNoGroupsInToken(HttpMethod method, URI uri) throws Exception {
@@ -125,7 +125,7 @@ class AdminFormRPartAResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      PUT | /api/admin/formr-parta/123/unsubmit
+      PUT    | /api/admin/formr-parta/123/unsubmit
       DELETE | /api/admin/formr-parta/123
       """)
   void shouldReturnBadRequestWhenHasInvalidFormId(HttpMethod method, URI uri) throws Exception {
@@ -136,7 +136,7 @@ class AdminFormRPartAResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      PUT | /api/admin/formr-parta/{id}/unsubmit
+      PUT    | /api/admin/formr-parta/{id}/unsubmit
       DELETE | /api/admin/formr-parta/{id}
       """)
   void shouldReturnForbiddenWhenNoRequiredPermission(HttpMethod method, String uriTemplate)
@@ -149,24 +149,29 @@ class AdminFormRPartAResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      PUT | /api/admin/formr-parta/{id}/unsubmit
-      DELETE | /api/admin/formr-parta/{id}
+      PUT    | /api/admin/formr-parta/{formId}/unsubmit | HEE Admin
+      PUT    | /api/admin/formr-parta/{formId}/unsubmit | HEE Admin Revalidation
+      PUT    | /api/admin/formr-parta/{formId}/unsubmit | HEE Admin Sensitive
+      PUT    | /api/admin/formr-parta/{formId}/unsubmit | HEE TIS Admin
+      DELETE | /api/admin/formr-parta/{formId}          | TSS Support Admin
       """)
   void shouldReturnNotFoundWhenHasRequiredPermissionAndFormMissing(HttpMethod method,
-      String uriTemplate)
-      throws Exception {
+      String uriTemplate, String role) throws Exception {
     mockMvc.perform(request(method, uriTemplate, FORM_ID)
-            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of("TSS Support Admin"))))
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of(role))))
         .andExpect(status().isNotFound());
   }
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      PUT | /api/admin/formr-parta/{formId}/unsubmit
-      DELETE | /api/admin/formr-parta/{formId}
+      PUT    | /api/admin/formr-parta/{formId}/unsubmit | HEE Admin
+      PUT    | /api/admin/formr-parta/{formId}/unsubmit | HEE Admin Revalidation
+      PUT    | /api/admin/formr-parta/{formId}/unsubmit | HEE Admin Sensitive
+      PUT    | /api/admin/formr-parta/{formId}/unsubmit | HEE TIS Admin
+      DELETE | /api/admin/formr-parta/{formId}          | TSS Support Admin
       """)
-  void shouldReturnOkWhenHasRequiredPermissionAndFormFound(HttpMethod method, String uriTemplate)
-      throws Exception {
+  void shouldReturnOkWhenHasRequiredPermissionAndFormFound(HttpMethod method, String uriTemplate,
+      String role) throws Exception {
     FormRPartA form = new FormRPartA();
     form.setId(FORM_ID);
     form.setTraineeTisId(TRAINEE_ID);
@@ -174,7 +179,7 @@ class AdminFormRPartAResourceIntegrationTest {
     template.insert(form);
 
     mockMvc.perform(request(method, uriTemplate, FORM_ID)
-            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of("TSS Support Admin"))))
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of(role))))
         .andExpect(status().isOk());
   }
 }
