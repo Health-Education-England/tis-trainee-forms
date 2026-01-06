@@ -25,6 +25,7 @@ import com.amazonaws.xray.spring.aop.XRayEnabled;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -74,7 +75,7 @@ public class FormRPartAService {
 
   private final EventBroadcastService eventBroadcastService;
 
-  private final String formRPartASubmittedTopic;
+  private final String formRPartAUpdatedTopic;
 
   @Value("${application.file-store.always-store}")
   private boolean alwaysStoreFiles;
@@ -91,16 +92,16 @@ public class FormRPartAService {
    * @param objectMapper             The object mapper.
    * @param traineeIdentity          The trainee identity.
    * @param eventBroadcastService    The event broadcast service.
-   * @param formRPartASubmittedTopic The SNS topic for FormR PartA submitted events.
+   * @param formRPartAUpdatedTopic   The SNS topic for FormR PartA updated events.
    */
   public FormRPartAService(FormRPartARepository repository,
       S3FormRPartARepositoryImpl cloudObjectRepository,
       FormRPartAMapper mapper,
       ObjectMapper objectMapper, TraineeIdentity traineeIdentity,
       EventBroadcastService eventBroadcastService,
-      @Value("${application.aws.sns.formr-updated}") String formRPartASubmittedTopic) {
+      @Value("${application.aws.sns.formr-updated}") String formRPartAUpdatedTopic) {
     this.eventBroadcastService = eventBroadcastService;
-    this.formRPartASubmittedTopic = formRPartASubmittedTopic;
+    this.formRPartAUpdatedTopic = formRPartAUpdatedTopic;
     this.repository = repository;
     this.cloudObjectRepository = cloudObjectRepository;
     this.mapper = mapper;
@@ -122,11 +123,7 @@ public class FormRPartAService {
     formRPartA = repository.save(formRPartA);
     FormRPartADto formDto = mapper.toDto(formRPartA);
     if (formRPartA.getLifecycleState() == LifecycleState.SUBMITTED) {
-      log.debug("Publishing FormRPartA submitted event for form id: {}", formRPartA.getId());
-      eventBroadcastService.publishFormRPartAEvent(
-          formDto,
-          Map.of(EventBroadcastService.MESSAGE_ATTRIBUTE_KEY_FORM_TYPE, FORM_TYPE),
-          formRPartASubmittedTopic);
+      publishFormRUpdateEvent(formDto);
     }
     return formDto;
   }
@@ -240,6 +237,7 @@ public class FormRPartAService {
     form = objectMapper.convertValue(jsonForm, FormRPartA.class);
 
     repository.save(form);
+    publishFormRUpdateEvent(mapper.toDto(form));
     log.info("Partial delete successfully for trainee {} with form Id {} (FormRPartA)",
         form.getTraineeTisId(), form.getId());
 
@@ -258,12 +256,28 @@ public class FormRPartAService {
     return repository.findById(id)
         .map(form -> {
           form.setLifecycleState(LifecycleState.UNSUBMITTED);
+          form.setLastModifiedDate(LocalDateTime.now());
           FormRPartA formRPartA = repository.save(form);
+          publishFormRUpdateEvent(mapper.toDto(form));
           log.info("Unsubmitted successfully for trainee {} with form Id {} (FormRPartA)",
               form.getTraineeTisId(), form.getId());
           return formRPartA;
         })
         .map(cloudObjectRepository::save) // TODO: remove S3 update when fully migrated.
         .map(mapper::toDto);
+  }
+
+  /**
+   * Publish an updated form.
+   *
+   * @param formDto The form DTO to publish.
+   */
+  private void publishFormRUpdateEvent(FormRPartADto formDto) {
+    log.debug("Publishing FormRPartA {} event for form id: {}",
+        formDto.getLifecycleState(), formDto.getId());
+    eventBroadcastService.publishFormRPartAEvent(
+        formDto,
+        Map.of(EventBroadcastService.MESSAGE_ATTRIBUTE_KEY_FORM_TYPE, FORM_TYPE),
+        formRPartAUpdatedTopic);
   }
 }
