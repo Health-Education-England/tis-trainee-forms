@@ -395,15 +395,17 @@ class FormRPartAServiceTest {
     assertThat("Unexpected status.", dto.getLifecycleState(), is(LifecycleState.SUBMITTED));
   }
 
-  @Test
-  void shouldGetFormRPartAFromDatabaseByIdWhenCloudAndDatabaseEqualModifiedTime() {
+  @ParameterizedTest
+  @EnumSource(LifecycleState.class)
+  void shouldGetFormRPartAFromCloudByIdWhenCloudAndDatabaseEqualModifiedTime(
+      LifecycleState cloudState) {
     LocalDateTime now = LocalDateTime.now();
 
     FormRPartA cloudForm = new FormRPartA();
     cloudForm.setId(DEFAULT_ID);
     cloudForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     cloudForm.setForename("Cloud Equal");
-    cloudForm.setLifecycleState(LifecycleState.UNSUBMITTED);
+    cloudForm.setLifecycleState(cloudState);
     cloudForm.setLastModifiedDate(now);
 
     when(cloudObjectRepository.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID))
@@ -423,8 +425,8 @@ class FormRPartAServiceTest {
 
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
-    assertThat("Unexpected forename.", dto.getForename(), is("Database Equal"));
-    assertThat("Unexpected status.", dto.getLifecycleState(), is(LifecycleState.SUBMITTED));
+    assertThat("Unexpected forename.", dto.getForename(), is("Cloud Equal"));
+    assertThat("Unexpected status.", dto.getLifecycleState(), is(cloudState));
   }
 
   @Test

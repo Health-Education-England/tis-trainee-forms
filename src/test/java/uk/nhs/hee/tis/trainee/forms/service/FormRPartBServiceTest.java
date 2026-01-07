@@ -23,6 +23,7 @@ package uk.nhs.hee.tis.trainee.forms.service;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -46,7 +47,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -636,15 +636,17 @@ class FormRPartBServiceTest {
     assertThat("Unexpected status.", dto.getLifecycleState(), is(LifecycleState.SUBMITTED));
   }
 
-  @Test
-  void shouldGetFormRPartBFromDatabaseByIdWhenCloudAndDatabaseEqualModifiedTime() {
+  @ParameterizedTest
+  @EnumSource(LifecycleState.class)
+  void shouldGetFormRPartBFromCloudByIdWhenCloudAndDatabaseEqualModifiedTime(
+      LifecycleState cloudState) {
     LocalDateTime now = LocalDateTime.now();
 
     FormRPartB cloudForm = new FormRPartB();
     cloudForm.setId(DEFAULT_ID);
     cloudForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     cloudForm.setForename("Cloud Equal");
-    cloudForm.setLifecycleState(LifecycleState.UNSUBMITTED);
+    cloudForm.setLifecycleState(cloudState);
     cloudForm.setLastModifiedDate(now);
 
     when(s3FormRPartBRepository.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID))
@@ -664,8 +666,8 @@ class FormRPartBServiceTest {
 
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
-    assertThat("Unexpected forename.", dto.getForename(), is("Database Equal"));
-    assertThat("Unexpected status.", dto.getLifecycleState(), is(LifecycleState.SUBMITTED));
+    assertThat("Unexpected forename.", dto.getForename(), is("Cloud Equal"));
+    assertThat("Unexpected status.", dto.getLifecycleState(), is(cloudState));
   }
 
   @Test
@@ -693,7 +695,7 @@ class FormRPartBServiceTest {
   }
 
   @ParameterizedTest(name = "Should throw exception when deleting form with {0} state")
-  @EnumSource(names = {"DRAFT"}, mode = Mode.EXCLUDE)
+  @EnumSource(names = {"DRAFT"}, mode = EXCLUDE)
   void shouldThrowExceptionWhenDeletingNonDraftForm(LifecycleState state) {
     entity.setLifecycleState(state);
 
@@ -760,7 +762,7 @@ class FormRPartBServiceTest {
   }
 
   @ParameterizedTest(name = "Should not publish event when saving form with {0} state.")
-  @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = {"SUBMITTED"})
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = {"SUBMITTED"})
   void shouldNotPublishEventWhenSavingNonSubmittedFormRPartB(LifecycleState state) {
     entity.setId(null);
     entity.setLifecycleState(state);

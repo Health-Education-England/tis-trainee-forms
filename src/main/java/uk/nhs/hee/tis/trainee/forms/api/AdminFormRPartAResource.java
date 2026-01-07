@@ -56,7 +56,14 @@ public class AdminFormRPartAResource {
    * @param formId The ID of the form to unsubmit.
    * @return The unsubmitted form.
    */
-  @PreAuthorize("hasRole('TSS_Support_Admin')")
+  @PreAuthorize("""
+      hasAnyRole(
+        'HEE_Admin',
+        'HEE_Admin_Revalidation',
+        'HEE_Admin_Sensitive',
+        'HEE_TIS_Admin')
+      """)
+  // TODO: review permission requirements.
   @PutMapping("/{formId}/unsubmit")
   public ResponseEntity<FormRPartADto> unsubmitFormRPartA(@PathVariable UUID formId) {
     log.info("Admin request to unsubmit FormRPartA with id {}", formId);
