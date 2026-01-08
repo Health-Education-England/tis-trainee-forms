@@ -253,7 +253,6 @@ public class FormRPartBService {
     return formRPartBRepository.findById(id)
         .map(form -> {
           form.setLifecycleState(LifecycleState.UNSUBMITTED);
-          form.setLastModifiedDate(LocalDateTime.now());
           FormRPartB formRPartB = formRPartBRepository.save(form);
           publishFormRUpdateEvent(formRPartBMapper.toDto(form));
           log.info("Unsubmitted successfully for trainee {} with form Id {} (FormRPartB)",
