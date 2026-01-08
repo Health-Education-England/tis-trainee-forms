@@ -22,6 +22,9 @@
 
 package uk.nhs.hee.tis.trainee.forms.api;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -33,6 +36,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,6 +54,8 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.sns.SnsClient;
+import software.amazon.awssdk.services.sns.model.PublishRequest;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
@@ -81,6 +87,14 @@ class AdminFormRPartBResourceIntegrationTest {
 
   @MockBean
   private S3Client s3Client;
+
+  @MockBean
+  SnsClient snsClient;
+
+  @BeforeEach
+  void setUp() {
+    snsClient = mock(SnsClient.class);
+  }
 
   @AfterEach
   void tearDown() {
@@ -177,6 +191,9 @@ class AdminFormRPartBResourceIntegrationTest {
     form.setTraineeTisId(TRAINEE_ID);
     form.setSubmissionDate(LocalDateTime.now());
     template.insert(form);
+
+    when(snsClient.publish(any(PublishRequest.class)))
+        .thenReturn(any());
 
     mockMvc.perform(request(method, uriTemplate, FORM_ID)
             .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of(role))))
