@@ -111,7 +111,7 @@ class FormRPartBServiceTest {
 
   private static final Boolean DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS = true;
   private static final Boolean DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS = true;
-  private static final String FORM_R_PART_B_SUBMITTED_TOPIC = "arn:aws:sns:topic";
+  private static final String FORM_R_PART_B_UPDATED_TOPIC = "arn:aws:sns:topic";
 
   private FormRPartBService service;
 
@@ -154,7 +154,7 @@ class FormRPartBServiceTest {
 
     service = new FormRPartBService(
         repositoryMock, s3FormRPartBRepository, mapper, objectMapper, traineeIdentity,
-        eventBroadcastService, FORM_R_PART_B_SUBMITTED_TOPIC);
+        eventBroadcastService, FORM_R_PART_B_UPDATED_TOPIC);
     initData();
   }
 
@@ -437,6 +437,7 @@ class FormRPartBServiceTest {
     FormRPartBDto dto = mapper.toDto(entity);
     assertThrows(ApplicationException.class, () -> service.save(dto));
     verifyNoInteractions(repositoryMock);
+    verifyNoInteractions(eventBroadcastService);
   }
 
   @Test
@@ -680,6 +681,7 @@ class FormRPartBServiceTest {
     boolean deleted = service.deleteFormRPartBById(DEFAULT_ID_STRING);
 
     assertThat("Unexpected delete result.", deleted, is(true));
+    verifyNoInteractions(eventBroadcastService);
   }
 
   @Test
@@ -692,6 +694,7 @@ class FormRPartBServiceTest {
     boolean deleted = service.deleteFormRPartBById(DEFAULT_ID_STRING);
 
     assertThat("Unexpected delete result.", deleted, is(false));
+    verifyNoInteractions(eventBroadcastService);
   }
 
   @ParameterizedTest(name = "Should throw exception when deleting form with {0} state")
@@ -704,6 +707,7 @@ class FormRPartBServiceTest {
 
     assertThrows(IllegalArgumentException.class,
         () -> service.deleteFormRPartBById(DEFAULT_ID_STRING));
+    verifyNoInteractions(eventBroadcastService);
   }
 
   @Test
@@ -723,6 +727,24 @@ class FormRPartBServiceTest {
 
     verify(repositoryMock).save(any());
     verify(s3FormRPartBRepository).save(any());
+    verify(eventBroadcastService).publishFormRPartBEvent(any(), any(), any());
+  }
+
+  @Test
+  void shouldPublishEventWhenPartialDeletingFormRPartB() {
+    when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
+    when(s3FormRPartBRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    service.partialDeleteFormRPartBById(DEFAULT_ID);
+
+    ArgumentCaptor<FormRPartBDto> dtoCaptor = ArgumentCaptor.forClass(FormRPartBDto.class);
+    verify(eventBroadcastService).publishFormRPartBEvent(
+        dtoCaptor.capture(), eq(Map.of("formType", "formr-b")), eq(FORM_R_PART_B_UPDATED_TOPIC));
+
+    FormRPartBDto publishedDto = dtoCaptor.getValue();
+    assertThat("Unexpected form ID.", publishedDto.getId(), is(DEFAULT_ID_STRING));
+    assertThat("Unexpected lifecycle state.", publishedDto.getLifecycleState(),
+        is(LifecycleState.DELETED));
   }
 
   @Test
@@ -732,6 +754,7 @@ class FormRPartBServiceTest {
     service.partialDeleteFormRPartBById(DEFAULT_ID);
 
     verify(repositoryMock, never()).save(formRPartBCaptor.capture());
+    verifyNoInteractions(eventBroadcastService);
   }
 
   @Test
@@ -753,7 +776,7 @@ class FormRPartBServiceTest {
 
     ArgumentCaptor<FormRPartBDto> dtoCaptor = ArgumentCaptor.forClass(FormRPartBDto.class);
     verify(eventBroadcastService).publishFormRPartBEvent(
-        dtoCaptor.capture(), eq(Map.of("formType", "formr-b")), eq(FORM_R_PART_B_SUBMITTED_TOPIC));
+        dtoCaptor.capture(), eq(Map.of("formType", "formr-b")), eq(FORM_R_PART_B_UPDATED_TOPIC));
 
     FormRPartBDto publishedDto = dtoCaptor.getValue();
     assertThat("Unexpected form ID.", publishedDto.getId(), is(DEFAULT_ID_STRING));
@@ -803,6 +826,29 @@ class FormRPartBServiceTest {
 
     verify(repositoryMock).save(any());
     verify(s3FormRPartBRepository).save(any());
+    verify(eventBroadcastService).publishFormRPartBEvent(any(), any(), any());
+  }
+
+  @Test
+  void shouldPublishEventWhenUnsubmittingFormRPartB() {
+    entity.setId(DEFAULT_ID);
+    entity.setLifecycleState(LifecycleState.SUBMITTED);
+
+    when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
+    entity.setLifecycleState(LifecycleState.UNSUBMITTED);
+    when(repositoryMock.save(entity)).thenReturn(entity);
+    when(s3FormRPartBRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    service.unsubmitFormRPartBById(DEFAULT_ID);
+
+    ArgumentCaptor<FormRPartBDto> dtoCaptor = ArgumentCaptor.forClass(FormRPartBDto.class);
+    verify(eventBroadcastService).publishFormRPartBEvent(
+        dtoCaptor.capture(), eq(Map.of("formType", "formr-b")), eq(FORM_R_PART_B_UPDATED_TOPIC));
+
+    FormRPartBDto publishedDto = dtoCaptor.getValue();
+    assertThat("Unexpected form ID.", publishedDto.getId(), is(DEFAULT_ID_STRING));
+    assertThat("Unexpected lifecycle state.", publishedDto.getLifecycleState(),
+        is(LifecycleState.UNSUBMITTED));
   }
 
   @Test
@@ -812,5 +858,6 @@ class FormRPartBServiceTest {
     service.unsubmitFormRPartBById(DEFAULT_ID);
 
     verify(repositoryMock, never()).save(formRPartBCaptor.capture());
+    verifyNoInteractions(eventBroadcastService);
   }
 }
