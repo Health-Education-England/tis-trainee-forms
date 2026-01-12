@@ -34,6 +34,9 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
@@ -75,6 +78,8 @@ public class FormRPartAService {
 
   private final EventBroadcastService eventBroadcastService;
 
+  private final MongoTemplate mongoTemplate;
+
   private final String formRPartAUpdatedTopic;
 
   @Value("${application.file-store.always-store}")
@@ -92,6 +97,7 @@ public class FormRPartAService {
    * @param objectMapper             The object mapper.
    * @param traineeIdentity          The trainee identity.
    * @param eventBroadcastService    The event broadcast service.
+   * @param mongoTemplate The Mongo template.
    * @param formRPartAUpdatedTopic   The SNS topic for FormR PartA updated events.
    */
   public FormRPartAService(FormRPartARepository repository,
@@ -99,6 +105,7 @@ public class FormRPartAService {
       FormRPartAMapper mapper,
       ObjectMapper objectMapper, TraineeIdentity traineeIdentity,
       EventBroadcastService eventBroadcastService,
+      MongoTemplate mongoTemplate,
       @Value("${application.aws.sns.formr-updated}") String formRPartAUpdatedTopic) {
     this.eventBroadcastService = eventBroadcastService;
     this.formRPartAUpdatedTopic = formRPartAUpdatedTopic;
@@ -107,6 +114,7 @@ public class FormRPartAService {
     this.mapper = mapper;
     this.objectMapper = objectMapper;
     this.traineeIdentity = traineeIdentity;
+    this.mongoTemplate = mongoTemplate;
   }
 
   /**
@@ -142,6 +150,21 @@ public class FormRPartAService {
   }
 
   /**
+   * get FormRPartAs for specific trainee by trainee id.
+   *
+   * @param traineeId The ID of the requested trainee.
+   * @return a list of all the trainees submitted FormRPartAs.
+   */
+  public List<FormRPartSimpleDto> getFormRPartAs(String traineeId) {
+    log.info("Request to get FormRPartA list by trainee profileId : {}", traineeId);
+
+    Query query = buildFormRPartAQuery(traineeId);
+    List<FormRPartA> formRPartAList = mongoTemplate.find(query, FormRPartA.class);
+
+    return mapper.toSimpleDtos(formRPartAList);
+  }
+
+  /**
    * get FormRPartA by id.
    */
   public FormRPartADto getFormRPartAById(String id) {
@@ -167,6 +190,31 @@ public class FormRPartAService {
     }
 
     return mapper.toDto(latestForm);
+  }
+
+  /**
+   * get FormRPartA by id for admins.
+   *
+   * @param id The ID of the form to retrieve.
+   * @return the FormRPartA DTO, or null if form is DRAFT/DELETED or not found.
+   */
+  public FormRPartADto getAdminsFormRPartAById(String id) {
+    log.info("Request to get FormRPartA by id : {}", id);
+
+    Optional<FormRPartA> optionalDbForm = repository.findById(UUID.fromString(id));
+
+    if (optionalDbForm.isEmpty()) {
+      return null;
+    }
+
+    FormRPartA form = optionalDbForm.get();
+
+    if (form.getLifecycleState() == LifecycleState.DRAFT
+        || form.getLifecycleState() == LifecycleState.DELETED) {
+      log.info("FormRPartA {} is {}, returning null", id, form.getLifecycleState());
+      return null;
+    }
+    return mapper.toDto(form);
   }
 
   /**
@@ -278,5 +326,26 @@ public class FormRPartAService {
         formDto,
         Map.of(EventBroadcastService.MESSAGE_ATTRIBUTE_KEY_FORM_TYPE, FORM_TYPE),
         formRPartAUpdatedTopic);
+  }
+
+
+  /**
+   * Build a filtered query for FormRPartA forms.
+   * Retrieves forms that match the following criteria:
+   *   Belong to the specified trainee
+   *   Have been submitted (status.submitted is not null)
+   *   Are not in DELETED lifecycle state
+   *
+   * @param traineeTisId The TIS ID of the trainee whose forms should be retrieved.
+   * @return A MongoDB Query object with the applied filter criteria.
+   */
+  private Query buildFormRPartAQuery(String traineeTisId) {
+    Query query = new Query();
+
+    query.addCriteria(Criteria.where("traineeTisId").is(traineeTisId));
+
+    query.addCriteria(Criteria.where("submissionDate").ne(null));
+    query.addCriteria(Criteria.where("status.lifecycleState").ne(LifecycleState.DELETED));
+    return query;
   }
 }

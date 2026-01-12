@@ -22,6 +22,9 @@
 
 package uk.nhs.hee.tis.trainee.forms.api;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
@@ -37,11 +40,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 
 class AdminFormRPartAResourceTest {
 
   private static final UUID FORM_ID = UUID.randomUUID();
+  private static final String TRAINEE_ID = "12345";
 
   private AdminFormRPartAResource controller;
   private FormRPartAService service;
@@ -96,5 +101,69 @@ class AdminFormRPartAResourceTest {
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), sameInstance(dto));
+  }
+
+  @Test
+  void shouldReturnTraineeFormsWhenGetTraineeFormRPartAs() {
+    FormRPartSimpleDto simpleDto1 = new FormRPartSimpleDto();
+    simpleDto1.setId(FORM_ID.toString());
+    simpleDto1.setTraineeTisId(TRAINEE_ID);
+
+    FormRPartSimpleDto simpleDto2 = new FormRPartSimpleDto();
+    simpleDto2.setId(UUID.randomUUID().toString());
+    simpleDto2.setTraineeTisId(TRAINEE_ID);
+
+    List<FormRPartSimpleDto> forms = Arrays.asList(simpleDto1, simpleDto2);
+
+    when(service.getFormRPartAs(TRAINEE_ID)).thenReturn(forms);
+
+    ResponseEntity<List<FormRPartSimpleDto>> response = controller.getTraineeFormRPartAs(TRAINEE_ID);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), sameInstance(forms));
+    assertThat("Unexpected number of forms.", response.getBody().size(), is(2));
+  }
+
+  @Test
+  void shouldReturnEmptyListWhenGetTraineeFormRPartAsWithNoForms() {
+    List<FormRPartSimpleDto> emptyList = Collections.emptyList();
+
+    when(service.getFormRPartAs(TRAINEE_ID)).thenReturn(emptyList);
+
+    ResponseEntity<List<FormRPartSimpleDto>> response = controller.getTraineeFormRPartAs(TRAINEE_ID);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), sameInstance(emptyList));
+    assertThat("Unexpected number of forms.", response.getBody().size(), is(0));
+  }
+
+  @Test
+  void shouldReturnNotFoundWhenGetFormRPartAsByIdWithRequestParamAndFormNotFound() {
+    when(service.getAdminsFormRPartAById(FORM_ID.toString())).thenReturn(null);
+
+    ResponseEntity<FormRPartADto> response = controller.getFormRPartAById(
+        FORM_ID.toString()
+    );
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(NOT_FOUND));
+    assertThat("Unexpected response body.", response.getBody(), nullValue());
+  }
+
+  @Test
+  void shouldReturnFormWhenGetFormRPartAsByIdWithRequestParamAndFormFound() {
+    FormRPartADto dto = new FormRPartADto();
+    dto.setId(FORM_ID.toString());
+    dto.setTraineeTisId(TRAINEE_ID);
+
+    when(service.getAdminsFormRPartAById(FORM_ID.toString())).thenReturn(dto);
+
+    ResponseEntity<FormRPartADto> response = controller.getFormRPartAById(
+        FORM_ID.toString()
+    );
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), sameInstance(dto));
+    assertThat("Unexpected form ID.", response.getBody().getId(), is(FORM_ID.toString()));
+    assertThat("Unexpected trainee ID.", response.getBody().getTraineeTisId(), is(TRAINEE_ID));
   }
 }

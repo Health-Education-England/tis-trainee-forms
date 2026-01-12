@@ -22,17 +22,21 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 
 /**
@@ -69,6 +73,42 @@ public class AdminFormRPartBResource {
     log.info("Admin request to unsubmit FormRPartB with id {}", formId);
     Optional<FormRPartBDto> unsubmitted = service.unsubmitFormRPartBById(formId);
     return ResponseEntity.of(unsubmitted);
+  }
+
+  /**
+   * GET /formr-partbs.
+   *
+   * @param traineeId The trainee ID RequestParam
+   * @return list of the trainee's formR partB forms.
+   */
+  @GetMapping
+  public ResponseEntity<List<FormRPartSimpleDto>> getTraineeFormRPartBs(
+      @RequestParam String traineeId
+  ) {
+    log.info("FormRPartBs of trainee with id {}", traineeId);
+
+    List<FormRPartSimpleDto> formRPartSimpleDtos = service.getFormRPartBs(traineeId);
+    return ResponseEntity.ok(formRPartSimpleDtos);
+  }
+
+  /**
+   * GET /formr-partb/:id.
+   *
+   * @param id        The ID of the form
+   * @return the formR partB
+   */
+  @GetMapping("/{id}")
+  public ResponseEntity<FormRPartBDto> getFormRPartBsById(
+      @PathVariable String id
+  ) {
+    log.info("FormRPartB by id {}", id);
+
+    FormRPartBDto formRPartBDto = service.getAdminsFormRPartBById(id);
+    if (formRPartBDto != null) {
+      log.info("Retrieved FormRPartA id {} for trainee {} programme membership {}",
+          id, formRPartBDto.getTraineeTisId(), formRPartBDto.getProgrammeMembershipId());
+    }
+    return ResponseEntity.of(Optional.ofNullable(formRPartBDto));
   }
 
   /**
