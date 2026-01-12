@@ -25,7 +25,6 @@ import com.amazonaws.xray.spring.aop.XRayEnabled;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -142,6 +141,20 @@ public class FormRPartAService {
   }
 
   /**
+   * get FormRPartAs for specific trainee by trainee id.
+   *
+   * @param traineeId The ID of the requested trainee.
+   * @return a list of all the trainees submitted FormRPartAs.
+   */
+  public List<FormRPartSimpleDto> getFormRPartAs(String traineeId) {
+    log.info("Request to get FormRPartA list by trainee profileId : {}", traineeId);
+
+    List<FormRPartA> formRPartAList = repository.findNotDraftNorDeletedByTraineeTisId(traineeId);
+
+    return mapper.toSimpleDtos(formRPartAList);
+  }
+
+  /**
    * get FormRPartA by id.
    */
   public FormRPartADto getFormRPartAById(String id) {
@@ -167,6 +180,21 @@ public class FormRPartAService {
     }
 
     return mapper.toDto(latestForm);
+  }
+
+  /**
+   * get FormRPartA by id for admins.
+   *
+   * @param id The ID of the form to retrieve.
+   * @return Optional containing the FormRPartA DTO, or empty if form is DRAFT/DELETED or not found.
+   */
+  public Optional<FormRPartADto> getAdminsFormRPartAById(String id) {
+    log.info("Request to get FormRPartA by id : {}", id);
+
+    return repository.findById(UUID.fromString(id))
+        .filter(form -> form.getLifecycleState() != LifecycleState.DRAFT
+            && form.getLifecycleState() != LifecycleState.DELETED)
+        .map(mapper::toDto);
   }
 
   /**
