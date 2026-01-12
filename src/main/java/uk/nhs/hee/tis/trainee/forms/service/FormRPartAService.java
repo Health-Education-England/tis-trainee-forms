@@ -149,8 +149,8 @@ public class FormRPartAService {
 
     List<FormRPartA> storedFormRPartAs = cloudObjectRepository.findByTraineeTisId(traineeTisId);
 
-    Query query = buildFormRPartAQuery(traineeTisId);
-    List<FormRPartA> formRPartAList = mongoTemplate.find(query, FormRPartA.class);
+    List<FormRPartA> formRPartAList = repository
+        .findByTraineeTisIdAndLifecycleState(traineeTisId, LifecycleState.DRAFT);
 
     storedFormRPartAs.addAll(formRPartAList);
     return mapper.toSimpleDtos(storedFormRPartAs);
@@ -199,43 +199,66 @@ public class FormRPartAService {
     return mapper.toDto(latestForm);
   }
 
+//  /**
+//   * get FormRPartA by id for admins.
+//   *
+//   * @param id        The ID of the form to retrieve.
+//   * @param traineeId The trainee ID associated with the form.
+//   * @return the FormRPartA DTO, or null if form is DRAFT/DELETED or not found.
+//   */
+//  public FormRPartADto getAdminsFormRPartAById(String id, String traineeId) {
+//    log.info("Request to get FormRPartA by id : {} for trainee: {}", id, traineeId);
+//
+//    Optional<FormRPartA> optionalDbForm = repository.findByIdAndTraineeTisId(UUID.fromString(id),
+//        traineeId);
+//
+//    if (optionalDbForm.isEmpty()) {
+//      return null;
+//    }
+//
+//    FormRPartA form = optionalDbForm.get();
+//
+//    if (form.getLifecycleState() == LifecycleState.DRAFT
+//        || form.getLifecycleState() == LifecycleState.DELETED) {
+//      log.info("FormRPartA {} is {}, returning null", id, form.getLifecycleState());
+//      return null;
+//    }
+//
+//    return mapper.toDto(form);
+//  }
+
   /**
    * get FormRPartA by id for admins.
    *
-   * @param id        The ID of the form to retrieve.
-   * @param traineeId The trainee ID associated with the form.
-   * @return the FormRPartA DTO.
+   * @param id The ID of the form to retrieve.
+   * @return the FormRPartA DTO, or null if form is DRAFT/DELETED or not found.
    */
-  public FormRPartADto getAdminsFormRPartAById(String id, String traineeId) {
-    log.info("Request to get FormRPartA by id : {} for trainee: {}", id, traineeId);
+  public FormRPartADto getAdminsFormRPartAById(String id) {
+    log.info("Request to get FormRPartA by id : {}", id);
 
-    Optional<FormRPartA> optionalCloudForm = cloudObjectRepository.findByIdAndTraineeTisId(id,
-        traineeId);
-    Optional<FormRPartA> optionalDbForm = repository.findByIdAndTraineeTisId(UUID.fromString(id),
-        traineeId);
+    Optional<FormRPartA> optionalDbForm = repository.findById(UUID.fromString(id));
 
-    FormRPartA latestForm = null;
-
-    if (optionalCloudForm.isPresent() && optionalDbForm.isPresent()) {
-      FormRPartA cloudForm = optionalCloudForm.get();
-      FormRPartA dbForm = optionalDbForm.get();
-      latestForm = cloudForm.getLastModifiedDate().isAfter(dbForm.getLastModifiedDate()) ? cloudForm
-          : dbForm;
-    } else if (optionalCloudForm.isPresent()) {
-      latestForm = optionalCloudForm.get();
-    } else if (optionalDbForm.isPresent()) {
-      latestForm = optionalDbForm.get();
+    if (optionalDbForm.isEmpty()) {
+      return null;
     }
 
-    return mapper.toDto(latestForm);
+    FormRPartA form = optionalDbForm.get();
+    
+    if (form.getLifecycleState() == LifecycleState.DRAFT
+        || form.getLifecycleState() == LifecycleState.DELETED) {
+      log.info("FormRPartA {} is {}, returning null", id, form.getLifecycleState());
+      return null;
+    }
+    return mapper.toDto(form);
   }
 
-  /**
-   * Delete the form for the given ID, only DRAFT forms are supported.
-   *
-   * @param id The ID of the form to delete.
-   * @return true if the form was found and deleted, false if not found.
-   */
+
+    /**
+     * Delete the form for the given ID, only DRAFT forms are supported.
+     *
+     * @param id The ID of the form to delete.
+     * @return true if the form was found and deleted, false if not found.
+     */
   public boolean deleteFormRPartAById(String id) {
     log.info("Request to delete FormRPartA by id : {}", id);
     String traineeTisId = traineeIdentity.getTraineeId();
@@ -327,16 +350,21 @@ public class FormRPartAService {
 
   /**
    * Build a filtered query for FormRPartA forms.
+   * Retrieves forms that match the following criteria:
+   *   Belong to the specified trainee
+   *   Have been submitted (status.submitted is not null)
+   *   Are not in DELETED lifecycle state
    *
-   * @param traineeTisId The trainee ID to filter by.
-   * @return The built query.
+   * @param traineeTisId The TIS ID of the trainee whose forms should be retrieved.
+   * @return A MongoDB Query object with the applied filter criteria.
    */
   private Query buildFormRPartAQuery(String traineeTisId) {
     Query query = new Query();
 
     query.addCriteria(Criteria.where("traineeTisId").is(traineeTisId));
 
-    query.addCriteria(Criteria.where("status.submitted").ne(null));
+    query.addCriteria(Criteria.where("submissionDate").ne(null));
+    query.addCriteria(Criteria.where("status.lifecycleState").ne(LifecycleState.DELETED));
     return query;
   }
 }

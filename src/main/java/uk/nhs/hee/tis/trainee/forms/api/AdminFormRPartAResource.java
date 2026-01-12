@@ -92,13 +92,33 @@ public class AdminFormRPartAResource {
    * @return the formR partA
    */
   @GetMapping("/{id}")
-  public ResponseEntity<FormRPartADto> getFormRPartAsById(
+  public ResponseEntity<FormRPartADto> getFormRPartAById(
       @PathVariable String id,
       @RequestParam String traineeId
   ) {
     log.info("FormRPartA by id {} for trainee {}", id, traineeId);
 
-    FormRPartADto formRPartADto = service.getAdminsFormRPartAById(id, traineeId);
+    FormRPartADto formRPartADto = service.getAdminsFormRPartAById(id);
+    if (formRPartADto != null) {
+      log.info("Retrieved FormRPartA id {} for trainee {} programme membership {}",
+          id, formRPartADto.getTraineeTisId(), formRPartADto.getProgrammeMembershipId());
+    }
+    return ResponseEntity.of(Optional.ofNullable(formRPartADto));
+  }
+
+  /**
+   * GET /formr-parta/:id.
+   *
+   * @param id The ID of the form
+   * @return the formR partA
+   */
+  @GetMapping("/{id}")
+  public ResponseEntity<FormRPartADto> getFormRPartAById(
+      @PathVariable String id
+  ) {
+    log.info("Request for FormRPartA by id {}", id);
+
+    FormRPartADto formRPartADto = service.getAdminsFormRPartAById(id);
     if (formRPartADto != null) {
       log.info("Retrieved FormRPartA id {} for trainee {} programme membership {}",
           id, formRPartADto.getTraineeTisId(), formRPartADto.getProgrammeMembershipId());
