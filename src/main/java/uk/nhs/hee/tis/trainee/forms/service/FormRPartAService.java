@@ -25,7 +25,6 @@ import com.amazonaws.xray.spring.aop.XRayEnabled;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +33,7 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
@@ -92,6 +92,7 @@ public class FormRPartAService {
    * @param objectMapper             The object mapper.
    * @param traineeIdentity          The trainee identity.
    * @param eventBroadcastService    The event broadcast service.
+   * @param mongoTemplate The Mongo template.
    * @param formRPartAUpdatedTopic   The SNS topic for FormR PartA updated events.
    */
   public FormRPartAService(FormRPartARepository repository,
@@ -99,6 +100,7 @@ public class FormRPartAService {
       FormRPartAMapper mapper,
       ObjectMapper objectMapper, TraineeIdentity traineeIdentity,
       EventBroadcastService eventBroadcastService,
+      MongoTemplate mongoTemplate,
       @Value("${application.aws.sns.formr-updated}") String formRPartAUpdatedTopic) {
     this.eventBroadcastService = eventBroadcastService;
     this.formRPartAUpdatedTopic = formRPartAUpdatedTopic;
@@ -142,6 +144,20 @@ public class FormRPartAService {
   }
 
   /**
+   * get FormRPartAs for specific trainee by trainee id.
+   *
+   * @param traineeId The ID of the requested trainee.
+   * @return a list of all the trainees submitted FormRPartAs.
+   */
+  public List<FormRPartSimpleDto> getFormRPartAs(String traineeId) {
+    log.info("Request to get FormRPartA list by trainee profileId : {}", traineeId);
+
+    List<FormRPartA> formRPartAList = repository.findNotDraftNorDeletedByTraineeTisId(traineeId);
+
+    return mapper.toSimpleDtos(formRPartAList);
+  }
+
+  /**
    * get FormRPartA by id.
    */
   public FormRPartADto getFormRPartAById(String id) {
@@ -167,6 +183,31 @@ public class FormRPartAService {
     }
 
     return mapper.toDto(latestForm);
+  }
+
+  /**
+   * get FormRPartA by id for admins.
+   *
+   * @param id The ID of the form to retrieve.
+   * @return the FormRPartA DTO, or null if form is DRAFT/DELETED or not found.
+   */
+  public FormRPartADto getAdminsFormRPartAById(String id) {
+    log.info("Request to get FormRPartA by id : {}", id);
+
+    Optional<FormRPartA> optionalDbForm = repository.findById(UUID.fromString(id));
+
+    if (optionalDbForm.isEmpty()) {
+      return null;
+    }
+
+    FormRPartA form = optionalDbForm.get();
+
+    if (form.getLifecycleState() == LifecycleState.DRAFT
+        || form.getLifecycleState() == LifecycleState.DELETED) {
+      log.info("FormRPartA {} is {}, returning null", id, form.getLifecycleState());
+      return null;
+    }
+    return mapper.toDto(form);
   }
 
   /**

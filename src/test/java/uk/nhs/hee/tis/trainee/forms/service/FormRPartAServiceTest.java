@@ -50,6 +50,7 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.BeanUtils;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
@@ -83,6 +84,9 @@ class FormRPartAServiceTest {
   @Mock
   private EventBroadcastService eventBroadcastService;
 
+  @Mock
+  private MongoTemplate mongoTemplate;
+
   private FormRPartA entity;
 
   private TraineeIdentity traineeIdentity;
@@ -103,6 +107,7 @@ class FormRPartAServiceTest {
         new FormRPartAMapperImpl(),
         new ObjectMapper().findAndRegisterModules(), traineeIdentity,
         eventBroadcastService,
+        mongoTemplate,
         FORM_R_PART_A_UPDATED_TOPIC);
     entity = createEntity();
   }
@@ -628,5 +633,132 @@ class FormRPartAServiceTest {
 
     verify(repositoryMock, never()).save(any());
     verifyNoInteractions(eventBroadcastService);
+  }
+
+  @Test
+  void shouldGetFormRPartAsByTraineeId() {
+    String traineeId = "12345";
+    entity.setTraineeTisId(traineeId);
+    List<FormRPartA> entities = Collections.singletonList(entity);
+
+    when(repositoryMock.findNotDraftNorDeletedByTraineeTisId(traineeId))
+        .thenReturn(entities);
+
+    List<FormRPartSimpleDto> dtos = service.getFormRPartAs(traineeId);
+
+    assertThat("Unexpected numbers of forms.", dtos.size(), is(entities.size()));
+
+    FormRPartSimpleDto dto = dtos.get(0);
+    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
+    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(traineeId));
+  }
+
+  @Test
+  void shouldCombineAllFormRPartAsBySpecificTraineeId() {
+    String traineeId = "12345";
+
+    FormRPartA draftEntity = createEntity();
+    draftEntity.setTraineeTisId(traineeId);
+    List<FormRPartA> draftEntities = Collections.singletonList(draftEntity);
+
+    when(repositoryMock.findNotDraftNorDeletedByTraineeTisId(traineeId))
+        .thenReturn(draftEntities);
+
+    List<FormRPartSimpleDto> dtos = service.getFormRPartAs(traineeId);
+
+    assertThat("Unexpected numbers of forms.", dtos.size(), is(1));
+
+    FormRPartSimpleDto draftDto = dtos.stream()
+        .filter(f -> f.getLifecycleState() == LifecycleState.DRAFT)
+        .findAny()
+        .orElseThrow();
+    assertThat("Unexpected trainee ID.", draftDto.getTraineeTisId(), is(traineeId));
+  }
+
+  @Test
+  void shouldReturnEmptyListWhenNoFormsFoundForTraineeId() {
+    String traineeId = "99999";
+
+    when(repositoryMock.findNotDraftNorDeletedByTraineeTisId(traineeId))
+        .thenReturn(new ArrayList<>());
+
+    List<FormRPartSimpleDto> dtos = service.getFormRPartAs(traineeId);
+
+    assertThat("Unexpected numbers of forms.", dtos.size(), is(0));
+  }
+
+  @Test
+  void shouldGetFormRPartAsForDifferentTraineeIdThanAuthenticatedUser() {
+    String requestedTraineeId = "99999";
+
+    FormRPartA otherTraineeEntity = createEntity();
+    otherTraineeEntity.setTraineeTisId(requestedTraineeId);
+    List<FormRPartA> entities = Collections.singletonList(otherTraineeEntity);
+
+    when(repositoryMock.findNotDraftNorDeletedByTraineeTisId(requestedTraineeId))
+        .thenReturn(entities);
+
+    List<FormRPartSimpleDto> dtos = service.getFormRPartAs(requestedTraineeId);
+
+    assertThat("Unexpected numbers of forms.", dtos.size(), is(1));
+    FormRPartSimpleDto dto = dtos.get(0);
+    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(requestedTraineeId));
+  }
+
+  @Test
+  void shouldGetAdminsFormRPartAByIdWhenSubmitted() {
+    entity.setLifecycleState(LifecycleState.SUBMITTED);
+
+    when(repositoryMock.findById(DEFAULT_ID))
+        .thenReturn(Optional.of(entity));
+
+    FormRPartADto dto = service.getAdminsFormRPartAById(DEFAULT_ID_STRING);
+
+    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
+    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected forename.", dto.getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", dto.getSurname(), is(DEFAULT_SURNAME));
+    assertThat("Unexpected lifecycle state.", dto.getLifecycleState(),
+        is(LifecycleState.SUBMITTED));
+  }
+
+  @Test
+  void shouldGetAdminsFormRPartAByIdWhenUnsubmitted() {
+    entity.setLifecycleState(LifecycleState.UNSUBMITTED);
+
+    when(repositoryMock.findById(DEFAULT_ID))
+        .thenReturn(Optional.of(entity));
+
+    FormRPartADto dto = service.getAdminsFormRPartAById(DEFAULT_ID_STRING);
+
+    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
+    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected forename.", dto.getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", dto.getSurname(), is(DEFAULT_SURNAME));
+    assertThat("Unexpected lifecycle state.", dto.getLifecycleState(),
+        is(LifecycleState.UNSUBMITTED));
+  }
+
+  @Test
+  void shouldReturnNullWhenAdminsFormRPartANotFound() {
+    when(repositoryMock.findById(DEFAULT_ID))
+        .thenReturn(Optional.empty());
+
+    FormRPartADto dto = service.getAdminsFormRPartAById(DEFAULT_ID_STRING);
+
+    assertThat("Expected null for non-existent form.", dto == null, is(true));
+  }
+
+  @ParameterizedTest(name = "Should return null when admin form is {0}")
+  @EnumSource(value = LifecycleState.class, names = {"DRAFT", "DELETED"})
+  void shouldReturnNullWhenAdminsFormRPartAIsDraftOrDeleted(LifecycleState state) {
+    entity.setLifecycleState(state);
+
+    when(repositoryMock.findById(DEFAULT_ID))
+        .thenReturn(Optional.of(entity));
+
+    FormRPartADto dto = service.getAdminsFormRPartAById(DEFAULT_ID_STRING);
+
+    assertThat("Expected null for " + state + " form.", dto == null, is(true));
   }
 }
