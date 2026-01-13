@@ -21,6 +21,7 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
@@ -939,4 +940,58 @@ class FormRPartBServiceTest {
     FormRPartSimpleDto dto = dtos.get(0);
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(requestedTraineeId));
   }
+
+  @Test
+  void shouldGetAdminsFormRPartBByIdWhenSubmitted() {
+    entity.setLifecycleState(LifecycleState.SUBMITTED);
+
+    when(repositoryMock.findById(DEFAULT_ID))
+        .thenReturn(Optional.of(entity));
+
+    FormRPartBDto dto = service.getAdminsFormRPartBById(DEFAULT_ID_STRING);
+
+    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
+    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected lifecycle state.", dto.getLifecycleState(),
+        is(LifecycleState.SUBMITTED));
+  }
+
+  @Test
+  void shouldGetAdminsFormRPartBByIdWhenUnsubmitted() {
+    entity.setLifecycleState(LifecycleState.UNSUBMITTED);
+
+    when(repositoryMock.findById(DEFAULT_ID))
+        .thenReturn(Optional.of(entity));
+
+    FormRPartBDto dto = service.getAdminsFormRPartBById(DEFAULT_ID_STRING);
+
+    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
+    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected lifecycle state.", dto.getLifecycleState(),
+        is(LifecycleState.UNSUBMITTED));
+  }
+
+  @Test
+  void shouldReturnNullWhenAdminsFormRPartBNotFound() {
+    when(repositoryMock.findById(DEFAULT_ID))
+        .thenReturn(Optional.empty());
+
+    FormRPartBDto dto = service.getAdminsFormRPartBById(DEFAULT_ID_STRING);
+
+    assertThat("Expected null for non-existent form.", dto, is(nullValue()));
+  }
+
+  @ParameterizedTest(name = "Should return null when admin form is {0}")
+  @EnumSource(value = LifecycleState.class, names = {"DRAFT", "DELETED"})
+  void shouldReturnNullWhenAdminsFormRPartBIsDraftOrDeleted(LifecycleState state) {
+    entity.setLifecycleState(state);
+
+    when(repositoryMock.findById(DEFAULT_ID))
+        .thenReturn(Optional.of(entity));
+
+    FormRPartBDto dto = service.getAdminsFormRPartBById(DEFAULT_ID_STRING);
+
+    assertThat("Expected null for " + state + " form.", dto, is(nullValue()));
+  }
+
 }
