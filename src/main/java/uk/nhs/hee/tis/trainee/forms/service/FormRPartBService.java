@@ -39,11 +39,13 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
+import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
 import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartBRepositoryImpl;
@@ -198,25 +200,20 @@ public class FormRPartBService {
   public FormRPartBDto getAdminsFormRPartBById(String id) {
     log.info("Request to get FormRPartB by id : {}", id);
 
-    Optional<FormRPartB> optionalS3Form = s3ObjectRepository.findByIdAndTraineeTisId(id,
-        traineeId);
-    Optional<FormRPartB> optionalDbForm = formRPartBRepository.findByIdAndTraineeTisId(
-        UUID.fromString(id), traineeId);
+    Optional<FormRPartB> optionalDbForm = formRPartBRepository.findById(UUID.fromString(id));
 
-    FormRPartB latestForm = null;
-
-    if (optionalS3Form.isPresent() && optionalDbForm.isPresent()) {
-      FormRPartB cloudForm = optionalS3Form.get();
-      FormRPartB dbForm = optionalDbForm.get();
-      latestForm = cloudForm.getLastModifiedDate().isAfter(dbForm.getLastModifiedDate()) ? cloudForm
-          : dbForm;
-    } else if (optionalS3Form.isPresent()) {
-      latestForm = optionalS3Form.get();
-    } else if (optionalDbForm.isPresent()) {
-      latestForm = optionalDbForm.get();
+    if (optionalDbForm.isEmpty()) {
+      return null;
     }
 
-    return formRPartBMapper.toDto(latestForm);
+    FormRPartB form = optionalDbForm.get();
+
+    if (form.getLifecycleState() == LifecycleState.DRAFT
+        || form.getLifecycleState() == LifecycleState.DELETED) {
+      log.info("FormRPartA {} is {}, returning null", id, form.getLifecycleState());
+      return null;
+    }
+    return formRPartBMapper.toDto(form);
   }
 
   /**
