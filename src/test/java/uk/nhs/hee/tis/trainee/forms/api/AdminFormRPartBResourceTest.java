@@ -22,9 +22,6 @@
 
 package uk.nhs.hee.tis.trainee.forms.api;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
@@ -34,6 +31,9 @@ import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.OK;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -117,7 +117,8 @@ class AdminFormRPartBResourceTest {
 
     when(service.getFormRPartBs(TRAINEE_ID)).thenReturn(forms);
 
-    ResponseEntity<List<FormRPartSimpleDto>> response = controller.getTraineeFormRPartBs(TRAINEE_ID);
+    ResponseEntity<List<FormRPartSimpleDto>> response =
+        controller.getTraineeFormRPartBs(TRAINEE_ID);
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), sameInstance(forms));
@@ -130,7 +131,8 @@ class AdminFormRPartBResourceTest {
 
     when(service.getFormRPartBs(TRAINEE_ID)).thenReturn(emptyList);
 
-    ResponseEntity<List<FormRPartSimpleDto>> response = controller.getTraineeFormRPartBs(TRAINEE_ID);
+    ResponseEntity<List<FormRPartSimpleDto>> response =
+        controller.getTraineeFormRPartBs(TRAINEE_ID);
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), sameInstance(emptyList));
@@ -164,6 +166,7 @@ class AdminFormRPartBResourceTest {
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), sameInstance(dto));
     assertThat("Unexpected form ID.", response.getBody().getId(), is(FORM_ID.toString()));
-    assertThat("Unexpected trainee ID.", response.getBody().getTraineeTisId(), is(TRAINEE_ID));
+    assertThat("Unexpected trainee ID.",
+        response.getBody().getTraineeTisId(), is(TRAINEE_ID));
   }
 }
