@@ -866,15 +866,13 @@ class FormRPartBServiceTest {
     verifyNoInteractions(eventBroadcastService);
   }
 
-
   @Test
   void shouldGetFormRPartBsByTraineeId() {
     String traineeId = "12345";
     entity.setTraineeTisId(traineeId);
     List<FormRPartB> entities = Collections.singletonList(entity);
 
-    when(mongoTemplate.find(any(org.springframework.data.mongodb.core.query.Query.class),
-        eq(FormRPartB.class)))
+    when(repositoryMock.findNotDraftNorDeletedByTraineeTisId(traineeId))
         .thenReturn(entities);
 
     List<FormRPartSimpleDto> dtos = service.getFormRPartBs(traineeId);
@@ -894,8 +892,7 @@ class FormRPartBServiceTest {
     draftEntity.setTraineeTisId(traineeId);
     List<FormRPartB> draftEntities = Collections.singletonList(draftEntity);
 
-    when(mongoTemplate.find(any(org.springframework.data.mongodb.core.query.Query.class),
-        eq(FormRPartB.class)))
+    when(repositoryMock.findNotDraftNorDeletedByTraineeTisId(traineeId))
         .thenReturn(draftEntities);
 
     List<FormRPartSimpleDto> dtos = service.getFormRPartBs(traineeId);
@@ -913,8 +910,7 @@ class FormRPartBServiceTest {
   void shouldReturnEmptyListWhenNoFormRPartBsFoundForTraineeId() {
     String traineeId = "99999";
 
-    when(mongoTemplate.find(any(org.springframework.data.mongodb.core.query.Query.class),
-        eq(FormRPartB.class)))
+    when(repositoryMock.findNotDraftNorDeletedByTraineeTisId(traineeId))
         .thenReturn(new ArrayList<>());
 
     List<FormRPartSimpleDto> dtos = service.getFormRPartBs(traineeId);
@@ -930,8 +926,7 @@ class FormRPartBServiceTest {
     otherTraineeEntity.setTraineeTisId(requestedTraineeId);
     List<FormRPartB> entities = Collections.singletonList(otherTraineeEntity);
 
-    when(mongoTemplate.find(any(org.springframework.data.mongodb.core.query.Query.class),
-        eq(FormRPartB.class)))
+    when(repositoryMock.findNotDraftNorDeletedByTraineeTisId(requestedTraineeId))
         .thenReturn(entities);
 
     List<FormRPartSimpleDto> dtos = service.getFormRPartBs(requestedTraineeId);

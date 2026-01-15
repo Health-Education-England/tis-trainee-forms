@@ -641,8 +641,7 @@ class FormRPartAServiceTest {
     entity.setTraineeTisId(traineeId);
     List<FormRPartA> entities = Collections.singletonList(entity);
 
-    when(mongoTemplate.find(any(org.springframework.data.mongodb.core.query.Query.class),
-        eq(FormRPartA.class)))
+    when(repositoryMock.findNotDraftNorDeletedByTraineeTisId(traineeId))
         .thenReturn(entities);
 
     List<FormRPartSimpleDto> dtos = service.getFormRPartAs(traineeId);
@@ -662,8 +661,7 @@ class FormRPartAServiceTest {
     draftEntity.setTraineeTisId(traineeId);
     List<FormRPartA> draftEntities = Collections.singletonList(draftEntity);
 
-    when(mongoTemplate.find(any(org.springframework.data.mongodb.core.query.Query.class),
-        eq(FormRPartA.class)))
+    when(repositoryMock.findNotDraftNorDeletedByTraineeTisId(traineeId))
         .thenReturn(draftEntities);
 
     List<FormRPartSimpleDto> dtos = service.getFormRPartAs(traineeId);
@@ -681,8 +679,7 @@ class FormRPartAServiceTest {
   void shouldReturnEmptyListWhenNoFormsFoundForTraineeId() {
     String traineeId = "99999";
 
-    when(mongoTemplate.find(any(org.springframework.data.mongodb.core.query.Query.class),
-        eq(FormRPartA.class)))
+    when(repositoryMock.findNotDraftNorDeletedByTraineeTisId(traineeId))
         .thenReturn(new ArrayList<>());
 
     List<FormRPartSimpleDto> dtos = service.getFormRPartAs(traineeId);
@@ -698,8 +695,7 @@ class FormRPartAServiceTest {
     otherTraineeEntity.setTraineeTisId(requestedTraineeId);
     List<FormRPartA> entities = Collections.singletonList(otherTraineeEntity);
 
-    when(mongoTemplate.find(any(org.springframework.data.mongodb.core.query.Query.class),
-        eq(FormRPartA.class)))
+    when(repositoryMock.findNotDraftNorDeletedByTraineeTisId(requestedTraineeId))
         .thenReturn(entities);
 
     List<FormRPartSimpleDto> dtos = service.getFormRPartAs(requestedTraineeId);
