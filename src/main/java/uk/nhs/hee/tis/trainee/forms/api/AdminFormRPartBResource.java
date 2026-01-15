@@ -105,7 +105,7 @@ public class AdminFormRPartBResource {
 
     FormRPartBDto formRPartBDto = service.getAdminsFormRPartBById(id);
     if (formRPartBDto != null) {
-      log.info("Retrieved FormRPartA id {} for trainee {} programme membership {}",
+      log.info("Retrieved FormRPartB id {} for trainee {} programme membership {}",
           id, formRPartBDto.getTraineeTisId(), formRPartBDto.getProgrammeMembershipId());
     }
     return ResponseEntity.of(Optional.ofNullable(formRPartBDto));

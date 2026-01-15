@@ -25,7 +25,6 @@ import com.amazonaws.xray.spring.aop.XRayEnabled;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -35,8 +34,6 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
@@ -158,8 +155,7 @@ public class FormRPartAService {
   public List<FormRPartSimpleDto> getFormRPartAs(String traineeId) {
     log.info("Request to get FormRPartA list by trainee profileId : {}", traineeId);
 
-    Query query = buildFormRPartAQuery(traineeId);
-    List<FormRPartA> formRPartAList = mongoTemplate.find(query, FormRPartA.class);
+    List<FormRPartA> formRPartAList = repository.findNotDraftNorDeletedByTraineeTisId(traineeId);
 
     return mapper.toSimpleDtos(formRPartAList);
   }
@@ -326,26 +322,5 @@ public class FormRPartAService {
         formDto,
         Map.of(EventBroadcastService.MESSAGE_ATTRIBUTE_KEY_FORM_TYPE, FORM_TYPE),
         formRPartAUpdatedTopic);
-  }
-
-
-  /**
-   * Build a filtered query for FormRPartA forms.
-   * Retrieves forms that match the following criteria:
-   *   Belong to the specified trainee
-   *   Have been submitted (status.submitted is not null)
-   *   Are not in DELETED lifecycle state
-   *
-   * @param traineeTisId The TIS ID of the trainee whose forms should be retrieved.
-   * @return A MongoDB Query object with the applied filter criteria.
-   */
-  private Query buildFormRPartAQuery(String traineeTisId) {
-    Query query = new Query();
-
-    query.addCriteria(Criteria.where("traineeTisId").is(traineeTisId));
-
-    query.addCriteria(Criteria.where("submissionDate").ne(null));
-    query.addCriteria(Criteria.where("status.lifecycleState").ne(LifecycleState.DELETED));
-    return query;
   }
 }

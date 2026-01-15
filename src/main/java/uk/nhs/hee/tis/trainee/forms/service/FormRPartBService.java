@@ -25,7 +25,6 @@ import com.amazonaws.xray.spring.aop.XRayEnabled;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -35,17 +34,13 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
-import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
 import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartBRepositoryImpl;
@@ -157,8 +152,8 @@ public class FormRPartBService {
   public List<FormRPartSimpleDto> getFormRPartBs(String traineeId) {
     log.info("Request to get FormRPartB list by trainee profileId : {}", traineeId);
 
-    Query query = buildFormRPartBQuery(traineeId);
-    List<FormRPartB> formRPartBList = mongoTemplate.find(query, FormRPartB.class);
+
+    List<FormRPartB> formRPartBList = formRPartBRepository.findNotDraftNorDeletedByTraineeTisId(traineeId);
 
     return formRPartBMapper.toSimpleDtos(formRPartBList);
   }
@@ -210,7 +205,7 @@ public class FormRPartBService {
 
     if (form.getLifecycleState() == LifecycleState.DRAFT
         || form.getLifecycleState() == LifecycleState.DELETED) {
-      log.info("FormRPartA {} is {}, returning null", id, form.getLifecycleState());
+      log.info("FormRPartB {} is {}, returning null", id, form.getLifecycleState());
       return null;
     }
     return formRPartBMapper.toDto(form);
@@ -328,18 +323,23 @@ public class FormRPartBService {
   }
 
 
-  /**
-   * Build a filtered query for FormRPartB forms.
-   *
-   * @param traineeTisId The trainee ID to filter by.
-   * @return The built query.
-   */
-  private Query buildFormRPartBQuery(String traineeTisId) {
-    Query query = new Query();
-
-    query.addCriteria(Criteria.where("traineeTisId").is(traineeTisId));
-
-    query.addCriteria(Criteria.where("status.submitted").ne(null));
-    return query;
-  }
+//  /**
+//   * Build a filtered query for FormRPartB forms.
+//   * Retrieves forms that match the following criteria:
+//   *   Belong to the specified trainee
+//   *   Have been submitted (status.submitted is not null)
+//   *   Are not in DELETED lifecycle state
+//   *
+//   * @param traineeTisId The TIS ID of the trainee whose forms should be retrieved.
+//   * @return A MongoDB Query object with the applied filter criteria.
+//   */
+//  private Query buildFormRPartBQuery(String traineeTisId) {
+//    Query query = new Query();
+//
+//    query.addCriteria(Criteria.where("traineeTisId").is(traineeTisId));
+//
+//    query.addCriteria(Criteria.where("submissionDate").ne(null));
+//    query.addCriteria(Criteria.where("status.lifecycleState").ne(LifecycleState.DELETED));
+//    return query;
+//  }
 }
