@@ -75,8 +75,6 @@ public class FormRPartAService {
 
   private final EventBroadcastService eventBroadcastService;
 
-  private final MongoTemplate mongoTemplate;
-
   private final String formRPartAUpdatedTopic;
 
   @Value("${application.file-store.always-store}")
@@ -111,7 +109,6 @@ public class FormRPartAService {
     this.mapper = mapper;
     this.objectMapper = objectMapper;
     this.traineeIdentity = traineeIdentity;
-    this.mongoTemplate = mongoTemplate;
   }
 
   /**

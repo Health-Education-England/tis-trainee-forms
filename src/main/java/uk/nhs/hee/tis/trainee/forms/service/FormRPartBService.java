@@ -75,8 +75,6 @@ public class FormRPartBService {
 
   private final EventBroadcastService eventBroadcastService;
 
-  private final MongoTemplate mongoTemplate;
-
   private final String formRPartBUpdatedTopic;
 
   @Value("${application.file-store.always-store}")
@@ -107,7 +105,6 @@ public class FormRPartBService {
     this.objectMapper = objectMapper;
     this.traineeIdentity = traineeIdentity;
     this.eventBroadcastService = eventBroadcastService;
-    this.mongoTemplate = mongoTemplate;
     this.formRPartBUpdatedTopic = formRPartBUpdatedTopic;
   }
 
@@ -153,7 +150,8 @@ public class FormRPartBService {
     log.info("Request to get FormRPartB list by trainee profileId : {}", traineeId);
 
 
-    List<FormRPartB> formRPartBList = formRPartBRepository.findNotDraftNorDeletedByTraineeTisId(traineeId);
+    List<FormRPartB> formRPartBList = formRPartBRepository
+        .findNotDraftNorDeletedByTraineeTisId(traineeId);
 
     return formRPartBMapper.toSimpleDtos(formRPartBList);
   }
@@ -321,25 +319,4 @@ public class FormRPartBService {
         Map.of(EventBroadcastService.MESSAGE_ATTRIBUTE_KEY_FORM_TYPE, FORM_TYPE),
         formRPartBUpdatedTopic);
   }
-
-
-//  /**
-//   * Build a filtered query for FormRPartB forms.
-//   * Retrieves forms that match the following criteria:
-//   *   Belong to the specified trainee
-//   *   Have been submitted (status.submitted is not null)
-//   *   Are not in DELETED lifecycle state
-//   *
-//   * @param traineeTisId The TIS ID of the trainee whose forms should be retrieved.
-//   * @return A MongoDB Query object with the applied filter criteria.
-//   */
-//  private Query buildFormRPartBQuery(String traineeTisId) {
-//    Query query = new Query();
-//
-//    query.addCriteria(Criteria.where("traineeTisId").is(traineeTisId));
-//
-//    query.addCriteria(Criteria.where("submissionDate").ne(null));
-//    query.addCriteria(Criteria.where("status.lifecycleState").ne(LifecycleState.DELETED));
-//    return query;
-//  }
 }
