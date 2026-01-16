@@ -33,6 +33,9 @@ import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 @Repository
 public interface FormRPartARepository extends MongoRepository<FormRPartA, UUID> {
 
+  @Query("{ 'id': ?0, 'lifecycleState': { $nin: ['DELETED', 'DRAFT'] } }")
+  List<FormRPartA> findNotDraftNorDeletedByTraineeTisId(String traineeTisId);
+
   Optional<FormRPartA> findByIdAndTraineeTisId(UUID id, String traineeTisId);
 
   @Query(
