@@ -708,7 +708,7 @@ class FormRPartAServiceTest {
   void shouldGetAdminsFormRPartAByIdWhenSubmitted() {
     entity.setLifecycleState(LifecycleState.SUBMITTED);
 
-    when(repositoryMock.findById(DEFAULT_ID))
+    when(repositoryMock.findByIdAndNotDraftNorDeleted(DEFAULT_ID))
         .thenReturn(Optional.of(entity));
 
     Optional<FormRPartADto> optionalDto = service.getAdminsFormRPartAById(DEFAULT_ID_STRING);
@@ -728,7 +728,7 @@ class FormRPartAServiceTest {
   void shouldGetAdminsFormRPartAByIdWhenUnsubmitted() {
     entity.setLifecycleState(LifecycleState.UNSUBMITTED);
 
-    when(repositoryMock.findById(DEFAULT_ID))
+    when(repositoryMock.findByIdAndNotDraftNorDeleted(DEFAULT_ID))
         .thenReturn(Optional.of(entity));
 
     Optional<FormRPartADto> optionalDto = service.getAdminsFormRPartAById(DEFAULT_ID_STRING);
@@ -746,7 +746,7 @@ class FormRPartAServiceTest {
 
   @Test
   void shouldReturnEmptyWhenAdminsFormRPartANotFound() {
-    when(repositoryMock.findById(DEFAULT_ID))
+    when(repositoryMock.findByIdAndNotDraftNorDeleted(DEFAULT_ID))
         .thenReturn(Optional.empty());
 
     Optional<FormRPartADto> optionalDto = service.getAdminsFormRPartAById(DEFAULT_ID_STRING);
@@ -758,9 +758,6 @@ class FormRPartAServiceTest {
   @EnumSource(value = LifecycleState.class, names = {"DRAFT", "DELETED"})
   void shouldReturnEmptyWhenAdminsFormRPartAIsDraftOrDeleted(LifecycleState state) {
     entity.setLifecycleState(state);
-
-    when(repositoryMock.findById(DEFAULT_ID))
-        .thenReturn(Optional.of(entity));
 
     Optional<FormRPartADto> optionalDto = service.getAdminsFormRPartAById(DEFAULT_ID_STRING);
 

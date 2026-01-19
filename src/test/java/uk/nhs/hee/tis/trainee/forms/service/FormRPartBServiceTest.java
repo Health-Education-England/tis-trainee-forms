@@ -21,7 +21,6 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
@@ -936,7 +935,7 @@ class FormRPartBServiceTest {
   void shouldGetAdminsFormRPartBByIdWhenSubmitted() {
     entity.setLifecycleState(LifecycleState.SUBMITTED);
 
-    when(repositoryMock.findById(DEFAULT_ID))
+    when(repositoryMock.findByIdAndNotDraftNorDeleted(DEFAULT_ID))
         .thenReturn(Optional.of(entity));
 
     Optional<FormRPartBDto> optionalDto = service.getAdminsFormRPartBById(DEFAULT_ID_STRING);
@@ -954,7 +953,7 @@ class FormRPartBServiceTest {
   void shouldGetAdminsFormRPartBByIdWhenUnsubmitted() {
     entity.setLifecycleState(LifecycleState.UNSUBMITTED);
 
-    when(repositoryMock.findById(DEFAULT_ID))
+    when(repositoryMock.findByIdAndNotDraftNorDeleted(DEFAULT_ID))
         .thenReturn(Optional.of(entity));
 
     Optional<FormRPartBDto> optionalDto = service.getAdminsFormRPartBById(DEFAULT_ID_STRING);
@@ -970,7 +969,7 @@ class FormRPartBServiceTest {
 
   @Test
   void shouldReturnEmptyWhenAdminsFormRPartBNotFound() {
-    when(repositoryMock.findById(DEFAULT_ID))
+    when(repositoryMock.findByIdAndNotDraftNorDeleted(DEFAULT_ID))
         .thenReturn(Optional.empty());
 
     Optional<FormRPartBDto> optionalDto = service.getAdminsFormRPartBById(DEFAULT_ID_STRING);
@@ -982,9 +981,6 @@ class FormRPartBServiceTest {
   @EnumSource(value = LifecycleState.class, names = {"DRAFT", "DELETED"})
   void shouldReturnEmptyWhenAdminsFormRPartBIsDraftOrDeleted(LifecycleState state) {
     entity.setLifecycleState(state);
-
-    when(repositoryMock.findById(DEFAULT_ID))
-        .thenReturn(Optional.of(entity));
 
     Optional<FormRPartBDto> optionalDto = service.getAdminsFormRPartBById(DEFAULT_ID_STRING);
 

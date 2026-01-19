@@ -36,6 +36,9 @@ public interface FormRPartARepository extends MongoRepository<FormRPartA, UUID> 
   @Query("{ 'id': ?0, 'lifecycleState': { $nin: ['DELETED', 'DRAFT'] } }")
   List<FormRPartA> findNotDraftNorDeletedByTraineeTisId(String traineeTisId);
 
+  @Query("{ 'id': ?0, 'lifecycleState': { $nin: ['DELETED', 'DRAFT'] } }")
+  Optional<FormRPartA> findByIdAndNotDraftNorDeleted(UUID id);
+
   Optional<FormRPartA> findByIdAndTraineeTisId(UUID id, String traineeTisId);
 
   @Query(

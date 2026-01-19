@@ -191,9 +191,7 @@ public class FormRPartAService {
   public Optional<FormRPartADto> getAdminsFormRPartAById(String id) {
     log.info("Request to get FormRPartA by id : {}", id);
 
-    return repository.findById(UUID.fromString(id))
-        .filter(form -> form.getLifecycleState() != LifecycleState.DRAFT
-            && form.getLifecycleState() != LifecycleState.DELETED)
+    return repository.findByIdAndNotDraftNorDeleted(UUID.fromString(id))
         .map(mapper::toDto);
   }
 

@@ -190,9 +190,7 @@ public class FormRPartBService {
   public Optional<FormRPartBDto> getAdminsFormRPartBById(String id) {
     log.info("Request to get FormRPartB by id : {}", id);
 
-    return formRPartBRepository.findById(UUID.fromString(id))
-        .filter(form -> form.getLifecycleState() != LifecycleState.DRAFT
-            && form.getLifecycleState() != LifecycleState.DELETED)
+    return formRPartBRepository.findByIdAndNotDraftNorDeleted(UUID.fromString(id))
         .map(formRPartBMapper::toDto);
   }
 
