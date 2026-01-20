@@ -22,9 +22,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.api;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -55,7 +53,6 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.sns.SnsClient;
-import software.amazon.awssdk.services.sns.model.PublishRequest;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
@@ -103,6 +100,7 @@ class AdminFormRPartBResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
+      GET    | /api/admin/formr-partb/123
       PUT    | /api/admin/formr-partb/123/unsubmit
       DELETE | /api/admin/formr-partb/123
       """)
@@ -114,6 +112,7 @@ class AdminFormRPartBResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
+      GET    | /api/admin/formr-partb/123
       PUT    | /api/admin/formr-partb/123/unsubmit
       DELETE | /api/admin/formr-partb/123
       """)
@@ -127,6 +126,7 @@ class AdminFormRPartBResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
+      GET    | /api/admin/formr-partb/123
       PUT    | /api/admin/formr-partb/123/unsubmit
       DELETE | /api/admin/formr-partb/123
       """)
@@ -163,6 +163,10 @@ class AdminFormRPartBResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
+      GET    | /api/admin/formr-partb/{formId}          | HEE Admin
+      GET    | /api/admin/formr-partb/{formId}          | HEE Admin Revalidation
+      GET    | /api/admin/formr-partb/{formId}          | HEE Admin Sensitive
+      GET    | /api/admin/formr-partb/{formId}          | HEE TIS Admin
       PUT    | /api/admin/formr-partb/{formId}/unsubmit | HEE Admin
       PUT    | /api/admin/formr-partb/{formId}/unsubmit | HEE Admin Revalidation
       PUT    | /api/admin/formr-partb/{formId}/unsubmit | HEE Admin Sensitive
@@ -178,6 +182,10 @@ class AdminFormRPartBResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
+      GET    | /api/admin/formr-partb/{formId}          | HEE Admin
+      GET    | /api/admin/formr-partb/{formId}          | HEE Admin Revalidation
+      GET    | /api/admin/formr-partb/{formId}          | HEE Admin Sensitive
+      GET    | /api/admin/formr-partb/{formId}          | HEE TIS Admin
       PUT    | /api/admin/formr-partb/{formId}/unsubmit | HEE Admin
       PUT    | /api/admin/formr-partb/{formId}/unsubmit | HEE Admin Revalidation
       PUT    | /api/admin/formr-partb/{formId}/unsubmit | HEE Admin Sensitive
@@ -192,11 +200,34 @@ class AdminFormRPartBResourceIntegrationTest {
     form.setSubmissionDate(LocalDateTime.now());
     template.insert(form);
 
-    when(snsClient.publish(any(PublishRequest.class)))
-        .thenReturn(any());
-
     mockMvc.perform(request(method, uriTemplate, FORM_ID)
             .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of(role))))
         .andExpect(status().isOk());
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      GET    | /api/admin/formr-partb/{formId} | HEE Admin
+      GET    | /api/admin/formr-partb/{formId} | HEE Admin Revalidation
+      GET    | /api/admin/formr-partb/{formId} | HEE Admin Sensitive
+      GET    | /api/admin/formr-partb/{formId} | HEE TIS Admin
+      """)
+  void shouldReturnFormDetailsWhenHasRequiredPermissionAndFormFoundById(HttpMethod method,
+      String uriTemplate, String role) throws Exception {
+    String programmeMembershipId = UUID.randomUUID().toString();
+
+    FormRPartB form = new FormRPartB();
+    form.setId(FORM_ID);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setProgrammeMembershipId(UUID.fromString(programmeMembershipId));
+    form.setSubmissionDate(LocalDateTime.now());
+    template.insert(form);
+
+    mockMvc.perform(request(method, uriTemplate, FORM_ID)
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of(role))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(FORM_ID.toString()))
+        .andExpect(jsonPath("$.traineeTisId").value(TRAINEE_ID))
+        .andExpect(jsonPath("$.programmeMembershipId").value(programmeMembershipId));
   }
 }
