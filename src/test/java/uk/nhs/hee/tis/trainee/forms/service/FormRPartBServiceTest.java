@@ -21,7 +21,6 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
@@ -53,7 +52,6 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.BeanUtils;
-import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.util.ReflectionUtils;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
@@ -125,9 +123,6 @@ class FormRPartBServiceTest {
   @Mock
   private EventBroadcastService eventBroadcastService;
 
-  @Mock
-  private MongoTemplate mongoTemplate;
-
   private ObjectMapper objectMapper;
 
   private TraineeIdentity traineeIdentity;
@@ -159,7 +154,7 @@ class FormRPartBServiceTest {
 
     service = new FormRPartBService(
         repositoryMock, s3FormRPartBRepository, mapper, objectMapper, traineeIdentity,
-        eventBroadcastService, mongoTemplate, FORM_R_PART_B_UPDATED_TOPIC);
+        eventBroadcastService, FORM_R_PART_B_UPDATED_TOPIC);
     initData();
   }
 
@@ -940,10 +935,13 @@ class FormRPartBServiceTest {
   void shouldGetAdminsFormRPartBByIdWhenSubmitted() {
     entity.setLifecycleState(LifecycleState.SUBMITTED);
 
-    when(repositoryMock.findById(DEFAULT_ID))
+    when(repositoryMock.findByIdAndNotDraftNorDeleted(DEFAULT_ID))
         .thenReturn(Optional.of(entity));
 
-    FormRPartBDto dto = service.getAdminsFormRPartBById(DEFAULT_ID_STRING);
+    Optional<FormRPartBDto> optionalDto = service.getAdminsFormRPartBById(DEFAULT_ID_STRING);
+
+    assertThat("Unexpected DTO.", optionalDto.isPresent(), is(true));
+    FormRPartBDto dto = optionalDto.get();
 
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
@@ -955,10 +953,13 @@ class FormRPartBServiceTest {
   void shouldGetAdminsFormRPartBByIdWhenUnsubmitted() {
     entity.setLifecycleState(LifecycleState.UNSUBMITTED);
 
-    when(repositoryMock.findById(DEFAULT_ID))
+    when(repositoryMock.findByIdAndNotDraftNorDeleted(DEFAULT_ID))
         .thenReturn(Optional.of(entity));
 
-    FormRPartBDto dto = service.getAdminsFormRPartBById(DEFAULT_ID_STRING);
+    Optional<FormRPartBDto> optionalDto = service.getAdminsFormRPartBById(DEFAULT_ID_STRING);
+
+    assertThat("Unexpected DTO.", optionalDto.isPresent(), is(true));
+    FormRPartBDto dto = optionalDto.get();
 
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
@@ -967,26 +968,22 @@ class FormRPartBServiceTest {
   }
 
   @Test
-  void shouldReturnNullWhenAdminsFormRPartBNotFound() {
-    when(repositoryMock.findById(DEFAULT_ID))
+  void shouldReturnEmptyWhenAdminsFormRPartBNotFound() {
+    when(repositoryMock.findByIdAndNotDraftNorDeleted(DEFAULT_ID))
         .thenReturn(Optional.empty());
 
-    FormRPartBDto dto = service.getAdminsFormRPartBById(DEFAULT_ID_STRING);
+    Optional<FormRPartBDto> optionalDto = service.getAdminsFormRPartBById(DEFAULT_ID_STRING);
 
-    assertThat("Expected null for non-existent form.", dto, is(nullValue()));
+    assertThat("Expected empty for non-existent form.", optionalDto.isEmpty(), is(true));
   }
 
-  @ParameterizedTest(name = "Should return null when admin form is {0}")
+  @ParameterizedTest(name = "Should return empty when admin form is {0}")
   @EnumSource(value = LifecycleState.class, names = {"DRAFT", "DELETED"})
-  void shouldReturnNullWhenAdminsFormRPartBIsDraftOrDeleted(LifecycleState state) {
+  void shouldReturnEmptyWhenAdminsFormRPartBIsDraftOrDeleted(LifecycleState state) {
     entity.setLifecycleState(state);
 
-    when(repositoryMock.findById(DEFAULT_ID))
-        .thenReturn(Optional.of(entity));
+    Optional<FormRPartBDto> optionalDto = service.getAdminsFormRPartBById(DEFAULT_ID_STRING);
 
-    FormRPartBDto dto = service.getAdminsFormRPartBById(DEFAULT_ID_STRING);
-
-    assertThat("Expected null for " + state + " form.", dto, is(nullValue()));
+    assertThat("Expected empty for " + state + " form.", optionalDto.isEmpty(), is(true));
   }
-
 }

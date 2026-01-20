@@ -141,7 +141,7 @@ class AdminFormRPartBResourceTest {
 
   @Test
   void shouldReturnNotFoundWhenGetFormRPartBsByIdWithRequestParamAndFormNotFound() {
-    when(service.getAdminsFormRPartBById(FORM_ID.toString())).thenReturn(null);
+    when(service.getAdminsFormRPartBById(FORM_ID.toString())).thenReturn(Optional.empty());
 
     ResponseEntity<FormRPartBDto> response = controller.getFormRPartBsById(
         FORM_ID.toString()
@@ -157,7 +157,7 @@ class AdminFormRPartBResourceTest {
     dto.setId(FORM_ID.toString());
     dto.setTraineeTisId(TRAINEE_ID);
 
-    when(service.getAdminsFormRPartBById(FORM_ID.toString())).thenReturn(dto);
+    when(service.getAdminsFormRPartBById(FORM_ID.toString())).thenReturn(Optional.of(dto));
 
     ResponseEntity<FormRPartBDto> response = controller.getFormRPartBsById(
         FORM_ID.toString()

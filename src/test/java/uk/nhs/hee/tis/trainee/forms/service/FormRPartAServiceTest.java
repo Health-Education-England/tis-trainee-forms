@@ -107,7 +107,6 @@ class FormRPartAServiceTest {
         new FormRPartAMapperImpl(),
         new ObjectMapper().findAndRegisterModules(), traineeIdentity,
         eventBroadcastService,
-        mongoTemplate,
         FORM_R_PART_A_UPDATED_TOPIC);
     entity = createEntity();
   }
@@ -709,10 +708,13 @@ class FormRPartAServiceTest {
   void shouldGetAdminsFormRPartAByIdWhenSubmitted() {
     entity.setLifecycleState(LifecycleState.SUBMITTED);
 
-    when(repositoryMock.findById(DEFAULT_ID))
+    when(repositoryMock.findByIdAndNotDraftNorDeleted(DEFAULT_ID))
         .thenReturn(Optional.of(entity));
 
-    FormRPartADto dto = service.getAdminsFormRPartAById(DEFAULT_ID_STRING);
+    Optional<FormRPartADto> optionalDto = service.getAdminsFormRPartAById(DEFAULT_ID_STRING);
+
+    assertThat("Unexpected DTO.", optionalDto.isPresent(), is(true));
+    FormRPartADto dto = optionalDto.get();
 
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
@@ -726,10 +728,13 @@ class FormRPartAServiceTest {
   void shouldGetAdminsFormRPartAByIdWhenUnsubmitted() {
     entity.setLifecycleState(LifecycleState.UNSUBMITTED);
 
-    when(repositoryMock.findById(DEFAULT_ID))
+    when(repositoryMock.findByIdAndNotDraftNorDeleted(DEFAULT_ID))
         .thenReturn(Optional.of(entity));
 
-    FormRPartADto dto = service.getAdminsFormRPartAById(DEFAULT_ID_STRING);
+    Optional<FormRPartADto> optionalDto = service.getAdminsFormRPartAById(DEFAULT_ID_STRING);
+
+    assertThat("Unexpected DTO.", optionalDto.isPresent(), is(true));
+    FormRPartADto dto = optionalDto.get();
 
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
@@ -740,25 +745,22 @@ class FormRPartAServiceTest {
   }
 
   @Test
-  void shouldReturnNullWhenAdminsFormRPartANotFound() {
-    when(repositoryMock.findById(DEFAULT_ID))
+  void shouldReturnEmptyWhenAdminsFormRPartANotFound() {
+    when(repositoryMock.findByIdAndNotDraftNorDeleted(DEFAULT_ID))
         .thenReturn(Optional.empty());
 
-    FormRPartADto dto = service.getAdminsFormRPartAById(DEFAULT_ID_STRING);
+    Optional<FormRPartADto> optionalDto = service.getAdminsFormRPartAById(DEFAULT_ID_STRING);
 
-    assertThat("Expected null for non-existent form.", dto == null, is(true));
+    assertThat("Expected empty for non-existent form.", optionalDto.isEmpty(), is(true));
   }
 
-  @ParameterizedTest(name = "Should return null when admin form is {0}")
+  @ParameterizedTest(name = "Should return empty when admin form is {0}")
   @EnumSource(value = LifecycleState.class, names = {"DRAFT", "DELETED"})
-  void shouldReturnNullWhenAdminsFormRPartAIsDraftOrDeleted(LifecycleState state) {
+  void shouldReturnEmptyWhenAdminsFormRPartAIsDraftOrDeleted(LifecycleState state) {
     entity.setLifecycleState(state);
 
-    when(repositoryMock.findById(DEFAULT_ID))
-        .thenReturn(Optional.of(entity));
+    Optional<FormRPartADto> optionalDto = service.getAdminsFormRPartAById(DEFAULT_ID_STRING);
 
-    FormRPartADto dto = service.getAdminsFormRPartAById(DEFAULT_ID_STRING);
-
-    assertThat("Expected null for " + state + " form.", dto == null, is(true));
+    assertThat("Expected empty for " + state + " form.", optionalDto.isEmpty(), is(true));
   }
 }

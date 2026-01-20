@@ -94,7 +94,7 @@ public class AdminFormRPartBResource {
   /**
    * GET /formr-partb/:id.
    *
-   * @param id        The ID of the form
+   * @param id The ID of the form
    * @return the formR partB
    */
   @GetMapping("/{id}")
@@ -103,12 +103,9 @@ public class AdminFormRPartBResource {
   ) {
     log.info("FormRPartB by id {}", id);
 
-    FormRPartBDto formRPartBDto = service.getAdminsFormRPartBById(id);
-    if (formRPartBDto != null) {
-      log.info("Retrieved FormRPartB id {} for trainee {} programme membership {}",
-          id, formRPartBDto.getTraineeTisId(), formRPartBDto.getProgrammeMembershipId());
-    }
-    return ResponseEntity.of(Optional.ofNullable(formRPartBDto));
+    Optional<FormRPartBDto> formRPartBDto = service.getAdminsFormRPartBById(id);
+
+    return ResponseEntity.of(formRPartBDto);
   }
 
   /**

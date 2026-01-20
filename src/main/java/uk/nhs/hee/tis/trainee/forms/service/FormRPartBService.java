@@ -33,7 +33,6 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
@@ -89,7 +88,6 @@ public class FormRPartBService {
    * @param objectMapper             The object mapper.
    * @param traineeIdentity          The trainee identity.
    * @param eventBroadcastService    The event broadcast service.
-   * @param mongoTemplate The Mongo template.
    * @param formRPartBUpdatedTopic The SNS topic for FormR PartB updated events.
    */
   public FormRPartBService(FormRPartBRepository formRPartBRepository,
@@ -97,7 +95,6 @@ public class FormRPartBService {
       FormRPartBMapper formRPartBMapper,
       ObjectMapper objectMapper, TraineeIdentity traineeIdentity,
       EventBroadcastService eventBroadcastService,
-      MongoTemplate mongoTemplate,
       @Value("${application.aws.sns.formr-updated}") String formRPartBUpdatedTopic) {
     this.formRPartBRepository = formRPartBRepository;
     this.formRPartBMapper = formRPartBMapper;
@@ -187,26 +184,14 @@ public class FormRPartBService {
   /**
    * get FormRPartB by id for admins.
    *
-   * @param id        The ID of the form to retrieve.
-   * @return the FormRPartB DTO.
+   * @param id The ID of the form to retrieve.
+   * @return Optional containing the FormRPartB DTO, or empty if form is DRAFT/DELETED or not found.
    */
-  public FormRPartBDto getAdminsFormRPartBById(String id) {
+  public Optional<FormRPartBDto> getAdminsFormRPartBById(String id) {
     log.info("Request to get FormRPartB by id : {}", id);
 
-    Optional<FormRPartB> optionalDbForm = formRPartBRepository.findById(UUID.fromString(id));
-
-    if (optionalDbForm.isEmpty()) {
-      return null;
-    }
-
-    FormRPartB form = optionalDbForm.get();
-
-    if (form.getLifecycleState() == LifecycleState.DRAFT
-        || form.getLifecycleState() == LifecycleState.DELETED) {
-      log.info("FormRPartB {} is {}, returning null", id, form.getLifecycleState());
-      return null;
-    }
-    return formRPartBMapper.toDto(form);
+    return formRPartBRepository.findByIdAndNotDraftNorDeleted(UUID.fromString(id))
+        .map(formRPartBMapper::toDto);
   }
 
   /**

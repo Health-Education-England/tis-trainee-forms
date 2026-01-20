@@ -103,14 +103,15 @@ public class AdminFormRPartAResource {
   ) {
     log.info("Request for FormRPartA by id {}", id);
 
-    FormRPartADto formRPartADto = service.getAdminsFormRPartAById(id);
-    if (formRPartADto != null) {
-      log.info("Retrieved FormRPartA id {} for trainee {} programme membership {}",
-          id, formRPartADto.getTraineeTisId(), formRPartADto.getProgrammeMembershipId());
-    }
-    return ResponseEntity.of(Optional.ofNullable(formRPartADto));
-  }
+    Optional<FormRPartADto> formRPartADto = service.getAdminsFormRPartAById(id);
 
+    formRPartADto.ifPresent(dto ->
+        log.info("Retrieved FormRPartA id {} for trainee {} programme membership {}",
+            id, dto.getTraineeTisId(), dto.getProgrammeMembershipId())
+    );
+
+    return ResponseEntity.of(formRPartADto);
+  }
   /**
    * Delete a Form-R with the given ID.
    *
