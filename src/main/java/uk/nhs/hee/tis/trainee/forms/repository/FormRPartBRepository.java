@@ -34,10 +34,10 @@ public interface FormRPartBRepository extends MongoRepository<FormRPartB, UUID> 
 
   Optional<FormRPartB> findByIdAndTraineeTisId(UUID id, String traineeTisId);
 
-  @Query("{ 'id': ?0, 'lifecycleState': { $nin: ['DELETED', 'DRAFT'] } }")
+  @Query("{ 'traineeTisId': ?0, 'lifecycleState': { $nin: ['DELETED', 'DRAFT'] } }")
   List<FormRPartB> findNotDraftNorDeletedByTraineeTisId(String traineeTisId);
 
-  @Query("{ 'id': ?0, 'lifecycleState': { $nin: ['DELETED', 'DRAFT'] } }")
+  @Query("{ '_id': ?0, 'lifecycleState': { $nin: ['DELETED', 'DRAFT'] } }")
   Optional<FormRPartB> findByIdAndNotDraftNorDeleted(UUID id);
 
   @Query(

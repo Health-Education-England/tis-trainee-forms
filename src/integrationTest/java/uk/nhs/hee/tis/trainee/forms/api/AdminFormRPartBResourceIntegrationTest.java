@@ -27,6 +27,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 import io.awspring.cloud.sns.core.SnsTemplate;
 import java.net.URI;
@@ -35,8 +36,11 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -53,8 +57,10 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.sns.SnsClient;
+import software.amazon.awssdk.services.sns.model.PublishRequest;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 
 @SpringBootTest
@@ -182,10 +188,6 @@ class AdminFormRPartBResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      GET    | /api/admin/formr-partb/{formId}          | HEE Admin
-      GET    | /api/admin/formr-partb/{formId}          | HEE Admin Revalidation
-      GET    | /api/admin/formr-partb/{formId}          | HEE Admin Sensitive
-      GET    | /api/admin/formr-partb/{formId}          | HEE TIS Admin
       PUT    | /api/admin/formr-partb/{formId}/unsubmit | HEE Admin
       PUT    | /api/admin/formr-partb/{formId}/unsubmit | HEE Admin Revalidation
       PUT    | /api/admin/formr-partb/{formId}/unsubmit | HEE Admin Sensitive
@@ -193,6 +195,29 @@ class AdminFormRPartBResourceIntegrationTest {
       DELETE | /api/admin/formr-partb/{formId}          | TSS Support Admin
       """)
   void shouldReturnOkWhenHasRequiredPermissionAndFormFound(HttpMethod method, String uriTemplate,
+      String role) throws Exception {
+    FormRPartB form = new FormRPartB();
+    form.setId(FORM_ID);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setSubmissionDate(LocalDateTime.now());
+    template.insert(form);
+
+    Mockito.when(snsClient.publish(ArgumentMatchers.any(PublishRequest.class)))
+        .thenReturn(ArgumentMatchers.any());
+
+    mockMvc.perform(request(method, uriTemplate, FORM_ID)
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of(role))))
+        .andExpect(status().isOk());
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      GET    | /api/admin/formr-partb/{formId}          | HEE Admin
+      GET    | /api/admin/formr-partb/{formId}          | HEE Admin Revalidation
+      GET    | /api/admin/formr-partb/{formId}          | HEE Admin Sensitive
+      GET    | /api/admin/formr-partb/{formId}          | HEE TIS Admin
+      """)
+  void shouldReturnOkWhenFormFound(HttpMethod method, String uriTemplate,
       String role) throws Exception {
     FormRPartB form = new FormRPartB();
     form.setId(FORM_ID);
@@ -229,5 +254,97 @@ class AdminFormRPartBResourceIntegrationTest {
         .andExpect(jsonPath("$.id").value(FORM_ID.toString()))
         .andExpect(jsonPath("$.traineeTisId").value(TRAINEE_ID))
         .andExpect(jsonPath("$.programmeMembershipId").value(programmeMembershipId));
+  }
+
+  @Test
+  void shouldNotReturnDraftFormsInList() throws Exception {
+    FormRPartB submittedForm = new FormRPartB();
+    submittedForm.setId(UUID.randomUUID());
+    submittedForm.setTraineeTisId(TRAINEE_ID);
+    submittedForm.setLifecycleState(LifecycleState.SUBMITTED);
+    submittedForm.setSubmissionDate(LocalDateTime.now());
+    template.insert(submittedForm);
+
+    FormRPartB draftForm = new FormRPartB();
+    draftForm.setId(UUID.randomUUID());
+    draftForm.setTraineeTisId(TRAINEE_ID);
+    draftForm.setLifecycleState(LifecycleState.DRAFT);
+    draftForm.setSubmissionDate(null);
+    template.insert(draftForm);
+
+    mockMvc.perform(get("/api/admin/formr-partb")
+            .param("traineeId", TRAINEE_ID)
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of("HEE Admin"))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$.length()").value(1))
+        .andExpect(jsonPath("$[0].id").value(submittedForm.getId().toString()))
+        .andExpect(jsonPath("$[0].lifecycleState").value("SUBMITTED"));
+  }
+
+  @Test
+  void shouldNotReturnDeletedFormsInList() throws Exception {
+    // SUBMITTED form (should be returned)
+    FormRPartB submittedForm = new FormRPartB();
+    submittedForm.setId(UUID.randomUUID());
+    submittedForm.setTraineeTisId(TRAINEE_ID);
+    submittedForm.setLifecycleState(LifecycleState.SUBMITTED);
+    submittedForm.setSubmissionDate(LocalDateTime.now());
+    template.insert(submittedForm);
+
+    FormRPartB deletedForm = new FormRPartB();
+    deletedForm.setId(UUID.randomUUID());
+    deletedForm.setTraineeTisId(TRAINEE_ID);
+    deletedForm.setLifecycleState(LifecycleState.DELETED);
+    deletedForm.setSubmissionDate(LocalDateTime.now().minusDays(5));
+    template.insert(deletedForm);
+
+    mockMvc.perform(get("/api/admin/formr-partb")
+            .param("traineeId", TRAINEE_ID)
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of("HEE Admin"))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$.length()").value(1))
+        .andExpect(jsonPath("$[0].id").value(submittedForm.getId().toString()))
+        .andExpect(jsonPath("$[0].lifecycleState").value("SUBMITTED"));
+  }
+
+  @Test
+  void shouldOnlyReturnSubmittedAndUnsubmittedFormsInList() throws Exception {
+    FormRPartB submittedForm = new FormRPartB();
+    submittedForm.setId(UUID.randomUUID());
+    submittedForm.setTraineeTisId(TRAINEE_ID);
+    submittedForm.setLifecycleState(LifecycleState.SUBMITTED);
+    submittedForm.setSubmissionDate(LocalDateTime.now());
+    template.insert(submittedForm);
+
+    FormRPartB unsubmittedForm = new FormRPartB();
+    unsubmittedForm.setId(UUID.randomUUID());
+    unsubmittedForm.setTraineeTisId(TRAINEE_ID);
+    unsubmittedForm.setLifecycleState(LifecycleState.UNSUBMITTED);
+    unsubmittedForm.setSubmissionDate(LocalDateTime.now().minusDays(1));
+    template.insert(unsubmittedForm);
+
+    FormRPartB draftForm = new FormRPartB();
+    draftForm.setId(UUID.randomUUID());
+    draftForm.setTraineeTisId(TRAINEE_ID);
+    draftForm.setLifecycleState(LifecycleState.DRAFT);
+    template.insert(draftForm);
+
+    FormRPartB deletedForm = new FormRPartB();
+    deletedForm.setId(UUID.randomUUID());
+    deletedForm.setTraineeTisId(TRAINEE_ID);
+    deletedForm.setLifecycleState(LifecycleState.DELETED);
+    deletedForm.setSubmissionDate(LocalDateTime.now().minusDays(2));
+    template.insert(deletedForm);
+
+    mockMvc.perform(get("/api/admin/formr-partb")
+            .param("traineeId", TRAINEE_ID)
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of("HEE Admin"))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$.length()").value(2))
+        .andExpect(jsonPath("$[?(@.lifecycleState == 'DRAFT')]").doesNotExist())
+        .andExpect(jsonPath("$[?(@.lifecycleState == 'DELETED')]").doesNotExist());
   }
 }
