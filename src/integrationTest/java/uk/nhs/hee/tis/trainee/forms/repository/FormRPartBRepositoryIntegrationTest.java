@@ -172,4 +172,31 @@ class FormRPartBRepositoryIntegrationTest {
     assertThat("Expected form to be present.", result.isPresent(), is(true));
     assertThat("Unexpected lifecycle state.", result.get().getLifecycleState(), is(state));
   }
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"DRAFT", "DELETED"})
+  void shouldNotReturnDraftOrDeletedFormsInFindNotDraftNorDeletedByTraineeTisId(LifecycleState state) {
+    FormRPartB form = new FormRPartB();
+    form.setLifecycleState(state);
+    form.setTraineeTisId("123");
+    template.save(form);
+
+    List<FormRPartB> result = repository.findNotDraftNorDeletedByTraineeTisId("123");
+
+    assertThat("Expected empty list for " + state + " form.", result, hasSize(0));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"DRAFT", "DELETED"}, mode = Mode.EXCLUDE)
+  void shouldReturnNonDraftNonDeletedFormsInFindNotDraftNorDeletedByTraineeTisId(LifecycleState state) {
+    FormRPartB form = new FormRPartB();
+    form.setLifecycleState(state);
+    form.setTraineeTisId("123");
+    template.save(form);
+
+    List<FormRPartB> result = repository.findNotDraftNorDeletedByTraineeTisId("123");
+
+    assertThat("Expected form to be present.", result, hasSize(1));
+    assertThat("Unexpected lifecycle state.", result.get(0).getLifecycleState(), is(state));
+  }
+
 }

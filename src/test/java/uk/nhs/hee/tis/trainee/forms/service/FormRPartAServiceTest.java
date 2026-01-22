@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.service;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -662,10 +663,27 @@ class FormRPartAServiceTest {
   @ParameterizedTest(name = "Should return empty when admin form is {0}")
   @EnumSource(value = LifecycleState.class, names = {"DRAFT", "DELETED"})
   void shouldReturnEmptyWhenAdminsFormRPartAIsDraftOrDeleted(LifecycleState state) {
-    entity.setLifecycleState(state);
+
+    when(repositoryMock.findByIdAndNotDraftNorDeleted(DEFAULT_ID))
+        .thenReturn(Optional.empty());
 
     Optional<FormRPartADto> optionalDto = service.getAdminsFormRPartAById(DEFAULT_ID_STRING);
 
     assertThat("Expected empty for " + state + " form.", optionalDto.isEmpty(), is(true));
   }
+
+  @ParameterizedTest(name = "Should return form when admin form is {0}")
+  @EnumSource(value = LifecycleState.class, names = {"DRAFT", "DELETED"}, mode = Mode.EXCLUDE)
+  void shouldReturnFormWhenAdminsFormRPartAIsNotDraftOrDeleted(LifecycleState state) {
+    entity.setLifecycleState(state);
+
+    when(repositoryMock.findByIdAndNotDraftNorDeleted(DEFAULT_ID))
+        .thenReturn(Optional.of(entity));
+
+    Optional<FormRPartADto> optionalDto = service.getAdminsFormRPartAById(DEFAULT_ID_STRING);
+
+    assertTrue(optionalDto.isPresent(), "Expected form present for " + state + " state.");
+    assertThat("Unexpected lifecycle state.", optionalDto.get().getLifecycleState(), is(state));
+  }
+
 }
