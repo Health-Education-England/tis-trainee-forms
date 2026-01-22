@@ -1355,7 +1355,7 @@ class LtftResourceIntegrationTest {
     String pdfText = textStripper.getText(pdf);
 
     assertThat("Unexpected header.", pdfText,
-        startsWith("Changing hours (LTFT)" + System.lineSeparator()));
+        startsWith("Less Than Full Time (LTFT)" + System.lineSeparator()));
     assertThat("Unexpected sub title.", pdfText,
         containsString(status + " Application" + System.lineSeparator()));
     assertThat("Unexpected name.", pdfText,
@@ -1381,7 +1381,339 @@ class LtftResourceIntegrationTest {
   }
 
   @Test
-  void shouldGetDetailPdfProgrammeDetails() throws Exception {
+  void shouldGetDetailPdfYourProgrammeAndChange() throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setAssignedAdmin(Person.builder().build(), null);
+
+    LocalDate startDate = LocalDate.now();
+    LocalDate endDate = startDate.plusYears(1);
+    LocalDate changeStartDate = startDate.plusMonths(1);
+    LocalDate cctDate = endDate.plusYears(2);
+
+    LtftContent content = LtftContent.builder()
+        .personalDetails(LtftContent.PersonalDetails.builder().build())
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(DBC_1)
+            .name("General Practice")
+            .startDate(startDate)
+            .endDate(endDate)
+            .wte(0.85)
+            .build())
+        .change(CctChange.builder()
+            .type(CctChangeType.LTFT)
+            .startDate(changeStartDate)
+            .endDate(endDate)
+            .wte(0.75)
+            .cctDate(cctDate)
+            .build())
+        .reasons(LtftContent.Reasons.builder().build())
+        .declarations(LtftContent.Declarations.builder().build())
+        .discussions(Discussions.builder().build())
+        .build();
+    ltft.setContent(content);
+
+    AbstractAuditedForm.Status.StatusInfo statusInfo =
+        AbstractAuditedForm.Status.StatusInfo.builder()
+            .state(SUBMITTED)
+            .timestamp(Instant.now())
+            .build();
+
+    ltft.setStatus(AbstractAuditedForm.Status.builder()
+        .current(statusInfo)
+        .history(List.of(statusInfo))
+        .build());
+
+    ltft = template.insert(ltft);
+
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
+
+    MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
+            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+            .with(jwt().jwt(token)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_PDF))
+        .andReturn();
+
+    byte[] response = result.getResponse().getContentAsByteArray();
+    PDDocument pdf = Loader.loadPDF(response);
+    PDFTextStripper textStripper = new PDFTextStripper();
+    textStripper.setAddMoreFormatting(false);
+    String pdfText = textStripper.getText(pdf);
+
+    // Your Programme
+    assertThat("Unexpected section header.", pdfText,
+        containsString("Your Programme" + System.lineSeparator()));
+    assertThat("Unexpected working hours question.", removeLineBreak(pdfText),
+        containsString("What percentage of your full time hours do you work before your proposed change?"));
+    assertThat("Unexpected programme name.", pdfText,
+        containsString("General Practice" + System.lineSeparator()));
+
+    // Working hours before change
+    assertThat("Unexpected section header.", pdfText,
+        containsString("Working hours before change" + System.lineSeparator()));
+    assertThat("Unexpected working hours question.", removeLineBreak(pdfText),
+        containsString("What percentage of your full time hours do you work before your proposed change?"));
+    assertThat("Unexpected working hours value.", pdfText,
+        containsString("85" + System.lineSeparator()));
+
+
+    // Proposed change to your working hours
+    assertThat("Unexpected section header.", pdfText,
+        containsString("Proposed change to your working hours" + System.lineSeparator()));
+    assertThat("Unexpected change wte question.", removeLineBreak(pdfText),
+        containsString("What percentage of your full time hours do you want to work?"));
+    assertThat("Unexpected change wte.", pdfText,
+        containsString("75" + System.lineSeparator()));
+
+    // Start date
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMMM yyyy");
+    assertThat("Unexpected section header." + System.lineSeparator(), pdfText,
+        containsString("Start date" + System.lineSeparator()));
+    assertThat("Unexpected change start date question.", removeLineBreak(pdfText),
+        containsString("When should this change to your working hours begin?"));
+    assertThat("Unexpected change start date." + System.lineSeparator(), pdfText,
+        containsString(startDate.format(formatter)));
+  }
+
+  @Test
+  void shouldGetDetailPdfApproverAndDiscussionsDetails() throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setTraineeTisId(TRAINEE_ID);
+
+    LtftContent content = LtftContent.builder()
+        .personalDetails(LtftContent.PersonalDetails.builder().build())
+        .programmeMembership(ProgrammeMembership.builder().build())
+        .change(CctChange.builder().build())
+        .reasons(LtftContent.Reasons.builder().build())
+        .declarations(LtftContent.Declarations.builder().build())
+        .discussions(Discussions.builder()
+            .tpdName("Tee Pee-Dee")
+            .tpdEmail("tpd@example.com")
+            .other(List.of(
+                Person.builder()
+                    .name("Ed Super")
+                    .email("ed.super@example.com")
+                    .role("Educational Supervisor")
+                    .build(),
+                Person.builder()
+                    .name("Person Two")
+                    .email("person.2@example.com")
+                    .role("Test Data")
+                    .build()
+            ))
+            .build())
+        .build();
+    ltft.setContent(content);
+
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+
+    AbstractAuditedForm.Status.StatusInfo statusInfo = AbstractAuditedForm.Status.StatusInfo.builder()
+        .state(SUBMITTED)
+        .assignedAdmin(Person.builder().build())
+        .timestamp(Instant.now())
+        .build();
+    ltft.setStatus(AbstractAuditedForm.Status.builder()
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED)
+                .timestamp(latestSubmitted).build()))
+        .build()
+    );
+
+    ltft = template.insert(ltft);
+
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
+    MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
+            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+            .with(jwt().jwt(token)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_PDF))
+        .andReturn();
+
+    byte[] response = result.getResponse().getContentAsByteArray();
+    PDDocument pdf = Loader.loadPDF(response);
+    PDFTextStripper textStripper = new PDFTextStripper();
+    textStripper.setAddMoreFormatting(false);
+    String pdfText = textStripper.getText(pdf);
+
+    // Pre-approver discussions
+    assertThat("Unexpected section header.", pdfText,
+        containsString("Pre-approver discussions" + System.lineSeparator()));
+    assertThat("Unexpected TPD name.", pdfText,
+        containsString("Pre-approver name Tee Pee-Dee" + System.lineSeparator()));
+    assertThat("Unexpected TPD email.", pdfText,
+        containsString("Pre-approver email address tpd@example.com" + System.lineSeparator()));
+
+    // Other discussions
+    assertThat("Unexpected section header.", pdfText,
+        containsString("Other discussions" + System.lineSeparator()));
+    assertThat("Unexpected other discussions.", pdfText, containsString(
+        "Name Ed Super"
+            + System.lineSeparator() + "Email ed.super@example.com"
+            + System.lineSeparator() + "Role Educational Supervisor" + System.lineSeparator()));
+    assertThat("Unexpected other discussions.", pdfText, containsString(
+        "Name Person Two"
+            + System.lineSeparator() + "Email person.2@example.com"
+            + System.lineSeparator() + "Role Test Data" + System.lineSeparator()));
+  }
+
+  @Test
+  void shouldGetDetailPdfReasonAndSupportDetails() throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setAssignedAdmin(Person.builder().build(), null);
+
+    LtftContent content = LtftContent.builder()
+        .personalDetails(LtftContent.PersonalDetails.builder().build())
+        .programmeMembership(ProgrammeMembership.builder().build())
+        .change(CctChange.builder().build())
+        .reasons(LtftContent.Reasons.builder()
+            .selected(List.of("Test1", "Test2", "Other"))
+            .otherDetail("other-detail")
+            .supportingInformation("supporting-information")
+            .build())
+        .declarations(LtftContent.Declarations.builder().build())
+        .discussions(Discussions.builder().build())
+        .build();
+    ltft.setContent(content);
+
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+
+    AbstractAuditedForm.Status.StatusInfo statusInfo = AbstractAuditedForm.Status.StatusInfo.builder()
+        .state(SUBMITTED).timestamp(Instant.now())
+        .build();
+    ltft.setStatus(AbstractAuditedForm.Status.builder()
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED)
+                .timestamp(latestSubmitted).build()))
+        .build()
+    );
+
+    ltft = template.insert(ltft);
+
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
+    MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
+            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+            .with(jwt().jwt(token)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_PDF))
+        .andReturn();
+
+    byte[] response = result.getResponse().getContentAsByteArray();
+    PDDocument pdf = Loader.loadPDF(response);
+    PDFTextStripper textStripper = new PDFTextStripper();
+    textStripper.setAddMoreFormatting(false);
+    String pdfText = textStripper.getText(pdf);
+
+    // Reason(s) for applying
+    assertThat("Unexpected section header.", pdfText,
+        containsString("Reason(s) for applying" + System.lineSeparator()));
+    assertThat("Unexpected reason.", pdfText,
+        containsString("Why are you applying? Test1, Test2, Other" + System.lineSeparator()));
+    assertThat("Unexpected other reason.", pdfText,
+        containsString("Other reason other-detail" + System.lineSeparator()));
+
+    // Supporting information
+    assertThat("Unexpected section header.", pdfText,
+        containsString("Supporting information" + System.lineSeparator()));
+    assertThat("Unexpected support info question.", removeLineBreak(pdfText),
+        containsString("Please provide brief supporting information for your application."));
+    assertThat("Unexpected support info.", pdfText,
+        containsString("supporting-information" + System.lineSeparator()));
+  }
+
+  @Test
+  void shouldGetDetailPdfPersonalDetails() throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setTraineeTisId(TRAINEE_ID);
+
+    LtftContent content = LtftContent.builder()
+        .personalDetails(LtftContent.PersonalDetails.builder()
+            .title("Dr")
+            .forenames("Anthony")
+            .surname("Gilliam")
+            .email("anthony.gilliam@example.com")
+            .gmcNumber("1234567")
+            .gdcNumber("D123456")
+            .telephoneNumber("07700900000")
+            .mobileNumber("07700900001")
+            .skilledWorkerVisaHolder(true)
+            .build())
+        .programmeMembership(ProgrammeMembership.builder().build())
+        .change(CctChange.builder().build())
+        .reasons(LtftContent.Reasons.builder().build())
+        .declarations(LtftContent.Declarations.builder().build())
+        .discussions(LtftContent.Discussions.builder().build())
+        .build();
+    ltft.setContent(content);
+
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+
+    AbstractAuditedForm.Status.StatusInfo statusInfo = AbstractAuditedForm.Status.StatusInfo.builder()
+        .state(SUBMITTED)
+        .assignedAdmin(Person.builder().build())
+        .timestamp(Instant.now())
+        .build();
+    ltft.setStatus(AbstractAuditedForm.Status.builder()
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED)
+                .timestamp(latestSubmitted).build()))
+        .build()
+    );
+
+    ltft = template.insert(ltft);
+
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
+    MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
+            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+            .with(jwt().jwt(token)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_PDF))
+        .andReturn();
+
+    byte[] response = result.getResponse().getContentAsByteArray();
+    PDDocument pdf = Loader.loadPDF(response);
+    PDFTextStripper textStripper = new PDFTextStripper();
+    textStripper.setAddMoreFormatting(false);
+    String pdfText = textStripper.getText(pdf);
+
+    // Tier 2 / Skilled Worker status
+    assertThat("Unexpected section header.", pdfText,
+        containsString("Tier 2 / Skilled Worker status" + System.lineSeparator()));
+    assertThat("Unexpected visa holder question.", removeLineBreak(pdfText),
+        containsString("Are you a Tier 2 / Skilled Worker Visa holder?"));
+    assertThat("Unexpected visa holder.", pdfText,
+        containsString("true" + System.lineSeparator()));
+
+    // Personal Details
+    assertThat("Unexpected section header.", pdfText,
+        containsString("Personal Details" + System.lineSeparator()));
+    assertThat("Unexpected forename.", pdfText,
+        containsString("Forename Anthony" + System.lineSeparator()));
+    assertThat("Unexpected surname.", pdfText,
+        containsString("Surname (GMC-Registered) Gilliam" + System.lineSeparator()));
+    assertThat("Unexpected contact telphone.", pdfText,
+        containsString("Contact Telephone 07700900000" + System.lineSeparator()));
+    assertThat("Unexpected contact mobile.", pdfText,
+        containsString("Contact Mobile 07700900001" + System.lineSeparator()));
+    assertThat("Unexpected email.", pdfText,
+        containsString("Email Address anthony.gilliam@example.com" + System.lineSeparator()));
+    assertThat("Unexpected GMC.", pdfText,
+        containsString("GMC Number 1234567" + System.lineSeparator()));
+    assertThat("Unexpected GDC.", pdfText,
+        containsString("GDC Number (if applicable) D123456" + System.lineSeparator()));
+    assertThat("Unexpected GDC.", removeLineBreak(pdfText),
+        containsString("Public Health Number (if applicable) Not provided"));
+  }
+
+  @Test
+  void shouldGetDetailPdfChangeSummary() throws Exception {
     LtftForm ltft = new LtftForm();
     ltft.setTraineeTisId(TRAINEE_ID);
     ltft.setAssignedAdmin(Person.builder().build(), null);
@@ -1443,252 +1775,26 @@ class LtftResourceIntegrationTest {
     textStripper.setAddMoreFormatting(false);
     String pdfText = textStripper.getText(pdf);
 
-    assertThat("Unexpected section header.", pdfText,
-        containsString("CCT Calculation Summary" + System.lineSeparator()));
-    assertThat("Unexpected sub header.", pdfText,
-        containsString("Linked Programme" + System.lineSeparator()));
-    assertThat("Unexpected name.", pdfText,
-        containsString("Programme Name General Practice" + System.lineSeparator()));
+    assertThat("Unexpected section header.", removeLineBreak(pdfText),
+        containsString("Change to your completion date for General Practice"));
+    assertThat("Unexpected programme.", pdfText,
+        containsString("Programme General Practice" + System.lineSeparator()));
+    assertThat("Unexpected precentage change.", pdfText,
+        containsString("Working hours percentage change 85% -> 75%" + System.lineSeparator()));
     DateTimeFormatter datePattern = DateTimeFormatter.ofPattern("dd MMMM yyyy");
-    String startDateString = startDate.format(datePattern);
-    assertThat("Unexpected start date.", pdfText,
-        containsString("Start Date " + startDateString + System.lineSeparator()));
+    String startDateString = changeStartDate.format(datePattern);
+    assertThat("Unexpected start date.", removeLineBreak(pdfText),
+        containsString("Start date " + startDateString));
+    assertThat("Unexpected 16 weeks warning.", removeLineBreak(pdfText),
+        containsString("Warning: Giving less than 16 weeks notice to change your working hours is classed as a late application and will only be considered on an exceptional basis."));
     String endDateString = endDate.format(datePattern);
-    assertThat("Unexpected end date.", pdfText,
-        containsString("Completion Date " + endDateString + System.lineSeparator()));
-
-    assertThat("Unexpected sub header.", pdfText,
-        containsString("Current WTE percentage" + System.lineSeparator()));
-    assertThat("Unexpected current wte.", pdfText,
-        containsString("WTE 85%" + System.lineSeparator()));
-
-    assertThat("Unexpected sub header.", pdfText,
-        containsString("Proposed Changes" + System.lineSeparator()));
-    assertThat("Unexpected change type.", pdfText,
-        containsString("Change Type Changing hours (LTFT)" + System.lineSeparator()));
-    String changeStartDateString = changeStartDate.format(datePattern);
-    assertThat("Unexpected LTFT start date.", pdfText,
-        containsString("LTFT Start Date " + changeStartDateString + System.lineSeparator()));
-    assertThat("Unexpected proposed wte.", pdfText,
-        containsString("Proposed WTE 75%" + System.lineSeparator()));
+    assertThat("Unexpected current end date.", removeLineBreak(pdfText),
+        containsString("Current completion date " + endDateString + " (Programme end date on TIS)"));
     String cctDateString = cctDate.format(datePattern);
-    assertThat("Unexpected new completion date.", pdfText,
-        containsString("New Completion Date " + cctDateString + System.lineSeparator()));
-  }
-
-  @Test
-  void shouldGetDetailPdfDiscussionsDetails() throws Exception {
-    LtftForm ltft = new LtftForm();
-    ltft.setTraineeTisId(TRAINEE_ID);
-
-    LtftContent content = LtftContent.builder()
-        .personalDetails(LtftContent.PersonalDetails.builder().build())
-        .programmeMembership(ProgrammeMembership.builder().build())
-        .change(CctChange.builder().build())
-        .reasons(LtftContent.Reasons.builder().build())
-        .declarations(LtftContent.Declarations.builder().build())
-        .discussions(Discussions.builder()
-            .tpdName("Tee Pee-Dee")
-            .tpdEmail("tpd@example.com")
-            .other(List.of(
-                Person.builder()
-                    .name("Ed Super")
-                    .email("ed.super@example.com")
-                    .role("Educational Supervisor")
-                    .build(),
-                Person.builder()
-                    .name("Person Two")
-                    .email("person.2@example.com")
-                    .role("Test Data")
-                    .build()
-            ))
-            .build())
-        .build();
-    ltft.setContent(content);
-
-    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
-
-    AbstractAuditedForm.Status.StatusInfo statusInfo = AbstractAuditedForm.Status.StatusInfo.builder()
-        .state(SUBMITTED)
-        .assignedAdmin(Person.builder().build())
-        .timestamp(Instant.now())
-        .build();
-    ltft.setStatus(AbstractAuditedForm.Status.builder()
-        .current(statusInfo)
-        .history(List.of(
-            statusInfo,
-            AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED)
-                .timestamp(latestSubmitted).build()))
-        .build()
-    );
-
-    ltft = template.insert(ltft);
-
-    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
-    MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
-            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
-            .with(jwt().jwt(token)))
-        .andExpect(status().isOk())
-        .andExpect(content().contentType(APPLICATION_PDF))
-        .andReturn();
-
-    byte[] response = result.getResponse().getContentAsByteArray();
-    PDDocument pdf = Loader.loadPDF(response);
-    PDFTextStripper textStripper = new PDFTextStripper();
-    textStripper.setAddMoreFormatting(false);
-    String pdfText = textStripper.getText(pdf);
-
-    assertThat("Unexpected section header.", pdfText,
-        containsString("Discussing your proposals" + System.lineSeparator()));
-    assertThat("Unexpected TPD name.", pdfText,
-        containsString("TPD Name Tee Pee-Dee" + System.lineSeparator()));
-    assertThat("Unexpected TPD email.", pdfText,
-        containsString("TPD Email Address tpd@example.com" + System.lineSeparator()));
-    assertThat("Unexpected other discussions.", pdfText, containsString(
-        "Other Discussions Name: Ed Super"
-            + System.lineSeparator() + "Email: ed.super@example.com"
-            + System.lineSeparator() + "Role: Educational Supervisor"
-            + System.lineSeparator() + "Name: Person Two"
-            + System.lineSeparator() + "Email: person.2@example.com"
-            + System.lineSeparator() + "Role: Test Data" + System.lineSeparator()));
-  }
-
-  @Test
-  void shouldGetDetailPdfReasonDetails() throws Exception {
-    LtftForm ltft = new LtftForm();
-    ltft.setTraineeTisId(TRAINEE_ID);
-    ltft.setAssignedAdmin(Person.builder().build(), null);
-
-    LtftContent content = LtftContent.builder()
-        .personalDetails(LtftContent.PersonalDetails.builder().build())
-        .programmeMembership(ProgrammeMembership.builder().build())
-        .change(CctChange.builder().build())
-        .reasons(LtftContent.Reasons.builder()
-            .selected(List.of("Test1", "Test2", "Other"))
-            .otherDetail("other-detail")
-            .supportingInformation("supporting-information")
-            .build())
-        .declarations(LtftContent.Declarations.builder().build())
-        .discussions(Discussions.builder().build())
-        .build();
-    ltft.setContent(content);
-
-    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
-
-    AbstractAuditedForm.Status.StatusInfo statusInfo = AbstractAuditedForm.Status.StatusInfo.builder()
-        .state(SUBMITTED).timestamp(Instant.now())
-        .build();
-    ltft.setStatus(AbstractAuditedForm.Status.builder()
-        .current(statusInfo)
-        .history(List.of(
-            statusInfo,
-            AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED)
-                .timestamp(latestSubmitted).build()))
-        .build()
-    );
-
-    ltft = template.insert(ltft);
-
-    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
-    MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
-            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
-            .with(jwt().jwt(token)))
-        .andExpect(status().isOk())
-        .andExpect(content().contentType(APPLICATION_PDF))
-        .andReturn();
-
-    byte[] response = result.getResponse().getContentAsByteArray();
-    PDDocument pdf = Loader.loadPDF(response);
-    PDFTextStripper textStripper = new PDFTextStripper();
-    textStripper.setAddMoreFormatting(false);
-    String pdfText = textStripper.getText(pdf);
-
-    assertThat("Unexpected section header.", pdfText,
-        containsString("Reason(s) for applying" + System.lineSeparator()));
-    assertThat("Unexpected visa holder.", pdfText.replaceAll("[\r\n]+", ""),
-        containsString("Why are you applying for Changing hours (LTFT)?Test1Test2Other"));
-    assertThat("Unexpected other reason.", pdfText,
-        containsString("Other reason other-detail" + System.lineSeparator()));
-    assertThat("Unexpected visa holder.", pdfText.replaceAll("[\r\n]+", ""),
-        containsString(
-            "Please provide any additional information to support your application (if needed).supporting-information"));
-  }
-
-  @Test
-  void shouldGetDetailPdfPersonalDetails() throws Exception {
-    LtftForm ltft = new LtftForm();
-    ltft.setTraineeTisId(TRAINEE_ID);
-
-    LtftContent content = LtftContent.builder()
-        .personalDetails(LtftContent.PersonalDetails.builder()
-            .title("Dr")
-            .forenames("Anthony")
-            .surname("Gilliam")
-            .email("anthony.gilliam@example.com")
-            .gmcNumber("1234567")
-            .gdcNumber("D123456")
-            .telephoneNumber("07700900000")
-            .mobileNumber("07700900001")
-            .skilledWorkerVisaHolder(true)
-            .build())
-        .programmeMembership(ProgrammeMembership.builder().build())
-        .change(CctChange.builder().build())
-        .reasons(LtftContent.Reasons.builder().build())
-        .declarations(LtftContent.Declarations.builder().build())
-        .discussions(LtftContent.Discussions.builder().build())
-        .build();
-    ltft.setContent(content);
-
-    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
-
-    AbstractAuditedForm.Status.StatusInfo statusInfo = AbstractAuditedForm.Status.StatusInfo.builder()
-        .state(SUBMITTED)
-        .assignedAdmin(Person.builder().build())
-        .timestamp(Instant.now())
-        .build();
-    ltft.setStatus(AbstractAuditedForm.Status.builder()
-        .current(statusInfo)
-        .history(List.of(
-            statusInfo,
-            AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED)
-                .timestamp(latestSubmitted).build()))
-        .build()
-    );
-
-    ltft = template.insert(ltft);
-
-    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
-    MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
-            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
-            .with(jwt().jwt(token)))
-        .andExpect(status().isOk())
-        .andExpect(content().contentType(APPLICATION_PDF))
-        .andReturn();
-
-    byte[] response = result.getResponse().getContentAsByteArray();
-    PDDocument pdf = Loader.loadPDF(response);
-    PDFTextStripper textStripper = new PDFTextStripper();
-    textStripper.setAddMoreFormatting(false);
-    String pdfText = textStripper.getText(pdf);
-
-    assertThat("Unexpected section header.", pdfText,
-        containsString("Personal Details" + System.lineSeparator()));
-    assertThat("Unexpected forename.", pdfText,
-        containsString("Forename Anthony" + System.lineSeparator()));
-    assertThat("Unexpected surname.", pdfText,
-        containsString("Surname (GMC-Registered) Gilliam" + System.lineSeparator()));
-    assertThat("Unexpected contact telphone.", pdfText,
-        containsString("Contact Telephone 07700900000" + System.lineSeparator()));
-    assertThat("Unexpected contact mobile.", pdfText,
-        containsString("Contact Mobile 07700900001" + System.lineSeparator()));
-    assertThat("Unexpected email.", pdfText,
-        containsString("Email Address anthony.gilliam@example.com" + System.lineSeparator()));
-    assertThat("Unexpected GMC.", pdfText,
-        containsString("GMC Number 1234567" + System.lineSeparator()));
-    assertThat("Unexpected GDC.", pdfText,
-        containsString("GDC Number (if applicable) D123456" + System.lineSeparator()));
-    assertThat("Unexpected visa holder.", pdfText.replaceAll("[\r\n]+", ""),
-        containsString("Are you a Tier 2 / Skilled Worker Visa holder?true"));
+    assertThat("Unexpected end date.", removeLineBreak(pdfText),
+        containsString("Estimated completion date after these changes " + cctDateString));
+    assertThat("Unexpected note.", removeLineBreak(pdfText),
+        containsString("Please note: This new completion date is an estimate as it does not take into account your full circumstances (e.g. Out of Programme, Parental Leave). Your formal completion date will be agreed at ARCP."));
   }
 
   @Test
@@ -1749,9 +1855,12 @@ class LtftResourceIntegrationTest {
         containsString(
             "I confirm that the information I have provided is correct and accurate to the best of my knowledge.true"));
     assertThat("Unexpected declaration.", pdfText.replaceAll("[\r\n]+", ""),
-        containsString(
-            "I have discussed the proposals outlined in the CCT Calculation with my Training Programme Director (TPD).true"));
-    assertThat("Unexpected declaration.", pdfText.replaceAll("[\r\n]+", ""),
         containsString("I understand that approval of my application is not guaranteed.true"));
+  }
+
+  private String removeLineBreak(String text) {
+    return text
+        .replaceAll("\\s+", " ")
+        .trim();
   }
 }
