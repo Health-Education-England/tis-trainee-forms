@@ -47,6 +47,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import uk.nhs.hee.tis.trainee.forms.config.OpenApiConfiguration.Public;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
@@ -78,6 +79,7 @@ public class AdminLtftResource {
    * @param params The query parameters, will be passed as filters.
    * @return The number of LTFT applications found meeting the criteria.
    */
+  @Public
   @GetMapping("/count")
   public ResponseEntity<String> getAdminLtftCount(
       @RequestParam(required = false) Map<String, String> params) {
@@ -93,6 +95,7 @@ public class AdminLtftResource {
    * @param params   The query parameters, will be passed as filters.
    * @return A page of LTFT summaries meeting the criteria.
    */
+  @Public
   @GetMapping
   ResponseEntity<PagedModel<LtftAdminSummaryDto>> getLtftAdminSummaries(
       @RequestParam(required = false) Map<String, String> params,
@@ -108,6 +111,7 @@ public class AdminLtftResource {
    * @param id The ID of the form.
    * @return The found form details, empty if not found.
    */
+  @Public
   @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
   ResponseEntity<LtftFormDto> getLtftAdminDetail(@PathVariable UUID id) {
     Optional<LtftFormDto> formDetail = service.getAdminLtftDetail(id);
@@ -120,6 +124,7 @@ public class AdminLtftResource {
    * @param id The ID of the form.
    * @return The generated PDF
    */
+  @Public
   @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_PDF_VALUE)
   ResponseEntity<byte[]> getLtftAdminDetailPdf(@PathVariable UUID id) {
     log.info("PDF requested by admin for LTFT '{}'", id);
@@ -139,6 +144,7 @@ public class AdminLtftResource {
     return ResponseEntity.notFound().build();
   }
 
+  @Public
   @PutMapping("/{id}/assign")
   ResponseEntity<LtftFormDto> assignAdmin(@PathVariable UUID id, @RequestBody PersonDto admin) {
     Optional<LtftFormDto> form = service.assignAdmin(id, admin);
@@ -152,6 +158,7 @@ public class AdminLtftResource {
    * @return The approved form.
    * @throws MethodArgumentNotValidException When the state transition was not valid.
    */
+  @Public
   @PutMapping("/{id}/approve")
   ResponseEntity<LtftFormDto> approveLtft(@PathVariable UUID id)
       throws MethodArgumentNotValidException {
@@ -166,6 +173,7 @@ public class AdminLtftResource {
    * @return The rejected form.
    * @throws MethodArgumentNotValidException When the state transition was not valid.
    */
+  @Public
   @PutMapping("/{id}/reject")
   ResponseEntity<LtftFormDto> rejectLtft(@PathVariable UUID id,
       @RequestBody LftfStatusInfoDetailDto detail)
@@ -181,6 +189,7 @@ public class AdminLtftResource {
    * @return The unsubmitted form.
    * @throws MethodArgumentNotValidException When the state transition was not valid.
    */
+  @Public
   @PutMapping("/{id}/unsubmit")
   ResponseEntity<LtftFormDto> unsubmitLtft(@PathVariable UUID id,
       @RequestBody LftfStatusInfoDetailDto detail)

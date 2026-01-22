@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import uk.nhs.hee.tis.trainee.forms.config.OpenApiConfiguration.Public;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.ProgrammeMembershipDto;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
@@ -67,6 +68,7 @@ public class ConditionsOfJoiningResource {
    * @return The downloaded or generated PDF.
    * @throws IOException A new PDF could not be generated.
    */
+  @Public
   @PutMapping(produces = MediaType.APPLICATION_PDF_VALUE)
   public ResponseEntity<byte[]> generatePdf(
       @Valid @RequestBody ProgrammeMembershipDto programmeMembership) throws IOException {

@@ -41,6 +41,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import uk.nhs.hee.tis.trainee.forms.config.OpenApiConfiguration.Public;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
@@ -76,6 +77,7 @@ public class LtftResource {
    *
    * @return The list of LTFT summaries, or an empty list if none found.
    */
+  @Public
   @GetMapping
   @JsonView(Trainee.Read.class)
   public ResponseEntity<List<LtftSummaryDto>> getLtftSummaries() {
@@ -91,6 +93,7 @@ public class LtftResource {
    *
    * @return The DTO of the saved form.
    */
+  @Public
   @GetMapping("/{formId}")
   @JsonView(Trainee.Read.class)
   public ResponseEntity<LtftFormDto> getLtft(@PathVariable UUID formId) {
@@ -105,6 +108,7 @@ public class LtftResource {
    * @param formId The ID of the form.
    * @return The generated PDF
    */
+  @Public
   @GetMapping(value = "/{formId}", produces = MediaType.APPLICATION_PDF_VALUE)
   ResponseEntity<byte[]> getLtftPdf(@PathVariable UUID formId) {
     log.info("PDF requested by trainee for LTFT '{}'", formId);
@@ -131,6 +135,7 @@ public class LtftResource {
    *
    * @return The DTO of the saved form (with an id).
    */
+  @Public
   @PostMapping
   @JsonView(Trainee.Read.class)
   public ResponseEntity<LtftFormDto> createLtft(
@@ -148,6 +153,7 @@ public class LtftResource {
    *
    * @return The DTO of the saved form.
    */
+  @Public
   @PutMapping("/{formId}")
   @JsonView(Trainee.Read.class)
   public ResponseEntity<LtftFormDto> updateLtft(@PathVariable UUID formId,
@@ -164,6 +170,7 @@ public class LtftResource {
    *
    * @return The DTO of the submitted form, or a bad request if the form could not be submitted.
    */
+  @Public
   @PutMapping("/{formId}/submit")
   @JsonView(Trainee.Read.class)
   public ResponseEntity<LtftFormDto> submitLtft(@PathVariable UUID formId,
@@ -181,6 +188,7 @@ public class LtftResource {
    *
    * @return The DTO of the unsubmitted form, or a bad request if the form could not be unsubmitted.
    */
+  @Public
   @PutMapping("/{formId}/unsubmit")
   @JsonView(Trainee.Read.class)
   public ResponseEntity<LtftFormDto> unsubmitLtft(@PathVariable UUID formId,
@@ -198,6 +206,7 @@ public class LtftResource {
    *
    * @return The DTO of the withdrawn form, or a bad request if the form could not be withdrawn.
    */
+  @Public
   @PutMapping("/{formId}/withdraw")
   @JsonView(Trainee.Read.class)
   public ResponseEntity<LtftFormDto> withdrawLtft(@PathVariable UUID formId,
@@ -214,6 +223,7 @@ public class LtftResource {
    * @param formId The id of the LTFT form to delete.
    * @return A response entity indicating the result of the deletion.
    */
+  @Public
   @DeleteMapping("/{formId}")
   public ResponseEntity<Void> deleteLtft(@PathVariable UUID formId) {
     log.info("Request to delete LTFT form {}.", formId);

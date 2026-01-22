@@ -43,6 +43,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.api.util.HeaderUtil;
 import uk.nhs.hee.tis.trainee.forms.api.validation.FormRPartBValidator;
+import uk.nhs.hee.tis.trainee.forms.config.OpenApiConfiguration.Public;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
@@ -88,6 +89,7 @@ public class FormRPartBResource {
    * 400 (Bad Request) if the formRPartB has already an ID
    * @throws URISyntaxException if the Location URI syntax is incorrect
    */
+  @Public
   @PostMapping("/formr-partb")
   public ResponseEntity<FormRPartBDto> createFormRPartB(@RequestBody FormRPartBDto dto)
       throws URISyntaxException, MethodArgumentNotValidException, IOException {
@@ -119,6 +121,7 @@ public class FormRPartBResource {
    * a new FormRPartB
    * @throws URISyntaxException if the Location URI syntax is incorrect
    */
+  @Public
   @PutMapping("/formr-partb")
   public ResponseEntity<FormRPartBDto> updateFormRPartB(@RequestBody FormRPartBDto dto)
       throws URISyntaxException, MethodArgumentNotValidException, IOException {
@@ -144,6 +147,7 @@ public class FormRPartBResource {
    *
    * @return list of the trainee's formR partB forms.
    */
+  @Public
   @GetMapping("/formr-partbs")
   public ResponseEntity<List<FormRPartSimpleDto>> getTraineeFormRPartBs() {
     log.trace("FormRPartBs of authenticated user.");
@@ -158,6 +162,7 @@ public class FormRPartBResource {
    * @param id    The ID of the form
    * @return the formR partB based on the id
    */
+  @Public
   @GetMapping("/formr-partb/{id}")
   public ResponseEntity<FormRPartBDto> getFormRPartBsById(@PathVariable String id) {
     log.info("FormRPartB by id {}", id);
@@ -176,6 +181,7 @@ public class FormRPartBResource {
    * @param id    The ID of the form
    * @return the status of the deletion.
    */
+  @Public
   @DeleteMapping("/formr-partb/{id}")
   public ResponseEntity<Void> deleteFormRPartBById(@PathVariable String id) {
     log.info("Delete FormRPartB by id {}", id);
@@ -202,6 +208,7 @@ public class FormRPartBResource {
    * @return The downloaded or generated PDF.
    * @throws IOException A new PDF could not be generated.
    */
+  @Public
   @PutMapping(value = "/formr-partb-pdf", produces = MediaType.APPLICATION_PDF_VALUE)
   public ResponseEntity<byte[]> generatePdf(@Valid @RequestBody FormRPartBDto formRPartB)
       throws IOException {

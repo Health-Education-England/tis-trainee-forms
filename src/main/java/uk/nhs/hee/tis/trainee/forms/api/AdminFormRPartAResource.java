@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import uk.nhs.hee.tis.trainee.forms.config.OpenApiConfiguration.Public;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 
@@ -64,6 +65,7 @@ public class AdminFormRPartAResource {
         'HEE_TIS_Admin')
       """)
   // TODO: review permission requirements.
+  @Public
   @PutMapping("/{formId}/unsubmit")
   public ResponseEntity<FormRPartADto> unsubmitFormRPartA(@PathVariable UUID formId) {
     log.info("Admin request to unsubmit FormRPartA with id {}", formId);
@@ -77,6 +79,7 @@ public class AdminFormRPartAResource {
    * @param formId The ID of the form.
    * @return the status of the deletion.
    */
+  @Public
   @PreAuthorize("hasRole('TSS_Support_Admin')")
   @DeleteMapping("/{formId}")
   public ResponseEntity<FormRPartADto> deleteById(@PathVariable UUID formId) {

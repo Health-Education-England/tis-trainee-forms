@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.api.util.HeaderUtil;
+import uk.nhs.hee.tis.trainee.forms.config.OpenApiConfiguration.Internal;
 import uk.nhs.hee.tis.trainee.forms.service.FormRelocateService;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
@@ -53,6 +54,7 @@ public class FormRelocateResource {
    * @param targetTrainee  The TraineeTisId of the target trainee
    * @return the status of relocation
    */
+  @Internal
   @PatchMapping("/form-relocate/{formId}")
   public ResponseEntity<Void> relocateForm(@PathVariable String formId,
                                             @RequestParam String targetTrainee) throws IOException {

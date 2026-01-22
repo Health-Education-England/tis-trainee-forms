@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.config.FeatureConfigurationProperties;
+import uk.nhs.hee.tis.trainee.forms.config.OpenApiConfiguration.Public;
 
 @Slf4j
 @RestController
@@ -46,6 +47,7 @@ public class FeatureFlagResource {
    *
    * @return A list of the feature flags.
    */
+  @Public
   @GetMapping
   public ResponseEntity<FeatureConfigurationProperties> getFeatureFlags() {
     log.debug("Get all the feature flags for forms");

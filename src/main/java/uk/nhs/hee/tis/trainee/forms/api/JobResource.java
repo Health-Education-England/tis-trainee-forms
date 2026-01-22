@@ -28,6 +28,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import uk.nhs.hee.tis.trainee.forms.config.OpenApiConfiguration.Internal;
 import uk.nhs.hee.tis.trainee.forms.job.PublishLtftRefresh;
 
 /**
@@ -50,6 +51,7 @@ public class JobResource {
    *
    * @return The number of exported LTFT records.
    */
+  @Internal
   @PostMapping("/ltft/publish-refresh")
   public ResponseEntity<Integer> publishLtftRefresh() {
     log.info("Received request to publish LTFT refresh.");
