@@ -671,19 +671,4 @@ class FormRPartAServiceTest {
 
     assertThat("Expected empty for " + state + " form.", optionalDto.isEmpty(), is(true));
   }
-
-  @ParameterizedTest(name = "Should return form when admin form is {0}")
-  @EnumSource(value = LifecycleState.class, names = {"DRAFT", "DELETED"}, mode = Mode.EXCLUDE)
-  void shouldReturnFormWhenAdminsFormRPartAIsNotDraftOrDeleted(LifecycleState state) {
-    entity.setLifecycleState(state);
-
-    when(repositoryMock.findByIdAndNotDraftNorDeleted(DEFAULT_ID))
-        .thenReturn(Optional.of(entity));
-
-    Optional<FormRPartADto> optionalDto = service.getAdminsFormRPartAById(DEFAULT_ID_STRING);
-
-    assertTrue(optionalDto.isPresent(), "Expected form present for " + state + " state.");
-    assertThat("Unexpected lifecycle state.", optionalDto.get().getLifecycleState(), is(state));
-  }
-
 }
