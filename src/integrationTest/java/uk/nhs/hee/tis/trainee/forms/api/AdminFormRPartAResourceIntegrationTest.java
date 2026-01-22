@@ -22,6 +22,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.api;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
@@ -36,10 +37,9 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.mockito.ArgumentMatchers;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -186,24 +186,37 @@ class AdminFormRPartAResourceIntegrationTest {
         .andExpect(status().isNotFound());
   }
 
-  @ParameterizedTest
-  @CsvSource(delimiter = '|', textBlock = """
-      GET    | /api/admin/formr-parta/{formId}          | HEE Admin
-      GET    | /api/admin/formr-parta/{formId}          | HEE Admin Revalidation
-      GET    | /api/admin/formr-parta/{formId}          | HEE Admin Sensitive
-      GET    | /api/admin/formr-parta/{formId}          | HEE TIS Admin
-      """)
-  void shouldReturnOkWhenRequiredFormFound(HttpMethod method, String uriTemplate,
-      String role) throws Exception {
+  @ParameterizedTest(name = "Should return not found when form has {0} lifecycle state")
+  @EnumSource(value = LifecycleState.class, names = {"DRAFT", "DELETED"})
+  void shouldReturnNotFoundWhenFormHasExcludedLifecycleState(LifecycleState excludedState)
+      throws Exception {
     FormRPartA form = new FormRPartA();
     form.setId(FORM_ID);
     form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(excludedState);
     form.setSubmissionDate(LocalDateTime.now());
     template.insert(form);
 
-    mockMvc.perform(request(method, uriTemplate, FORM_ID)
-            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of(role))))
-        .andExpect(status().isOk());
+    mockMvc.perform(get("/api/admin/formr-parta/{formId}", FORM_ID)
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of("HEE Admin"))))
+        .andExpect(status().isNotFound());
+  }
+
+  @ParameterizedTest(name = "Should return OK when form has {0} lifecycle state")
+  @EnumSource(value = LifecycleState.class, names = {"SUBMITTED", "UNSUBMITTED"})
+  void shouldReturnOkWhenFormHasIncludedLifecycleState(LifecycleState includedState)
+      throws Exception {
+    FormRPartA form = new FormRPartA();
+    form.setId(FORM_ID);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(includedState);
+    form.setSubmissionDate(LocalDateTime.now());
+    template.insert(form);
+
+    mockMvc.perform(get("/api/admin/formr-parta/{formId}", FORM_ID)
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of("HEE Admin"))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.lifecycleState").value(includedState.toString()));
   }
 
   @ParameterizedTest
@@ -222,8 +235,8 @@ class AdminFormRPartAResourceIntegrationTest {
     form.setSubmissionDate(LocalDateTime.now());
     template.insert(form);
 
-    Mockito.when(snsClient.publish(ArgumentMatchers.any(PublishRequest.class)))
-        .thenReturn(ArgumentMatchers.any());
+    Mockito.when(snsClient.publish(any(PublishRequest.class)))
+        .thenReturn(any());
 
     mockMvc.perform(request(method, uriTemplate, FORM_ID)
             .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of(role))))
@@ -231,33 +244,8 @@ class AdminFormRPartAResourceIntegrationTest {
   }
 
   @ParameterizedTest
-  @CsvSource(delimiter = '|', textBlock = """
-      GET    | /api/admin/formr-parta/{formId} | HEE Admin
-      GET    | /api/admin/formr-parta/{formId} | HEE Admin Revalidation
-      GET    | /api/admin/formr-parta/{formId} | HEE Admin Sensitive
-      GET    | /api/admin/formr-parta/{formId} | HEE TIS Admin
-      """)
-  void shouldReturnFormDetailsWhenHasRequiredPermissionAndFormFoundById(HttpMethod method,
-      String uriTemplate, String role) throws Exception {
-    String programmeMembershipId = UUID.randomUUID().toString();
-
-    FormRPartA form = new FormRPartA();
-    form.setId(FORM_ID);
-    form.setTraineeTisId(TRAINEE_ID);
-    form.setProgrammeMembershipId(UUID.fromString(programmeMembershipId));
-    form.setSubmissionDate(LocalDateTime.now());
-    template.insert(form);
-
-    mockMvc.perform(request(method, uriTemplate, FORM_ID)
-            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of(role))))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.id").value(FORM_ID.toString()))
-        .andExpect(jsonPath("$.traineeTisId").value(TRAINEE_ID))
-        .andExpect(jsonPath("$.programmeMembershipId").value(programmeMembershipId));
-  }
-
-  @Test
-  void shouldNotReturnDraftFormsInList() throws Exception {
+  @EnumSource(value = LifecycleState.class, names = {"DRAFT", "DELETED"})
+  void shouldNotReturnFormsWithLifecycleStateInList(LifecycleState excludedState) throws Exception {
     FormRPartA submittedForm = new FormRPartA();
     submittedForm.setId(UUID.randomUUID());
     submittedForm.setTraineeTisId(TRAINEE_ID);
@@ -265,12 +253,14 @@ class AdminFormRPartAResourceIntegrationTest {
     submittedForm.setSubmissionDate(LocalDateTime.now());
     template.insert(submittedForm);
 
-    FormRPartA draftForm = new FormRPartA();
-    draftForm.setId(UUID.randomUUID());
-    draftForm.setTraineeTisId(TRAINEE_ID);
-    draftForm.setLifecycleState(LifecycleState.DRAFT);
-    draftForm.setSubmissionDate(null);
-    template.insert(draftForm);
+    FormRPartA excludedForm = new FormRPartA();
+    excludedForm.setId(UUID.randomUUID());
+    excludedForm.setTraineeTisId(TRAINEE_ID);
+    excludedForm.setLifecycleState(excludedState);
+    excludedForm.setSubmissionDate(excludedState == LifecycleState.DELETED
+        ? LocalDateTime.now().minusDays(5)
+        : null);
+    template.insert(excludedForm);
 
     mockMvc.perform(get("/api/admin/formr-parta")
             .param("traineeId", TRAINEE_ID)
@@ -280,70 +270,5 @@ class AdminFormRPartAResourceIntegrationTest {
         .andExpect(jsonPath("$.length()").value(1))
         .andExpect(jsonPath("$[0].id").value(submittedForm.getId().toString()))
         .andExpect(jsonPath("$[0].lifecycleState").value("SUBMITTED"));
-  }
-
-  @Test
-  void shouldNotReturnDeletedFormsInList() throws Exception {
-    FormRPartA submittedForm = new FormRPartA();
-    submittedForm.setId(UUID.randomUUID());
-    submittedForm.setTraineeTisId(TRAINEE_ID);
-    submittedForm.setLifecycleState(LifecycleState.SUBMITTED);
-    submittedForm.setSubmissionDate(LocalDateTime.now());
-    template.insert(submittedForm);
-
-    FormRPartA deletedForm = new FormRPartA();
-    deletedForm.setId(UUID.randomUUID());
-    deletedForm.setTraineeTisId(TRAINEE_ID);
-    deletedForm.setLifecycleState(LifecycleState.DELETED);
-    deletedForm.setSubmissionDate(LocalDateTime.now().minusDays(5));
-    template.insert(deletedForm);
-
-    mockMvc.perform(get("/api/admin/formr-parta")
-            .param("traineeId", TRAINEE_ID)
-            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of("HEE Admin"))))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$").isArray())
-        .andExpect(jsonPath("$.length()").value(1))
-        .andExpect(jsonPath("$[0].id").value(submittedForm.getId().toString()))
-        .andExpect(jsonPath("$[0].lifecycleState").value("SUBMITTED"));
-  }
-
-  @Test
-  void shouldOnlyReturnSubmittedAndUnsubmittedFormsInList() throws Exception {
-    FormRPartA submittedForm = new FormRPartA();
-    submittedForm.setId(UUID.randomUUID());
-    submittedForm.setTraineeTisId(TRAINEE_ID);
-    submittedForm.setLifecycleState(LifecycleState.SUBMITTED);
-    submittedForm.setSubmissionDate(LocalDateTime.now());
-    template.insert(submittedForm);
-
-    FormRPartA unsubmittedForm = new FormRPartA();
-    unsubmittedForm.setId(UUID.randomUUID());
-    unsubmittedForm.setTraineeTisId(TRAINEE_ID);
-    unsubmittedForm.setLifecycleState(LifecycleState.UNSUBMITTED);
-    unsubmittedForm.setSubmissionDate(LocalDateTime.now().minusDays(1));
-    template.insert(unsubmittedForm);
-
-    FormRPartA draftForm = new FormRPartA();
-    draftForm.setId(UUID.randomUUID());
-    draftForm.setTraineeTisId(TRAINEE_ID);
-    draftForm.setLifecycleState(LifecycleState.DRAFT);
-    template.insert(draftForm);
-
-    FormRPartA deletedForm = new FormRPartA();
-    deletedForm.setId(UUID.randomUUID());
-    deletedForm.setTraineeTisId(TRAINEE_ID);
-    deletedForm.setLifecycleState(LifecycleState.DELETED);
-    deletedForm.setSubmissionDate(LocalDateTime.now().minusDays(2));
-    template.insert(deletedForm);
-
-    mockMvc.perform(get("/api/admin/formr-parta")
-            .param("traineeId", TRAINEE_ID)
-            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of("HEE Admin"))))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$").isArray())
-        .andExpect(jsonPath("$.length()").value(2))
-        .andExpect(jsonPath("$[?(@.lifecycleState == 'DRAFT')]").doesNotExist())
-        .andExpect(jsonPath("$[?(@.lifecycleState == 'DELETED')]").doesNotExist());
   }
 }

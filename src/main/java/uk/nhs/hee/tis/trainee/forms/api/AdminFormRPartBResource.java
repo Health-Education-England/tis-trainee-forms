@@ -101,7 +101,7 @@ public class AdminFormRPartBResource {
   public ResponseEntity<FormRPartBDto> getFormRPartBsById(
       @PathVariable String id
   ) {
-    log.info("FormRPartB by id {}", id);
+    log.info("Request for FormRPartA by id {}", id);
 
     Optional<FormRPartBDto> formRPartBDto = service.getAdminsFormRPartBById(id);
 
