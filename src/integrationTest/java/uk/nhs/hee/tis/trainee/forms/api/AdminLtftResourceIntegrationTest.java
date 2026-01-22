@@ -33,6 +33,7 @@ import static org.hamcrest.Matchers.oneOf;
 import static org.hamcrest.Matchers.startsWith;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
+import static org.springframework.http.HttpMethod.PATCH;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.http.MediaType.APPLICATION_PDF;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -153,14 +154,23 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$").doesNotExist());
   }
 
+  @Test
+  void shouldReturnForbiddenPatchingWhenNoToken() throws Exception {
+    mockMvc.perform(request(PATCH, "/api/admin/ltft/123")
+            .contentType(APPLICATION_JSON))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$").doesNotExist());
+  }
+
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      GET | /api/admin/ltft
-      GET | /api/admin/ltft/123
-      PUT | /api/admin/ltft/123/approve
-      PUT | /api/admin/ltft/123/reject
-      PUT | /api/admin/ltft/123/unsubmit
-      GET | /api/admin/ltft/count
+      GET   | /api/admin/ltft
+      GET   | /api/admin/ltft/123
+      PATCH | /api/admin/ltft/123
+      PUT   | /api/admin/ltft/123/approve
+      PUT   | /api/admin/ltft/123/reject
+      PUT   | /api/admin/ltft/123/unsubmit
+      GET   | /api/admin/ltft/count
       """)
   void shouldReturnForbiddenWhenEmptyToken(HttpMethod method, URI uri) throws Exception {
     Jwt token = TestJwtUtil.createToken("{}");
@@ -172,12 +182,13 @@ class AdminLtftResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      GET | /api/admin/ltft
-      GET | /api/admin/ltft/123
-      PUT | /api/admin/ltft/123/approve
-      PUT | /api/admin/ltft/123/reject
-      PUT | /api/admin/ltft/123/unsubmit
-      GET | /api/admin/ltft/count
+      GET   | /api/admin/ltft
+      GET   | /api/admin/ltft/123
+      PATCH | /api/admin/ltft/123
+      PUT   | /api/admin/ltft/123/approve
+      PUT   | /api/admin/ltft/123/reject
+      PUT   | /api/admin/ltft/123/unsubmit
+      GET   | /api/admin/ltft/count
       """)
   void shouldReturnForbiddenWhenNoGroupsInToken(HttpMethod method, URI uri) throws Exception {
     mockMvc.perform(request(method, uri)
@@ -188,10 +199,11 @@ class AdminLtftResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      GET | /api/admin/ltft/123
-      PUT | /api/admin/ltft/123/approve
-      PUT | /api/admin/ltft/123/reject
-      PUT | /api/admin/ltft/123/unsubmit
+      GET   | /api/admin/ltft/123
+      PATCH | /api/admin/ltft/123
+      PUT   | /api/admin/ltft/123/approve
+      PUT   | /api/admin/ltft/123/reject
+      PUT   | /api/admin/ltft/123/unsubmit
       """)
   void shouldReturnBadRequestWhenInvalidFormId(HttpMethod method, URI uri) throws Exception {
     mockMvc.perform(request(method, uri)
@@ -211,6 +223,101 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(status().isBadRequest());
   }
 
+  @Test
+  void shouldReturnBadRequestPatchingWhenPatchDtoNullValues() throws Exception {
+    UUID formId = UUID.randomUUID();
+
+    mockMvc.perform(request(PATCH, "/api/admin/ltft/{id}", formId)
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .contentType(APPLICATION_JSON)
+            .content("{}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type", is("about:blank")))
+        .andExpect(jsonPath("$.title", is("Validation failure")))
+        .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
+        .andExpect(jsonPath("$.instance", is("/api/admin/ltft/%s".formatted(formId))))
+        .andExpect(jsonPath("$.properties.errors").isArray())
+        .andExpect(jsonPath("$.properties.errors", hasSize(3)))
+        .andExpect(jsonPath("$.properties.errors[0].pointer", is("#/message")))
+        .andExpect(jsonPath("$.properties.errors[0].detail", is("must not be null")))
+        .andExpect(jsonPath("$.properties.errors[1].pointer", is("#/patch")))
+        .andExpect(jsonPath("$.properties.errors[1].detail", is("must not be null")))
+        .andExpect(jsonPath("$.properties.errors[2].pointer", is("#/reason")))
+        .andExpect(jsonPath("$.properties.errors[2].detail", is("must not be null")));
+  }
+
+  @Test
+  void shouldReturnBadRequestPatchingWhenPatchEmpty() throws Exception {
+    UUID formId = UUID.randomUUID();
+    String formPatch = """
+        {
+          "patch": [],
+          "reason": "reason1",
+          "message": "message1"
+        }
+        """;
+
+    mockMvc.perform(request(PATCH, "/api/admin/ltft/{id}", formId)
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .contentType(APPLICATION_JSON)
+            .content(formPatch))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type", is("about:blank")))
+        .andExpect(jsonPath("$.title", is("Validation failure")))
+        .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
+        .andExpect(jsonPath("$.instance", is("/api/admin/ltft/%s".formatted(formId))))
+        .andExpect(jsonPath("$.properties.errors").isArray())
+        .andExpect(jsonPath("$.properties.errors", hasSize(1)))
+        .andExpect(jsonPath("$.properties.errors[0].pointer", is("#/patch")))
+        .andExpect(jsonPath("$.properties.errors[0].detail", is("must not be empty")));
+  }
+
+  @Test
+  void shouldReturnBadRequestPatchingWhenPatchOpsNotAllowed() throws Exception {
+    UUID formId = UUID.randomUUID();
+    String formPatch = """
+        {
+          "patch": [
+            {
+              "op": "replace", "path": "/formRef", "value": "newref_12345_001"
+            },
+            {
+              "op": "add", "path": "/change/wte", "value": 0.5
+            },
+            {
+              "op": "add", "path": "/change/endDate", "value": "1970-01-01"
+            }
+          ],
+          "reason": "reason1",
+          "message": "message1"
+        }
+        """;
+    mockMvc.perform(request(PATCH, "/api/admin/ltft/{id}", formId)
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .contentType(APPLICATION_JSON)
+            .content(formPatch))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type", is("about:blank")))
+        .andExpect(jsonPath("$.title", is("Validation failure")))
+        .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
+        .andExpect(jsonPath("$.instance", is("/api/admin/ltft/%s".formatted(formId))))
+        .andExpect(jsonPath("$.properties.errors").isArray())
+        .andExpect(jsonPath("$.properties.errors", hasSize(4)))
+        .andExpect(jsonPath("$.properties.errors[0].pointer", is("#/patch/0/path")))
+        .andExpect(jsonPath("$.properties.errors[0].detail",
+            is("user not authorized to update '/formRef'")))
+        .andExpect(jsonPath("$.properties.errors[1].pointer", is("#/patch/1/op")))
+        .andExpect(jsonPath("$.properties.errors[1].detail", is("only 'replace' supported")))
+        .andExpect(jsonPath("$.properties.errors[2].pointer", is("#/patch/2/op")))
+        .andExpect(jsonPath("$.properties.errors[2].detail", is("only 'replace' supported")))
+        .andExpect(jsonPath("$.properties.errors[3].pointer", is("#/patch/2/path")))
+        .andExpect(jsonPath("$.properties.errors[3].detail",
+            is("user not authorized to update '/change/endDate'")));
+  }
+
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
       GET | /api/admin/ltft/{id}
@@ -224,6 +331,26 @@ class AdminLtftResourceIntegrationTest {
             .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
             .contentType(APPLICATION_JSON)
             .content("{}")) // required by some endpoints
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void shouldReturnNotFoundPatchingWhenFormIdNotFound() throws Exception {
+    String formPatch = """
+        {
+          "patch": [
+            {
+              "op": "replace", "path": "/change/wte", "value": 0.5
+            }
+          ],
+          "reason": "reason1",
+          "message": "message1"
+        }
+        """;
+    mockMvc.perform(request(PATCH, "/api/admin/ltft/{id}", UUID.randomUUID())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .contentType(APPLICATION_JSON)
+            .content(formPatch))
         .andExpect(status().isNotFound());
   }
 
@@ -244,6 +371,60 @@ class AdminLtftResourceIntegrationTest {
             .contentType(APPLICATION_JSON)
             .content("{}")) // required by some endpoints
         .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void shouldReturnNotFoundPatchingWhenLtftDoesNotMatchDbc() throws Exception {
+    LtftForm form = createLtftForm(SUBMITTED, DBC_2, null);
+    form = template.save(form);
+
+    String formPatch = """
+        {
+          "patch": [
+            {
+              "op": "replace", "path": "/change/wte", "value": 0.5
+            }
+          ],
+          "reason": "reason1",
+          "message": "message1"
+        }
+        """;
+    mockMvc.perform(request(PATCH, "/api/admin/ltft/{id}", form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .contentType(APPLICATION_JSON)
+            .content(formPatch))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void shouldReturnPatchedFormWhenLtftDoesMatchDbc() throws Exception {
+    LtftForm form = createLtftForm(SUBMITTED, DBC_1, null);
+    form = template.save(form);
+
+    String formPatch = """
+        {
+          "patch": [
+            {
+              "op": "replace", "path": "/change/startDate", "value": "1970-01-01"
+            },
+            {
+              "op": "replace", "path": "/change/wte", "value": 0.5
+            }
+          ],
+          "reason": "reason1",
+          "message": "message1"
+        }
+        """;
+    mockMvc.perform(request(PATCH, "/api/admin/ltft/{id}", form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .contentType(APPLICATION_JSON)
+            .content(formPatch))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.change.startDate", is("1970-01-01")))
+        .andExpect(jsonPath("$.change.wte", is(0.5)))
+        .andExpect(jsonPath("$.status.current.state", is(SUBMITTED.toString())))
+        .andExpect(jsonPath("$.status.current.detail.reason", is("reason1")))
+        .andExpect(jsonPath("$.status.current.detail.message", is("message1")));
   }
 
   @ParameterizedTest
@@ -1581,6 +1762,7 @@ class AdminLtftResourceIntegrationTest {
     LtftContent content = LtftContent.builder()
         .change(CctChange.builder()
             .startDate(changeStartDate)
+            .wte(0.8)
             .build())
         .programmeMembership(ProgrammeMembership.builder()
             .designatedBodyCode(dbc)

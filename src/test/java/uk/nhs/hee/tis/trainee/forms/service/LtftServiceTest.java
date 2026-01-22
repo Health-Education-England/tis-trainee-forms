@@ -26,6 +26,7 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.in;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
@@ -55,6 +56,13 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDR
 import static uk.nhs.hee.tis.trainee.forms.service.LtftService.FORM_ATTRIBUTE_FORM_STATUS;
 import static uk.nhs.hee.tis.trainee.forms.service.LtftService.FORM_ATTRIBUTE_TPD_STATUS;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.github.fge.jsonpatch.JsonPatch;
+import com.github.fge.jsonpatch.JsonPatchException;
+import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -92,6 +100,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto.FormFeatures;
 import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto.FormFeatures.LtftFeatures;
+import uk.nhs.hee.tis.trainee.forms.dto.FormPatchDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctChangeDto;
@@ -149,6 +158,7 @@ class LtftServiceTest {
   private LtftService service;
   private LtftFormRepository repository;
   private MongoTemplate mongoTemplate;
+  private JsonMapper jsonMapper;
   private LtftMapper mapper;
   private EventBroadcastService eventBroadcastService;
   private LtftSubmissionHistoryService ltftSubmissionHistoryService;
@@ -178,9 +188,10 @@ class LtftServiceTest {
     eventBroadcastService = mock(EventBroadcastService.class);
     ltftSubmissionHistoryService = mock(LtftSubmissionHistoryService.class);
 
+    jsonMapper = (JsonMapper) new JsonMapper().registerModule(new JavaTimeModule());
     mapper = new LtftMapperImpl(new TemporalMapperImpl());
-    service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, mapper,
-        eventBroadcastService, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
+    service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, jsonMapper,
+        mapper, eventBroadcastService, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
         ltftSubmissionHistoryService);
   }
 
@@ -1427,6 +1438,171 @@ class LtftServiceTest {
   }
 
   @Test
+  void shouldReturnEmptyPatchedFormWhenFormNotFound() throws IOException {
+    when(repository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            any(), any(), any())).thenReturn(Optional.empty());
+
+    JsonNode patchNode = jsonMapper.readTree("""
+        [
+          {
+            "op": "replace",
+            "path": "/path",
+            "value": "newValue"
+          }
+        ]
+        """);
+    FormPatchDto formPatch = new FormPatchDto(JsonPatch.fromJson(patchNode), "reason1", "message1");
+
+    Optional<LtftFormDto> patchedForm = service.applyAdminPatch(ID, formPatch);
+
+    assertThat("Unexpected form.", patchedForm, is(Optional.empty()));
+    verify(repository, never()).save(any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = "SUBMITTED")
+  void shouldReturnEmptyPatchedFormWhenFormNotSubmitted(LifecycleState lifecycleState)
+      throws IOException {
+    LtftForm entity = new LtftForm();
+    entity.setId(ID);
+    entity.setContent(LtftContent.builder().build());
+    entity.setLifecycleState(lifecycleState);
+
+    when(repository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            any(), any(), any())).thenReturn(Optional.of(entity));
+
+    JsonNode patchNode = jsonMapper.readTree("""
+        [
+          {
+            "op": "replace",
+            "path": "/path",
+            "value": "newValue"
+          }
+        ]
+        """);
+    FormPatchDto formPatch = new FormPatchDto(JsonPatch.fromJson(patchNode), "reason1", "message1");
+
+    Optional<LtftFormDto> patchedForm = service.applyAdminPatch(ID, formPatch);
+
+    assertThat("Unexpected form.", patchedForm, is(Optional.empty()));
+    verify(repository, never()).save(any());
+  }
+
+  @Test
+  void shouldThrowExceptionPatchingFormWhenTargetPathNotExists() throws IOException {
+    LtftForm entity = new LtftForm();
+    entity.setId(ID);
+    entity.setContent(LtftContent.builder().build());
+    entity.setLifecycleState(SUBMITTED);
+
+    when(repository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            any(), any(), any())).thenReturn(Optional.of(entity));
+
+    JsonNode patchNode = jsonMapper.readTree("""
+        [
+          {
+            "op": "replace",
+            "path": "/path",
+            "value": "newValue"
+          }
+        ]
+        """);
+    FormPatchDto formPatch = new FormPatchDto(JsonPatch.fromJson(patchNode), "reason1", "message1");
+
+    RuntimeException exception = assertThrows(RuntimeException.class,
+        () -> service.applyAdminPatch(ID, formPatch));
+
+    assertThat("Unexpected exception.", exception.getCause(), instanceOf(JsonPatchException.class));
+    verify(repository, never()).save(any());
+  }
+
+  @Test
+  void shouldThrowExceptionPatchingFormWhenNewPathNotExists() throws IOException {
+    LtftForm entity = new LtftForm();
+    entity.setId(ID);
+    entity.setContent(LtftContent.builder().build());
+    entity.setLifecycleState(SUBMITTED);
+
+    when(repository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            any(), any(), any())).thenReturn(Optional.of(entity));
+
+    JsonNode patchNode = jsonMapper.readTree("""
+        [
+          {
+            "op": "add",
+            "path": "/path",
+            "value": "newValue"
+          }
+        ]
+        """);
+    FormPatchDto formPatch = new FormPatchDto(JsonPatch.fromJson(patchNode), "reason1", "message1");
+
+    RuntimeException exception = assertThrows(RuntimeException.class,
+        () -> service.applyAdminPatch(ID, formPatch));
+
+    assertThat("Unexpected exception.", exception.getCause(),
+        instanceOf(JsonProcessingException.class));
+    verify(repository, never()).save(any());
+  }
+
+  @Test
+  void shouldReturnPatchedFormWhenFormSubmitted() throws IOException {
+    LtftForm entity = new LtftForm();
+    entity.setId(ID);
+    entity.setContent(LtftContent.builder().build());
+    entity.setRevision(1);
+    entity.setLifecycleState(SUBMITTED);
+
+    when(repository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            any(), any(), any())).thenReturn(Optional.of(entity));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    JsonNode patchNode = jsonMapper.readTree("""
+        [
+          {
+            "op": "replace",
+            "path": "/formRef",
+            "value": "ref_12345_001"
+          }
+        ]
+        """);
+    FormPatchDto formPatch = new FormPatchDto(JsonPatch.fromJson(patchNode), "reason1", "message1");
+
+    Optional<LtftFormDto> optionalForm = service.applyAdminPatch(ID, formPatch);
+
+    assertThat("Unexpected form optional.", optionalForm.isPresent(), is(true));
+
+    LtftFormDto patchedForm = optionalForm.get();
+    assertThat("Unexpected form ref.", patchedForm.formRef(), is("ref_12345_001"));
+    assertThat("Unexpected status history count.", patchedForm.status().history(), hasSize(2));
+
+    StatusInfoDto current = patchedForm.status().current();
+    assertThat("Unexpected current revision.", current.revision(), is(2));
+    assertThat("Unexpected current state.", current.state(), is(SUBMITTED));
+    assertThat("Unexpected current status reason.", current.detail().reason(), is("reason1"));
+    assertThat("Unexpected current status message.", current.detail().message(), is("message1"));
+
+    StatusInfoDto history = patchedForm.status().history().get(0);
+    assertThat("Unexpected original revision.", history.revision(), is(1));
+    assertThat("Unexpected original state.", history.state(), is(SUBMITTED));
+    assertThat("Unexpected original status reason.", history.detail().reason(), nullValue());
+    assertThat("Unexpected original status message.", history.detail().message(), nullValue());
+
+    history = patchedForm.status().history().get(1);
+    assertThat("Unexpected latest revision.", history.revision(), is(2));
+    assertThat("Unexpected latest state.", history.state(), is(SUBMITTED));
+    assertThat("Unexpected latest status reason.", history.detail().reason(), is("reason1"));
+    assertThat("Unexpected latest status message.", history.detail().message(), is("message1"));
+
+    verify(repository).save(any());
+  }
+
+  @Test
   void shouldReturnEmptyAssigningAdminWhenFormNotFound() {
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.empty());
@@ -1949,7 +2125,7 @@ class LtftServiceTest {
     TraineeIdentity traineeIdentity = new TraineeIdentity();
     traineeIdentity.setTraineeId(TRAINEE_ID);
 
-    service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate,
+    service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, jsonMapper,
         mapper, eventBroadcastService, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
         ltftSubmissionHistoryService);
 
@@ -1986,7 +2162,7 @@ class LtftServiceTest {
             .build())
         .build());
 
-    service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate,
+    service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, jsonMapper,
         mapper, eventBroadcastService, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
         ltftSubmissionHistoryService);
 
@@ -2022,8 +2198,8 @@ class LtftServiceTest {
             .build())
         .build());
 
-    service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, mapper,
-        eventBroadcastService, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
+    service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, jsonMapper,
+        mapper, eventBroadcastService, LTFT_ASSIGNMENT_UPDATE_TOPIC, LTFT_STATUS_UPDATE_TOPIC,
         ltftSubmissionHistoryService);
 
     LtftFormDto dtoToSave = LtftFormDto.builder()

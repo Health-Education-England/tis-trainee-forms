@@ -28,6 +28,11 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBM
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.fge.jsonpatch.JsonPatch;
+import com.github.fge.jsonpatch.JsonPatchException;
 import jakarta.annotation.Nullable;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.List;
@@ -53,6 +58,7 @@ import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto.FormFeatures.LtftFeatures;
+import uk.nhs.hee.tis.trainee.forms.dto.FormPatchDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
@@ -87,6 +93,7 @@ public class LtftService {
   private final LtftFormRepository ltftFormRepository;
   private final MongoTemplate mongoTemplate;
 
+  private final ObjectMapper objectMapper;
   private final LtftMapper mapper;
 
   private final EventBroadcastService eventBroadcastService;
@@ -104,6 +111,7 @@ public class LtftService {
    * @param traineeIdentity              The logged-in trainee, for trainee features.
    * @param ltftFormRepository           The LTFT repository.
    * @param mongoTemplate                The Mongo template.
+   * @param objectMapper                 The JSON mapper.
    * @param mapper                       The LTFT mapper.
    * @param eventBroadcastService        The service for broadcasting events.
    * @param ltftAssignmentUpdateTopic    The SNS topic for LTFT assignment updates.
@@ -111,8 +119,8 @@ public class LtftService {
    * @param ltftSubmissionHistoryService The service for LTFT submission history.
    */
   public LtftService(AdminIdentity adminIdentity, TraineeIdentity traineeIdentity,
-      LtftFormRepository ltftFormRepository, MongoTemplate mongoTemplate, LtftMapper mapper,
-      EventBroadcastService eventBroadcastService,
+      LtftFormRepository ltftFormRepository, MongoTemplate mongoTemplate, ObjectMapper objectMapper,
+      LtftMapper mapper, EventBroadcastService eventBroadcastService,
       @Value("${application.aws.sns.ltft-assignment-updated}") String ltftAssignmentUpdateTopic,
       @Value("${application.aws.sns.ltft-status-updated}") String ltftStatusUpdateTopic,
       LtftSubmissionHistoryService ltftSubmissionHistoryService) {
@@ -120,6 +128,7 @@ public class LtftService {
     this.traineeIdentity = traineeIdentity;
     this.ltftFormRepository = ltftFormRepository;
     this.mongoTemplate = mongoTemplate;
+    this.objectMapper = objectMapper;
     this.mapper = mapper;
     this.ltftAssignmentUpdateTopic = ltftAssignmentUpdateTopic;
     this.ltftStatusUpdateTopic = ltftStatusUpdateTopic;
@@ -189,13 +198,81 @@ public class LtftService {
    * @return The found form, empty if the form does not exist or does not match the admin's DBCs.
    */
   public Optional<LtftFormDto> getAdminLtftDetail(UUID formId) {
+    return getLtftForAdmin(formId).map(mapper::toDto);
+  }
+
+  /**
+   * Find an LTFT form associated with the local offices of the calling admin.
+   *
+   * @param formId The ID of the form.
+   * @return The found form, empty if the form does not exist or does not match the admin's DBCs.
+   */
+  private Optional<LtftForm> getLtftForAdmin(UUID formId) {
     Set<String> groups = adminIdentity.getGroups();
     log.info("Getting LTFT form {} for admin {} with DBCs [{}]", formId, adminIdentity.getEmail(),
         groups);
-    Optional<LtftForm> form = ltftFormRepository
+    return ltftFormRepository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
             formId, Set.of(DRAFT), adminIdentity.getGroups());
-    return form.map(mapper::toDto);
+  }
+
+  /**
+   * Apply a patch update to the LTFT with the given ID.
+   *
+   * @param formId    The ID of the form.
+   * @param formPatch The patch and metadata to update the form with.
+   * @return The patched form, empty if the form does not exist or does not match the admin's DBCs.
+   */
+  public Optional<LtftFormDto> applyAdminPatch(UUID formId, FormPatchDto formPatch) {
+    return getLtftForAdmin(formId)
+        // Will result in NOT FOUND when not submitted, which mirrors GET behaviour.
+        .filter(ltft -> ltft.getLifecycleState().equals(SUBMITTED))
+
+        .map(ltft -> {
+          try {
+            ltft = patchLtft(ltft, formPatch.patch());
+
+            StatusDetail statusDetail = StatusDetail.builder()
+                .reason(formPatch.reason())
+                .message(formPatch.message())
+                .build();
+
+            // An admin patch is considered a shortcut of the un-submit -> re-submit revision flow.
+            Person modifiedBy = Person.builder()
+                .name(adminIdentity.getName())
+                .email(adminIdentity.getEmail())
+                .role(adminIdentity.getRole())
+                .build();
+            ltft.setLifecycleState(ltft.getLifecycleState(), statusDetail, modifiedBy,
+                ltft.getRevision() + 1);
+            ltft = ltftFormRepository.save(ltft);
+            ltftSubmissionHistoryService.takeSnapshot(ltft);
+
+            return mapper.toDto(ltft);
+          } catch (JsonPatchException | JsonProcessingException e) {
+            // Should not happen given validation and known JSON structures, inform caller anyway.
+            throw new RuntimeException(e);
+          }
+        });
+  }
+
+  /**
+   * Update an {@link LtftFormDto} with the given patch.
+   *
+   * @param ltft  The LTFT form to apply the patch to.
+   * @param patch The patch to apply to the form.
+   * @return The patched form entity.
+   * @throws JsonPatchException      If the patch could not be applied.
+   * @throws JsonProcessingException If the patch creates an invalid form.
+   */
+  private LtftForm patchLtft(LtftForm ltft, JsonPatch patch)
+      throws JsonPatchException, JsonProcessingException {
+    // Convert the entity to DTO for patching, as the client will base paths on the public DTO.
+    LtftFormDto dto = mapper.toDto(ltft);
+    JsonNode patchedNode = patch.apply(objectMapper.convertValue(dto, JsonNode.class));
+    LtftFormDto patchedDto = objectMapper.treeToValue(patchedNode, LtftFormDto.class);
+    // TODO: validate patched DTO before persisting.
+    return mapper.toEntity(patchedDto);
   }
 
   /**
@@ -672,8 +749,8 @@ public class LtftService {
   }
 
   /**
-   * Move all LTFT forms from one trainee to another. Assumes that fromTraineeId and toTraineeId
-   * are valid. The updated LTFTs are broadcast as events. Also moves LTFT submission history.
+   * Move all LTFT forms from one trainee to another. Assumes that fromTraineeId and toTraineeId are
+   * valid. The updated LTFTs are broadcast as events. Also moves LTFT submission history.
    *
    * @param fromTraineeId The trainee ID to move LTFTs from.
    * @param toTraineeId   The trainee ID to move LTFTs to.

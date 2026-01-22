@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.hee.tis.trainee"
-version = "0.59.3"
+version = "0.60.0"
 
 configurations {
   compileOnly {
@@ -57,6 +57,7 @@ dependencies {
   implementation(libs.bundles.aws.xray)
 
   implementation("commons-beanutils:commons-beanutils:1.11.0")
+  implementation("com.github.java-json-tools:json-patch:1.13")
 
   // PDF
   implementation(libs.bundles.pdf.publishing)

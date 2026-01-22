@@ -41,6 +41,9 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.REJECT
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.github.fge.jsonpatch.JsonPatch;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +51,8 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -56,6 +61,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedModel;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import uk.nhs.hee.tis.trainee.forms.dto.FormPatchDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
@@ -68,12 +74,14 @@ class AdminLtftResourceTest {
   private AdminLtftResource controller;
   private LtftService service;
   private PdfService pdfService;
+  private JsonMapper jsonMapper;
 
   @BeforeEach
   void setUp() {
     service = mock(LtftService.class);
     pdfService = mock(PdfService.class);
-    controller = new AdminLtftResource(service, pdfService);
+    jsonMapper = (JsonMapper) new JsonMapper().registerModule(new JavaTimeModule());
+    controller = new AdminLtftResource(service, pdfService, jsonMapper);
   }
 
   @Test
@@ -217,6 +225,150 @@ class AdminLtftResourceTest {
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), sameInstance(body));
+  }
+
+  @Test
+  void shouldThrowValidationExceptionWhenPatchIsEmpty() throws IOException {
+    UUID id = UUID.randomUUID();
+    JsonPatch patch = JsonPatch.fromJson(jsonMapper.readTree("[]"));
+    FormPatchDto formPatch = new FormPatchDto(patch, "reason1", "message1");
+
+    when(service.applyAdminPatch(id, formPatch)).thenReturn(Optional.empty());
+
+    assertThrows(MethodArgumentNotValidException.class, () -> controller.patchLtft(id, formPatch));
+
+    verifyNoInteractions(service);
+  }
+
+  @Test
+  void shouldReturnBadRequestWhenPatchOpNotAllowed() throws IOException {
+    UUID id = UUID.randomUUID();
+    JsonPatch patch = JsonPatch.fromJson(jsonMapper.readTree("""
+        [
+          {
+            "op": "add",
+            "path": "/change/wte",
+            "value": 0.5
+          }
+        ]
+        """));
+    FormPatchDto formPatch = new FormPatchDto(patch, "reason1", "message1");
+
+    when(service.applyAdminPatch(id, formPatch)).thenReturn(Optional.empty());
+
+    assertThrows(MethodArgumentNotValidException.class, () -> controller.patchLtft(id, formPatch));
+
+    verifyNoInteractions(service);
+  }
+
+  @Test
+  void shouldReturnBadRequestWhenPatchPathNotAllowed() throws IOException {
+    UUID id = UUID.randomUUID();
+    JsonPatch patch = JsonPatch.fromJson(jsonMapper.readTree("""
+        [
+          {
+            "op": "replace",
+            "path": "/change/startDate",
+            "value": "1970-01-01"
+          },
+          {
+            "op": "replace",
+            "path": "/formRef",
+            "value": "new-ref_12345_001"
+          }
+        ]
+        """));
+    FormPatchDto formPatch = new FormPatchDto(patch, "reason1", "message1");
+
+    when(service.applyAdminPatch(id, formPatch)).thenReturn(Optional.empty());
+
+    assertThrows(MethodArgumentNotValidException.class, () -> controller.patchLtft(id, formPatch));
+
+    verifyNoInteractions(service);
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      /change/startDate | "1970-01-01"
+      /change/wte       | 0.5
+      """)
+  void shouldReturnNotFoundWhenPatchFormNotFound(String path, String value)
+      throws IOException, MethodArgumentNotValidException {
+    UUID id = UUID.randomUUID();
+    JsonPatch patch = JsonPatch.fromJson(jsonMapper.readTree("""
+        [
+          {
+            "op": "replace",
+            "path": "%s",
+            "value": %s
+          }
+        ]
+        """.formatted(path, value)));
+    FormPatchDto formPatch = new FormPatchDto(patch, "reason1", "message1");
+
+    when(service.applyAdminPatch(id, formPatch)).thenReturn(Optional.empty());
+
+    ResponseEntity<LtftFormDto> response = controller.patchLtft(id, formPatch);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(NOT_FOUND));
+    assertThat("Unexpected response body.", response.getBody(), nullValue());
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      /change/startDate | "1970-01-01"
+      /change/wte       | 0.5
+      """)
+  void shouldReturnPatchedFormWhenFormFoundAndSingleOpValid(String path, String value)
+      throws IOException, MethodArgumentNotValidException {
+    UUID id = UUID.randomUUID();
+    JsonPatch patch = JsonPatch.fromJson(jsonMapper.readTree("""
+        [
+          {
+            "op": "replace",
+            "path": "%s",
+            "value": %s
+          }
+        ]
+        """.formatted(path, value)));
+    FormPatchDto formPatch = new FormPatchDto(patch, "reason1", "message1");
+
+    LtftFormDto form = LtftFormDto.builder().id(UUID.randomUUID()).build();
+    when(service.applyAdminPatch(id, formPatch)).thenReturn(Optional.of(form));
+
+    ResponseEntity<LtftFormDto> response = controller.patchLtft(id, formPatch);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), sameInstance(form));
+  }
+
+  @Test
+  void shouldReturnPatchedFormWhenFormFoundAndMultipleOpsValid()
+      throws IOException, MethodArgumentNotValidException {
+    UUID id = UUID.randomUUID();
+    JsonPatch patch = JsonPatch.fromJson(jsonMapper.readTree("""
+        [
+          {
+            "op": "replace",
+            "path": "/change/startDate",
+            "value": "1970-01-01"
+          },
+          {
+            "op": "replace",
+            "path": "/change/wte",
+            "value": 0.5
+          }
+        ]
+        """));
+    FormPatchDto formPatch = new FormPatchDto(patch, "reason1", "message1");
+
+    LtftFormDto form = LtftFormDto.builder().id(UUID.randomUUID()).build();
+    when(service.applyAdminPatch(id, formPatch)).thenReturn(Optional.of(form));
+
+    ResponseEntity<LtftFormDto> response = controller.patchLtft(id, formPatch);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), sameInstance(form));
   }
 
   @Test
