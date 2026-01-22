@@ -105,11 +105,6 @@ public class AdminFormRPartAResource {
 
     Optional<FormRPartADto> formRPartADto = service.getAdminsFormRPartAById(id);
 
-    formRPartADto.ifPresent(dto ->
-        log.info("Retrieved FormRPartA id {} for trainee {} programme membership {}",
-            id, dto.getTraineeTisId(), dto.getProgrammeMembershipId())
-    );
-
     return ResponseEntity.of(formRPartADto);
   }
 

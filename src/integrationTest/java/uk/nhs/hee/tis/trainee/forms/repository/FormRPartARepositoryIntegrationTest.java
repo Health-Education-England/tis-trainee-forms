@@ -33,11 +33,14 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mongodb.client.FindIterable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.bson.Document;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -53,6 +56,7 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 
 @SpringBootTest
@@ -70,6 +74,9 @@ class FormRPartARepositoryIntegrationTest {
 
   @MockBean
   private JwtDecoder jwtDecoder;
+
+  @Autowired
+  private FormRPartARepository repository;
 
   @AfterEach
   void tearDown() {
@@ -136,5 +143,32 @@ class FormRPartARepositoryIntegrationTest {
 
     assertThat("Unexpected field count.", fieldNames, hasSize(2));
     assertThat("Unexpected fields.", fieldNames, hasItems("_id", "_class"));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"DRAFT", "DELETED"})
+  void shouldNotReturnDraftOrDeletedFormsInFindByIdAndNotDraftNorDeleted(LifecycleState state) {
+    FormRPartA form = new FormRPartA();
+    form.setLifecycleState(state);
+    form.setTraineeTisId("123");
+    FormRPartA saved = template.save(form);
+
+    Optional<FormRPartA> result = repository.findByIdAndNotDraftNorDeleted(saved.getId());
+
+    assertThat("Expected empty for " + state + " form.", result.isEmpty(), is(true));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"DRAFT", "DELETED"}, mode = Mode.EXCLUDE)
+  void shouldReturnNonDraftNonDeletedFormsInFindByIdAndNotDraftNorDeleted(LifecycleState state) {
+    FormRPartA form = new FormRPartA();
+    form.setLifecycleState(state);
+    form.setTraineeTisId("123");
+    FormRPartA saved = template.save(form);
+
+    Optional<FormRPartA> result = repository.findByIdAndNotDraftNorDeleted(saved.getId());
+
+    assertThat("Expected form to be present.", result.isPresent(), is(true));
+    assertThat("Unexpected lifecycle state.", result.get().getLifecycleState(), is(state));
   }
 }

@@ -231,8 +231,10 @@ class AdminFormRPartBResourceIntegrationTest {
         .andExpect(status().isOk());
   }
 
-  @Test
-  void shouldNotReturnDraftFormsInList() throws Exception {
+  @ParameterizedTest(name = "Should not return {0} forms in list")
+  @EnumSource(value = LifecycleState.class, names = {"DRAFT", "DELETED"})
+  void shouldNotReturnDraftOrDeletedFormsInList(LifecycleState excludedState) throws Exception {
+
     FormRPartB submittedForm = new FormRPartB();
     submittedForm.setId(UUID.randomUUID());
     submittedForm.setTraineeTisId(TRAINEE_ID);
@@ -240,39 +242,14 @@ class AdminFormRPartBResourceIntegrationTest {
     submittedForm.setSubmissionDate(LocalDateTime.now());
     template.insert(submittedForm);
 
-    FormRPartB draftForm = new FormRPartB();
-    draftForm.setId(UUID.randomUUID());
-    draftForm.setTraineeTisId(TRAINEE_ID);
-    draftForm.setLifecycleState(LifecycleState.DRAFT);
-    draftForm.setSubmissionDate(null);
-    template.insert(draftForm);
-
-    mockMvc.perform(get("/api/admin/formr-partb")
-            .param("traineeId", TRAINEE_ID)
-            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of("HEE Admin"))))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$").isArray())
-        .andExpect(jsonPath("$.length()").value(1))
-        .andExpect(jsonPath("$[0].id").value(submittedForm.getId().toString()))
-        .andExpect(jsonPath("$[0].lifecycleState").value("SUBMITTED"));
-  }
-
-  @Test
-  void shouldNotReturnDeletedFormsInList() throws Exception {
-    // SUBMITTED form (should be returned)
-    FormRPartB submittedForm = new FormRPartB();
-    submittedForm.setId(UUID.randomUUID());
-    submittedForm.setTraineeTisId(TRAINEE_ID);
-    submittedForm.setLifecycleState(LifecycleState.SUBMITTED);
-    submittedForm.setSubmissionDate(LocalDateTime.now());
-    template.insert(submittedForm);
-
-    FormRPartB deletedForm = new FormRPartB();
-    deletedForm.setId(UUID.randomUUID());
-    deletedForm.setTraineeTisId(TRAINEE_ID);
-    deletedForm.setLifecycleState(LifecycleState.DELETED);
-    deletedForm.setSubmissionDate(LocalDateTime.now().minusDays(5));
-    template.insert(deletedForm);
+    FormRPartB excludedForm = new FormRPartB();
+    excludedForm.setId(UUID.randomUUID());
+    excludedForm.setTraineeTisId(TRAINEE_ID);
+    excludedForm.setLifecycleState(excludedState);
+    excludedForm.setSubmissionDate(excludedState == LifecycleState.DELETED
+        ? LocalDateTime.now().minusDays(5)
+        : null);
+    template.insert(excludedForm);
 
     mockMvc.perform(get("/api/admin/formr-partb")
             .param("traineeId", TRAINEE_ID)

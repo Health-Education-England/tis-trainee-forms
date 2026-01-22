@@ -659,16 +659,6 @@ class FormRPartAServiceTest {
     assertThat("Unexpected numbers of forms.", dtos.size(), is(0));
   }
 
-  @Test
-  void shouldReturnEmptyWhenAdminsFormRPartANotFound() {
-    when(repositoryMock.findByIdAndNotDraftNorDeleted(DEFAULT_ID))
-        .thenReturn(Optional.empty());
-
-    Optional<FormRPartADto> optionalDto = service.getAdminsFormRPartAById(DEFAULT_ID_STRING);
-
-    assertThat("Expected empty for non-existent form.", optionalDto.isEmpty(), is(true));
-  }
-
   @ParameterizedTest(name = "Should return empty when admin form is {0}")
   @EnumSource(value = LifecycleState.class, names = {"DRAFT", "DELETED"})
   void shouldReturnEmptyWhenAdminsFormRPartAIsDraftOrDeleted(LifecycleState state) {
