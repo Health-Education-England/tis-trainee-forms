@@ -879,17 +879,6 @@ class FormRPartBServiceTest {
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
   }
-  @Test
-  void shouldReturnEmptyListWhenNoFormRPartBsFoundForTraineeId() {
-    String traineeId = "99999";
-
-    when(repositoryMock.findNotDraftNorDeletedByTraineeTisId(traineeId))
-        .thenReturn(new ArrayList<>());
-
-    List<FormRPartSimpleDto> dtos = service.getFormRPartBs(traineeId);
-
-    assertThat("Unexpected numbers of forms.", dtos.size(), is(0));
-  }
 
   @Test
   void shouldGetAdminsFormRPartBByIdWhenUnsubmitted() {
@@ -919,15 +908,15 @@ class FormRPartBServiceTest {
     assertThat("Expected empty for non-existent form.", optionalDto.isEmpty(), is(true));
   }
 
-  @ParameterizedTest(name = "Should return empty when admin form is {0}")
-  @EnumSource(value = LifecycleState.class, names = {"DRAFT", "DELETED"})
-  void shouldReturnEmptyWhenAdminsFormRPartBIsDraftOrDeleted(LifecycleState state) {
+  @Test
+  void shouldReturnEmptyListWhenNoFormRPartBsFoundForTraineeId() {
+    String traineeId = "99999";
 
-    when(repositoryMock.findByIdAndNotDraftNorDeleted(DEFAULT_ID))
-        .thenReturn(Optional.empty());
+    when(repositoryMock.findNotDraftNorDeletedByTraineeTisId(traineeId))
+        .thenReturn(new ArrayList<>());
 
-    Optional<FormRPartBDto> optionalDto = service.getAdminsFormRPartBById(DEFAULT_ID_STRING);
+    List<FormRPartSimpleDto> dtos = service.getFormRPartBs(traineeId);
 
-    assertThat("Expected empty for " + state + " form.", optionalDto.isEmpty(), is(true));
+    assertThat("Unexpected numbers of forms.", dtos.size(), is(0));
   }
 }
