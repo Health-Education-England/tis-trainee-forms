@@ -1612,8 +1612,10 @@ class LtftServiceTest {
     assertThat("Unexpected form optional.", optionalForm.isPresent(), is(true));
 
     LtftFormDto patchedForm = optionalForm.get();
+    assertThat("Unexpected form ID.", patchedForm.id(), is(ID));
     assertThat("Unexpected revision.", patchedForm.revision(), is(2));
-    assertThat("Unexpected form ref.", patchedForm.personalDetails().email(), is("new@example.com"));
+    assertThat("Unexpected form ref.", patchedForm.personalDetails().email(),
+        is("new@example.com"));
     assertThat("Unexpected status history count.", patchedForm.status().history(), hasSize(2));
 
     StatusInfoDto current = patchedForm.status().current();
@@ -1665,6 +1667,58 @@ class LtftServiceTest {
 
     assertThat("Unexpected form optional.", optionalForm.isPresent(), is(true));
     verify(ltftSubmissionHistoryService).takeSnapshot(any());
+  }
+
+  @Test
+  void shouldReturnUnpatchedFormWhenPatchMakesNoChanges() throws IOException {
+    LtftForm entity = new LtftForm();
+    entity.setId(ID);
+    entity.setContent(LtftContent.builder()
+        .change(CctChange.builder()
+            .wte(0.8)
+            .build())
+        .build());
+    entity.setRevision(1);
+    entity.setLifecycleState(SUBMITTED);
+
+    when(repository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            any(), any(), any())).thenReturn(Optional.of(entity));
+
+    JsonNode patchNode = jsonMapper.readTree("""
+        [
+          {
+            "op": "replace",
+            "path": "/change/wte",
+            "value": 0.8
+          }
+        ]
+        """);
+    FormPatchDto formPatch = new FormPatchDto(JsonPatch.fromJson(patchNode), "reason1", "message1");
+
+    Optional<LtftFormDto> optionalForm = service.applyAdminPatch(ID, formPatch);
+
+    assertThat("Unexpected form optional.", optionalForm.isPresent(), is(true));
+
+    LtftFormDto patchedForm = optionalForm.get();
+    assertThat("Unexpected form ID.", patchedForm.id(), is(ID));
+    assertThat("Unexpected revision.", patchedForm.revision(), is(1));
+    assertThat("Unexpected status history count.", patchedForm.status().history(), hasSize(1));
+
+    StatusInfoDto current = patchedForm.status().current();
+    assertThat("Unexpected current revision.", current.revision(), is(1));
+    assertThat("Unexpected current state.", current.state(), is(SUBMITTED));
+    assertThat("Unexpected current status reason.", current.detail().reason(), nullValue());
+    assertThat("Unexpected current status message.", current.detail().message(), nullValue());
+
+    StatusInfoDto history = patchedForm.status().history().get(0);
+    assertThat("Unexpected original revision.", history.revision(), is(1));
+    assertThat("Unexpected original state.", history.state(), is(SUBMITTED));
+    assertThat("Unexpected original status reason.", history.detail().reason(), nullValue());
+    assertThat("Unexpected original status message.", history.detail().message(), nullValue());
+
+    verify(repository, never()).save(any());
+    verifyNoInteractions(ltftSubmissionHistoryService);
   }
 
   @Test

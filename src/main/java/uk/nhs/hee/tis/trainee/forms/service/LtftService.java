@@ -62,6 +62,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto.FormFeatures.LtftFeatures;
 import uk.nhs.hee.tis.trainee.forms.dto.FormPatchDto;
+import uk.nhs.hee.tis.trainee.forms.dto.FormPatchResultDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
@@ -237,25 +238,29 @@ public class LtftService {
         .map(ltft -> {
           try {
             // Patch the content and copy it back in to avoid changes to read-only fields.
-            LtftContent ltftContent = patchLtftContent(ltft, formPatch.patch());
-            ltft.setContent(ltftContent);
+            FormPatchResultDto<LtftContent> patchResult = patchLtftContent(ltft, formPatch.patch());
 
-            StatusDetail statusDetail = StatusDetail.builder()
-                .reason(formPatch.reason())
-                .message(formPatch.message())
-                .build();
+            // Do not increment revision or snapshot if no changes made to the content.
+            if (patchResult.changed()) {
+              ltft.setContent(patchResult.patchedContent());
 
-            // An admin patch is considered a shortcut of the un-submit -> re-submit revision flow.
-            Person modifiedBy = Person.builder()
-                .name(adminIdentity.getName())
-                .email(adminIdentity.getEmail())
-                .role(adminIdentity.getRole())
-                .build();
-            ltft.setRevision(ltft.getRevision() + 1);
-            ltft.setLifecycleState(ltft.getLifecycleState(), statusDetail, modifiedBy,
-                ltft.getRevision());
-            ltft = ltftFormRepository.save(ltft);
-            ltftSubmissionHistoryService.takeSnapshot(ltft);
+              StatusDetail statusDetail = StatusDetail.builder()
+                  .reason(formPatch.reason())
+                  .message(formPatch.message())
+                  .build();
+
+              // An admin patch is considered a shortcut of the un-submit -> re-submit revision flow.
+              Person modifiedBy = Person.builder()
+                  .name(adminIdentity.getName())
+                  .email(adminIdentity.getEmail())
+                  .role(adminIdentity.getRole())
+                  .build();
+              ltft.setRevision(ltft.getRevision() + 1);
+              ltft.setLifecycleState(ltft.getLifecycleState(), statusDetail, modifiedBy,
+                  ltft.getRevision());
+              ltft = ltftFormRepository.save(ltft);
+              ltftSubmissionHistoryService.takeSnapshot(ltft);
+            }
 
             return mapper.toDto(ltft);
           } catch (JsonPatchException | JsonProcessingException e) {
@@ -274,7 +279,7 @@ public class LtftService {
    * @throws JsonPatchException      If the patch could not be applied.
    * @throws JsonProcessingException If the patch creates an invalid form.
    */
-  private LtftContent patchLtftContent(LtftForm ltft, JsonPatch patch)
+  private FormPatchResultDto<LtftContent> patchLtftContent(LtftForm ltft, JsonPatch patch)
       throws JsonPatchException, JsonProcessingException {
     // Convert the entity to DTO for patching, as the client will base paths on the public DTO.
     LtftFormDto dto = mapper.toDto(ltft);
@@ -290,7 +295,8 @@ public class LtftService {
     }
 
     // The content is returned to avoid any unexpected changes to managed/read-only fields.
-    return mapper.toEntity(patchedDto).getContent();
+    LtftContent patchedContent = mapper.toEntity(patchedDto).getContent();
+    return new FormPatchResultDto<>(patchedContent, !dto.equals(patchedDto));
   }
 
   /**
