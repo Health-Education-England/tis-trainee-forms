@@ -397,6 +397,40 @@ class AdminLtftResourceIntegrationTest {
   }
 
   @Test
+  void shouldReturnBadRequestPatchingWhenPatchedFormFailsValidation() throws Exception {
+    LtftForm form = createLtftForm(SUBMITTED, DBC_1, null);
+    form = template.save(form);
+
+    String formPatch = """
+        {
+          "patch": [
+            {
+              "op": "replace", "path": "/change/wte", "value": 1.1
+            }
+          ],
+          "reason": "reason1",
+          "message": "message1"
+        }
+        """;
+    mockMvc.perform(request(PATCH, "/api/admin/ltft/{id}", form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .contentType(APPLICATION_JSON)
+            .content(formPatch))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type", is("about:blank")))
+        .andExpect(jsonPath("$.title", is("Validation failure")))
+        .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
+        .andExpect(jsonPath("$.instance", is("/api/admin/ltft/%s".formatted(form.getId()))))
+        .andExpect(jsonPath("$.properties.errors").isArray())
+        .andExpect(jsonPath("$.properties.errors", hasSize(1)))
+        // The pointer is not correct to spec, as the validation error comes from the patched form.
+        .andExpect(jsonPath("$.properties.errors[0].pointer", is("#/change/wte")))
+        .andExpect(
+            jsonPath("$.properties.errors[0].detail", is("must be less than or equal to 1.0")));
+  }
+
+  @Test
   void shouldReturnPatchedFormWhenLtftDoesMatchDbc() throws Exception {
     LtftForm form = createLtftForm(SUBMITTED, DBC_1, null);
     form = template.save(form);
@@ -420,6 +454,8 @@ class AdminLtftResourceIntegrationTest {
             .contentType(APPLICATION_JSON)
             .content(formPatch))
         .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id", is(form.getId())))
+        .andExpect(jsonPath("$.formRef", is(form.getFormRef())))
         .andExpect(jsonPath("$.change.startDate", is("1970-01-01")))
         .andExpect(jsonPath("$.change.wte", is(0.5)))
         .andExpect(jsonPath("$.status.current.state", is(SUBMITTED.toString())))

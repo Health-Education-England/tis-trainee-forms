@@ -22,6 +22,8 @@
 package uk.nhs.hee.tis.trainee.forms.dto;
 
 import com.fasterxml.jackson.annotation.JsonView;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.Null;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -72,6 +74,7 @@ public record LtftFormDto(
     ProgrammeMembershipDto programmeMembership,
     DeclarationsDto declarations,
     DiscussionsDto discussions,
+    @Valid
     CctChangeDto change,
     ReasonsDto reasons,
 
@@ -107,6 +110,7 @@ public record LtftFormDto(
       UUID id,
       UUID calculationId,
       CctChangeType type,
+      @DecimalMax("1.0")
       Double wte,
       LocalDate startDate,
       LocalDate endDate,
