@@ -23,6 +23,7 @@ package uk.nhs.hee.tis.trainee.forms.service;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -47,6 +48,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -920,7 +922,9 @@ class FormRPartBServiceTest {
   @ParameterizedTest(name = "Should return empty when admin form is {0}")
   @EnumSource(value = LifecycleState.class, names = {"DRAFT", "DELETED"})
   void shouldReturnEmptyWhenAdminsFormRPartBIsDraftOrDeleted(LifecycleState state) {
-    entity.setLifecycleState(state);
+
+    when(repositoryMock.findByIdAndNotDraftNorDeleted(DEFAULT_ID))
+        .thenReturn(Optional.empty());
 
     Optional<FormRPartBDto> optionalDto = service.getAdminsFormRPartBById(DEFAULT_ID_STRING);
 
