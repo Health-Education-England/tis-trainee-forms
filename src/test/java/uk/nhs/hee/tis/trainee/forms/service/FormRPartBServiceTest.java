@@ -860,4 +860,61 @@ class FormRPartBServiceTest {
     verify(repositoryMock, never()).save(formRPartBCaptor.capture());
     verifyNoInteractions(eventBroadcastService);
   }
+
+  @Test
+  void shouldGetFormRPartBsByTraineeId() {
+
+    List<FormRPartB> entities = Collections.singletonList(entity);
+
+    when(repositoryMock.findNotDraftNorDeletedByTraineeTisId(DEFAULT_TRAINEE_TIS_ID))
+        .thenReturn(entities);
+
+    List<FormRPartSimpleDto> dtos = service.getFormRPartBs(DEFAULT_TRAINEE_TIS_ID);
+
+    assertThat("Unexpected numbers of forms.", dtos.size(), is(entities.size()));
+
+    FormRPartSimpleDto dto = dtos.get(0);
+    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
+    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+  }
+
+  @Test
+  void shouldGetAdminsFormRPartBByIdWhenUnsubmitted() {
+    entity.setLifecycleState(LifecycleState.UNSUBMITTED);
+
+    when(repositoryMock.findByIdAndNotDraftNorDeleted(DEFAULT_ID))
+        .thenReturn(Optional.of(entity));
+
+    Optional<FormRPartBDto> optionalDto = service.getAdminsFormRPartBById(DEFAULT_ID_STRING);
+
+    assertThat("Unexpected DTO.", optionalDto.isPresent(), is(true));
+    FormRPartBDto dto = optionalDto.get();
+
+    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
+    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected lifecycle state.", dto.getLifecycleState(),
+        is(LifecycleState.UNSUBMITTED));
+  }
+
+  @Test
+  void shouldReturnEmptyWhenAdminsFormRPartBNotFound() {
+    when(repositoryMock.findByIdAndNotDraftNorDeleted(DEFAULT_ID))
+        .thenReturn(Optional.empty());
+
+    Optional<FormRPartBDto> optionalDto = service.getAdminsFormRPartBById(DEFAULT_ID_STRING);
+
+    assertThat("Expected empty for non-existent form.", optionalDto.isEmpty(), is(true));
+  }
+
+  @Test
+  void shouldReturnEmptyListWhenNoFormRPartBsFoundForTraineeId() {
+    String traineeId = "99999";
+
+    when(repositoryMock.findNotDraftNorDeletedByTraineeTisId(traineeId))
+        .thenReturn(new ArrayList<>());
+
+    List<FormRPartSimpleDto> dtos = service.getFormRPartBs(traineeId);
+
+    assertThat("Unexpected numbers of forms.", dtos.size(), is(0));
+  }
 }
