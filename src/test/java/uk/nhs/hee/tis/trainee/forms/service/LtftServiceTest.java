@@ -1614,7 +1614,7 @@ class LtftServiceTest {
     LtftFormDto patchedForm = optionalForm.get();
     assertThat("Unexpected form ID.", patchedForm.id(), is(ID));
     assertThat("Unexpected revision.", patchedForm.revision(), is(2));
-    assertThat("Unexpected form ref.", patchedForm.personalDetails().email(),
+    assertThat("Unexpected email.", patchedForm.personalDetails().email(),
         is("new@example.com"));
     assertThat("Unexpected status history count.", patchedForm.status().history(), hasSize(2));
 

@@ -408,7 +408,7 @@ public class LtftService {
    *
    * @param formId The id of the LTFT form to delete.
    * @return Optional empty if the form was not found, true if the form was deleted, or false if it
-   * was not in a permitted state to delete.
+   *     was not in a permitted state to delete.
    */
   public Optional<Boolean> deleteLtftForm(UUID formId) {
     String traineeId = traineeIdentity.getTraineeId();
@@ -448,7 +448,7 @@ public class LtftService {
    * @param formId The id of the LTFT form to unsubmit.
    * @param detail The status detail for the unsubmission.
    * @return The DTO of the unsubmitted form, or empty if form not found or could not be
-   * unsubmitted.
+   *     unsubmitted.
    */
   public Optional<LtftFormDto> unsubmitLtftForm(UUID formId, LftfStatusInfoDetailDto detail) {
     return changeLtftFormState(formId, detail, UNSUBMITTED);
@@ -472,7 +472,7 @@ public class LtftService {
    * @param detail      The status detail for the change.
    * @param targetState The state to change to.
    * @return The DTO of the form after the state change, or empty if form not found or could not be
-   * changed to the target state.
+   *     changed to the target state.
    */
   protected Optional<LtftFormDto> changeLtftFormState(UUID formId, LftfStatusInfoDetailDto detail,
       LifecycleState targetState) {
@@ -502,7 +502,7 @@ public class LtftService {
    * @param formId The ID of the LTFT application.
    * @param admin  The admin to assign to the application.
    * @return The updated LTFT, empty if the form did not exist or did not belong to the admin's
-   * local office.
+   *     local office.
    */
   public Optional<LtftFormDto> assignAdmin(UUID formId, PersonDto admin) {
     log.info("Assigning admin {} to LTFT form {}", admin.email(), formId);
@@ -590,7 +590,7 @@ public class LtftService {
    * @param state  The new state.
    * @param detail A detailed reason for the change, may be null.
    * @return The updated LTFT application, empty if the form did not exist or did not belong to the
-   * admin's local office.
+   *     admin's local office.
    * @throws MethodArgumentNotValidException If the state transition is not allowed.
    */
   public Optional<LtftFormDto> updateStatusAsAdmin(UUID formId, LifecycleState state,
