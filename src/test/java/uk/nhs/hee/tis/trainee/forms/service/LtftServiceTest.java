@@ -156,6 +156,7 @@ class LtftServiceTest {
 
   private static final String LTFT_ASSIGNMENT_UPDATE_TOPIC = "update/topic/assignment";
   private static final String LTFT_STATUS_UPDATE_TOPIC = "update/topic/status";
+  private static final String LTFT_STATUS_CONTENT_TOPIC = "update/topic/content";
   private static final UUID PM_UUID = UUID.randomUUID();
 
   private LtftService service;
@@ -197,7 +198,7 @@ class LtftServiceTest {
     validator = mock(Validator.class);
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, jsonMapper,
         mapper, validator, eventBroadcastService, LTFT_ASSIGNMENT_UPDATE_TOPIC,
-        LTFT_STATUS_UPDATE_TOPIC, ltftSubmissionHistoryService);
+        LTFT_STATUS_UPDATE_TOPIC, LTFT_STATUS_CONTENT_TOPIC, ltftSubmissionHistoryService);
   }
 
   @Test
@@ -1670,6 +1671,55 @@ class LtftServiceTest {
   }
 
   @Test
+  void shouldPublishPatchedFormWhenFormSubmitted() throws IOException {
+    LtftForm entity = new LtftForm();
+    entity.setId(ID);
+    entity.setTraineeTisId(TRAINEE_ID);
+    entity.setFormRef("LTFT_123");
+    entity.setContent(LtftContent.builder().build());
+    entity.setRevision(1);
+    entity.setLifecycleState(SUBMITTED);
+
+    when(repository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            any(), any(), any())).thenReturn(Optional.of(entity));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    JsonNode patchNode = jsonMapper.readTree("""
+        [
+          {
+            "op": "replace",
+            "path": "/personalDetails/email",
+            "value": "new@example.com"
+          }
+        ]
+        """);
+    FormPatchDto formPatch = new FormPatchDto(JsonPatch.fromJson(patchNode), "reason1", "message1");
+
+    service.applyAdminPatch(ID, formPatch);
+
+    ArgumentCaptor<LtftFormDto> ltftFormCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<String> snsTopicCaptor = ArgumentCaptor.captor();
+    verify(eventBroadcastService).publishLtftFormUpdateEvent(ltftFormCaptor.capture(),
+        any(), snsTopicCaptor.capture());
+
+    LtftFormDto capturedForm = ltftFormCaptor.getValue();
+
+    assertThat("Unexpected form ID.", capturedForm.id(), is(ID));
+    assertThat("Unexpected trainee ID.", capturedForm.traineeTisId(), is(TRAINEE_ID));
+    assertThat("Unexpected form reference.", capturedForm.formRef(), is("LTFT_123"));
+    assertThat("Unexpected form revision.", capturedForm.revision(), is(2));
+    assertThat("Unexpected lifecycle state.", capturedForm.status().current().state(),
+        is(SUBMITTED));
+
+    assertThat("Unexpected trainee email.", capturedForm.personalDetails().email(),
+        is("new@example.com"));
+
+    assertThat("Unexpected SNS topic.", snsTopicCaptor.getValue(), is(LTFT_STATUS_CONTENT_TOPIC));
+    verifyNoMoreInteractions(eventBroadcastService);
+  }
+
+  @Test
   void shouldReturnUnpatchedFormWhenPatchMakesNoChanges() throws IOException {
     LtftForm entity = new LtftForm();
     entity.setId(ID);
@@ -2246,7 +2296,7 @@ class LtftServiceTest {
 
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, jsonMapper,
         mapper, validator, eventBroadcastService, LTFT_ASSIGNMENT_UPDATE_TOPIC,
-        LTFT_STATUS_UPDATE_TOPIC, ltftSubmissionHistoryService);
+        LTFT_STATUS_UPDATE_TOPIC, LTFT_STATUS_CONTENT_TOPIC, ltftSubmissionHistoryService);
 
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
@@ -2283,7 +2333,7 @@ class LtftServiceTest {
 
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, jsonMapper,
         mapper, validator, eventBroadcastService, LTFT_ASSIGNMENT_UPDATE_TOPIC,
-        LTFT_STATUS_UPDATE_TOPIC, ltftSubmissionHistoryService);
+        LTFT_STATUS_UPDATE_TOPIC, LTFT_STATUS_CONTENT_TOPIC, ltftSubmissionHistoryService);
 
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
@@ -2319,7 +2369,7 @@ class LtftServiceTest {
 
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, jsonMapper,
         mapper, validator, eventBroadcastService, LTFT_ASSIGNMENT_UPDATE_TOPIC,
-        LTFT_STATUS_UPDATE_TOPIC, ltftSubmissionHistoryService);
+        LTFT_STATUS_UPDATE_TOPIC, LTFT_STATUS_CONTENT_TOPIC, ltftSubmissionHistoryService);
 
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)

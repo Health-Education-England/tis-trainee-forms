@@ -8,6 +8,7 @@ application:
       ltft-assignment-updated: arn:aws:sns:eu-west-2:${local.account-id}:tis-trainee-update-assignment-event
       ltft-refresh: arn:aws:sns:eu-west-2:${local.account-id}:tis-trainee-forms-ltft-refresh-event
       ltft-status-updated: arn:aws:sns:eu-west-2:${local.account-id}:tis-trainee-update-form-event
+      ltft-content-updated: arn:aws:sns:eu-west-2:${local.account-id}:tis-trainee-update-form-event
     sqs:
       coj-received: ${local.sqs-path}/tis-trainee-forms-local-coj-received
       notification-event: ${local.sqs-path}/tis-trainee-forms-local-notification-event

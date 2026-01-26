@@ -10,6 +10,7 @@ application:
       ltft-assignment-updated: ${LTFT_ASSIGNMENT_UPDATE_TOPIC:}
       ltft-refresh: ${LTFT_REFRESH_TOPIC:}
       ltft-status-updated: ${LTFT_STATUS_UPDATE_TOPIC:}
+      ltft-content-updated: ${LTFT_CONTENT_UPDATE_TOPIC:}
     sqs:
       coj-received: ${COJ_RECEIVED_QUEUE:}
       notification-event: ${NOTIFICATION_EVENT_QUEUE:}
