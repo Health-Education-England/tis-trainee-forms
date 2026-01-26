@@ -106,6 +106,7 @@ public class LtftService {
   @Getter
   private final String ltftAssignmentUpdateTopic;
   private final String ltftStatusUpdateTopic;
+  private final String ltftContentUpdateTopic;
 
   private final LtftSubmissionHistoryService ltftSubmissionHistoryService;
 
@@ -122,6 +123,7 @@ public class LtftService {
    * @param eventBroadcastService        The service for broadcasting events.
    * @param ltftAssignmentUpdateTopic    The SNS topic for LTFT assignment updates.
    * @param ltftStatusUpdateTopic        The SNS topic for LTFT status updates.
+   * @param ltftContentUpdateTopic       The SNS topic for LTFT content updates.
    * @param ltftSubmissionHistoryService The service for LTFT submission history.
    */
   public LtftService(AdminIdentity adminIdentity, TraineeIdentity traineeIdentity,
@@ -129,6 +131,7 @@ public class LtftService {
       LtftMapper mapper, Validator validator, EventBroadcastService eventBroadcastService,
       @Value("${application.aws.sns.ltft-assignment-updated}") String ltftAssignmentUpdateTopic,
       @Value("${application.aws.sns.ltft-status-updated}") String ltftStatusUpdateTopic,
+      @Value("${application.aws.sns.ltft-content-updated}") String ltftContentUpdateTopic,
       LtftSubmissionHistoryService ltftSubmissionHistoryService) {
     this.adminIdentity = adminIdentity;
     this.traineeIdentity = traineeIdentity;
@@ -139,6 +142,7 @@ public class LtftService {
     this.validator = validator;
     this.ltftAssignmentUpdateTopic = ltftAssignmentUpdateTopic;
     this.ltftStatusUpdateTopic = ltftStatusUpdateTopic;
+    this.ltftContentUpdateTopic = ltftContentUpdateTopic;
     this.ltftSubmissionHistoryService = ltftSubmissionHistoryService;
     this.eventBroadcastService = eventBroadcastService;
   }
@@ -231,6 +235,7 @@ public class LtftService {
    * @return The patched form, empty if the form does not exist or does not match the admin's DBCs.
    */
   public Optional<LtftFormDto> applyAdminPatch(UUID formId, FormPatchDto formPatch) {
+    log.info("Applying patch to form '{}': {}", formId, formPatch);
     return getLtftForAdmin(formId)
         // Will result in NOT FOUND when not submitted, which mirrors GET behaviour.
         .filter(ltft -> ltft.getLifecycleState().equals(SUBMITTED))
@@ -260,6 +265,10 @@ public class LtftService {
                   ltft.getRevision());
               ltft = ltftFormRepository.save(ltft);
               ltftSubmissionHistoryService.takeSnapshot(ltft);
+
+              publishUpdateNotification(ltft, null, ltftContentUpdateTopic);
+            } else {
+              log.debug("Patch did not make changes, returning unchanged object.");
             }
 
             return mapper.toDto(ltft);

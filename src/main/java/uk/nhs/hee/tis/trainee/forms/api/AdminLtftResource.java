@@ -173,6 +173,7 @@ public class AdminLtftResource {
   public ResponseEntity<LtftFormDto> patchLtft(@PathVariable UUID id,
       @Valid @RequestBody FormPatchDto formPatch)
       throws MethodArgumentNotValidException {
+    log.info("LTFT patch requested by admin for LTFT '{}'", id);
     ArrayNode patchJson = objectMapper.convertValue(formPatch.patch(), ArrayNode.class);
     BeanPropertyBindingResult validationResult = new BeanPropertyBindingResult(formPatch,
         "formPatch");
@@ -192,12 +193,14 @@ public class AdminLtftResource {
       String path = operation.get("path").asText();
 
       if (!Objects.equals(op, "replace")) {
+        log.warn("Unsupported patch operation provided.");
         validationResult.addError(
             new FieldError(FormPatchDto.class.getSimpleName(), "patch.%s.op".formatted(opIndex),
                 "only 'replace' supported"));
       }
 
       if (!allowedPaths.contains(path)) {
+        log.warn("Invalid patch path provided.");
         validationResult.addError(
             new FieldError(FormPatchDto.class.getSimpleName(), "patch.%s.path".formatted(opIndex),
                 "user not authorized to update '%s'".formatted(path)));
