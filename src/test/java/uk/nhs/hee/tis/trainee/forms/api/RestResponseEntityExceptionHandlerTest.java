@@ -28,14 +28,21 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Path;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.metadata.ConstraintDescriptor;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
+import org.hibernate.validator.internal.engine.path.PathImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
@@ -177,6 +184,63 @@ class RestResponseEntityExceptionHandlerTest {
     assertThat("Unexpected error detail.", error.detail(), is("detail3"));
   }
 
+  @Test
+  void shouldHandleConstraintViolationException() {
+    Set<ConstraintViolation<?>> violations = Set.of(
+        new ConstraintViolationStub("field2", "detail3"),
+        new ConstraintViolationStub("field1", "detail2"),
+        new ConstraintViolationStub("field1", "detail1"),
+        new ConstraintViolationStub("field1.subField", "detail4")
+    );
+
+    ConstraintViolationException exception =
+        new ConstraintViolationException(violations);
+
+    HttpHeaders headers = HttpHeaders.EMPTY;
+    WebRequest request = new ServletWebRequest(new MockHttpServletRequest());
+
+    ResponseEntity<Object> response = handler.handleConstraintViolation(exception, request);
+
+    assertThat("Unexpected response.", response, notNullValue());
+    assertThat("Unexpected headers.", response.getHeaders(), is(headers));
+    assertThat("Unexpected response code.", response.getStatusCode(), is(BAD_REQUEST));
+    assertThat("Unexpected response type.", response.getBody(), instanceOf(ProblemDetail.class));
+
+    ProblemDetail problem = (ProblemDetail) response.getBody();
+    assertThat("Unexpected problem.", problem, notNullValue());
+    assertThat("Unexpected problem title.", problem.getTitle(), is("Validation failure"));
+    assertThat("Unexpected problem status.", problem.getStatus(), is(BAD_REQUEST.value()));
+    assertThat("Unexpected problem instance.", problem.getInstance(), nullValue());
+    assertThat("Unexpected problem type.", problem.getType(), is(URI.create("about:blank")));
+    assertThat("Unexpected problem detail.", problem.getDetail(), nullValue());
+
+    Map<String, Object> problemProperties = problem.getProperties();
+    assertThat("Unexpected problem properties.", problemProperties, notNullValue());
+    assertThat("Unexpected property count.", problemProperties.size(), is(1));
+
+    Object errors = problemProperties.get("errors");
+    assertThat("Unexpected errors type.", errors, instanceOf(List.class));
+
+    List<BodyValidationError> errorsList = (List<BodyValidationError>) errors;
+    assertThat("Unexpected errors count.", errorsList.size(), is(4));
+
+    BodyValidationError error = errorsList.get(0);
+    assertThat("Unexpected error pointer.", error.pointer(), is("#/field1"));
+    assertThat("Unexpected error detail.", error.detail(), is("detail1"));
+
+    error = errorsList.get(1);
+    assertThat("Unexpected error pointer.", error.pointer(), is("#/field1"));
+    assertThat("Unexpected error detail.", error.detail(), is("detail2"));
+
+    error = errorsList.get(2);
+    assertThat("Unexpected error pointer.", error.pointer(), is("#/field1/subField"));
+    assertThat("Unexpected error detail.", error.detail(), is("detail4"));
+
+    error = errorsList.get(3);
+    assertThat("Unexpected error pointer.", error.pointer(), is("#/field2"));
+    assertThat("Unexpected error detail.", error.detail(), is("detail3"));
+  }
+
   /**
    * A test stub for {@link MethodValidationResult}.
    *
@@ -216,6 +280,71 @@ class RestResponseEntityExceptionHandlerTest {
             return new ParameterValidationResult(parameter, null, messages, null, null, null);
           })
           .toList();
+    }
+  }
+
+  /**
+   * A test stub for {@link ConstraintViolation}.
+   *
+   * @param propertyPath The property path of the violation.
+   * @param message      The validation message.
+   */
+  private record ConstraintViolationStub(String propertyPath, String message) implements
+      ConstraintViolation<Object> {
+
+    @Override
+    public String getMessage() {
+      return message;
+    }
+
+    @Override
+    public Path getPropertyPath() {
+      return PathImpl.createPathFromString(propertyPath);
+    }
+
+    @Override
+    public String getMessageTemplate() {
+      return "";
+    }
+
+    @Override
+    public Object getRootBean() {
+      return null;
+    }
+
+    @Override
+    public Class<Object> getRootBeanClass() {
+      return Object.class;
+    }
+
+    @Override
+    public Object getLeafBean() {
+      return null;
+    }
+
+    @Override
+    public Object[] getExecutableParameters() {
+      return null;
+    }
+
+    @Override
+    public Object getExecutableReturnValue() {
+      return null;
+    }
+
+    @Override
+    public Object getInvalidValue() {
+      return null;
+    }
+
+    @Override
+    public ConstraintDescriptor<?> getConstraintDescriptor() {
+      return null;
+    }
+
+    @Override
+    public <U> U unwrap(Class<U> type) {
+      throw new UnsupportedOperationException();
     }
   }
 }

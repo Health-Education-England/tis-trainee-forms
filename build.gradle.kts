@@ -57,6 +57,7 @@ dependencies {
   implementation(libs.bundles.aws.xray)
 
   implementation("commons-beanutils:commons-beanutils:1.11.0")
+  implementation("com.github.java-json-tools:json-patch:1.13")
 
   // PDF
   implementation(libs.bundles.pdf.publishing)

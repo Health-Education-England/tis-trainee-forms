@@ -21,7 +21,10 @@
 
 package uk.nhs.hee.tis.trainee.forms.api;
 
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
+
 import com.fasterxml.jackson.core.JsonPointer;
+import jakarta.validation.ConstraintViolationException;
 import java.util.Comparator;
 import java.util.List;
 import org.springframework.http.HttpHeaders;
@@ -30,6 +33,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
@@ -87,6 +91,36 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
     problemDetail.setTitle(ex.getReason());
     problemDetail.setProperty("errors", errors);
     return handleExceptionInternal(ex, problemDetail, headers, status, request);
+  }
+
+  /**
+   * Handle {@link ConstraintViolationException} and convert to Problem Detail.
+   *
+   * @param ex      The contstraint violations.
+   * @param request The web request that triggered the exception.
+   * @return A Problem Detail response.
+   */
+  @ExceptionHandler(ConstraintViolationException.class)
+  protected ResponseEntity<Object> handleConstraintViolation(ConstraintViolationException ex,
+      WebRequest request) {
+    List<BodyValidationError> errors = ex.getConstraintViolations().stream()
+        .map(v -> {
+          String pointer =
+              "#/" + v.getPropertyPath().toString()
+                  .replace('.', JsonPointer.SEPARATOR);
+          return new BodyValidationError(pointer, v.getMessage());
+        })
+        .sorted(
+            Comparator.comparing(BodyValidationError::pointer)
+                .thenComparing(BodyValidationError::detail)
+        )
+        .toList();
+
+    ProblemDetail problemDetail = ProblemDetail.forStatus(BAD_REQUEST);
+    problemDetail.setTitle(TITLE_VALIDATION_FAILURE);
+    problemDetail.setProperty("errors", errors);
+
+    return handleExceptionInternal(ex, problemDetail, new HttpHeaders(), BAD_REQUEST, request);
   }
 
   /**

@@ -26,11 +26,20 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.REJECT
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import jakarta.validation.Valid;
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.MethodParameter;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort.Direction;
@@ -39,14 +48,18 @@ import org.springframework.data.web.PagedModel;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import uk.nhs.hee.tis.trainee.forms.dto.FormPatchDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
@@ -66,10 +79,19 @@ public class AdminLtftResource {
 
   private final LtftService service;
   private final PdfService pdfService;
+  private final ObjectMapper objectMapper;
 
-  public AdminLtftResource(LtftService service, PdfService pdfService) {
+  /**
+   * Construct the controller.
+   *
+   * @param service      The LTFT service for accessing LTFT functionality.
+   * @param pdfService   The PDF service for generating PDFs.
+   * @param objectMapper The mapper for handling JSON conversion.
+   */
+  public AdminLtftResource(LtftService service, PdfService pdfService, ObjectMapper objectMapper) {
     this.service = service;
     this.pdfService = pdfService;
+    this.objectMapper = objectMapper;
   }
 
   /**
@@ -137,6 +159,58 @@ public class AdminLtftResource {
     }
 
     return ResponseEntity.notFound().build();
+  }
+
+  /**
+   * Patch the contents of an LTFT with a particular ID associated with the admin's local office.
+   *
+   * @param id        The ID of the form.
+   * @param formPatch The patch to apply.
+   * @return The updated form DTO.
+   * @throws MethodArgumentNotValidException If the patch was not valid.
+   */
+  @PatchMapping("/{id}")
+  public ResponseEntity<LtftFormDto> patchLtft(@PathVariable UUID id,
+      @Valid @RequestBody FormPatchDto formPatch)
+      throws MethodArgumentNotValidException {
+    ArrayNode patchJson = objectMapper.convertValue(formPatch.patch(), ArrayNode.class);
+    BeanPropertyBindingResult validationResult = new BeanPropertyBindingResult(formPatch,
+        "formPatch");
+
+    if (patchJson.isEmpty()) {
+      validationResult.addError(
+          new FieldError(FormPatchDto.class.getSimpleName(), "patch", "must not be empty"));
+    }
+
+    // TODO: validate patchability generically in a central place (e.g. annotations).
+    Set<String> allowedPaths = Set.of("/change/startDate", "/change/wte");
+    int opIndex = 0;
+
+    for (Iterator<JsonNode> opIterator = patchJson.elements(); opIterator.hasNext(); opIndex++) {
+      JsonNode operation = opIterator.next();
+      String op = operation.get("op").asText();
+      String path = operation.get("path").asText();
+
+      if (!Objects.equals(op, "replace")) {
+        validationResult.addError(
+            new FieldError(FormPatchDto.class.getSimpleName(), "patch.%s.op".formatted(opIndex),
+                "only 'replace' supported"));
+      }
+
+      if (!allowedPaths.contains(path)) {
+        validationResult.addError(
+            new FieldError(FormPatchDto.class.getSimpleName(), "patch.%s.path".formatted(opIndex),
+                "user not authorized to update '%s'".formatted(path)));
+      }
+    }
+
+    if (validationResult.hasErrors()) {
+      Method method = this.getClass().getMethods()[0];
+      throw new MethodArgumentNotValidException(new MethodParameter(method, 0), validationResult);
+    }
+
+    Optional<LtftFormDto> patchedForm = service.applyAdminPatch(id, formPatch);
+    return ResponseEntity.of(patchedForm);
   }
 
   @PutMapping("/{id}/assign")
