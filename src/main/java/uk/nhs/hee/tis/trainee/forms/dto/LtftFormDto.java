@@ -92,7 +92,8 @@ public record LtftFormDto(
 
     @JsonView(ReadOnly.class)
     @Null(groups = {Create.class, Update.class})
-    Instant lastModified) {
+    Instant lastModified,
+    Boolean shortNotice) {
 
   /**
    * The calculated LTFT change.

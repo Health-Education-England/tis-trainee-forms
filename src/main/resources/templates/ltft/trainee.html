@@ -220,7 +220,7 @@
             <dt class="nhsuk-summary-list__key">Start date</dt>
             <dd class="nhsuk-summary-list__value">
               <span th:text="${var.change?.startDate != null ? #temporals.format(var.change.startDate, 'dd MMMM yyyy') : 'Not provided'}"></span>
-              <span th:if="${var.change?.startDate != null and var.change.startDate.isBefore(#temporals.createToday().plusWeeks(16))}">
+              <span th:if="${var.shortNotice}">
                 <br/>
                 <div><strong>Warning:</strong> Giving less than 16 weeks notice to change your working hours is classed as a late application and will only be considered on an exceptional basis.</div>
               </span>
