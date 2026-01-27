@@ -91,7 +91,7 @@ class LtftMapperTest {
     LtftForm entity = new LtftForm();
     entity.setStatus(null);
 
-    Boolean isShortNotice = mapper.isShortNotice(entity);
+    Boolean isShortNotice = mapper.isShortNoticeAdmin(entity);
 
     assertThat("Unexpected short notice value.", isShortNotice, nullValue());
   }
@@ -103,7 +103,7 @@ class LtftMapperTest {
         .submitted(null)
         .build());
 
-    Boolean isShortNotice = mapper.isShortNotice(entity);
+    Boolean isShortNotice = mapper.isShortNoticeAdmin(entity);
 
     assertThat("Unexpected short notice value.", isShortNotice, nullValue());
   }
@@ -118,7 +118,7 @@ class LtftMapperTest {
 
     entity.setContent(null);
 
-    Boolean isShortNotice = mapper.isShortNotice(entity);
+    Boolean isShortNotice = mapper.isShortNoticeAdmin(entity);
 
     assertThat("Unexpected short notice value.", isShortNotice, nullValue());
   }
@@ -135,7 +135,7 @@ class LtftMapperTest {
         .change(null)
         .build());
 
-    Boolean isShortNotice = mapper.isShortNotice(entity);
+    Boolean isShortNotice = mapper.isShortNoticeAdmin(entity);
 
     assertThat("Unexpected short notice value.", isShortNotice, nullValue());
   }
@@ -154,7 +154,7 @@ class LtftMapperTest {
             .build())
         .build());
 
-    Boolean isShortNotice = mapper.isShortNotice(entity);
+    Boolean isShortNotice = mapper.isShortNoticeAdmin(entity);
 
     assertThat("Unexpected short notice value.", isShortNotice, nullValue());
   }
@@ -174,7 +174,7 @@ class LtftMapperTest {
             .build())
         .build());
 
-    Boolean isShortNotice = mapper.isShortNotice(entity);
+    Boolean isShortNotice = mapper.isShortNoticeAdmin(entity);
 
     assertThat("Unexpected short notice value.", isShortNotice, is(true));
   }
@@ -194,7 +194,7 @@ class LtftMapperTest {
             .build())
         .build());
 
-    Boolean isShortNotice = mapper.isShortNotice(entity);
+    Boolean isShortNotice = mapper.isShortNoticeAdmin(entity);
 
     assertThat("Unexpected short notice value.", isShortNotice, is(false));
   }
@@ -216,7 +216,7 @@ class LtftMapperTest {
             .build())
         .build());
 
-    Boolean isShortNotice = mapper.isShortNotice(entity);
+    Boolean isShortNotice = mapper.isShortNoticeAdmin(entity);
 
     assertThat("Unexpected short notice value.", isShortNotice, is(true));
   }
