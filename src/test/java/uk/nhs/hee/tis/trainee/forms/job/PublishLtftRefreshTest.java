@@ -64,7 +64,7 @@ class PublishLtftRefreshTest {
 
   @Test
   void shouldNotPublishWhenNoLtftsFound() {
-    when(repository.findAll()).thenReturn(List.of());
+    when(repository.findByStatus_Current_StateIn(any())).thenReturn(List.of());
 
     job.execute();
 

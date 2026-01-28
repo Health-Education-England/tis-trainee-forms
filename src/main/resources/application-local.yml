@@ -14,6 +14,8 @@ application:
       notification-event: ${local.sqs-path}/tis-trainee-forms-local-notification-event
       profile-move: ${local.sqs-path}/tis-trainee-forms-local-profile-move
   schedules:
+    publish-all-formr-partas: "-"
+    publish-all-formr-partbs: "-"
     publish-all-ltfts: "-"
   signature:
     secret-key: ${SIGNATURE_SECRET_KEY:not-very-secret-plain-text-value}

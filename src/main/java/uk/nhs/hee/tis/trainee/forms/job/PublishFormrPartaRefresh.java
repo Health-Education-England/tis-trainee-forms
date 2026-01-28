@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2025 Crown Copyright (Health Education England)
+ * Copyright 2026 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -17,16 +17,14 @@
  * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
  * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
  */
 
 package uk.nhs.hee.tis.trainee.forms.job;
 
-import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROVED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DELETED;
-import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.REJECTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
-import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.util.List;
@@ -37,70 +35,70 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
-import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
-import uk.nhs.hee.tis.trainee.forms.service.LtftService;
+import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapper;
+import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
+import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
+import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 
 /**
- * A job to publish all exportable LTFT applications as if they have been updated, useful for
+ * A job to publish all exportable Form-R applications as if they have been updated, useful for
  * refreshing downstream dependants after data discrepancies.
  */
 @Slf4j
 @Component
 @XRayEnabled
-public class PublishLtftRefresh extends AbstractPublishRefresh<LtftForm> {
+public class PublishFormrPartaRefresh extends AbstractPublishRefresh<FormRPartA> {
 
-  private final LtftFormRepository repository;
-  private final LtftService service;
+  private final FormRPartARepository repository;
+  private final FormRPartAService service;
+  private final FormRPartAMapper mapper;
   private final String topic;
 
   /**
-   * Create an instance of a job for publishing LTFT refreshes.
+   * Create an instance of a job for publishing Form-R refreshes.
    *
-   * @param repository The repository used to retrieve LTFT records.
-   * @param service    The LTFT service used to send notifications.
+   * @param repository The repository used to retrieve Form-R records.
+   * @param service    The Form-R service used to send notifications.
    * @param topic      The refresh topic to publish to.
    */
-  public PublishLtftRefresh(LtftFormRepository repository, LtftService service,
-      @Value("${application.aws.sns.ltft-refresh}") String topic) {
+  public PublishFormrPartaRefresh(FormRPartARepository repository, FormRPartAService service,
+      FormRPartAMapper mapper, @Value("${application.aws.sns.formr-refresh}") String topic) {
     this.repository = repository;
     this.service = service;
+    this.mapper = mapper;
     this.topic = topic;
   }
 
   @Override
   public String getFormTypeName() {
-    return "LTFT";
+    return "Form-R Part A";
   }
 
   @Override
-  public UUID getFormId(LtftForm form) {
+  public UUID getFormId(FormRPartA form) {
     return form.getId();
   }
 
   @Override
-  public List<LtftForm> getForms() {
+  public List<FormRPartA> getForms() {
     // Listing allowed (non-DRAFT) states avoids any accidental inclusions of future states.
-    return repository.findByStatus_Current_StateIn(Set.of(
-        APPROVED,
+    return repository.findByLifecycleStateIn(Set.of(
         DELETED,
-        REJECTED,
         SUBMITTED,
-        UNSUBMITTED,
-        WITHDRAWN
+        UNSUBMITTED
     ));
   }
 
   @Override
-  public void publishForm(LtftForm form) {
-    service.publishUpdateNotification(form, null, topic);
+  public void publishForm(FormRPartA form) {
+    service.publishUpdateNotification(mapper.toDto(form), topic);
   }
 
   /**
-   * Execute the scheduled job to publish all exportable LTFT applications as a refresh.
+   * Execute the scheduled job to publish all exportable Form-R Part A applications as a refresh.
    */
-  @Scheduled(cron = "${application.schedules.publish-all-ltfts}")
-  @SchedulerLock(name = "PublishLtftRefresh.execute")
+  @Scheduled(cron = "${application.schedules.publish-all-formr-partas}")
+  @SchedulerLock(name = "PublishFormrPartaRefresh.execute")
   @Override
   public Integer execute() {
     return super.execute();
