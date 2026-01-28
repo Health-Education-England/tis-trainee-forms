@@ -71,7 +71,7 @@ public class PublishFormrPartbRefresh extends AbstractPublishRefresh<FormRPartB>
 
   @Override
   public String getFormTypeName() {
-    return "Form-R Part A";
+    return "Form-R Part B";
   }
 
   @Override
