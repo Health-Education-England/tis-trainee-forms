@@ -31,22 +31,49 @@ import static org.springframework.http.HttpStatus.OK;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
+import uk.nhs.hee.tis.trainee.forms.job.PublishFormrPartaRefresh;
+import uk.nhs.hee.tis.trainee.forms.job.PublishFormrPartbRefresh;
 import uk.nhs.hee.tis.trainee.forms.job.PublishLtftRefresh;
 
 class JobResourceTest {
 
   private JobResource controller;
 
+  private PublishFormrPartaRefresh publishFormrPartaRefreshJob;
+  private PublishFormrPartbRefresh publishFormrPartbRefreshJob;
   private PublishLtftRefresh publishLtftRefreshJob;
 
   @BeforeEach
   void setUp() {
+    publishFormrPartaRefreshJob = mock(PublishFormrPartaRefresh.class);
+    publishFormrPartbRefreshJob = mock(PublishFormrPartbRefresh.class);
     publishLtftRefreshJob = mock(PublishLtftRefresh.class);
-    controller = new JobResource(publishLtftRefreshJob);
+    controller = new JobResource(publishFormrPartaRefreshJob, publishFormrPartbRefreshJob,
+        publishLtftRefreshJob);
   }
 
   @Test
-  void publishLtftRefresh() {
+  void shouldPublishFormrPartaRefresh() {
+    when(publishFormrPartaRefreshJob.execute()).thenReturn(3);
+
+    ResponseEntity<Integer> response = controller.publishFormrPartaRefresh();
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), is(3));
+  }
+
+  @Test
+  void shouldPublishFormrPartbRefresh() {
+    when(publishFormrPartbRefreshJob.execute()).thenReturn(4);
+
+    ResponseEntity<Integer> response = controller.publishFormrPartbRefresh();
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), is(4));
+  }
+
+  @Test
+  void shouldPublishLtftRefresh() {
     when(publishLtftRefreshJob.execute()).thenReturn(5);
 
     ResponseEntity<Integer> response = controller.publishLtftRefresh();

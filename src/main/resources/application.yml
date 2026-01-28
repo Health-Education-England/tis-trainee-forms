@@ -6,6 +6,7 @@ application:
   aws:
     sns:
       pdf-generated: ${PDF_GENERATED_TOPIC:}
+      formr-refresh: ${FORMR_REFRESH_TOPIC:}
       formr-updated: ${FORMR_UPDATE_TOPIC:}
       ltft-assignment-updated: ${LTFT_ASSIGNMENT_UPDATE_TOPIC:}
       ltft-refresh: ${LTFT_REFRESH_TOPIC:}
@@ -16,6 +17,8 @@ application:
       notification-event: ${NOTIFICATION_EVENT_QUEUE:}
       profile-move: ${PROFILE_MOVE_QUEUE:}
   schedules:
+    publish-all-formr-partas: "-"
+    publish-all-formr-partbs: "-"
     publish-all-ltfts: "@monthly"
   signature:
     secret-key: ${SIGNATURE_SECRET_KEY}

@@ -85,13 +85,13 @@ public class FormRPartAService {
   /**
    * Constructor for a FormR PartA service.
    *
-   * @param repository               Spring data repository.
-   * @param cloudObjectRepository    Repository to storage form in the cloud.
-   * @param mapper                   Maps between the form entity and DTO.
-   * @param objectMapper             The object mapper.
-   * @param traineeIdentity          The trainee identity.
-   * @param eventBroadcastService    The event broadcast service.
-   * @param formRPartAUpdatedTopic   The SNS topic for FormR PartA updated events.
+   * @param repository             Spring data repository.
+   * @param cloudObjectRepository  Repository to storage form in the cloud.
+   * @param mapper                 Maps between the form entity and DTO.
+   * @param objectMapper           The object mapper.
+   * @param traineeIdentity        The trainee identity.
+   * @param eventBroadcastService  The event broadcast service.
+   * @param formRPartAUpdatedTopic The SNS topic for FormR PartA updated events.
    */
   public FormRPartAService(FormRPartARepository repository,
       S3FormRPartARepositoryImpl cloudObjectRepository,
@@ -293,6 +293,19 @@ public class FormRPartAService {
   }
 
   /**
+   * Publish Form-R update notification.
+   *
+   * @param form     The updated Form-R.
+   * @param snsTopic The SNS topic to publish the notification to.
+   */
+  public void publishUpdateNotification(FormRPartADto form, String snsTopic) {
+    eventBroadcastService.publishFormRPartAEvent(form,
+        Map.of(EventBroadcastService.MESSAGE_ATTRIBUTE_KEY_FORM_TYPE, FORM_TYPE), snsTopic);
+    log.info("Published update notification for Form-R Part A form {} to SNS topic {}",
+        form.getId(), snsTopic);
+  }
+
+  /**
    * Publish an updated form.
    *
    * @param formDto The form DTO to publish.
@@ -300,9 +313,6 @@ public class FormRPartAService {
   private void publishFormRUpdateEvent(FormRPartADto formDto) {
     log.debug("Publishing FormRPartA {} event for form id: {}",
         formDto.getLifecycleState(), formDto.getId());
-    eventBroadcastService.publishFormRPartAEvent(
-        formDto,
-        Map.of(EventBroadcastService.MESSAGE_ATTRIBUTE_KEY_FORM_TYPE, FORM_TYPE),
-        formRPartAUpdatedTopic);
+    publishUpdateNotification(formDto, formRPartAUpdatedTopic);
   }
 }

@@ -82,12 +82,12 @@ public class FormRPartBService {
   /**
    * Constructor for a FormR PartB service.
    *
-   * @param formRPartBRepository     spring data repository
-   * @param s3ObjectRepository       S3 Repository for forms
-   * @param formRPartBMapper         maps between the form entity and dto
-   * @param objectMapper             The object mapper.
-   * @param traineeIdentity          The trainee identity.
-   * @param eventBroadcastService    The event broadcast service.
+   * @param formRPartBRepository   spring data repository
+   * @param s3ObjectRepository     S3 Repository for forms
+   * @param formRPartBMapper       maps between the form entity and dto
+   * @param objectMapper           The object mapper.
+   * @param traineeIdentity        The trainee identity.
+   * @param eventBroadcastService  The event broadcast service.
    * @param formRPartBUpdatedTopic The SNS topic for FormR PartB updated events.
    */
   public FormRPartBService(FormRPartBRepository formRPartBRepository,
@@ -292,6 +292,19 @@ public class FormRPartBService {
   }
 
   /**
+   * Publish Form-R update notification.
+   *
+   * @param form     The updated Form-R.
+   * @param snsTopic The SNS topic to publish the notification to.
+   */
+  public void publishUpdateNotification(FormRPartBDto form, String snsTopic) {
+    eventBroadcastService.publishFormRPartBEvent(form,
+        Map.of(EventBroadcastService.MESSAGE_ATTRIBUTE_KEY_FORM_TYPE, FORM_TYPE), snsTopic);
+    log.info("Published update notification for Form-R Part B form {} to SNS topic {}",
+        form.getId(), snsTopic);
+  }
+
+  /**
    * Publish an updated form.
    *
    * @param formDto The form DTO to publish.
@@ -299,9 +312,6 @@ public class FormRPartBService {
   private void publishFormRUpdateEvent(FormRPartBDto formDto) {
     log.debug("Publishing FormRPartB {} event for form id: {}",
         formDto.getLifecycleState(), formDto.getId());
-    eventBroadcastService.publishFormRPartBEvent(
-        formDto,
-        Map.of(EventBroadcastService.MESSAGE_ATTRIBUTE_KEY_FORM_TYPE, FORM_TYPE),
-        formRPartBUpdatedTopic);
+    publishUpdateNotification(formDto, formRPartBUpdatedTopic);
   }
 }

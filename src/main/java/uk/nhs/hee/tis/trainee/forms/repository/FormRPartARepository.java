@@ -23,6 +23,7 @@ package uk.nhs.hee.tis.trainee.forms.repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
@@ -48,4 +49,12 @@ public interface FormRPartARepository extends MongoRepository<FormRPartA, UUID> 
       LifecycleState lifecycleState);
 
   List<FormRPartA> findByTraineeTisId(String traineeTisId);
+
+  /**
+   * Find all Form-R Part As with the given states.
+   *
+   * @param states The states to filter by.
+   * @return The found forms, empty if none found.
+   */
+  List<FormRPartA> findByLifecycleStateIn(Set<LifecycleState> states);
 }

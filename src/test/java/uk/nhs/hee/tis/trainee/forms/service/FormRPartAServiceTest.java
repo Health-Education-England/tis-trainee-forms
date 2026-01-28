@@ -686,4 +686,15 @@ class FormRPartAServiceTest {
 
     assertThat("Unexpected numbers of forms.", dtos.size(), is(0));
   }
+
+  @Test
+  void shouldPublishUpdateNotification() {
+    FormRPartADto form = new FormRPartADto();
+    form.setId(UUID.randomUUID().toString());
+
+    service.publishUpdateNotification(form, "my-topic");
+
+    verify(eventBroadcastService).publishFormRPartAEvent(form,
+        Map.of(EventBroadcastService.MESSAGE_ATTRIBUTE_KEY_FORM_TYPE, "formr-a"), "my-topic");
+  }
 }

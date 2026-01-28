@@ -28,6 +28,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import uk.nhs.hee.tis.trainee.forms.job.PublishFormrPartaRefresh;
+import uk.nhs.hee.tis.trainee.forms.job.PublishFormrPartbRefresh;
 import uk.nhs.hee.tis.trainee.forms.job.PublishLtftRefresh;
 
 /**
@@ -39,10 +41,46 @@ import uk.nhs.hee.tis.trainee.forms.job.PublishLtftRefresh;
 @XRayEnabled
 public class JobResource {
 
+  private final PublishFormrPartaRefresh publishFormrPartaRefreshJob;
+  private final PublishFormrPartbRefresh publishFormrPartbRefreshJob;
   private final PublishLtftRefresh publishLtftRefreshJob;
 
-  public JobResource(PublishLtftRefresh publishLtftRefreshJob) {
+  /**
+   * Create a job controller.
+   * @param publishFormrPartaRefreshJob A job for publishing Form R Part A refreshes.
+   * @param publishFormrPartbRefreshJob The job for publishing Form R Part B refreshes.
+   * @param publishLtftRefreshJob The job for publishing LTFT refreshes.
+   */
+  public JobResource(PublishFormrPartaRefresh publishFormrPartaRefreshJob,
+      PublishFormrPartbRefresh publishFormrPartbRefreshJob,
+      PublishLtftRefresh publishLtftRefreshJob) {
+    this.publishFormrPartaRefreshJob = publishFormrPartaRefreshJob;
+    this.publishFormrPartbRefreshJob = publishFormrPartbRefreshJob;
     this.publishLtftRefreshJob = publishLtftRefreshJob;
+  }
+
+  /**
+   * Publish all exportable Form-R Part A records as a refresh.
+   *
+   * @return The number of exported Form-R Part A records.
+   */
+  @PostMapping("/formr-parta/publish-refresh")
+  public ResponseEntity<Integer> publishFormrPartaRefresh() {
+    log.info("Received request to publish Form-R Part A refresh.");
+    int publishCount = publishFormrPartaRefreshJob.execute();
+    return ResponseEntity.ok(publishCount);
+  }
+
+  /**
+   * Publish all exportable Form-R Part B records as a refresh.
+   *
+   * @return The number of exported Form-R Part B records.
+   */
+  @PostMapping("/formr-partb/publish-refresh")
+  public ResponseEntity<Integer> publishFormrPartbRefresh() {
+    log.info("Received request to publish Form-R Part B refresh.");
+    int publishCount = publishFormrPartbRefreshJob.execute();
+    return ResponseEntity.ok(publishCount);
   }
 
   /**
