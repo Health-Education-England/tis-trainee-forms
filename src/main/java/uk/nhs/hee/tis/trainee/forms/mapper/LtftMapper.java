@@ -254,7 +254,7 @@ public abstract class LtftMapper {
   @Named("IsShortNoticeTrainee")
   @Nullable
   Boolean isShortNoticeTrainee(LtftForm entity) {
-    if (entity.getStatus() == null) {
+    if (entity.getStatus() == null || entity.getStatus().current() == null) {
       return null;
     }
 
@@ -292,9 +292,6 @@ public abstract class LtftMapper {
    * @return Whether the application is short notice.
    */
   private Boolean isShortNotice(LtftForm entity, Instant referenceInstant) {
-    if (referenceInstant == null) {
-      return false;
-    }
     LocalDate referenceDate = getTemporalMapper().toLocalDate(referenceInstant);
 
     return Optional.ofNullable(entity.getContent())

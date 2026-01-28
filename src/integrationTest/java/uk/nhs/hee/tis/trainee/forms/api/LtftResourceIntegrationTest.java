@@ -1851,11 +1851,11 @@ class LtftResourceIntegrationTest {
 
     assertThat("Unexpected section header.", pdfText,
         containsString("Declarations" + System.lineSeparator()));
-    assertThat("Unexpected declaration.", pdfText.replaceAll("[\r\n]+", ""),
+    assertThat("Unexpected declaration.", removeLineBreak(pdfText),
         containsString(
-            "I confirm that the information I have provided is correct and accurate to the best of my knowledge.true"));
-    assertThat("Unexpected declaration.", pdfText.replaceAll("[\r\n]+", ""),
-        containsString("I understand that approval of my application is not guaranteed.true"));
+            "I confirm that the information I have provided is correct and accurate to the best of my knowledge. true"));
+    assertThat("Unexpected declaration.", removeLineBreak(pdfText),
+        containsString("I understand that approval of my application is not guaranteed. true"));
   }
 
   private String removeLineBreak(String text) {
