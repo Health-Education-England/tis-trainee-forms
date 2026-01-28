@@ -29,6 +29,7 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBM
 import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,7 +47,7 @@ import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 @Slf4j
 @Component
 @XRayEnabled
-public class PublishFormrPartaRefresh {
+public class PublishFormrPartaRefresh extends AbstractPublishRefresh<FormRPartA> {
 
   private final FormRPartARepository repository;
   private final FormRPartAService service;
@@ -68,39 +69,38 @@ public class PublishFormrPartaRefresh {
     this.topic = topic;
   }
 
+  @Override
+  public String getFormTypeName() {
+    return "Form-R Part A";
+  }
+
+  @Override
+  public UUID getFormId(FormRPartA form) {
+    return form.getId();
+  }
+
+  @Override
+  public List<FormRPartA> getForms() {
+    // Listing allowed (non-DRAFT) states avoids any accidental inclusions of future states.
+    return repository.findByLifecycleStateIn(Set.of(
+        DELETED,
+        SUBMITTED,
+        UNSUBMITTED
+    ));
+  }
+
+  @Override
+  public void publishForm(FormRPartA form) {
+    service.publishUpdateNotification(mapper.toDto(form), topic);
+  }
+
   /**
    * Execute the scheduled job to publish all exportable Form-R Part A applications as a refresh.
    */
   @Scheduled(cron = "${application.schedules.publish-all-formr-partas}")
   @SchedulerLock(name = "PublishFormrPartaRefresh.execute")
+  @Override
   public Integer execute() {
-    log.info("Starting Form-R Part A downstream refresh.");
-    // Listing allowed (non-DRAFT) states avoids any accidental inclusions of future states.
-    List<FormRPartA> formrs = repository.findByLifecycleStateIn(Set.of(
-        DELETED,
-        SUBMITTED,
-        UNSUBMITTED
-    ));
-
-    int total = formrs.size();
-    log.info("Found {} Form-R Part As to refresh.", total);
-
-    int published = 0;
-
-    for (FormRPartA formr : formrs) {
-      log.debug("Publishing refresh notification for Form-R Part A {}.", formr.getId());
-
-      try {
-
-        service.publishUpdateNotification(mapper.toDto(formr), topic);
-        published++;
-      } catch (Exception e) {
-        log.error("Unable to publish refresh notification for Form-R Part A {}.", formr.getId());
-      }
-    }
-
-    log.info("Finished Form-R Part A downstream refresh, published count: {}/{}.", published,
-        total);
-    return published;
+    return super.execute();
   }
 }

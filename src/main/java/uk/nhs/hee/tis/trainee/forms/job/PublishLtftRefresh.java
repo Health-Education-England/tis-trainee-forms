@@ -31,6 +31,7 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDR
 import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
@@ -47,7 +48,7 @@ import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 @Slf4j
 @Component
 @XRayEnabled
-public class PublishLtftRefresh {
+public class PublishLtftRefresh extends AbstractPublishRefresh<LtftForm> {
 
   private final LtftFormRepository repository;
   private final LtftService service;
@@ -67,15 +68,20 @@ public class PublishLtftRefresh {
     this.topic = topic;
   }
 
-  /**
-   * Execute the scheduled job to publish all exportable LTFT applications as a refresh.
-   */
-  @Scheduled(cron = "${application.schedules.publish-all-ltfts}")
-  @SchedulerLock(name = "PublishLtftRefresh.execute")
-  public Integer execute() {
-    log.info("Starting LTFT downstream refresh.");
+  @Override
+  public String getFormTypeName() {
+    return "LTFT";
+  }
+
+  @Override
+  public UUID getFormId(LtftForm form) {
+    return form.getId();
+  }
+
+  @Override
+  public List<LtftForm> getForms() {
     // Listing allowed (non-DRAFT) states avoids any accidental inclusions of future states.
-    List<LtftForm> ltfts = repository.findByStatus_Current_StateIn(Set.of(
+    return repository.findByStatus_Current_StateIn(Set.of(
         APPROVED,
         DELETED,
         REJECTED,
@@ -83,24 +89,20 @@ public class PublishLtftRefresh {
         UNSUBMITTED,
         WITHDRAWN
     ));
+  }
 
-    int total = ltfts.size();
-    log.info("Found {} LTFTs to refresh.", total);
+  @Override
+  public void publishForm(LtftForm form) {
+    service.publishUpdateNotification(form, null, topic);
+  }
 
-    int published = 0;
-
-    for (LtftForm ltft : ltfts) {
-      log.debug("Publishing refresh notification for LTFT {}.", ltft.getId());
-
-      try {
-        service.publishUpdateNotification(ltft, null, topic);
-        published++;
-      } catch (Exception e) {
-        log.error("Unable to publish refresh notification for LTFT {}.", ltft.getId());
-      }
-    }
-
-    log.info("Finished LTFT downstream refresh, published count: {}/{}.", published, total);
-    return published;
+  /**
+   * Execute the scheduled job to publish all exportable LTFT applications as a refresh.
+   */
+  @Scheduled(cron = "${application.schedules.publish-all-ltfts}")
+  @SchedulerLock(name = "PublishLtftRefresh.execute")
+  @Override
+  public Integer execute() {
+    return super.execute();
   }
 }

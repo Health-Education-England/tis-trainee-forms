@@ -47,9 +47,10 @@ public class JobResource {
 
   /**
    * Create a job controller.
+   *
    * @param publishFormrPartaRefreshJob A job for publishing Form R Part A refreshes.
    * @param publishFormrPartbRefreshJob The job for publishing Form R Part B refreshes.
-   * @param publishLtftRefreshJob The job for publishing LTFT refreshes.
+   * @param publishLtftRefreshJob       The job for publishing LTFT refreshes.
    */
   public JobResource(PublishFormrPartaRefresh publishFormrPartaRefreshJob,
       PublishFormrPartbRefresh publishFormrPartbRefreshJob,
