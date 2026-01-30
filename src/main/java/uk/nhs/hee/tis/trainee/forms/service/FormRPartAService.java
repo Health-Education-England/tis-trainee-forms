@@ -25,6 +25,7 @@ import com.amazonaws.xray.spring.aop.XRayEnabled;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.time.Instant;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +44,7 @@ import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
 import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartARepositoryImpl;
+import uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService.FormrFileEventDto;
 
 @Slf4j
 @Service
@@ -314,5 +316,12 @@ public class FormRPartAService {
     log.debug("Publishing FormRPartA {} event for form id: {}",
         formDto.getLifecycleState(), formDto.getId());
     publishUpdateNotification(formDto, formRPartAUpdatedTopic);
+
+    // TODO: temporary hack until actions and notifications are migrated to full-form events.
+    Map<String, Object> content = objectMapper.convertValue(formDto, Map.class);
+    FormrFileEventDto fileEvent = new FormrFileEventDto(formDto.getId() + ".json",
+        formDto.getLifecycleState().toString(), formDto.getTraineeTisId(), FORM_TYPE, Instant.now(),
+        content);
+    eventBroadcastService.publishFormrFileEvent(fileEvent);
   }
 }

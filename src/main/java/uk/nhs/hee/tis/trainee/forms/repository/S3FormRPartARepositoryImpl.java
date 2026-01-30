@@ -27,8 +27,14 @@ import org.springframework.stereotype.Repository;
 import software.amazon.awssdk.services.s3.S3Client;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 
+/**
+ * A cloud repository for Form-R Part A.
+ *
+ * @deprecated Form-R Part A uploads are for backwards compatibility only.
+ */
 @Slf4j
 @Repository
+@Deprecated(since = "0.62.0")
 public class S3FormRPartARepositoryImpl extends AbstractCloudRepository<FormRPartA> {
 
   /**
