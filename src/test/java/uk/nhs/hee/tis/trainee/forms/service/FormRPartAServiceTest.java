@@ -23,6 +23,8 @@ package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasEntry;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -30,6 +32,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DELETED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
@@ -59,6 +64,7 @@ import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
 import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartARepositoryImpl;
+import uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService.FormrFileEventDto;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
 @ExtendWith(MockitoExtension.class)
@@ -192,14 +198,14 @@ class FormRPartAServiceTest {
   @Test
   void shouldSaveSubmittedFormRPartA() {
     entity.setId(null);
-    entity.setLifecycleState(LifecycleState.SUBMITTED);
+    entity.setLifecycleState(SUBMITTED);
     entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
 
     FormRPartADto dto = new FormRPartADto();
     dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     dto.setForename(DEFAULT_FORENAME);
     dto.setSurname(DEFAULT_SURNAME);
-    dto.setLifecycleState(LifecycleState.SUBMITTED);
+    dto.setLifecycleState(SUBMITTED);
     dto.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
 
     when(repositoryMock.save(entity)).thenAnswer(invocation -> {
@@ -224,14 +230,14 @@ class FormRPartAServiceTest {
 
   @Test
   void shouldThrowExceptionWhenFormRPartANotSaved() {
-    entity.setLifecycleState(LifecycleState.SUBMITTED);
+    entity.setLifecycleState(SUBMITTED);
     entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
 
     FormRPartADto dto = new FormRPartADto();
     dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     dto.setForename(DEFAULT_FORENAME);
     dto.setSurname(DEFAULT_SURNAME);
-    dto.setLifecycleState(LifecycleState.SUBMITTED);
+    dto.setLifecycleState(SUBMITTED);
     dto.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
 
     when(cloudObjectRepository.save(any()))
@@ -268,7 +274,7 @@ class FormRPartAServiceTest {
     FormRPartA cloudEntity = createEntity();
     cloudEntity.setId(DEFAULT_ID);
     cloudEntity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
-    cloudEntity.setLifecycleState(LifecycleState.UNSUBMITTED);
+    cloudEntity.setLifecycleState(UNSUBMITTED);
     List<FormRPartA> cloudStoredEntities = new ArrayList<>();
     cloudStoredEntities.add(cloudEntity);
     when(cloudObjectRepository.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID))
@@ -278,17 +284,21 @@ class FormRPartAServiceTest {
 
     assertThat("Unexpected numbers of forms.", dtos.size(), is(2));
 
-    FormRPartSimpleDto dto = dtos.stream().filter(
-        f -> f.getLifecycleState() == LifecycleState.DRAFT).findAny().orElseThrow();
+    FormRPartSimpleDto dto = dtos.stream()
+        .filter(f -> f.getLifecycleState() == LifecycleState.DRAFT)
+        .findAny()
+        .orElseThrow();
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
-    dto = dtos.stream().filter(
-        f -> f.getLifecycleState() == LifecycleState.UNSUBMITTED).findAny().orElseThrow();
+    dto = dtos.stream()
+        .filter(f -> f.getLifecycleState() == UNSUBMITTED)
+        .findAny()
+        .orElseThrow();
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected submitted date.", dto.getSubmissionDate(), is(DEFAULT_SUBMISSION_DATE));
     assertThat("Unexpected lifecycle state.", dto.getLifecycleState(),
-        is(LifecycleState.UNSUBMITTED));
+        is(UNSUBMITTED));
   }
 
   @Test
@@ -297,7 +307,7 @@ class FormRPartAServiceTest {
     cloudForm.setId(DEFAULT_ID);
     cloudForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     cloudForm.setForename("Cloud Only");
-    cloudForm.setLifecycleState(LifecycleState.UNSUBMITTED);
+    cloudForm.setLifecycleState(UNSUBMITTED);
 
     when(cloudObjectRepository.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.of(cloudForm));
@@ -310,7 +320,7 @@ class FormRPartAServiceTest {
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", dto.getForename(), is("Cloud Only"));
-    assertThat("Unexpected status.", dto.getLifecycleState(), is(LifecycleState.UNSUBMITTED));
+    assertThat("Unexpected status.", dto.getLifecycleState(), is(UNSUBMITTED));
   }
 
   @Test
@@ -322,7 +332,7 @@ class FormRPartAServiceTest {
     dbForm.setId(DEFAULT_ID);
     dbForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     dbForm.setForename("Database Only");
-    dbForm.setLifecycleState(LifecycleState.SUBMITTED);
+    dbForm.setLifecycleState(SUBMITTED);
 
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.of(dbForm));
@@ -332,7 +342,7 @@ class FormRPartAServiceTest {
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", dto.getForename(), is("Database Only"));
-    assertThat("Unexpected status.", dto.getLifecycleState(), is(LifecycleState.SUBMITTED));
+    assertThat("Unexpected status.", dto.getLifecycleState(), is(SUBMITTED));
   }
 
   @Test
@@ -341,7 +351,7 @@ class FormRPartAServiceTest {
     cloudForm.setId(DEFAULT_ID);
     cloudForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     cloudForm.setForename("Cloud Latest");
-    cloudForm.setLifecycleState(LifecycleState.UNSUBMITTED);
+    cloudForm.setLifecycleState(UNSUBMITTED);
     cloudForm.setLastModifiedDate(LocalDateTime.MAX);
 
     when(cloudObjectRepository.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID))
@@ -351,7 +361,7 @@ class FormRPartAServiceTest {
     dbForm.setId(DEFAULT_ID);
     dbForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     dbForm.setForename("Database Oldest");
-    dbForm.setLifecycleState(LifecycleState.SUBMITTED);
+    dbForm.setLifecycleState(SUBMITTED);
     dbForm.setLastModifiedDate(LocalDateTime.MIN);
 
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
@@ -362,7 +372,7 @@ class FormRPartAServiceTest {
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", dto.getForename(), is("Cloud Latest"));
-    assertThat("Unexpected status.", dto.getLifecycleState(), is(LifecycleState.UNSUBMITTED));
+    assertThat("Unexpected status.", dto.getLifecycleState(), is(UNSUBMITTED));
   }
 
   @Test
@@ -371,7 +381,7 @@ class FormRPartAServiceTest {
     cloudForm.setId(DEFAULT_ID);
     cloudForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     cloudForm.setForename("Cloud Oldest");
-    cloudForm.setLifecycleState(LifecycleState.UNSUBMITTED);
+    cloudForm.setLifecycleState(UNSUBMITTED);
     cloudForm.setLastModifiedDate(LocalDateTime.MIN);
 
     when(cloudObjectRepository.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID))
@@ -381,7 +391,7 @@ class FormRPartAServiceTest {
     dbForm.setId(DEFAULT_ID);
     dbForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     dbForm.setForename("Database Latest");
-    dbForm.setLifecycleState(LifecycleState.SUBMITTED);
+    dbForm.setLifecycleState(SUBMITTED);
     dbForm.setLastModifiedDate(LocalDateTime.MAX);
 
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
@@ -392,7 +402,7 @@ class FormRPartAServiceTest {
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", dto.getForename(), is("Database Latest"));
-    assertThat("Unexpected status.", dto.getLifecycleState(), is(LifecycleState.SUBMITTED));
+    assertThat("Unexpected status.", dto.getLifecycleState(), is(SUBMITTED));
   }
 
   @ParameterizedTest
@@ -415,7 +425,7 @@ class FormRPartAServiceTest {
     dbForm.setId(DEFAULT_ID);
     dbForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     dbForm.setForename("Database Equal");
-    dbForm.setLifecycleState(LifecycleState.SUBMITTED);
+    dbForm.setLifecycleState(SUBMITTED);
     dbForm.setLastModifiedDate(now);
 
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
@@ -480,12 +490,13 @@ class FormRPartAServiceTest {
     FormRPartADto expectedDto = new FormRPartADto();
     expectedDto.setId(DEFAULT_ID.toString());
     expectedDto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    expectedDto.setLifecycleState(LifecycleState.DELETED);
+    expectedDto.setLifecycleState(DELETED);
     assertThat("Unexpected DTO.", resultDto.get(), is(expectedDto));
 
     verify(repositoryMock).save(any());
     verify(cloudObjectRepository).save(any());
     verify(eventBroadcastService).publishFormRPartAEvent(any(), any(), any());
+    verify(eventBroadcastService).publishFormrFileEvent(any());
   }
 
   @Test
@@ -495,14 +506,34 @@ class FormRPartAServiceTest {
 
     service.partialDeleteFormRPartAById(DEFAULT_ID);
 
-    ArgumentCaptor<FormRPartADto> dtoCaptor = ArgumentCaptor.forClass(FormRPartADto.class);
+    ArgumentCaptor<FormRPartADto> dtoCaptor = ArgumentCaptor.captor();
     verify(eventBroadcastService).publishFormRPartAEvent(
         dtoCaptor.capture(), eq(Map.of("formType", "formr-a")), eq(FORM_R_PART_A_UPDATED_TOPIC));
 
     FormRPartADto publishedDto = dtoCaptor.getValue();
     assertThat("Unexpected form ID.", publishedDto.getId(), is(DEFAULT_ID_STRING));
-    assertThat("Unexpected lifecycle state.", publishedDto.getLifecycleState(),
-        is(LifecycleState.DELETED));
+    assertThat("Unexpected lifecycle state.", publishedDto.getLifecycleState(), is(DELETED));
+
+    ArgumentCaptor<FormrFileEventDto> fileEventCaptor = ArgumentCaptor.captor();
+    verify(eventBroadcastService).publishFormrFileEvent(fileEventCaptor.capture());
+
+    FormrFileEventDto fileEvent = fileEventCaptor.getValue();
+    assertThat("Unexpected form name.", fileEvent.formName(), is(DEFAULT_ID_STRING + ".json"));
+    assertThat("Unexpected trainee ID.", fileEvent.traineeId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected form type.", fileEvent.formType(), is("formr-a"));
+    assertThat("Unexpected lifecycle state.", fileEvent.lifecycleState(), is(DELETED.toString()));
+    assertThat("Unexpected event date.", fileEvent.eventDate(), notNullValue());
+
+    assertThat("Unexpected content ID.", fileEvent.formContentDto(),
+        hasEntry("id", DEFAULT_ID_STRING));
+    assertThat("Unexpected content trainee ID.", fileEvent.formContentDto(),
+        hasEntry("traineeTisId", DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected content lifecycle state.", fileEvent.formContentDto(),
+        hasEntry("lifecycleState", DELETED.toString()));
+    assertThat("Unexpected content forename.", fileEvent.formContentDto(),
+        hasEntry("forename", null));
+    assertThat("Unexpected content surname.", fileEvent.formContentDto(),
+        hasEntry("surname", null));
   }
 
   @Test
@@ -518,14 +549,14 @@ class FormRPartAServiceTest {
   @Test
   void shouldPublishEventWhenSavingSubmittedFormRPartA() {
     entity.setId(null);
-    entity.setLifecycleState(LifecycleState.SUBMITTED);
+    entity.setLifecycleState(SUBMITTED);
     entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
 
     FormRPartADto dto = new FormRPartADto();
     dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     dto.setForename(DEFAULT_FORENAME);
     dto.setSurname(DEFAULT_SURNAME);
-    dto.setLifecycleState(LifecycleState.SUBMITTED);
+    dto.setLifecycleState(SUBMITTED);
     dto.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
 
     when(repositoryMock.save(any())).thenAnswer(invocation -> {
@@ -544,8 +575,28 @@ class FormRPartAServiceTest {
 
     FormRPartADto publishedDto = dtoCaptor.getValue();
     assertThat("Unexpected form ID.", publishedDto.getId(), is(DEFAULT_ID_STRING));
-    assertThat("Unexpected lifecycle state.", publishedDto.getLifecycleState(),
-        is(LifecycleState.SUBMITTED));
+    assertThat("Unexpected lifecycle state.", publishedDto.getLifecycleState(), is(SUBMITTED));
+
+    ArgumentCaptor<FormrFileEventDto> fileEventCaptor = ArgumentCaptor.captor();
+    verify(eventBroadcastService).publishFormrFileEvent(fileEventCaptor.capture());
+
+    FormrFileEventDto fileEvent = fileEventCaptor.getValue();
+    assertThat("Unexpected form name.", fileEvent.formName(), is(DEFAULT_ID_STRING + ".json"));
+    assertThat("Unexpected trainee ID.", fileEvent.traineeId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected form type.", fileEvent.formType(), is("formr-a"));
+    assertThat("Unexpected lifecycle state.", fileEvent.lifecycleState(), is(SUBMITTED.toString()));
+    assertThat("Unexpected event date.", fileEvent.eventDate(), notNullValue());
+
+    assertThat("Unexpected content ID.", fileEvent.formContentDto(),
+        hasEntry("id", DEFAULT_ID_STRING));
+    assertThat("Unexpected content trainee ID.", fileEvent.formContentDto(),
+        hasEntry("traineeTisId", DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected content lifecycle state.", fileEvent.formContentDto(),
+        hasEntry("lifecycleState", SUBMITTED.toString()));
+    assertThat("Unexpected content forename.", fileEvent.formContentDto(),
+        hasEntry("forename", DEFAULT_FORENAME));
+    assertThat("Unexpected content surname.", fileEvent.formContentDto(),
+        hasEntry("surname", DEFAULT_SURNAME));
   }
 
   @ParameterizedTest(name = "Should not publish event when saving form with {0} state.")
@@ -576,7 +627,7 @@ class FormRPartAServiceTest {
   @Test
   void shouldUnsubmitFormRPartAById() {
     when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
-    entity.setLifecycleState(LifecycleState.UNSUBMITTED);
+    entity.setLifecycleState(UNSUBMITTED);
     when(repositoryMock.save(entity)).thenReturn(entity);
     when(cloudObjectRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -590,21 +641,21 @@ class FormRPartAServiceTest {
         is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected forename.", resultDto.getForename(), is(DEFAULT_FORENAME));
     assertThat("Unexpected surname.", resultDto.getSurname(), is(DEFAULT_SURNAME));
-    assertThat("Unexpected lifecycle state.", resultDto.getLifecycleState(),
-        is(LifecycleState.UNSUBMITTED));
+    assertThat("Unexpected lifecycle state.", resultDto.getLifecycleState(), is(UNSUBMITTED));
 
     verify(repositoryMock).save(any());
     verify(cloudObjectRepository).save(any());
     verify(eventBroadcastService).publishFormRPartAEvent(any(), any(), any());
+    verify(eventBroadcastService).publishFormrFileEvent(any());
   }
 
   @Test
   void shouldPublishEventWhenUnsubmittingFormRPartA() {
     entity.setId(DEFAULT_ID);
-    entity.setLifecycleState(LifecycleState.SUBMITTED);
+    entity.setLifecycleState(SUBMITTED);
 
     when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
-    entity.setLifecycleState(LifecycleState.UNSUBMITTED);
+    entity.setLifecycleState(UNSUBMITTED);
     when(repositoryMock.save(entity)).thenReturn(entity);
     when(cloudObjectRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -617,7 +668,29 @@ class FormRPartAServiceTest {
     FormRPartADto publishedDto = dtoCaptor.getValue();
     assertThat("Unexpected form ID.", publishedDto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected lifecycle state.", publishedDto.getLifecycleState(),
-        is(LifecycleState.UNSUBMITTED));
+        is(UNSUBMITTED));
+
+    ArgumentCaptor<FormrFileEventDto> fileEventCaptor = ArgumentCaptor.captor();
+    verify(eventBroadcastService).publishFormrFileEvent(fileEventCaptor.capture());
+
+    FormrFileEventDto fileEvent = fileEventCaptor.getValue();
+    assertThat("Unexpected form name.", fileEvent.formName(), is(DEFAULT_ID_STRING + ".json"));
+    assertThat("Unexpected trainee ID.", fileEvent.traineeId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected form type.", fileEvent.formType(), is("formr-a"));
+    assertThat("Unexpected lifecycle state.", fileEvent.lifecycleState(),
+        is(UNSUBMITTED.toString()));
+    assertThat("Unexpected event date.", fileEvent.eventDate(), notNullValue());
+
+    assertThat("Unexpected content ID.", fileEvent.formContentDto(),
+        hasEntry("id", DEFAULT_ID_STRING));
+    assertThat("Unexpected content trainee ID.", fileEvent.formContentDto(),
+        hasEntry("traineeTisId", DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected content lifecycle state.", fileEvent.formContentDto(),
+        hasEntry("lifecycleState", UNSUBMITTED.toString()));
+    assertThat("Unexpected content forename.", fileEvent.formContentDto(),
+        hasEntry("forename", DEFAULT_FORENAME));
+    assertThat("Unexpected content surname.", fileEvent.formContentDto(),
+        hasEntry("surname", DEFAULT_SURNAME));
   }
 
   @Test
@@ -649,7 +722,7 @@ class FormRPartAServiceTest {
 
   @Test
   void shouldGetAdminsFormRPartAByIdWhenUnsubmitted() {
-    entity.setLifecycleState(LifecycleState.UNSUBMITTED);
+    entity.setLifecycleState(UNSUBMITTED);
 
     when(repositoryMock.findByIdAndNotDraftNorDeleted(DEFAULT_ID))
         .thenReturn(Optional.of(entity));
@@ -661,8 +734,7 @@ class FormRPartAServiceTest {
 
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
-    assertThat("Unexpected lifecycle state.", dto.getLifecycleState(),
-        is(LifecycleState.UNSUBMITTED));
+    assertThat("Unexpected lifecycle state.", dto.getLifecycleState(), is(UNSUBMITTED));
   }
 
   @Test
@@ -696,5 +768,6 @@ class FormRPartAServiceTest {
 
     verify(eventBroadcastService).publishFormRPartAEvent(form,
         Map.of(EventBroadcastService.MESSAGE_ATTRIBUTE_KEY_FORM_TYPE, "formr-a"), "my-topic");
+    verify(eventBroadcastService, never()).publishFormrFileEvent(any());
   }
 }

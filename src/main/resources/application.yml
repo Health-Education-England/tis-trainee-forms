@@ -6,6 +6,7 @@ application:
   aws:
     sns:
       pdf-generated: ${PDF_GENERATED_TOPIC:}
+      formr-file-event: ${FORMR_FILE_EVENT_TOPIC:}
       formr-refresh: ${FORMR_REFRESH_TOPIC:}
       formr-updated: ${FORMR_UPDATE_TOPIC:}
       ltft-assignment-updated: ${LTFT_ASSIGNMENT_UPDATE_TOPIC:}

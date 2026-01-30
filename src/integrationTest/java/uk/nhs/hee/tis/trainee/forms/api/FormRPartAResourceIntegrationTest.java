@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.api;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -41,6 +42,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.sns.core.SnsTemplate;
 import java.net.URI;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -412,21 +414,33 @@ class FormRPartAResourceIntegrationTest {
         .andExpect(jsonPath("$.lifecycleState").value("SUBMITTED"));
 
     ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
-    verify(snsClient).publish(requestCaptor.capture());
+    verify(snsClient, times(2)).publish(requestCaptor.capture());
 
-    PublishRequest publishRequest = requestCaptor.getValue();
-    JsonNode publishedJson = mapper.readTree(publishRequest.message());
-    assertThat("Unexpected trainee ID.", publishedJson.get("traineeTisId").asText(),
-        is(TRAINEE_ID));
-    assertThat("Unexpected forename.", publishedJson.get("forename").asText(), is(FORENAME));
-    assertThat("Unexpected surname.", publishedJson.get("surname").asText(), is(SURNAME));
-    //no checks on the remaining fields
+    PublishRequest publishRequest1 = requestCaptor.getAllValues().get(0);
+    JsonNode publishedJson1 = mapper.readTree(publishRequest1.message());
 
-    Map<String, MessageAttributeValue> messageAttributes = publishRequest.messageAttributes();
+    PublishRequest publishRequest2 = requestCaptor.getAllValues().get(1);
+    JsonNode publishedJson2 = mapper.readTree(publishRequest2.message());
+
+    for (JsonNode contentNode : List.of(publishedJson1, publishedJson2.get("formContentDto"))) {
+      assertThat("Unexpected trainee ID.", contentNode.get("traineeTisId").asText(),
+          is(TRAINEE_ID));
+      assertThat("Unexpected forename.", contentNode.get("forename").asText(), is(FORENAME));
+      assertThat("Unexpected surname.", contentNode.get("surname").asText(), is(SURNAME));
+      //no checks on the remaining fields
+    }
+
+    Map<String, MessageAttributeValue> messageAttributes = publishRequest1.messageAttributes();
     assertThat("Message attributes should contain formType.",
         messageAttributes.containsKey("formType"), is(true));
     assertThat("formType should be 'formr-a'.",
         messageAttributes.get("formType").stringValue(), is("formr-a"));
+
+    messageAttributes = publishRequest2.messageAttributes();
+    assertThat("Message attributes should contain event_type.",
+        messageAttributes.containsKey("event_type"), is(true));
+    assertThat("eventType should be 'formr-a'.",
+        messageAttributes.get("event_type").stringValue(), is("FORM_R"));
   }
 
   @Test

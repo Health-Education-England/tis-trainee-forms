@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.service;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasEntry;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -31,6 +32,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService.MESSAGE_ATTRIBUTE_DEFAULT_VALUE;
 import static uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService.MESSAGE_ATTRIBUTE_KEY;
 import static uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService.MESSAGE_ATTRIBUTE_KEY_FORM_TYPE;
@@ -38,6 +40,7 @@ import static uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService.MESSAGE
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -45,6 +48,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import software.amazon.awssdk.services.sns.SnsClient;
 import software.amazon.awssdk.services.sns.model.MessageAttributeValue;
@@ -54,12 +58,13 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
-import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService.FormrFileEventDto;
 
 /**
  * Unit tests for the {@link EventBroadcastService}.
  */
 class EventBroadcastServiceTest {
+
   private static final String MESSAGE_ATTRIBUTE = "message-attribute";
   private static final String FORM_TYPE_PART_A = "formr-a";
   private static final String FORM_TYPE_PART_B = "formr-b";
@@ -73,6 +78,8 @@ class EventBroadcastServiceTest {
   private static final UUID FORM_ID = UUID.randomUUID();
   private static final String FORM_ID_STRING = FORM_ID.toString();
 
+  private static final String FORMR_FILE_TOPIC = "formr-file-event.fifo";
+
   private EventBroadcastService service;
 
   private ObjectMapper objectMapper;
@@ -82,7 +89,7 @@ class EventBroadcastServiceTest {
   void setUp() {
     snsClient = mock(SnsClient.class);
     objectMapper = new ObjectMapper();
-    service = new EventBroadcastService(snsClient);
+    service = new EventBroadcastService(snsClient, FORMR_FILE_TOPIC);
   }
 
   @Test
@@ -117,7 +124,7 @@ class EventBroadcastServiceTest {
 
     service.publishLtftFormUpdateEvent(ltftFormDto, MESSAGE_ATTRIBUTE, SNS_TOPIC);
 
-    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.captor();
     verify(snsClient).publish(requestCaptor.capture());
 
     PublishRequest request = requestCaptor.getValue();
@@ -134,7 +141,7 @@ class EventBroadcastServiceTest {
 
     service.publishLtftFormUpdateEvent(ltftFormDto, MESSAGE_ATTRIBUTE, SNS_TOPIC);
 
-    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.captor();
     verify(snsClient).publish(requestCaptor.capture());
 
     PublishRequest request = requestCaptor.getValue();
@@ -151,7 +158,7 @@ class EventBroadcastServiceTest {
 
     service.publishLtftFormUpdateEvent(ltftFormDto, null, SNS_TOPIC);
 
-    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.captor();
     verify(snsClient).publish(requestCaptor.capture());
 
     PublishRequest request = requestCaptor.getValue();
@@ -170,7 +177,7 @@ class EventBroadcastServiceTest {
 
     service.publishLtftFormUpdateEvent(ltftFormDto, MESSAGE_ATTRIBUTE, SNS_TOPIC);
 
-    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.captor();
     verify(snsClient).publish(requestCaptor.capture());
 
     PublishRequest request = requestCaptor.getValue();
@@ -220,7 +227,7 @@ class EventBroadcastServiceTest {
 
     service.publishFormRPartAEvent(formRPartADto, Map.of("formType", "formr-a"), SNS_TOPIC);
 
-    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.captor();
     verify(snsClient).publish(requestCaptor.capture());
 
     PublishRequest request = requestCaptor.getValue();
@@ -265,7 +272,7 @@ class EventBroadcastServiceTest {
 
     service.publishFormRPartBEvent(formRPartBDto, Map.of("formType", "formr-b"), SNS_TOPIC);
 
-    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.captor();
     verify(snsClient).publish(requestCaptor.capture());
 
     PublishRequest request = requestCaptor.getValue();
@@ -343,7 +350,7 @@ class EventBroadcastServiceTest {
 
     service.publishFormRPartAEvent(formRPartADto, null, SNS_TOPIC);
 
-    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.captor();
     verify(snsClient).publish(requestCaptor.capture());
 
     PublishRequest request = requestCaptor.getValue();
@@ -362,7 +369,7 @@ class EventBroadcastServiceTest {
 
     service.publishFormRPartAEvent(formRPartADto, Map.of(), SNS_TOPIC);
 
-    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.captor();
     verify(snsClient).publish(requestCaptor.capture());
 
     PublishRequest request = requestCaptor.getValue();
@@ -381,7 +388,7 @@ class EventBroadcastServiceTest {
 
     service.publishFormRPartBEvent(formRPartBDto, null, SNS_TOPIC);
 
-    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.captor();
     verify(snsClient).publish(requestCaptor.capture());
 
     PublishRequest request = requestCaptor.getValue();
@@ -400,7 +407,7 @@ class EventBroadcastServiceTest {
 
     service.publishFormRPartBEvent(formRPartBDto, Map.of(), SNS_TOPIC);
 
-    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.captor();
     verify(snsClient).publish(requestCaptor.capture());
 
     PublishRequest request = requestCaptor.getValue();
@@ -417,12 +424,12 @@ class EventBroadcastServiceTest {
   void shouldPublishFormRPartAEventWithNullId() {
     FormRPartADto formRPartADto = new FormRPartADto();
     formRPartADto.setTraineeTisId(TRAINEE_ID);
-    formRPartADto.setLifecycleState(LifecycleState.SUBMITTED);
+    formRPartADto.setLifecycleState(SUBMITTED);
     // id is null
 
     service.publishFormRPartAEvent(formRPartADto, Map.of("formType", "formr-a"), SNS_TOPIC);
 
-    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.captor();
     verify(snsClient).publish(requestCaptor.capture());
 
     PublishRequest request = requestCaptor.getValue();
@@ -437,18 +444,46 @@ class EventBroadcastServiceTest {
   void shouldPublishFormRPartBEventWithNullId() {
     FormRPartBDto formRPartBDto = new FormRPartBDto();
     formRPartBDto.setTraineeTisId(TRAINEE_ID);
-    formRPartBDto.setLifecycleState(LifecycleState.SUBMITTED);
+    formRPartBDto.setLifecycleState(SUBMITTED);
     // id is null
 
     service.publishFormRPartBEvent(formRPartBDto, Map.of("formType", "formr-b"), SNS_TOPIC);
 
-    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.captor();
     verify(snsClient).publish(requestCaptor.capture());
 
     PublishRequest request = requestCaptor.getValue();
     assertThat("Unexpected topic ARN.", request.topicArn(), is(SNS_TOPIC));
     assertThat("Message group id should be generated UUID.", request.messageGroupId(),
         notNullValue());
+
+    verifyNoMoreInteractions(snsClient);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"formr-a", "formr-b"})
+  void shouldPublishFormrFileEvent(String formType) {
+    Instant now = Instant.now();
+    Map<String, Object> content = Map.of("field1", "value1");
+    FormrFileEventDto fileEvent = new FormrFileEventDto(FORM_NAME, SUBMITTED.toString(), TRAINEE_ID,
+        formType, now, content);
+
+    service.publishFormrFileEvent(fileEvent);
+
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.captor();
+    verify(snsClient).publish(requestCaptor.capture());
+
+    PublishRequest request = requestCaptor.getValue();
+    assertThat("Unexpected topic ARN.", request.topicArn(), is(FORMR_FILE_TOPIC));
+    assertThat("Unexpected message group id.", request.messageGroupId(),
+        is("40_" + formType + "_name"));
+
+    Map<String, MessageAttributeValue> messageAttributes = request.messageAttributes();
+    assertThat("Unexpected message attribute.", messageAttributes,
+        hasEntry(
+            "event_type",
+            MessageAttributeValue.builder().dataType("String").stringValue("FORM_R").build()
+        ));
 
     verifyNoMoreInteractions(snsClient);
   }
@@ -483,7 +518,7 @@ class EventBroadcastServiceTest {
     FormRPartADto dto = new FormRPartADto();
     dto.setId(FORM_ID.toString());
     dto.setTraineeTisId(TRAINEE_ID);
-    dto.setLifecycleState(LifecycleState.SUBMITTED);
+    dto.setLifecycleState(SUBMITTED);
     return dto;
   }
 
@@ -496,7 +531,7 @@ class EventBroadcastServiceTest {
     FormRPartBDto dto = new FormRPartBDto();
     dto.setId(FORM_ID.toString());
     dto.setTraineeTisId(TRAINEE_ID);
-    dto.setLifecycleState(LifecycleState.SUBMITTED);
+    dto.setLifecycleState(SUBMITTED);
     return dto;
   }
 }
