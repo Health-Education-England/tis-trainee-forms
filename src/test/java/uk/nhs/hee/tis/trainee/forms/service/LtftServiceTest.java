@@ -124,6 +124,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapperImpl;
+import uk.nhs.hee.tis.trainee.forms.mapper.TemporalMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.TemporalMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
@@ -164,6 +165,7 @@ class LtftServiceTest {
   private MongoTemplate mongoTemplate;
   private JsonMapper jsonMapper;
   private LtftMapper mapper;
+  private TemporalMapper temporalMapper;
   private Validator validator;
   private EventBroadcastService eventBroadcastService;
   private LtftSubmissionHistoryService ltftSubmissionHistoryService;
@@ -194,7 +196,9 @@ class LtftServiceTest {
     ltftSubmissionHistoryService = mock(LtftSubmissionHistoryService.class);
 
     jsonMapper = (JsonMapper) new JsonMapper().registerModule(new JavaTimeModule());
+    temporalMapper = mock(TemporalMapper.class);
     mapper = new LtftMapperImpl(new TemporalMapperImpl());
+    mapper.setTemporalMapper(temporalMapper);
     validator = mock(Validator.class);
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, jsonMapper,
         mapper, validator, eventBroadcastService, LTFT_ASSIGNMENT_UPDATE_TOPIC,
@@ -2884,6 +2888,7 @@ class LtftServiceTest {
             .build())
         .build());
 
+    when(temporalMapper.toLocalDate(any())).thenReturn(LocalDate.now());
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
