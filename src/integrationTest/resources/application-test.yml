@@ -3,6 +3,7 @@ application:
     secret-key: test-secret-key
   aws:
     sns:
+      formr-file-event: dummy
       formr-updated: dummy
     sqs:
       coj-received: dummy
