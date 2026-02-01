@@ -56,7 +56,7 @@ public class EventBroadcastService {
   private final String formrFileTopic;
 
   EventBroadcastService(SnsClient snsClient,
-      @Value("${application.aws.sns.formr-file-event") String formrFileTopic) {
+      @Value("${application.aws.sns.formr-file-event}") String formrFileTopic) {
     this.snsClient = snsClient;
     objectMapper = new ObjectMapper()
         .registerModule(new JavaTimeModule())
