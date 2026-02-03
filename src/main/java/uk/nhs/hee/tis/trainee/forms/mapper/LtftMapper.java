@@ -85,7 +85,7 @@ public abstract class LtftMapper {
       qualifiedByName = "JoinWithComma")
   @Mapping(target = "daysToStart", source = "content.change.startDate",
       qualifiedByName = "DaysUntil")
-  @Mapping(target = "shortNotice", source = "entity", qualifiedByName = "IsShortNoticeAdmin")
+  @Mapping(target = "shortNotice", source = "entity", qualifiedByName = "isShortNotice")
   @Mapping(target = "tpd.email", source = "content.discussions.tpdEmail")
   @Mapping(target = "tpd.emailStatus", source = "content.tpdEmailValidity")
   @Mapping(target = "status", source = "status.current.state")
@@ -152,7 +152,7 @@ public abstract class LtftMapper {
   @Mapping(target = "change", source = "content.change")
   @Mapping(target = "reasons", source = "content.reasons")
   @Mapping(target = "tpdEmailStatus", source = "content.tpdEmailValidity")
-  @Mapping(target = "shortNotice", source = "entity", qualifiedByName = "IsShortNoticeTrainee")
+  @Mapping(target = "shortNotice", source = "entity", qualifiedByName = "isShortNotice")
   public abstract LtftFormDto toDto(LtftForm entity);
 
   /**
@@ -225,35 +225,14 @@ public abstract class LtftMapper {
   }
 
   /**
-   * Calculate whether the LTFT application is short notice for TIS Admins.
-   *
-   * @param entity The LTFT application.
-   * @return Whether the application is short notice, or null if one of the required dates was null.
-   */
-  @Named("IsShortNoticeAdmin")
-  @Nullable
-  Boolean isShortNoticeAdmin(LtftForm entity) {
-    if (entity.getStatus() == null || entity.getStatus().submitted() == null) {
-      return null;
-    }
-
-    Instant submitted = entity.getStatus().submitted();
-
-    // If the form is unsubmitted, use the current date instead of the last submission date.
-    Instant referenceInstant =
-        entity.getStatus().current().state() == UNSUBMITTED ? Instant.now() : submitted;
-    return isShortNotice(entity, referenceInstant);
-  }
-
-  /**
-   * Calculate whether the LTFT application is short notice TSS Trainee (for all states).
+   * Calculate whether the LTFT application is short notice.
    *
    * @param entity The LTFT application.
    * @return Whether the application is short notice, or null if application status was null.
    */
-  @Named("IsShortNoticeTrainee")
+  @Named("isShortNotice")
   @Nullable
-  Boolean isShortNoticeTrainee(LtftForm entity) {
+  Boolean isShortNotice(LtftForm entity) {
     if (entity.getStatus() == null || entity.getStatus().current() == null) {
       return null;
     }
@@ -264,7 +243,14 @@ public abstract class LtftMapper {
     // If the form is UNSUBMITTED/DRAFT, use the current date instead of the last submission date.
     Instant referenceInstant =
         (state == UNSUBMITTED || state == DRAFT || submitted == null) ? Instant.now() : submitted;
-    return isShortNotice(entity, referenceInstant);
+
+    LocalDate referenceDate = getTemporalMapper().toLocalDate(referenceInstant);
+
+    return Optional.ofNullable(entity.getContent())
+        .map(LtftContent::change)
+        .map(CctChange::startDate)
+        .map(startDate -> ChronoUnit.DAYS.between(referenceDate, startDate) < NOTICE_PERIOD_DAYS)
+        .orElse(null);
   }
 
   /**
@@ -282,22 +268,5 @@ public abstract class LtftMapper {
       case "PENDING" -> UNKNOWN;
       default -> INVALID;
     };
-  }
-
-  /**
-   * Calculate whether the LTFT application is short notice.
-   *
-   * @param entity The LTFT application.
-   * @param referenceInstant The reference date for calculating short notice .
-   * @return Whether the application is short notice.
-   */
-  private Boolean isShortNotice(LtftForm entity, Instant referenceInstant) {
-    LocalDate referenceDate = getTemporalMapper().toLocalDate(referenceInstant);
-
-    return Optional.ofNullable(entity.getContent())
-        .map(LtftContent::change)
-        .map(CctChange::startDate)
-        .map(startDate -> ChronoUnit.DAYS.between(referenceDate, startDate) < NOTICE_PERIOD_DAYS)
-        .orElse(null);
   }
 }
