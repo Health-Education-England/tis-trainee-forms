@@ -36,9 +36,9 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.google.common.base.Objects;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -79,7 +79,7 @@ class PublishFormrPartbRefreshTest {
 
   @Test
   void shouldNotPublishWhenNoFormrPartbsFound() {
-    when(repository.findByLifecycleStateIn(any())).thenReturn(List.of());
+    when(repository.streamByLifecycleStateIn(any())).thenReturn(Stream.of());
 
     job.execute();
 
@@ -99,7 +99,7 @@ class PublishFormrPartbRefreshTest {
     form2.setId(id2);
 
     ArgumentCaptor<Set<LifecycleState>> statesCaptor = ArgumentCaptor.captor();
-    when(repository.findByLifecycleStateIn(statesCaptor.capture())).thenReturn(List.of());
+    when(repository.streamByLifecycleStateIn(statesCaptor.capture())).thenReturn(Stream.of());
 
     job.execute();
 
@@ -118,7 +118,7 @@ class PublishFormrPartbRefreshTest {
     FormRPartB form2 = new FormRPartB();
     form2.setId(id2);
 
-    when(repository.findByLifecycleStateIn(any())).thenReturn(List.of(form1, form2));
+    when(repository.streamByLifecycleStateIn(any())).thenReturn(Stream.of(form1, form2));
 
     int publishCount = job.execute();
 
@@ -138,7 +138,7 @@ class PublishFormrPartbRefreshTest {
     FormRPartB form2 = new FormRPartB();
     form2.setId(id2);
 
-    when(repository.findByLifecycleStateIn(any())).thenReturn(List.of(form1, form2));
+    when(repository.streamByLifecycleStateIn(any())).thenReturn(Stream.of(form1, form2));
     doThrow(RuntimeException.class).when(service)
         .publishUpdateNotification(argThat(hasId(id1)), eq(PUBLISH_TOPIC));
 

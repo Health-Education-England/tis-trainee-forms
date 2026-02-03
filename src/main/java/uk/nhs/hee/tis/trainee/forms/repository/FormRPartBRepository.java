@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -50,10 +51,10 @@ public interface FormRPartBRepository extends MongoRepository<FormRPartB, UUID> 
   List<FormRPartB> findByTraineeTisId(String traineeTisId);
 
   /**
-   * Find all Form-R Part Bs with the given states.
+   * Stream all Form-R Part Bs with the given states.
    *
    * @param states The states to filter by.
    * @return The found forms, empty if none found.
    */
-  List<FormRPartB> findByLifecycleStateIn(Set<LifecycleState> states);
+  Stream<FormRPartB> streamByLifecycleStateIn(Set<LifecycleState> states);
 }

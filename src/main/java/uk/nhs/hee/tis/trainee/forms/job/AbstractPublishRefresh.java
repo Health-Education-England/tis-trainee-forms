@@ -22,8 +22,9 @@
 
 package uk.nhs.hee.tis.trainee.forms.job;
 
-import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -55,7 +56,7 @@ public abstract class AbstractPublishRefresh<T> {
    *
    * @return The filtered list of forms to be refreshed.
    */
-  protected abstract List<T> getForms();
+  protected abstract Stream<T> streamForms();
 
   /**
    * Refresh the given form by publishing to an event topic.
@@ -71,28 +72,27 @@ public abstract class AbstractPublishRefresh<T> {
    */
   protected Integer execute() {
     String formType = getFormTypeName();
-
     log.info("Starting {} downstream refresh.", formType);
-    List<T> forms = getForms();
 
-    int total = forms.size();
-    log.info("Found {} {}s to refresh.", total, formType);
+    AtomicInteger total = new AtomicInteger();
+    AtomicInteger published = new AtomicInteger();
 
-    int published = 0;
+    streamForms().forEach(form -> {
+          total.getAndIncrement();
 
-    for (T form : forms) {
-      UUID formId = getFormId(form);
-      log.debug("Publishing refresh notification for {} {}.", formType, formId);
+          UUID formId = getFormId(form);
+          log.debug("Publishing refresh notification for {} {}.", formType, formId);
 
-      try {
-        publishForm(form);
-        published++;
-      } catch (Exception e) {
-        log.error("Unable to publish refresh notification for {} {}.", formType, formId);
-      }
-    }
+          try {
+            publishForm(form);
+            published.getAndIncrement();
+          } catch (Exception e) {
+            log.error("Unable to publish refresh notification for {} {}.", formType, formId);
+          }
+        }
+    );
 
     log.info("Finished {} downstream refresh, published count: {}/{}.", formType, published, total);
-    return published;
+    return published.get();
   }
 }

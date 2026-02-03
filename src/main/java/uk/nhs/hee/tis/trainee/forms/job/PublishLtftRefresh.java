@@ -29,9 +29,9 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBM
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
@@ -79,9 +79,9 @@ public class PublishLtftRefresh extends AbstractPublishRefresh<LtftForm> {
   }
 
   @Override
-  public List<LtftForm> getForms() {
+  public Stream<LtftForm> streamForms() {
     // Listing allowed (non-DRAFT) states avoids any accidental inclusions of future states.
-    return repository.findByStatus_Current_StateIn(Set.of(
+    return repository.streamByStatus_Current_StateIn(Set.of(
         APPROVED,
         DELETED,
         REJECTED,

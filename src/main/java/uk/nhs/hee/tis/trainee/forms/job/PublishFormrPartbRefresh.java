@@ -27,9 +27,9 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMIT
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
@@ -80,9 +80,9 @@ public class PublishFormrPartbRefresh extends AbstractPublishRefresh<FormRPartB>
   }
 
   @Override
-  public List<FormRPartB> getForms() {
+  public Stream<FormRPartB> streamForms() {
     // Listing allowed (non-DRAFT) states avoids any accidental inclusions of future states.
-    return repository.findByLifecycleStateIn(Set.of(
+    return repository.streamByLifecycleStateIn(Set.of(
         DELETED,
         SUBMITTED,
         UNSUBMITTED
