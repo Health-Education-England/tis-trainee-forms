@@ -76,6 +76,7 @@ class FormRPartAServiceTest {
   private static final String DEFAULT_FORENAME = "DEFAULT_FORENAME";
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";
   private static final LocalDateTime DEFAULT_SUBMISSION_DATE = LocalDateTime.now();
+  private static final String DEFAULT_PROGRAMME_SPECIALTY = "Cardiology";
   private static final String FORM_R_PART_A_UPDATED_TOPIC = "arn:aws:sns:topic";
 
   private FormRPartAService service;
@@ -123,6 +124,8 @@ class FormRPartAServiceTest {
     entity.setForename(DEFAULT_FORENAME);
     entity.setSurname(DEFAULT_SURNAME);
     entity.setLifecycleState(LifecycleState.DRAFT);
+    entity.setIsArcp(true);
+    entity.setProgrammeSpecialty(DEFAULT_PROGRAMME_SPECIALTY);
     return entity;
   }
 
@@ -137,6 +140,8 @@ class FormRPartAServiceTest {
     dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     dto.setForename(DEFAULT_FORENAME);
     dto.setSurname(DEFAULT_SURNAME);
+    dto.setIsArcp(true);
+    dto.setProgrammeSpecialty(DEFAULT_PROGRAMME_SPECIALTY);
     dto.setLifecycleState(state);
 
     when(repositoryMock.save(entity)).thenAnswer(invocation -> {
@@ -172,6 +177,8 @@ class FormRPartAServiceTest {
     dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     dto.setForename(DEFAULT_FORENAME);
     dto.setSurname(DEFAULT_SURNAME);
+    dto.setIsArcp(true);
+    dto.setProgrammeSpecialty(DEFAULT_PROGRAMME_SPECIALTY);
     dto.setLifecycleState(state);
 
     when(repositoryMock.save(entity)).thenAnswer(invocation -> {
@@ -207,6 +214,8 @@ class FormRPartAServiceTest {
     dto.setSurname(DEFAULT_SURNAME);
     dto.setLifecycleState(SUBMITTED);
     dto.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+    dto.setIsArcp(true);
+    dto.setProgrammeSpecialty(DEFAULT_PROGRAMME_SPECIALTY);
 
     when(repositoryMock.save(entity)).thenAnswer(invocation -> {
       FormRPartA entity = invocation.getArgument(0);
@@ -718,6 +727,9 @@ class FormRPartAServiceTest {
     FormRPartSimpleDto dto = dtos.get(0);
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected programme name.", dto.getProgrammeName(),
+        is(DEFAULT_PROGRAMME_SPECIALTY));
+    assertThat("Unexpected isArcp.", dto.getIsArcp(), is(true));
   }
 
   @Test

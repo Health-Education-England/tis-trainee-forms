@@ -94,6 +94,7 @@ class FormRPartBServiceTest {
   private static final String DEFAULT_WORK_SITE_LOCATION = "DEFAULT_WORK_SITE_LOCATION";
   private static final String DEFAULT_WORK_SITE_KNOWN_AS = "DEFAULT_WORK_SITE_KNOWN_AS";
   private static final Integer DEFAULT_TOTAL_LEAVE = 10;
+  private static final String DEFAULT_PROGRAMME_SPECIALTY = "Cardiology";
 
   private static final Boolean DEFAULT_IS_HONEST = true;
   private static final Boolean DEFAULT_IS_HEALTHY = true;
@@ -203,6 +204,8 @@ class FormRPartBServiceTest {
     entity.setLifecycleState(LifecycleState.DRAFT);
     entity.setHaveCurrentUnresolvedDeclarations(DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS);
     entity.setHavePreviousUnresolvedDeclarations(DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS);
+    entity.setIsArcp(true);
+    entity.setProgrammeSpecialty(DEFAULT_PROGRAMME_SPECIALTY);
     return entity;
   }
 
@@ -947,6 +950,9 @@ class FormRPartBServiceTest {
     FormRPartSimpleDto dto = dtos.get(0);
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected programme name.", dto.getProgrammeName(),
+        is(DEFAULT_PROGRAMME_SPECIALTY));
+    assertThat("Unexpected isArcp.", dto.getIsArcp(), is(true));
   }
 
   @Test

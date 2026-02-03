@@ -21,6 +21,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.dto;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.Data;
@@ -31,7 +32,10 @@ public class FormRPartSimpleDto {
 
   private String id;
   private String traineeTisId;
+  private Boolean isArcp;
   private UUID programmeMembershipId;
   private LocalDateTime submissionDate;
   private LifecycleState lifecycleState;
+  private String programmeName;
+  private LocalDate programmeStartDate;
 }
