@@ -26,7 +26,6 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,7 +54,6 @@ class FormRPartBMapperTest {
     UUID id = UUID.randomUUID();
     entity.setId(id);
     entity.setTraineeTisId("12345");
-    LocalDate startDate = LocalDate.of(2022, 1, 15);
     entity.setProgrammeSpecialty("General Practice");
     entity.setIsArcp(true);
     entity.setLifecycleState(SUBMITTED);
