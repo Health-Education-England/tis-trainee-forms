@@ -32,9 +32,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -64,7 +64,7 @@ class PublishLtftRefreshTest {
 
   @Test
   void shouldNotPublishWhenNoLtftsFound() {
-    when(repository.findByStatus_Current_StateIn(any())).thenReturn(List.of());
+    when(repository.streamByStatus_Current_StateIn(any())).thenReturn(Stream.of());
 
     job.execute();
 
@@ -83,7 +83,7 @@ class PublishLtftRefreshTest {
     form2.setId(id2);
 
     ArgumentCaptor<Set<LifecycleState>> statesCaptor = ArgumentCaptor.captor();
-    when(repository.findByStatus_Current_StateIn(statesCaptor.capture())).thenReturn(List.of());
+    when(repository.streamByStatus_Current_StateIn(statesCaptor.capture())).thenReturn(Stream.of());
 
     job.execute();
 
@@ -102,7 +102,7 @@ class PublishLtftRefreshTest {
     LtftForm form2 = new LtftForm();
     form2.setId(id2);
 
-    when(repository.findByStatus_Current_StateIn(any())).thenReturn(List.of(form1, form2));
+    when(repository.streamByStatus_Current_StateIn(any())).thenReturn(Stream.of(form1, form2));
 
     int publishCount = job.execute();
 
@@ -122,7 +122,7 @@ class PublishLtftRefreshTest {
     LtftForm form2 = new LtftForm();
     form2.setId(id2);
 
-    when(repository.findByStatus_Current_StateIn(any())).thenReturn(List.of(form1, form2));
+    when(repository.streamByStatus_Current_StateIn(any())).thenReturn(Stream.of(form1, form2));
     doThrow(RuntimeException.class).when(service)
         .publishUpdateNotification(form1, null, PUBLISH_TOPIC);
 

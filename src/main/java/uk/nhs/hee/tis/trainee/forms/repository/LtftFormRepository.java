@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -63,12 +64,12 @@ public interface LtftFormRepository extends MongoRepository<LtftForm, UUID> {
   Optional<LtftForm> findByTraineeTisIdAndId(String traineeId, UUID id);
 
   /**
-   * Find all LTFT forms with the given states.
+   * Stream all LTFT forms with the given states.
    *
    * @param states The states to filter by.
    * @return The found forms, empty if none found.
    */
-  List<LtftForm> findByStatus_Current_StateIn(Set<LifecycleState> states);
+  Stream<LtftForm> streamByStatus_Current_StateIn(Set<LifecycleState> states);
 
   /**
    * Find the LTFT form with the given ID and one of the given DBCs.
