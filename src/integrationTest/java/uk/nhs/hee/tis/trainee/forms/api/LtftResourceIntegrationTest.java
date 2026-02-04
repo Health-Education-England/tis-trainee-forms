@@ -1549,14 +1549,10 @@ class LtftResourceIntegrationTest {
     // Other discussions
     assertThat("Unexpected section header.", pdfText,
         containsString("Other discussions" + System.lineSeparator()));
-    assertThat("Unexpected other discussions.", pdfText, containsString(
-        "Name Ed Super"
-            + System.lineSeparator() + "Email ed.super@example.com"
-            + System.lineSeparator() + "Role Educational Supervisor" + System.lineSeparator()));
-    assertThat("Unexpected other discussions.", pdfText, containsString(
-        "Name Person Two"
-            + System.lineSeparator() + "Email person.2@example.com"
-            + System.lineSeparator() + "Role Test Data" + System.lineSeparator()));
+    assertThat("Unexpected other discussions.", removeLineBreak(pdfText), containsString(
+        "Name: Ed Super Email: ed.super@example.com Role: Educational Supervisor"));
+    assertThat("Unexpected other discussions.", removeLineBreak(pdfText), containsString(
+        "Name: Person Two Email: person.2@example.com Role: Test Data"));
   }
 
   @Test
@@ -1779,8 +1775,8 @@ class LtftResourceIntegrationTest {
         containsString("Change to your completion date for General Practice"));
     assertThat("Unexpected programme.", pdfText,
         containsString("Programme General Practice" + System.lineSeparator()));
-    assertThat("Unexpected precentage change.", pdfText,
-        containsString("Working hours percentage change 85% -> 75%" + System.lineSeparator()));
+    assertThat("Unexpected precentage change.", removeLineBreak(pdfText),
+        containsString("Working hours percentage change 85% -> 75%"));
     DateTimeFormatter datePattern = DateTimeFormatter.ofPattern("dd MMMM yyyy");
     String startDateString = changeStartDate.format(datePattern);
     assertThat("Unexpected start date.", removeLineBreak(pdfText),
