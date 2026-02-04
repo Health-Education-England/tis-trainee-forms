@@ -308,6 +308,7 @@ class AdminFormRPartAResourceIntegrationTest {
         .andExpect(jsonPath("$[0].programmeMembershipId")
             .value(programmeMembershipId.toString()))
         .andExpect(jsonPath("$[0].submissionDate")
-            .value(submissionDate.truncatedTo(ChronoUnit.MILLIS).toString()));
+            .value(submissionDate.truncatedTo(ChronoUnit.MILLIS).toString()))
+        .andExpect(jsonPath("$[0].formType").value("formr-parta"));
   }
 }

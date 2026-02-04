@@ -76,6 +76,7 @@ class FormRPartAMapperTest {
     assertThat("Unexpected lifecycleState.", dto.getLifecycleState(), is(SUBMITTED));
     assertThat("Unexpected programmeMembershipId.", dto.getProgrammeMembershipId(),
         is(programmeMembershipId));
+    assertThat("Unexpected formType.", dto.getFormType(), is("formr-parta"));
   }
 
   @Test
@@ -87,5 +88,6 @@ class FormRPartAMapperTest {
 
     assertThat("Expected null programmeStartDate.", dto.getProgrammeStartDate(), nullValue());
     assertThat("Expected null programmeName.", dto.getProgrammeName(), nullValue());
+    assertThat("Unexpected formType.", dto.getFormType(), is("formr-parta"));
   }
 }

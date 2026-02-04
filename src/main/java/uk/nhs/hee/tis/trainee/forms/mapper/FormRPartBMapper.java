@@ -43,6 +43,7 @@ public interface FormRPartBMapper {
 
   //programmeStartDate is unmapped as FormRPartB does not have a startDate field
   @Mapping(target = "programmeName", source = "programmeSpecialty")
+  @Mapping(target = "formType", constant = "formr-partb")
   FormRPartSimpleDto toSimpleDto(FormRPartB formRPartB);
 
   List<FormRPartSimpleDto> toSimpleDtos(List<FormRPartB> formRPartBs);

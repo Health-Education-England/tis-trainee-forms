@@ -38,4 +38,5 @@ public class FormRPartSimpleDto {
   private LifecycleState lifecycleState;
   private String programmeName;
   private LocalDate programmeStartDate;
+  private String formType;
 }

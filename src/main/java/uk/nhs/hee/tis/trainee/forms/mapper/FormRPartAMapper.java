@@ -41,6 +41,7 @@ public interface FormRPartAMapper {
 
   @Mapping(target = "programmeStartDate", source = "startDate")
   @Mapping(target = "programmeName", source = "programmeSpecialty")
+  @Mapping(target = "formType", constant = "formr-parta")
   FormRPartSimpleDto toSimpleDto(FormRPartA formRPartA);
 
   List<FormRPartSimpleDto> toSimpleDtos(List<FormRPartA> formRPartAs);
