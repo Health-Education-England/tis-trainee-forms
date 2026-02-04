@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.mapper;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.INVALID;
 
 import java.time.Duration;
@@ -34,6 +35,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -97,18 +99,6 @@ class LtftMapperTest {
   }
 
   @Test
-  void shouldReturnNullShortNoticeWhenSubmittedNull() {
-    LtftForm entity = new LtftForm();
-    entity.setStatus(Status.builder()
-        .submitted(null)
-        .build());
-
-    Boolean isShortNotice = mapper.isShortNotice(entity);
-
-    assertThat("Unexpected short notice value.", isShortNotice, nullValue());
-  }
-
-  @Test
   void shouldReturnNullShortNoticeWhenContentNull() {
     LtftForm entity = new LtftForm();
     entity.setStatus(Status.builder()
@@ -152,6 +142,18 @@ class LtftMapperTest {
         .change(CctChange.builder()
             .startDate(null)
             .build())
+        .build());
+
+    Boolean isShortNotice = mapper.isShortNotice(entity);
+
+    assertThat("Unexpected short notice value.", isShortNotice, nullValue());
+  }
+
+  @Test
+  void shouldReturnNullShortNoticeWhenCurrentNull() {
+    LtftForm entity = new LtftForm();
+    entity.setStatus(Status.builder()
+        .current(null)
         .build());
 
     Boolean isShortNotice = mapper.isShortNotice(entity);
@@ -219,6 +221,50 @@ class LtftMapperTest {
     Boolean isShortNotice = mapper.isShortNotice(entity);
 
     assertThat("Unexpected short notice value.", isShortNotice, is(true));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldReturnUseCurrentDateForShortNoticeWhenDraftUnsubmitted(LifecycleState state) {
+    LtftForm entity = new LtftForm();
+    entity.setStatus(Status.builder()
+        .current(StatusInfo.builder()
+            .state(state)
+            .build())
+        .submitted(Instant.now().minus(Duration.ofDays(120)))
+        .build());
+
+    entity.setContent(LtftContent.builder()
+        .change(CctChange.builder()
+            .startDate(LocalDate.now().plusDays(100))
+            .build())
+        .build());
+
+    Boolean isShortNotice = mapper.isShortNotice(entity);
+
+    assertThat("Unexpected short notice value.", isShortNotice, is(true));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldReturnUseSubmissionDateForShortNoticeTraineeWhenSubmitted(LifecycleState state) {
+    LtftForm entity = new LtftForm();
+    entity.setStatus(Status.builder()
+        .current(StatusInfo.builder()
+            .state(state)
+            .build())
+        .submitted(Instant.now().minus(Duration.ofDays(120)))
+        .build());
+
+    entity.setContent(LtftContent.builder()
+        .change(CctChange.builder()
+            .startDate(LocalDate.now().plusDays(100))
+            .build())
+        .build());
+
+    Boolean isShortNotice = mapper.isShortNotice(entity);
+
+    assertThat("Unexpected short notice value.", isShortNotice, is(false));
   }
 
   @Test

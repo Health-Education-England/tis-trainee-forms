@@ -26,6 +26,8 @@ import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.INVALID;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.UNKNOWN;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.VALID;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
 import jakarta.annotation.Nullable;
@@ -49,6 +51,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.LtftSubmissionHistory;
@@ -82,7 +85,7 @@ public abstract class LtftMapper {
       qualifiedByName = "JoinWithComma")
   @Mapping(target = "daysToStart", source = "content.change.startDate",
       qualifiedByName = "DaysUntil")
-  @Mapping(target = "shortNotice", source = "entity", qualifiedByName = "IsShortNotice")
+  @Mapping(target = "shortNotice", source = "entity", qualifiedByName = "isShortNotice")
   @Mapping(target = "tpd.email", source = "content.discussions.tpdEmail")
   @Mapping(target = "tpd.emailStatus", source = "content.tpdEmailValidity")
   @Mapping(target = "status", source = "status.current.state")
@@ -149,6 +152,7 @@ public abstract class LtftMapper {
   @Mapping(target = "change", source = "content.change")
   @Mapping(target = "reasons", source = "content.reasons")
   @Mapping(target = "tpdEmailStatus", source = "content.tpdEmailValidity")
+  @Mapping(target = "shortNotice", source = "entity", qualifiedByName = "isShortNotice")
   public abstract LtftFormDto toDto(LtftForm entity);
 
   /**
@@ -224,20 +228,22 @@ public abstract class LtftMapper {
    * Calculate whether the LTFT application is short notice.
    *
    * @param entity The LTFT application.
-   * @return Whether the application is short notice, or null if one of the required dates was null.
+   * @return Whether the application is short notice, or null if application status was null.
    */
-  @Named("IsShortNotice")
+  @Named("isShortNotice")
   @Nullable
   Boolean isShortNotice(LtftForm entity) {
-    if (entity.getStatus() == null || entity.getStatus().submitted() == null) {
+    if (entity.getStatus() == null || entity.getStatus().current() == null) {
       return null;
     }
 
     Instant submitted = entity.getStatus().submitted();
+    LifecycleState state = entity.getStatus().current().state();
 
-    // If the form is unsubmitted, use the current date instead of the last submission date.
+    // If the form is UNSUBMITTED/DRAFT, use the current date instead of the last submission date.
     Instant referenceInstant =
-        entity.getStatus().current().state() == UNSUBMITTED ? Instant.now() : submitted;
+        (state == UNSUBMITTED || state == DRAFT || submitted == null) ? Instant.now() : submitted;
+
     LocalDate referenceDate = getTemporalMapper().toLocalDate(referenceInstant);
 
     return Optional.ofNullable(entity.getContent())
