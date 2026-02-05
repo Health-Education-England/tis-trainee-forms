@@ -114,16 +114,13 @@
           <th:block th:each="person,iter: ${var.discussions?.other}">
             <h3 class="nhsuk-card__heading nhsuk-card__heading--feature" th:text="|${iter.count}|"></h3><br/>
             <div class="nhsuk-summary-list__row">
-              <dt class="nhsuk-summary-list__key">Name</dt>
-              <dd class="nhsuk-summary-list__value" th:text="|${person.name}|">Not provided</dd>
+              <span class="nhsuk-summary-list__value">Name: <th:block th:text="|${person.name}|">Not provided</th:block></span>
             </div>
             <div class="nhsuk-summary-list__row">
-              <dt class="nhsuk-summary-list__key">Email</dt>
-              <dd class="nhsuk-summary-list__value" th:text="|${person.email}|">Not provided</dd>
+              <span class="nhsuk-summary-list__value">Email: <th:block th:text="|${person.email}|">Not provided</th:block></span>
             </div>
             <div class="nhsuk-summary-list__row">
-              <dt class="nhsuk-summary-list__key">Role</dt>
-              <dd class="nhsuk-summary-list__value" th:text="|${person.role}|">Not provided</dd>
+              <span class="nhsuk-summary-list__value">Role: <th:block th:text="|${person.role}|">Not provided</th:block></span>
             </div>
             <br th:if="${!iter.last}">
           </th:block>
@@ -142,7 +139,7 @@
 
             </dd>
           </div>
-          <div class="nhsuk-summary-list__row" th:if="${var.reasons?.otherDetail}">
+          <div class="nhsuk-summary-list__row" th:if="${not #strings.isEmpty(var.reasons?.otherDetail)}">
             <dt class="nhsuk-summary-list__key">Other reason</dt>
             <dd class="nhsuk-summary-list__value" th:text="|${var.reasons?.otherDetail}|">Not provided</dd>
           </div>
