@@ -30,14 +30,19 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DELETED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 
 import io.awspring.cloud.sns.core.SnsTemplate;
 import java.net.URI;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -237,7 +242,7 @@ class AdminFormRPartBResourceIntegrationTest {
     FormRPartB submittedForm = new FormRPartB();
     submittedForm.setId(UUID.randomUUID());
     submittedForm.setTraineeTisId(TRAINEE_ID);
-    submittedForm.setLifecycleState(LifecycleState.SUBMITTED);
+    submittedForm.setLifecycleState(SUBMITTED);
     submittedForm.setSubmissionDate(LocalDateTime.now());
     template.insert(submittedForm);
 
@@ -245,7 +250,7 @@ class AdminFormRPartBResourceIntegrationTest {
     excludedForm.setId(UUID.randomUUID());
     excludedForm.setTraineeTisId(TRAINEE_ID);
     excludedForm.setLifecycleState(excludedState);
-    excludedForm.setSubmissionDate(excludedState == LifecycleState.DELETED
+    excludedForm.setSubmissionDate(excludedState == DELETED
         ? LocalDateTime.now().minusDays(5)
         : null);
     template.insert(excludedForm);
@@ -273,13 +278,13 @@ class AdminFormRPartBResourceIntegrationTest {
     FormRPartB draftForm = new FormRPartB();
     draftForm.setId(UUID.randomUUID());
     draftForm.setTraineeTisId(TRAINEE_ID);
-    draftForm.setLifecycleState(LifecycleState.DRAFT);
+    draftForm.setLifecycleState(DRAFT);
     template.insert(draftForm);
 
     FormRPartB deletedForm = new FormRPartB();
     deletedForm.setId(UUID.randomUUID());
     deletedForm.setTraineeTisId(TRAINEE_ID);
-    deletedForm.setLifecycleState(LifecycleState.DELETED);
+    deletedForm.setLifecycleState(DELETED);
     deletedForm.setSubmissionDate(LocalDateTime.now().minusDays(2));
     template.insert(deletedForm);
 
@@ -291,5 +296,38 @@ class AdminFormRPartBResourceIntegrationTest {
         .andExpect(jsonPath("$.length()").value(1))
         .andExpect(jsonPath("$[0].id").value(includedForm.getId().toString()))
         .andExpect(jsonPath("$[0].lifecycleState").value(includedState.toString()));
+  }
+
+  @Test
+  void shouldReturnFormsListWithAllDtoDetails() throws Exception {
+    FormRPartB submittedForm = new FormRPartB();
+    submittedForm.setId(UUID.randomUUID());
+    submittedForm.setTraineeTisId(TRAINEE_ID);
+    submittedForm.setLifecycleState(SUBMITTED);
+    LocalDateTime submissionDate = LocalDateTime.now();
+    submittedForm.setSubmissionDate(submissionDate);
+    submittedForm.setIsArcp(true);
+    submittedForm.setProgrammeSpecialty("Cardiology");
+    UUID programmeMembershipId = UUID.randomUUID();
+    submittedForm.setProgrammeMembershipId(programmeMembershipId);
+    template.insert(submittedForm);
+
+    mockMvc.perform(get("/api/admin/formr-partb")
+            .param("traineeId", TRAINEE_ID)
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of("HEE Admin"))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$.length()").value(1))
+        .andExpect(jsonPath("$[0].id").value(submittedForm.getId().toString()))
+        .andExpect(jsonPath("$[0].lifecycleState").value("SUBMITTED"))
+        .andExpect(jsonPath("$[0].traineeTisId").value(TRAINEE_ID))
+        .andExpect(jsonPath("$[0].isArcp").value("true"))
+        .andExpect(jsonPath("$[0].programmeName").value("Cardiology"))
+        .andExpect(jsonPath("$[0].programmeStartDate").doesNotExist())
+        .andExpect(jsonPath("$[0].programmeMembershipId")
+            .value(programmeMembershipId.toString()))
+        .andExpect(jsonPath("$[0].submissionDate")
+            .value(submissionDate.truncatedTo(ChronoUnit.MILLIS).toString()))
+        .andExpect(jsonPath("$[0].formType").value("formr-partb"));
   }
 }
