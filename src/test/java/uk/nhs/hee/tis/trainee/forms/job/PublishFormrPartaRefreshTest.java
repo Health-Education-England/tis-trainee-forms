@@ -36,9 +36,9 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.google.common.base.Objects;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -46,6 +46,10 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatcher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapperImpl;
@@ -72,7 +76,7 @@ class PublishFormrPartaRefreshTest {
 
   @Test
   void shouldNotPublishWhenNoFormrPartasFound() {
-    when(repository.streamByLifecycleStateIn(any())).thenReturn(Stream.of());
+    when(repository.findPageByLifecycleStateIn(any(), any())).thenReturn(Page.empty());
 
     job.execute();
 
@@ -92,7 +96,8 @@ class PublishFormrPartaRefreshTest {
     form2.setId(id2);
 
     ArgumentCaptor<Set<LifecycleState>> statesCaptor = ArgumentCaptor.captor();
-    when(repository.streamByLifecycleStateIn(statesCaptor.capture())).thenReturn(Stream.of());
+    when(repository.findPageByLifecycleStateIn(statesCaptor.capture(), any()))
+        .thenReturn(Page.empty());
 
     job.execute();
 
@@ -111,14 +116,27 @@ class PublishFormrPartaRefreshTest {
     FormRPartA form2 = new FormRPartA();
     form2.setId(id2);
 
-    when(repository.streamByLifecycleStateIn(any())).thenReturn(Stream.of(form1, form2));
+    UUID id3 = UUID.randomUUID();
+    FormRPartA form3 = new FormRPartA();
+    form3.setId(id3);
+
+    Pageable firstPageable = PageRequest.of(0, 2);
+    Pageable secondPageable = PageRequest.of(1, 2);
+
+    PageImpl<FormRPartA> firstPage = new PageImpl<>(List.of(form1, form2), firstPageable, 3);
+    PageImpl<FormRPartA> secondPage = new PageImpl<>(List.of(form3), secondPageable, 3);
+
+    when(repository.findPageByLifecycleStateIn(any(), any()))
+        .thenReturn(firstPage)
+        .thenReturn(secondPage);
 
     int publishCount = job.execute();
 
-    assertThat("Unexpected published Form-R count.", publishCount, is(2));
+    assertThat("Unexpected published Form-R count.", publishCount, is(3));
 
     verify(service).publishUpdateNotification(argThat(hasId(id1)), eq(PUBLISH_TOPIC));
     verify(service).publishUpdateNotification(argThat(hasId(id2)), eq(PUBLISH_TOPIC));
+    verify(service).publishUpdateNotification(argThat(hasId(id3)), eq(PUBLISH_TOPIC));
   }
 
   @Test
@@ -131,7 +149,8 @@ class PublishFormrPartaRefreshTest {
     FormRPartA form2 = new FormRPartA();
     form2.setId(id2);
 
-    when(repository.streamByLifecycleStateIn(any())).thenReturn(Stream.of(form1, form2));
+    when(repository.findPageByLifecycleStateIn(any(), any()))
+        .thenReturn(new PageImpl<>(List.of(form1, form2)));
     doThrow(RuntimeException.class).when(service)
         .publishUpdateNotification(argThat(hasId(id1)), eq(PUBLISH_TOPIC));
 

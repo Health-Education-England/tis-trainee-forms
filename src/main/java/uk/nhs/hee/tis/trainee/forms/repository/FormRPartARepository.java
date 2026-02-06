@@ -26,6 +26,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -58,4 +60,13 @@ public interface FormRPartARepository extends MongoRepository<FormRPartA, UUID> 
    * @return The found forms, empty if none found.
    */
   Stream<FormRPartA> streamByLifecycleStateIn(Set<LifecycleState> states);
+
+  /**
+   * Find a page of Form-R Part As with the given states.
+   *
+   * @param states The states to filter by.
+   * @param pageable The page request.
+   * @return The found page of forms, empty if none found.
+   */
+  Page<FormRPartA> findPageByLifecycleStateIn(Set<LifecycleState> states, Pageable pageable);
 }

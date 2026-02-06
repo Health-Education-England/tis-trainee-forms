@@ -23,9 +23,10 @@
 package uk.nhs.hee.tis.trainee.forms.job;
 
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 /**
  * An abstract execution to publish all exportable forms as if they have been updated, useful for
@@ -54,9 +55,9 @@ public abstract class AbstractPublishRefresh<T> {
   /**
    * Get the forms to be refreshed, should also apply any relevant filtering.
    *
-   * @return The filtered list of forms to be refreshed.
+   * @return The paged list of forms to be refreshed.
    */
-  protected abstract Stream<T> streamForms();
+  protected abstract Page<T> getPageForms(Pageable pageable);
 
   /**
    * Refresh the given form by publishing to an event topic.
@@ -74,25 +75,41 @@ public abstract class AbstractPublishRefresh<T> {
     String formType = getFormTypeName();
     log.info("Starting {} downstream refresh.", formType);
 
-    AtomicInteger total = new AtomicInteger();
-    AtomicInteger published = new AtomicInteger();
+    int total = 0;
+    int published = 0;
 
-    streamForms().forEach(form -> {
-          total.getAndIncrement();
+    Pageable pageable = PageRequest.of(0, 500);
+    Page<T> page = getPageForms(pageable);
 
-          UUID formId = getFormId(form);
-          log.debug("Publishing refresh notification for {} {}.", formType, formId);
+    if (!page.hasContent()) {
+      log.info("Finished {} downstream refresh, published count: {}/{}.",
+          formType, published, total);
+      return published;
+    }
 
-          try {
-            publishForm(form);
-            published.getAndIncrement();
-          } catch (Exception e) {
-            log.error("Unable to publish refresh notification for {} {}.", formType, formId);
-          }
+    while (true) {
+      for (T form : page.getContent()) {
+        total++;
+
+        UUID formId = getFormId(form);
+        log.debug("Publishing refresh notification for {} {}.", formType, formId);
+
+        try {
+          publishForm(form);
+          published++;
+        } catch (Exception e) {
+          log.error("Unable to publish refresh notification for {} {}.", formType, formId);
         }
-    );
+      }
+
+      if (!page.hasNext()) {
+        break;
+      }
+      pageable = page.nextPageable();
+      page = getPageForms(pageable);
+    }
 
     log.info("Finished {} downstream refresh, published count: {}/{}.", formType, published, total);
-    return published.get();
+    return published;
   }
 }
