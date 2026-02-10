@@ -27,8 +27,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -72,15 +70,6 @@ public interface LtftFormRepository extends MongoRepository<LtftForm, UUID> {
    * @return The found forms, empty if none found.
    */
   Stream<LtftForm> streamByStatus_Current_StateIn(Set<LifecycleState> states);
-
-  /**
-   * Find a page of LTFTs with the given states.
-   *
-   * @param states The states to filter by.
-   * @param pageable The page request.
-   * @return The found page of forms, empty if none found.
-   */
-  Page<LtftForm> findPageByStatus_Current_StateIn(Set<LifecycleState> states, Pageable pageable);
 
   /**
    * Find the LTFT form with the given ID and one of the given DBCs.
