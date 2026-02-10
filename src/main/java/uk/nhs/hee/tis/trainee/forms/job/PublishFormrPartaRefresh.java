@@ -29,11 +29,10 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBM
 import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapper;
@@ -81,13 +80,13 @@ public class PublishFormrPartaRefresh extends AbstractPublishRefresh<FormRPartA>
   }
 
   @Override
-  public Page<FormRPartA> getPageForms(Pageable pageable) {
+  public Stream<FormRPartA> streamForms() {
     // Listing allowed (non-DRAFT) states avoids any accidental inclusions of future states.
-    return repository.findPageByLifecycleStateIn(Set.of(
+    return repository.streamByLifecycleStateIn(Set.of(
         DELETED,
         SUBMITTED,
         UNSUBMITTED
-    ), pageable);
+    ));
   }
 
   @Override

@@ -31,11 +31,10 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDR
 import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
@@ -80,16 +79,16 @@ public class PublishLtftRefresh extends AbstractPublishRefresh<LtftForm> {
   }
 
   @Override
-  public Page<LtftForm> getPageForms(Pageable pageable) {
+  public Stream<LtftForm> streamForms() {
     // Listing allowed (non-DRAFT) states avoids any accidental inclusions of future states.
-    return repository.findPageByStatus_Current_StateIn(Set.of(
+    return repository.streamByStatus_Current_StateIn(Set.of(
         APPROVED,
         DELETED,
         REJECTED,
         SUBMITTED,
         UNSUBMITTED,
         WITHDRAWN
-    ), pageable);
+    ));
   }
 
   @Override
