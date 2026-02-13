@@ -61,6 +61,8 @@ dependencies {
 
   // PDF
   implementation(libs.bundles.pdf.publishing)
+
+  implementation("uk.nhs.tis.trainee:security-feature:0.0.1")
 }
 
 checkstyle {
@@ -95,6 +97,7 @@ testing {
           implementation("org.springframework.boot:spring-boot-starter-test")
 
           // TODO: move when WebMvcTests are moved to integrationTest.
+          implementation("uk.nhs.tis.trainee:security-test:0.0.1")
           implementation("org.springframework.security:spring-security-test")
         }
       }

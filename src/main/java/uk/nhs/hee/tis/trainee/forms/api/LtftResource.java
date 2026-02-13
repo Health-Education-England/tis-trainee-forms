@@ -31,6 +31,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -56,6 +57,7 @@ import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 @RestController
 @RequestMapping("/api/ltft")
 @XRayEnabled
+@PreAuthorize("hasFeature('forms.ltft')")
 public class LtftResource {
 
   private final LtftService service;
@@ -78,6 +80,7 @@ public class LtftResource {
    */
   @GetMapping
   @JsonView(Trainee.Read.class)
+  @PreAuthorize("hasFeature('forms.ltft')")
   public ResponseEntity<List<LtftSummaryDto>> getLtftSummaries() {
     log.info("Request to get summary list of LTFT records.");
     List<LtftSummaryDto> ltfts = service.getLtftSummaries();
@@ -93,6 +96,7 @@ public class LtftResource {
    */
   @GetMapping("/{formId}")
   @JsonView(Trainee.Read.class)
+
   public ResponseEntity<LtftFormDto> getLtft(@PathVariable UUID formId) {
     log.info("Request to retrieve LTFT form {}.", formId);
     Optional<LtftFormDto> ltft = service.getLtftForm(formId);

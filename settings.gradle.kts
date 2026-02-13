@@ -3,6 +3,7 @@ rootProject.name = "tis-trainee-forms"
 dependencyResolutionManagement {
   repositories {
     mavenCentral()
+    mavenLocal()
   }
 
   versionCatalogs {

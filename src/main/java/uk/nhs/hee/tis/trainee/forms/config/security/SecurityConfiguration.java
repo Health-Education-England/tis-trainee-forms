@@ -33,6 +33,7 @@ import java.util.Map;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
+import org.springframework.security.access.expression.method.MethodSecurityExpressionHandler;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -47,6 +48,8 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.filter.OncePerRequestFilter;
+import uk.nhs.tis.trainee.security.feature.FeatureChecker;
+import uk.nhs.tis.trainee.security.feature.FeatureMethodSecurityExpressionHandler;
 
 /**
  * Application security configuration.
@@ -54,6 +57,16 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfiguration {
+
+  @Bean
+  public FeatureChecker featureChecker() {
+    return new FeatureChecker();
+  }
+
+  @Bean
+  public MethodSecurityExpressionHandler featureMethodSecurityExpressionHandler(FeatureChecker featureChecker) {
+    return new FeatureMethodSecurityExpressionHandler(featureChecker);
+  }
 
   /**
    * Configure the security filter chain.
