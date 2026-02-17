@@ -35,8 +35,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.validation.ValidationAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import software.amazon.awssdk.services.s3.S3Client;
 import uk.nhs.hee.tis.trainee.forms.dto.CovidDeclarationDto;
 import uk.nhs.hee.tis.trainee.forms.dto.DeclarationDto;
@@ -55,7 +55,7 @@ class FormFieldValidationServicePartBTest {
   private static final int INT_NEGATIVE = -1;
   private static final int INT_5_DIGITS = 10000;
 
-  @MockBean
+  @MockitoBean
   S3Client amazonS3;
 
   @Autowired

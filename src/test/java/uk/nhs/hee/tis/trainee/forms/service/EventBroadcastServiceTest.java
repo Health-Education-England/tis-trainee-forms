@@ -112,7 +112,7 @@ class EventBroadcastServiceTest {
   void shouldRethrowSnsExceptionsWhenBroadcastingEvent() {
     LtftFormDto ltftFormDto = buildDummyLtftFormDto();
 
-    when(snsClient.publish(any(PublishRequest.class))).thenThrow(SnsException.builder().build());
+    when(snsClient.publish(any(PublishRequest.class))).thenThrow(SnsException.class);
 
     assertThrows(SnsException.class,
         () -> service.publishLtftFormUpdateEvent(ltftFormDto, MESSAGE_ATTRIBUTE, SNS_TOPIC));
@@ -326,7 +326,7 @@ class EventBroadcastServiceTest {
   void shouldRethrowSnsExceptionWhenPublishingFormRPartAEventWithAttributes() {
     FormRPartADto formRPartADto = buildDummyFormRPartADto();
 
-    when(snsClient.publish(any(PublishRequest.class))).thenThrow(SnsException.builder().build());
+    when(snsClient.publish(any(PublishRequest.class))).thenThrow(SnsException.class);
 
     Map<String, String> messageAttributes = Map.of("formType", "formr-a");
     assertThrows(SnsException.class,
@@ -337,7 +337,7 @@ class EventBroadcastServiceTest {
   void shouldRethrowSnsExceptionWhenPublishingFormRPartBEventWithAttributes() {
     FormRPartBDto formRPartBDto = buildDummyFormRPartBDto();
 
-    when(snsClient.publish(any(PublishRequest.class))).thenThrow(SnsException.builder().build());
+    when(snsClient.publish(any(PublishRequest.class))).thenThrow(SnsException.class);
 
     Map<String, String> messageAttributes = Map.of("formType", "formr-b");
     assertThrows(SnsException.class,

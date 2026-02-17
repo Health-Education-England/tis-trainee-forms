@@ -30,7 +30,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -46,7 +46,7 @@ class FormRelocationResourceTest {
 
   private MockMvc mockMvc;
 
-  @MockBean
+  @MockitoBean
   private FormRelocateService service;
 
   /**
@@ -64,7 +64,7 @@ class FormRelocationResourceTest {
     mockMvc.perform(patch("/api/form-relocate/" + FORM_ID)
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
             .param("targetTrainee", TARGET_TRAINEE))
-            .andExpect(status().isNoContent());
+        .andExpect(status().isNoContent());
   }
 
   @Test
@@ -72,7 +72,7 @@ class FormRelocationResourceTest {
     mockMvc.perform(patch("/api/form-relocate/" + FORM_ID)
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
             .param("targetTrainee", ""))
-            .andExpect(status().isBadRequest());
+        .andExpect(status().isBadRequest());
 
     verifyNoInteractions(service);
   }
@@ -85,6 +85,6 @@ class FormRelocationResourceTest {
     mockMvc.perform(patch("/api/form-relocate/" + FORM_ID)
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
             .param("targetTrainee", TARGET_TRAINEE))
-            .andExpect(status().isBadRequest());
+        .andExpect(status().isBadRequest());
   }
 }

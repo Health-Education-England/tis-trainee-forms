@@ -142,10 +142,8 @@ class FormRelocateServiceTest {
 
   @Test
   void shouldThrowExceptionWhenGetMoveFormInfoInDbFailed() {
-    when(formRPartARepositoryMock.findById(FORM_ID))
-        .thenThrow(new ApplicationException("Expected Exception"));
-    when(formRPartBRepositoryMock.findById(FORM_ID))
-        .thenThrow(new ApplicationException("Expected Exception"));
+    when(formRPartARepositoryMock.findById(FORM_ID)).thenThrow(ApplicationException.class);
+    when(formRPartBRepositoryMock.findById(FORM_ID)).thenThrow(ApplicationException.class);
 
     assertThrows(ApplicationException.class, () ->
         service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE_ID));
@@ -156,8 +154,7 @@ class FormRelocateServiceTest {
 
   @Test
   void shouldTryPartBRepositoryWhenGetMoveFormInfoInDbFailedForPartARepository() {
-    when(formRPartARepositoryMock.findById(FORM_ID))
-        .thenThrow(new ApplicationException("Expected Exception"));
+    when(formRPartARepositoryMock.findById(FORM_ID)).thenThrow(ApplicationException.class);
     when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
 
     assertThrows(ApplicationException.class, () ->
@@ -197,8 +194,7 @@ class FormRelocateServiceTest {
   @Test
   void shouldRollBackAndThrowExceptionWhenMoveDraftFormInDbFail() {
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartA));
-    when(formRPartARepositoryMock.save(formRPartA))
-        .thenThrow(new ApplicationException("Expected Exception"));
+    when(formRPartARepositoryMock.save(formRPartA)).thenThrow(ApplicationException.class);
 
     assertThrows(ApplicationException.class, () ->
         service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE_ID));
@@ -224,8 +220,7 @@ class FormRelocateServiceTest {
   void shouldRollBackAndThrowExceptionWhenMoveSubmittedFormInDbFail() {
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
     when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartB));
-    when(formRPartBRepositoryMock.save(formRPartB))
-        .thenThrow(new ApplicationException("Expected Exception"));
+    when(formRPartBRepositoryMock.save(formRPartB)).thenThrow(ApplicationException.class);
 
     assertThrows(ApplicationException.class, () ->
         service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE_ID));
@@ -399,8 +394,7 @@ class FormRelocateServiceTest {
         .findByIdAndTraineeTisId(FORM_ID.toString(), DEFAULT_TRAINEE_ID))
         .thenReturn(Optional.of(formRPartB));
 
-    when(abstractCloudRepositoryBMock.save(formRPartB))
-        .thenThrow(new ApplicationException("Expected Exception"));
+    when(abstractCloudRepositoryBMock.save(formRPartB)).thenThrow(ApplicationException.class);
     assertThrows(ApplicationException.class, () ->
         service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE_ID));
 
@@ -498,8 +492,7 @@ class FormRelocateServiceTest {
         .thenReturn(List.of(formB1));
 
     // Make first form move fail
-    when(formRPartARepositoryMock.findById(any()))
-        .thenThrow(new ApplicationException("Expected Exception"));
+    when(formRPartARepositoryMock.findById(any())).thenThrow(ApplicationException.class);
     when(formRPartBRepositoryMock.findById(formBid)).thenReturn(Optional.of(formB1));
 
     service.moveAllForms(DEFAULT_TRAINEE_ID, TARGET_TRAINEE_ID);
@@ -527,8 +520,7 @@ class FormRelocateServiceTest {
         .thenReturn(List.of(formB1));
 
     // Make second form move fail
-    when(formRPartBRepositoryMock.findById(any()))
-        .thenThrow(new ApplicationException("Expected Exception"));
+    when(formRPartBRepositoryMock.findById(any())).thenThrow(ApplicationException.class);
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formA1));
 
     service.moveAllForms(DEFAULT_TRAINEE_ID, TARGET_TRAINEE_ID);

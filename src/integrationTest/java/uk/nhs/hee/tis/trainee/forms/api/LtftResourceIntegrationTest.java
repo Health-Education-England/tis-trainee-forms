@@ -77,7 +77,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
@@ -88,6 +87,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.containers.MongoDBContainer;
@@ -136,10 +136,10 @@ class LtftResourceIntegrationTest {
   @Value("${application.timezone}")
   private ZoneId timezone;
 
-  @MockBean
+  @MockitoBean
   private SnsTemplate snsTemplate;
 
-  @MockBean
+  @MockitoBean
   private JwtDecoder jwtDecoder;
 
   @Autowired
@@ -1445,7 +1445,8 @@ class LtftResourceIntegrationTest {
     assertThat("Unexpected section header.", pdfText,
         containsString("Your Programme" + System.lineSeparator()));
     assertThat("Unexpected working hours question.", removeLineBreak(pdfText),
-        containsString("What percentage of your full time hours do you work before your proposed change?"));
+        containsString(
+            "What percentage of your full time hours do you work before your proposed change?"));
     assertThat("Unexpected programme name.", pdfText,
         containsString("General Practice" + System.lineSeparator()));
 
@@ -1453,10 +1454,10 @@ class LtftResourceIntegrationTest {
     assertThat("Unexpected section header.", pdfText,
         containsString("Working hours before change" + System.lineSeparator()));
     assertThat("Unexpected working hours question.", removeLineBreak(pdfText),
-        containsString("What percentage of your full time hours do you work before your proposed change?"));
+        containsString(
+            "What percentage of your full time hours do you work before your proposed change?"));
     assertThat("Unexpected working hours value.", pdfText,
         containsString("85" + System.lineSeparator()));
-
 
     // Proposed change to your working hours
     assertThat("Unexpected section header.", pdfText,
@@ -1782,15 +1783,18 @@ class LtftResourceIntegrationTest {
     assertThat("Unexpected start date.", removeLineBreak(pdfText),
         containsString("Start date " + startDateString));
     assertThat("Unexpected 16 weeks warning.", removeLineBreak(pdfText),
-        containsString("Warning: Giving less than 16 weeks notice to change your working hours is classed as a late application and will only be considered on an exceptional basis."));
+        containsString(
+            "Warning: Giving less than 16 weeks notice to change your working hours is classed as a late application and will only be considered on an exceptional basis."));
     String endDateString = endDate.format(datePattern);
     assertThat("Unexpected current end date.", removeLineBreak(pdfText),
-        containsString("Current completion date " + endDateString + " (Programme end date on TIS)"));
+        containsString(
+            "Current completion date " + endDateString + " (Programme end date on TIS)"));
     String cctDateString = cctDate.format(datePattern);
     assertThat("Unexpected end date.", removeLineBreak(pdfText),
         containsString("Estimated completion date after these changes " + cctDateString));
     assertThat("Unexpected note.", removeLineBreak(pdfText),
-        containsString("Please note: This new completion date is an estimate as it does not take into account your full circumstances (e.g. Out of Programme, Parental Leave). Your formal completion date will be agreed at ARCP."));
+        containsString(
+            "Please note: This new completion date is an estimate as it does not take into account your full circumstances (e.g. Out of Programme, Parental Leave). Your formal completion date will be agreed at ARCP."));
   }
 
   @Test

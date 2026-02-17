@@ -45,6 +45,7 @@ import java.util.Set;
 import org.hibernate.validator.internal.engine.path.PathImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.MessageSourceResolvable;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpHeaders;
@@ -266,7 +267,7 @@ class RestResponseEntityExceptionHandlerTest {
     }
 
     @Override
-    public @NotNull List<ParameterValidationResult> getAllValidationResults() {
+    public @NotNull List<ParameterValidationResult> getParameterValidationResults() {
       return parametersToMessages.entrySet().stream()
           .map(entry -> {
             String parameterName = entry.getKey();
@@ -277,9 +278,15 @@ class RestResponseEntityExceptionHandlerTest {
                 .map(msg -> new DefaultMessageSourceResolvable(null, null, msg))
                 .toList();
 
-            return new ParameterValidationResult(parameter, null, messages, null, null, null);
+            return new ParameterValidationResult(parameter, null, messages, null, null, null,
+                (a, b) -> null);
           })
           .toList();
+    }
+
+    @Override
+    public List<MessageSourceResolvable> getCrossParameterValidationResults() {
+      return List.of();
     }
   }
 
