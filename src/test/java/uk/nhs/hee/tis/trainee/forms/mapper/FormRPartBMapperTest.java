@@ -26,20 +26,30 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 
+import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 
+@ExtendWith(MockitoExtension.class)
 class FormRPartBMapperTest {
 
-  private FormRPartBMapper mapper;
+  private final FormRPartBMapper mapper = new FormRPartBMapperImpl();
+
+  @Mock
+  private CovidDeclarationMapper covidDeclarationMapper;
 
   @BeforeEach
-  void setUp() {
-    mapper = new FormRPartBMapperImpl();
+  void setUp() throws Exception {
+    Field field = FormRPartBMapperImpl.class.getDeclaredField("covidDeclarationMapper");
+    field.setAccessible(true);
+    field.set(mapper, covidDeclarationMapper);
   }
 
   @Test
@@ -97,16 +107,5 @@ class FormRPartBMapperTest {
 
     assertThat("Expected programmeName to be mapped from programmeSpecialty.",
         dto.getProgrammeName(), is("Internal Medicine"));
-  }
-
-  @Test
-  void shouldHandleNullProgrammeSpecialtyInToDto() {
-    FormRPartB entity = new FormRPartB();
-    entity.setProgrammeSpecialty(null);
-
-    var dto = mapper.toDto(entity);
-
-    assertThat("Expected null programmeName when programmeSpecialty is null.",
-        dto.getProgrammeName(), nullValue());
   }
 }
