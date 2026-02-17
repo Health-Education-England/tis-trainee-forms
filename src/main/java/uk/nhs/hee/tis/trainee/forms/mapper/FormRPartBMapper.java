@@ -32,6 +32,7 @@ import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 public interface FormRPartBMapper {
 
   @Mapping(target = "covidDeclarationDto", source = "covidDeclaration")
+  @Mapping(target = "programmeName", source = "programmeSpecialty")
   FormRPartBDto toDto(FormRPartB formRPartB);
 
   @InheritInverseConfiguration

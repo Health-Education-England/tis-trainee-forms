@@ -87,4 +87,26 @@ class FormRPartBMapperTest {
     assertThat("Expected null programmeName.", dto.getProgrammeName(), nullValue());
     assertThat("Unexpected formType.", dto.getFormType(), is("formr-partb"));
   }
+
+  @Test
+  void shouldMapProgrammeNameFromProgrammeSpecialtyInToDto() {
+    FormRPartB entity = new FormRPartB();
+    entity.setProgrammeSpecialty("Internal Medicine");
+
+    var dto = mapper.toDto(entity);
+
+    assertThat("Expected programmeName to be mapped from programmeSpecialty.",
+        dto.getProgrammeName(), is("Internal Medicine"));
+  }
+
+  @Test
+  void shouldHandleNullProgrammeSpecialtyInToDto() {
+    FormRPartB entity = new FormRPartB();
+    entity.setProgrammeSpecialty(null);
+
+    var dto = mapper.toDto(entity);
+
+    assertThat("Expected null programmeName when programmeSpecialty is null.",
+        dto.getProgrammeName(), nullValue());
+  }
 }
