@@ -109,9 +109,9 @@ testing {
     register<JvmTestSuite>("integrationTest") {
       dependencies {
         implementation("org.springframework.boot:spring-boot-testcontainers")
-        implementation("org.testcontainers:junit-jupiter:1.19.7")
-        implementation("org.testcontainers:localstack:1.19.7")
-        implementation("org.testcontainers:mongodb:1.19.7")
+        implementation("org.testcontainers:junit-jupiter:1.21.4")
+        implementation("org.testcontainers:localstack:1.21.4")
+        implementation("org.testcontainers:mongodb:1.21.4")
         implementation("org.awaitility:awaitility")
       }
 
