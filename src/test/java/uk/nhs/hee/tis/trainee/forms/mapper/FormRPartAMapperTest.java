@@ -90,4 +90,15 @@ class FormRPartAMapperTest {
     assertThat("Expected null programmeName.", dto.getProgrammeName(), nullValue());
     assertThat("Unexpected formType.", dto.getFormType(), is("formr-parta"));
   }
+
+  @Test
+  void shouldMapProgrammeNameFromProgrammeSpecialtyInToDto() {
+    FormRPartA entity = new FormRPartA();
+    entity.setProgrammeSpecialty("Internal Medicine");
+
+    var dto = mapper.toDto(entity);
+
+    assertThat("Expected programmeName to be mapped from programmeSpecialty.",
+        dto.getProgrammeName(), is("Internal Medicine"));
+  }
 }
