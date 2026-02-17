@@ -112,7 +112,7 @@ testing {
         implementation("org.testcontainers:junit-jupiter:1.21.4")
         implementation("org.testcontainers:localstack:1.21.4")
         implementation("org.testcontainers:mongodb:1.21.4")
-        implementation("org.awaitility:awaitility:1.21.4")
+        implementation("org.awaitility:awaitility")
       }
 
       targets {
