@@ -31,6 +31,7 @@ import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 @Mapper(componentModel = "spring")
 public interface FormRPartAMapper {
 
+  @Mapping(target = "programmeName", source = "programmeSpecialty")
   FormRPartADto toDto(FormRPartA formRPartA);
 
   FormRPartA toEntity(FormRPartADto formRPartADto);
