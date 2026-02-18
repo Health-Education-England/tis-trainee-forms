@@ -48,6 +48,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.MethodParameter;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -644,7 +645,15 @@ public class LtftService {
       BeanPropertyBindingResult result = new BeanPropertyBindingResult(form, "form");
       result.addError(new FieldError("LtftForm", FORM_ATTRIBUTE_FORM_STATUS,
           "can not be transitioned to %s".formatted(targetState)));
-      throw new MethodArgumentNotValidException(null, result);
+
+      try {
+        MethodParameter parameter = new MethodParameter(this.getClass()
+            .getDeclaredMethod("updateStatus", LtftForm.class, LifecycleState.class,
+                UserIdentity.class, LftfStatusInfoDetailDto.class), 1);
+        throw new MethodArgumentNotValidException(parameter, result);
+      } catch (NoSuchMethodException e) {
+        throw new IllegalStateException("Unabled to reflect updateStatus method.", e);
+      }
     }
 
     if (targetState.isRequiresDetails() && (detail == null || detail.reason() == null)) {
@@ -655,7 +664,14 @@ public class LtftService {
       result.addError(new FieldError("StatusInfo", field,
           "must not be null when transitioning to %s".formatted(targetState)));
 
-      throw new MethodArgumentNotValidException(null, result);
+      try {
+        MethodParameter parameter = new MethodParameter(this.getClass()
+            .getDeclaredMethod("updateStatus", LtftForm.class, LifecycleState.class,
+                UserIdentity.class, LftfStatusInfoDetailDto.class), 3);
+        throw new MethodArgumentNotValidException(parameter, result);
+      } catch (NoSuchMethodException e) {
+        throw new IllegalStateException("Unabled to reflect updateStatus method.", e);
+      }
     }
 
     if (targetState.isIncrementsRevision()) {

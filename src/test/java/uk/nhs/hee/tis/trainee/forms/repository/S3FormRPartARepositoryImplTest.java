@@ -17,8 +17,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 
-import com.amazonaws.AmazonServiceException;
-import com.amazonaws.SdkClientException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.io.InputStream;
@@ -41,7 +39,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.core.exception.SdkClientException;
+import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
@@ -205,8 +206,8 @@ class S3FormRPartARepositoryImplTest {
     entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
     entity.setIsArcp(DEFAULT_IS_ARCP);
     entity.setProgrammeMembershipId(UUID.fromString(DEFAULT_PROGRAMME_MEMBERSHIP_ID));
-    when(s3Mock.putObject(any(PutObjectRequest.class), any(RequestBody.class))).thenThrow(
-        NoSuchKeyException.builder().message("Key not found").build());
+    when(s3Mock.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+        .thenThrow(NoSuchKeyException.class);
 
     Exception actual = assertThrows(RuntimeException.class, () -> repo.save(entity));
     assertThat("Unexpected exception type.", actual instanceof ApplicationException);
@@ -218,8 +219,8 @@ class S3FormRPartARepositoryImplTest {
     entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
     entity.setIsArcp(DEFAULT_IS_ARCP);
     entity.setProgrammeMembershipId(UUID.fromString(DEFAULT_PROGRAMME_MEMBERSHIP_ID));
-    when(s3Mock.putObject(any(PutObjectRequest.class), any(RequestBody.class))).thenThrow(
-        new AmazonServiceException("Expected Exception"));
+    when(s3Mock.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+        .thenThrow(AwsServiceException.class);
 
     Exception actual = assertThrows(RuntimeException.class, () -> repo.save(entity));
     assertThat("Unexpected exception type.", actual instanceof ApplicationException);
@@ -252,7 +253,7 @@ class S3FormRPartARepositoryImplTest {
         HeadObjectRequest.builder().bucket(bucketName).key(KEY).build())).thenReturn(
         metadataResponse);
     when(s3Mock.headObject(HeadObjectRequest.builder().bucket(bucketName).key(otherKey).build()))
-        .thenThrow(new AmazonServiceException("Expected Exception"));
+        .thenThrow(AwsServiceException.class);
 
     assertDoesNotThrow(() -> {
       repo.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
@@ -277,7 +278,7 @@ class S3FormRPartARepositoryImplTest {
         HeadObjectRequest.builder().bucket(bucketName).key(KEY).build())).thenReturn(
         metadataResponse);
     when(s3Mock.headObject(HeadObjectRequest.builder().bucket(bucketName).key(otherKey).build()))
-        .thenThrow(new AmazonServiceException("Expected Exception"));
+        .thenThrow(AwsServiceException.class);
 
     List<FormRPartA> entities = repo.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
 
@@ -312,7 +313,7 @@ class S3FormRPartARepositoryImplTest {
         HeadObjectRequest.builder().bucket(bucketName).key(KEY).build())).thenReturn(
         metadataResponse);
     when(s3Mock.headObject(HeadObjectRequest.builder().bucket(bucketName).key(otherKey).build()))
-        .thenThrow(new AmazonServiceException("Expected Exception"));
+        .thenThrow(AwsServiceException.class);
 
     List<FormRPartA> entities = repo.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
 
@@ -355,8 +356,7 @@ class S3FormRPartARepositoryImplTest {
 
   @Test
   void shouldReturnEmptyWhenFormrNotFoundInCloud() {
-    when(s3Mock.getObject(any(GetObjectRequest.class)))
-        .thenThrow(NoSuchKeyException.builder().message("Key not found").build());
+    when(s3Mock.getObject(any(GetObjectRequest.class))).thenThrow(NoSuchKeyException.class);
 
     Optional<FormRPartA> result = repo.findByIdAndTraineeTisId(
         DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID);
@@ -366,8 +366,10 @@ class S3FormRPartARepositoryImplTest {
 
   @Test
   void findByIdAndTraineeIdShouldReturnEmpty() {
-    AmazonServiceException awsException = new AmazonServiceException("Expected Exception");
-    awsException.setStatusCode(404);
+    AwsServiceException awsException = AwsServiceException.builder()
+        .message("Expected Exception")
+        .statusCode(404)
+        .build();
     when(s3Mock.getObject(GetObjectRequest.builder().bucket(bucketName)
         .key(String.format("1/forms/formr-a/%s.json", DEFAULT_ID)).build()))
         .thenThrow(awsException);
@@ -376,11 +378,11 @@ class S3FormRPartARepositoryImplTest {
   }
 
   @ParameterizedTest
-  @ValueSource(classes = {AmazonServiceException.class, SdkClientException.class})
-  void findByIdAndTraineeIdShouldThrowException(Class clazz) throws Exception {
+  @ValueSource(classes = {AwsServiceException.class, SdkClientException.class})
+  void findByIdAndTraineeIdShouldThrowException(Class<? extends SdkException> clazz) {
     when(s3Mock.getObject(GetObjectRequest.builder().bucket(bucketName)
         .key(String.format("1/forms/formr-a/%s.json", DEFAULT_ID)).build()))
-        .thenThrow((Exception) clazz.getDeclaredConstructor(String.class).newInstance("Expected"));
+        .thenThrow(clazz);
     assertThrows(ApplicationException.class,
         () -> repo.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID));
   }

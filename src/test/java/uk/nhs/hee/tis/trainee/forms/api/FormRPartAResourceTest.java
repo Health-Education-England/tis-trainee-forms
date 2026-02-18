@@ -58,7 +58,6 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -69,6 +68,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.util.FileCopyUtils;
 import org.springframework.validation.BeanPropertyBindingResult;
@@ -106,28 +106,28 @@ class FormRPartAResourceTest {
     }
   }
 
-  @MockBean
+  @MockitoBean
   private MongoConfiguration mongoConfiguration;
 
-  @MockBean
+  @MockitoBean
   private LockProvider lockProvider;
 
   @Autowired
   private MockMvc mockMvc;
 
-  @MockBean
+  @MockitoBean
   private FormRPartAService service;
 
-  @MockBean
+  @MockitoBean
   private FormRPartAValidator validator;
 
-  @MockBean
+  @MockitoBean
   PdfService pdfService;
 
-  @MockBean
+  @MockitoBean
   private RestTemplateBuilder restTemplateBuilder;
 
-  @MockBean
+  @MockitoBean
   private JwtDecoder jwtDecoder;
 
   private FormRPartADto dto;

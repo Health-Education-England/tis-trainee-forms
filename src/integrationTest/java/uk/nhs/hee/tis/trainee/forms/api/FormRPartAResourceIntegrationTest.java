@@ -53,7 +53,6 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
@@ -62,6 +61,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -99,22 +99,22 @@ class FormRPartAResourceIntegrationTest {
   @Autowired
   private MockMvc mockMvc;
 
-  @MockBean
+  @MockitoBean
   SnsTemplate snsTemplate;
 
   @Autowired
   private MongoTemplate template;
 
-  @MockBean
+  @MockitoBean
   S3FormRPartARepositoryImpl s3FormRPartARepository;
 
-  @MockBean
+  @MockitoBean
   SnsClient snsClient;
 
-  @MockBean
+  @MockitoBean
   PdfService pdfService;
 
-  @MockBean
+  @MockitoBean
   private JwtDecoder jwtDecoder;
 
   @AfterEach

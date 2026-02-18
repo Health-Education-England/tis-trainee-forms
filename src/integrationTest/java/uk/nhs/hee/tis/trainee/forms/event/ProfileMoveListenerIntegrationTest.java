@@ -44,7 +44,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -53,6 +52,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -67,6 +67,7 @@ import uk.nhs.hee.tis.trainee.forms.model.LtftSubmissionHistory;
 @ActiveProfiles("test")
 @Testcontainers
 class ProfileMoveListenerIntegrationTest {
+
   private static final String FROM_TRAINEE_ID = UUID.randomUUID().toString();
   private static final String TO_TRAINEE_ID = UUID.randomUUID().toString();
 
@@ -122,7 +123,7 @@ class ProfileMoveListenerIntegrationTest {
   @Autowired
   private MongoTemplate template;
 
-  @MockBean
+  @MockitoBean
   private JwtDecoder jwtDecoder;
 
   @AfterEach
@@ -338,21 +339,21 @@ class ProfileMoveListenerIntegrationTest {
     assertThat("Unexpected missing S3 bucket.", bucketResult.getExitCode(), is(0));
 
     String formJson = """
-      {
-        "id": "%s",
-        "college": "another college",
-        "lifecycleState": "SUBMITTED",
-        "submissionDate": "2024-01-01T00:00:00",
-        "traineeTisId": "%s"
-      }
-      """.formatted(id1, FROM_TRAINEE_ID);
+        {
+          "id": "%s",
+          "college": "another college",
+          "lifecycleState": "SUBMITTED",
+          "submissionDate": "2024-01-01T00:00:00",
+          "traineeTisId": "%s"
+        }
+        """.formatted(id1, FROM_TRAINEE_ID);
     String sourceKey = String.format("%s/forms/formr-a/%s.json", FROM_TRAINEE_ID, id1);
     String[] createFileCmd = {
         "/bin/sh",
         "-c",
         String.format("printf '%s' > /tmp/form.json " +
-                "&& awslocal s3 cp /tmp/form.json s3://%s/%s " +
-                "&& rm /tmp/form.json", formJson, S3_BUCKET, sourceKey)
+            "&& awslocal s3 cp /tmp/form.json s3://%s/%s " +
+            "&& rm /tmp/form.json", formJson, S3_BUCKET, sourceKey)
     };
     var createResult = localstack.execInContainer(createFileCmd);
     assertThat("Unexpected failed S3 file creation.", createResult.getExitCode(), is(0));
@@ -462,11 +463,13 @@ class ProfileMoveListenerIntegrationTest {
           movedLtftForms.addAll(found);
         });
     // Ignore timestamps
-    LtftForm moved1 = movedLtftForms.stream().filter(f -> f.getId().equals(id1)).findFirst().orElseThrow();
+    LtftForm moved1 = movedLtftForms.stream().filter(f -> f.getId().equals(id1)).findFirst()
+        .orElseThrow();
     assertThat(moved1.getId(), is(ltftForm1.getId()));
     assertThat(moved1.getTraineeTisId(), is(TO_TRAINEE_ID));
     assertThat(moved1.getFormRef(), is(ltftForm1.getFormRef()));
-    LtftForm moved2 = movedLtftForms.stream().filter(f -> f.getId().equals(id2)).findFirst().orElseThrow();
+    LtftForm moved2 = movedLtftForms.stream().filter(f -> f.getId().equals(id2)).findFirst()
+        .orElseThrow();
     assertThat(moved2.getId(), is(ltftForm2.getId()));
     assertThat(moved2.getTraineeTisId(), is(TO_TRAINEE_ID));
     assertThat(moved2.getFormRef(), is(ltftForm2.getFormRef()));
@@ -513,12 +516,14 @@ class ProfileMoveListenerIntegrationTest {
           movedSubs.addAll(found);
         });
     // Ignore timestamps
-    LtftSubmissionHistory moved1 = movedSubs.stream().filter(f -> f.getId().equals(id1)).findFirst().orElseThrow();
+    LtftSubmissionHistory moved1 = movedSubs.stream().filter(f -> f.getId().equals(id1)).findFirst()
+        .orElseThrow();
     assertThat(moved1.getId(), is(sub1.getId()));
     assertThat(moved1.getTraineeTisId(), is(TO_TRAINEE_ID));
     assertThat(moved1.getFormRef(), is(sub1.getFormRef()));
     assertThat(moved1.getRevision(), is(sub1.getRevision()));
-    LtftSubmissionHistory moved2 = movedSubs.stream().filter(f -> f.getId().equals(id2)).findFirst().orElseThrow();
+    LtftSubmissionHistory moved2 = movedSubs.stream().filter(f -> f.getId().equals(id2)).findFirst()
+        .orElseThrow();
     assertThat(moved2.getId(), is(sub2.getId()));
     assertThat(moved2.getTraineeTisId(), is(TO_TRAINEE_ID));
     assertThat(moved2.getFormRef(), is(sub2.getFormRef()));

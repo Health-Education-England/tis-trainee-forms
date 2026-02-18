@@ -43,7 +43,6 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.index.IndexField;
@@ -52,6 +51,7 @@ import org.springframework.data.mongodb.core.index.IndexOperations;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -72,7 +72,7 @@ class FormRPartBRepositoryIntegrationTest {
   @Autowired
   private MongoTemplate template;
 
-  @MockBean
+  @MockitoBean
   private JwtDecoder jwtDecoder;
 
   @Autowired
@@ -172,9 +172,11 @@ class FormRPartBRepositoryIntegrationTest {
     assertThat("Expected form to be present.", result.isPresent(), is(true));
     assertThat("Unexpected lifecycle state.", result.get().getLifecycleState(), is(state));
   }
+
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, names = {"DRAFT", "DELETED"})
-  void shouldNotReturnDraftOrDeletedFormsInFindNotDraftNorDeletedByTraineeTisId(LifecycleState state) {
+  void shouldNotReturnDraftOrDeletedFormsInFindNotDraftNorDeletedByTraineeTisId(
+      LifecycleState state) {
     FormRPartB form = new FormRPartB();
     form.setLifecycleState(state);
     form.setTraineeTisId("123");
@@ -187,7 +189,8 @@ class FormRPartBRepositoryIntegrationTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, names = {"DRAFT", "DELETED"}, mode = Mode.EXCLUDE)
-  void shouldReturnNonDraftNonDeletedFormsInFindNotDraftNorDeletedByTraineeTisId(LifecycleState state) {
+  void shouldReturnNonDraftNonDeletedFormsInFindNotDraftNorDeletedByTraineeTisId(
+      LifecycleState state) {
     FormRPartB form = new FormRPartB();
     form.setLifecycleState(state);
     form.setTraineeTisId("123");

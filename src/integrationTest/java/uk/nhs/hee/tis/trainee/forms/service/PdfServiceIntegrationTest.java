@@ -45,10 +45,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -89,7 +89,7 @@ class PdfServiceIntegrationTest {
   @Value("${application.timezone}")
   private ZoneId zoneId;
 
-  @MockBean
+  @MockitoBean
   private JwtDecoder jwtDecoder;
 
   @Test
@@ -220,10 +220,12 @@ class PdfServiceIntegrationTest {
     dto.setWholeTimeEquivalent("0.5");
 
     LocalDateTime submissionDate = LocalDate.of(2014, 10, 11).atTime(12, 13);
-    ZoneOffset submissionOffset = ZonedDateTime.of(submissionDate, ZoneId.systemDefault()).getOffset();
+    ZoneOffset submissionOffset = ZonedDateTime.of(submissionDate, ZoneId.systemDefault())
+        .getOffset();
     dto.setSubmissionDate(submissionDate.plusSeconds(submissionOffset.getTotalSeconds()));
     LocalDateTime lastModifiedDate = LocalDate.of(2014, 11, 12).atTime(13, 14);
-    ZoneOffset lastModifiedOffset = ZonedDateTime.of(lastModifiedDate, ZoneId.systemDefault()).getOffset();
+    ZoneOffset lastModifiedOffset = ZonedDateTime.of(lastModifiedDate, ZoneId.systemDefault())
+        .getOffset();
     dto.setLastModifiedDate(lastModifiedDate.plusSeconds(lastModifiedOffset.getTotalSeconds()));
 
     dto.setOtherImmigrationStatus("other immigration status");
@@ -286,7 +288,8 @@ class PdfServiceIntegrationTest {
     work3.setEndDate(LocalDate.of(2025, 10, 30));
     work3.setTrainingPost("Yes");
     work3.setSite("Cranleigh Gardens Medical Centre");
-    work3.setSiteLocation("(until 28/02/2011 Brent House Surgery) Cranleigh Gardens Bridgwater Somerset");
+    work3.setSiteLocation(
+        "(until 28/02/2011 Brent House Surgery) Cranleigh Gardens Bridgwater Somerset");
     work3.setSiteKnownAs("Cranleigh Gardens Medical Centre (L85025)");
     dto.setWork(List.of(work1, work2, work3));
 
@@ -356,10 +359,12 @@ class PdfServiceIntegrationTest {
     dto.setCovidDeclarationDto(covid);
 
     LocalDateTime submissionDate = LocalDate.of(2014, 10, 11).atTime(12, 13);
-    ZoneOffset submissionOffset = ZonedDateTime.of(submissionDate, ZoneId.systemDefault()).getOffset();
+    ZoneOffset submissionOffset = ZonedDateTime.of(submissionDate, ZoneId.systemDefault())
+        .getOffset();
     dto.setSubmissionDate(submissionDate.plusSeconds(submissionOffset.getTotalSeconds()));
     LocalDateTime lastModifiedDate = LocalDate.of(2014, 11, 12).atTime(13, 14);
-    ZoneOffset lastModifiedOffset = ZonedDateTime.of(lastModifiedDate, ZoneId.systemDefault()).getOffset();
+    ZoneOffset lastModifiedOffset = ZonedDateTime.of(lastModifiedDate, ZoneId.systemDefault())
+        .getOffset();
     dto.setLastModifiedDate(lastModifiedDate.plusSeconds(lastModifiedOffset.getTotalSeconds()));
 
     dto.setLifecycleState(LifecycleState.SUBMITTED);

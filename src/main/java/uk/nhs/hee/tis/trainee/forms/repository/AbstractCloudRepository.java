@@ -22,7 +22,6 @@ package uk.nhs.hee.tis.trainee.forms.repository;
 
 import static java.util.Map.entry;
 
-import com.amazonaws.AmazonServiceException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.ParameterizedType;
 import java.time.LocalDate;
@@ -37,6 +36,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -214,9 +214,9 @@ public abstract class AbstractCloudRepository<T extends AbstractFormR> {
     } catch (NoSuchKeyException e) {
       log.debug("Form not found in cloud storage.");
       return Optional.empty();
-    } catch (AmazonServiceException e) {
+    } catch (AwsServiceException e) {
       log.debug("Unable to get file from Cloud Storage", e);
-      if (e.getStatusCode() == 404) {
+      if (e.statusCode() == 404) {
         return Optional.empty();
       }
       log.error("An error occurred getting form {} for trainee {}.", id, traineeTisId, e);

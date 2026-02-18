@@ -440,8 +440,7 @@ class FormRPartBServiceTest {
   void shouldThrowExceptionWhenFormRPartBNotSaved() {
     entity.setLifecycleState(SUBMITTED);
     entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
-    when(s3FormRPartBRepository.save(any()))
-        .thenThrow(new ApplicationException("Expected Exception"));
+    when(s3FormRPartBRepository.save(any())).thenThrow(ApplicationException.class);
 
     FormRPartBDto dto = mapper.toDto(entity);
     assertThrows(ApplicationException.class, () -> service.save(dto));

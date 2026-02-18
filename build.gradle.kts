@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.hee.tis.trainee"
-version = "0.64.4"
+version = "0.64.5"
 
 configurations {
   compileOnly {
@@ -58,6 +58,9 @@ dependencies {
 
   implementation("commons-beanutils:commons-beanutils:1.11.0")
   implementation("com.github.java-json-tools:json-patch:1.13")
+
+  // TODO: added to avoid refactoring after transitive dependency removed.
+  implementation("commons-codec:commons-codec:1.21.0")
 
   // PDF
   implementation(libs.bundles.pdf.publishing)

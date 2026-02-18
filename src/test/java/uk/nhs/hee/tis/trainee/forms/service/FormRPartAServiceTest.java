@@ -249,8 +249,7 @@ class FormRPartAServiceTest {
     dto.setLifecycleState(SUBMITTED);
     dto.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
 
-    when(cloudObjectRepository.save(any()))
-        .thenThrow(new ApplicationException("Expected Exception"));
+    when(cloudObjectRepository.save(any())).thenThrow(ApplicationException.class);
 
     assertThrows(ApplicationException.class, () -> service.save(dto));
     verifyNoInteractions(repositoryMock);
