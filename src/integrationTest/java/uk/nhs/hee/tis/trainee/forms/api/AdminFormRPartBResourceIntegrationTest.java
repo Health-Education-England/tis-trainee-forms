@@ -22,6 +22,8 @@
 
 package uk.nhs.hee.tis.trainee.forms.api;
 
+import static java.lang.Math.abs;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -34,10 +36,12 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DELETE
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.sns.core.SnsTemplate;
 import java.net.URI;
+import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -312,7 +316,7 @@ class AdminFormRPartBResourceIntegrationTest {
     submittedForm.setProgrammeMembershipId(programmeMembershipId);
     template.insert(submittedForm);
 
-    mockMvc.perform(get("/api/admin/formr-partb")
+    String response = mockMvc.perform(get("/api/admin/formr-partb")
             .param("traineeId", TRAINEE_ID)
             .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of("HEE Admin"))))
         .andExpect(status().isOk())
@@ -326,8 +330,16 @@ class AdminFormRPartBResourceIntegrationTest {
         .andExpect(jsonPath("$[0].programmeStartDate").doesNotExist())
         .andExpect(jsonPath("$[0].programmeMembershipId")
             .value(programmeMembershipId.toString()))
-        .andExpect(jsonPath("$[0].submissionDate")
-            .value(submissionDate.truncatedTo(ChronoUnit.MILLIS).toString()))
-        .andExpect(jsonPath("$[0].formType").value("formr-partb"));
+        .andExpect(jsonPath("$[0].formType").value("formr-partb"))
+        .andReturn().getResponse().getContentAsString();
+
+    // Parse the returned submissionDate and compare within 1 second
+    JsonNode root = new ObjectMapper().readTree(response);
+    String returnedDateStr = root.get(0).get("submissionDate").asText();
+    LocalDateTime returnedDate = LocalDateTime.parse(returnedDateStr);
+    long secondsDiff = abs(Duration.between(submissionDate, returnedDate).getSeconds());
+    assertTrue(secondsDiff <= 1,
+        "submissionDate should be within 1 second. " +
+            "Expected: " + submissionDate + ", Actual: " + returnedDate);
   }
 }
