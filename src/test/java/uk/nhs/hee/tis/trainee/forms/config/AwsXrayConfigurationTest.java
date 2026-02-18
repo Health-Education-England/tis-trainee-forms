@@ -28,21 +28,17 @@ import static org.hamcrest.Matchers.is;
 import com.amazonaws.xray.AWSXRay;
 import com.amazonaws.xray.AWSXRayRecorder;
 import com.amazonaws.xray.internal.FastIdGenerator;
-import com.amazonaws.xray.jakarta.servlet.AWSXRayServletFilter;
 import com.amazonaws.xray.plugins.ECSPlugin;
 import com.amazonaws.xray.strategy.IgnoreErrorContextMissingStrategy;
-import jakarta.servlet.Filter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 class AwsXrayConfigurationTest {
 
-  private AwsXrayConfiguration configuration;
-
   @BeforeEach
   void setUp() {
-    configuration = new AwsXrayConfiguration();
+    new AwsXrayConfiguration();
   }
 
   @Test
@@ -67,12 +63,5 @@ class AwsXrayConfigurationTest {
 
     assertThat("Unexpected missing context strategy.", recorder.getContextMissingStrategy(),
         instanceOf(IgnoreErrorContextMissingStrategy.class));
-  }
-
-  @Test
-  void shouldCreateInstanceOfAwsXrayServletFilter() {
-    Filter filter = configuration.tracingFilter("testEnvironment");
-
-    assertThat("Unexpected filter type.", filter, instanceOf(AWSXRayServletFilter.class));
   }
 }
