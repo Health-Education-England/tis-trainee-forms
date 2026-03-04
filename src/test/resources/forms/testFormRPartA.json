@@ -6,6 +6,8 @@
   "forename": "Jim",
   "surname": "Williams",
   "gmcNumber": "11111111",
+  "gdcNumber": "22222222",
+  "publicHealthNumber": "33333333",
   "localOfficeName": "Thames Valley",
   "dateOfBirth": "1943-10-14",
   "gender": "Male",

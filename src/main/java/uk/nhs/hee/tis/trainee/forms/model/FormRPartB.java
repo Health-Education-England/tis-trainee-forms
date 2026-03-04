@@ -40,6 +40,8 @@ public class FormRPartB extends AbstractFormR {
   private String forename;
   private String surname;
   private String gmcNumber;
+  private String gdcNumber;
+  private String publicHealthNumber;
   private String email;
   private String localOfficeName;
   private String prevRevalBody;

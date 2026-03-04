@@ -192,6 +192,8 @@ class PdfServiceIntegrationTest {
     dto.setForename("Anthony");
     dto.setSurname("Gilliam");
     dto.setGmcNumber("1234567");
+    dto.setGdcNumber("D123456");
+    dto.setPublicHealthNumber("PH123456");
     dto.setLocalOfficeName("London");
     dto.setDateOfBirth(LocalDate.of(1980, 4, 5));
     dto.setGender("gender");
@@ -257,6 +259,8 @@ class PdfServiceIntegrationTest {
     dto.setForename("Anthony");
     dto.setSurname("Gilliam");
     dto.setGmcNumber("1234567");
+    dto.setGdcNumber("D123456");
+    dto.setPublicHealthNumber("PH123456");
     dto.setEmail("test@testy.com");
     dto.setLocalOfficeName("London");
     dto.setPrevRevalBody("prev reval body");
