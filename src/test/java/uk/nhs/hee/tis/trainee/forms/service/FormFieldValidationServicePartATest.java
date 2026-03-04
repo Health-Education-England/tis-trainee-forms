@@ -84,6 +84,16 @@ class FormFieldValidationServicePartATest {
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
 
+  @Test
+  void whenGmcNumberIsNullThenThrowsNoException() {
+    FormRPartADto input = validForm();
+    input.setGmcNumber(null);
+
+    service.validateFormRPartA(input);
+
+    // then no exception
+  }
+
   @ParameterizedTest
   @ValueSource(strings = {STRING_21_CHARS})
   void whenGmcNumberIsInvalidThenThrowsException(String str) {
@@ -101,6 +111,7 @@ class FormFieldValidationServicePartATest {
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
+
   @ParameterizedTest
   @ValueSource(strings = {STRING_21_CHARS})
   void whenPublicHealthNumberIsInvalidThenThrowsException(String str) {

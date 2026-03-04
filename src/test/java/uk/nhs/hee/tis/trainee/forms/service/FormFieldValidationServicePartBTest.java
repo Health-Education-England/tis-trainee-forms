@@ -90,6 +90,16 @@ class FormFieldValidationServicePartBTest {
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
 
+  @Test
+  void whenGmcNumberIsNullThenThrowsNoException() {
+    FormRPartBDto input = validForm();
+    input.setGmcNumber(null);
+
+    service.validateFormRPartB(input);
+
+    // then no exception
+  }
+
   @ParameterizedTest
   @ValueSource(strings = {STRING_21_CHARS})
   void whenGmcNumberIsInvalidThenThrowsException(String str) {
@@ -138,11 +148,13 @@ class FormFieldValidationServicePartBTest {
   }
 
   @Test
-  void whenCurrRevalDateIsNullThenNoExceptionIsThrown() {
+  void whenCurrRevalDateIsNullThenDoesNotThrowException() {
     FormRPartBDto input = validForm();
     input.setCurrRevalDate(null);
 
     service.validateFormRPartB(input);
+
+    // then no exception
   }
 
   @Test
