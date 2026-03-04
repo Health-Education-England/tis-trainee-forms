@@ -182,6 +182,18 @@ class PdfServiceIntegrationTest {
   }
 
   @Test
+  void shouldMatchEmptyFormRPartAPdfWhenDtoHasEmptyRegistrationNumberStrings() throws IOException {
+    FormRPartADto dto = new FormRPartADto();
+    dto.setGmcNumber("");
+    dto.setGdcNumber("");
+    dto.setPublicHealthNumber("");
+    byte[] pdf = service.generatePdf(dto);
+
+    int problems = compareGeneratedPdf("formr-parta-empty", pdf);
+    assertThat("Unexpected PDF comparison problem count.", problems, is(0));
+  }
+
+  @Test
   void shouldMatchFullFormRPartAPdfWhenDtoPopulated() throws IOException {
     FormRPartADto dto = new FormRPartADto();
     dto.setId("form-id-12345");
@@ -242,6 +254,18 @@ class PdfServiceIntegrationTest {
   @Test
   void shouldMatchEmptyFormRPartBPdfWhenDtoEmpty() throws IOException {
     FormRPartBDto dto = new FormRPartBDto();
+    byte[] pdf = service.generatePdf(dto);
+
+    int problems = compareGeneratedPdf("formr-partb-empty", pdf);
+    assertThat("Unexpected PDF comparison problem count.", problems, is(0));
+  }
+
+  @Test
+  void shouldMatchEmptyFormRPartBPdfWhenDtoHasEmptyRegistrationNumberStrings() throws IOException {
+    FormRPartBDto dto = new FormRPartBDto();
+    dto.setGmcNumber("");
+    dto.setGdcNumber("");
+    dto.setPublicHealthNumber("");
     byte[] pdf = service.generatePdf(dto);
 
     int problems = compareGeneratedPdf("formr-partb-empty", pdf);

@@ -62,15 +62,15 @@
                 </div>
                 <div class="nhsuk-summary-list__row">
                     <dt class="nhsuk-summary-list__key">GMC Number</dt>
-                    <dd class="nhsuk-summary-list__value" th:text="${var.gmcNumber} ?: _">Not Given</dd>
+                    <dd class="nhsuk-summary-list__value" th:text="${#strings.isEmpty(var.gmcNumber) ? 'Not Given' : var.gmcNumber}">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
                     <dt class="nhsuk-summary-list__key">GDC Number</dt>
-                    <dd class="nhsuk-summary-list__value" th:text="${var.gdcNumber} ?: _">Not Given</dd>
+                    <dd class="nhsuk-summary-list__value" th:text="${#strings.isEmpty(var.gdcNumber) ? 'Not Given' : var.gdcNumber}">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
                     <dt class="nhsuk-summary-list__key">Public Health Number</dt>
-                    <dd class="nhsuk-summary-list__value" th:text="${var.publicHealthNumber} ?: _">Not Given</dd>
+                    <dd class="nhsuk-summary-list__value" th:text="${#strings.isEmpty(var.publicHealthNumber) ? 'Not Given' : var.publicHealthNumber}">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
                     <dt class="nhsuk-summary-list__key">Primary Contact Email Address</dt>
