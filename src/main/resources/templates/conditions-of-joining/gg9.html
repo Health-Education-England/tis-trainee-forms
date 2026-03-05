@@ -4,7 +4,6 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Conditions of Joining Agreement</title>
     <link href="/static/css/nhsuk-9.0.0.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   </head>
   <body
     th:with="programmeName=${not #strings.isEmpty(var.programmeName)} ? ${var.programmeName} : _"
@@ -199,7 +198,11 @@
           <dd class="nhsuk-summary-list__value">
             <div class="info-message-container">
               <span class="info-message-icon">
-                <i class="fa-solid fa-circle-info info-message-icon"></i>
+                <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10" fill="#0072CE"></circle>
+                  <rect x="11" y="10" width="2" height="7" fill="white"></rect>
+                  <circle cx="12" cy="7" r="1.5" fill="white"></circle>
+                </svg>
               </span>
               <span class="info-message">
                 If you are appointed as a <strong>Public Health Non-Medical trainee</strong>, any references
