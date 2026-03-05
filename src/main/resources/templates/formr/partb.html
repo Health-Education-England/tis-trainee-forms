@@ -57,7 +57,7 @@
                     <dd class="nhsuk-summary-list__value" th:text="${var.forename} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
-                    <dt class="nhsuk-summary-list__key">GMC-Registered Surname</dt>
+                    <dt class="nhsuk-summary-list__key">Surname (as registered with your professional regulator where applicable, e.g. GMC)</dt>
                     <dd class="nhsuk-summary-list__value" th:text="${var.surname} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
@@ -85,7 +85,7 @@
                     <dd class="nhsuk-summary-list__value" th:text="${var.prevRevalBodyOther} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
-                    <dt class="nhsuk-summary-list__key">Current Revalidation Date</dt>
+                    <dt class="nhsuk-summary-list__key">Current Revalidation Date (if applicable)</dt>
                     <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(var.currRevalDate, 'dd MMMM yyyy')} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
@@ -363,7 +363,7 @@
             <dl class="nhsuk-summary-list">
                 <ul>
                     <li>This form is a true and accurate declaration at this point in time and will immediately notify the Deanery/HEE local team and my employer if I am aware of any changes to the information provided in this form.</li>
-                    <li>I give permission for my past and present ARCP portfolios and / or appraisal documentation to be viewed by my Responsible Officer and any appropriate person nominated by the Responsible Officer. Additionally if my Responsible Officer or Designated Body changes during my training period, I give permission for my current Responsible Officer to share this information with my new Responsible Officer for the purposes of Revalidation.</li>
+                    <li>I give permission for my past and present ARCP portfolios and/or appraisal documentation to be viewed by appropriate training programme representatives for the purposes of training oversight and progression. For trainees who are registered with the General Medical Council (GMC), this includes viewing by my Responsible Officer (RO) and sharing with my Designated Body for the purposes of revalidation. Where my Responsible Officer or Designated Body changes during my training, I consent (where applicable) to relevant information being shared with my new Responsible Officer to support continuity of training and professional regulatory requirements.</li>
                 </ul>
             </dl>
         </div>
