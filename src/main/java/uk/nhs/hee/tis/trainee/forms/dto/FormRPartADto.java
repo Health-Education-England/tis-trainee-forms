@@ -67,9 +67,14 @@ public class FormRPartADto {
   @Size(min = 1, max = 100)
   private String surname;
 
-  @NotNull
-  @Size(min = 1, max = 20)
+  @Size(max = 20)
   private String gmcNumber;
+
+  @Size(max = 20)
+  private String gdcNumber;
+
+  @Size(max = 20)
+  private String publicHealthNumber;
 
   @NotNull
   @Size(min = 1, max = 100)

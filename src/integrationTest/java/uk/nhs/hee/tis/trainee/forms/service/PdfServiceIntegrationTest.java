@@ -182,6 +182,18 @@ class PdfServiceIntegrationTest {
   }
 
   @Test
+  void shouldMatchEmptyFormRPartAPdfWhenDtoHasEmptyRegistrationNumberStrings() throws IOException {
+    FormRPartADto dto = new FormRPartADto();
+    dto.setGmcNumber("");
+    dto.setGdcNumber("");
+    dto.setPublicHealthNumber("");
+    byte[] pdf = service.generatePdf(dto);
+
+    int problems = compareGeneratedPdf("formr-parta-empty", pdf);
+    assertThat("Unexpected PDF comparison problem count.", problems, is(0));
+  }
+
+  @Test
   void shouldMatchFullFormRPartAPdfWhenDtoPopulated() throws IOException {
     FormRPartADto dto = new FormRPartADto();
     dto.setId("form-id-12345");
@@ -192,6 +204,8 @@ class PdfServiceIntegrationTest {
     dto.setForename("Anthony");
     dto.setSurname("Gilliam");
     dto.setGmcNumber("1234567");
+    dto.setGdcNumber("D123456");
+    dto.setPublicHealthNumber("PH123456");
     dto.setLocalOfficeName("London");
     dto.setDateOfBirth(LocalDate.of(1980, 4, 5));
     dto.setGender("gender");
@@ -247,6 +261,18 @@ class PdfServiceIntegrationTest {
   }
 
   @Test
+  void shouldMatchEmptyFormRPartBPdfWhenDtoHasEmptyRegistrationNumberStrings() throws IOException {
+    FormRPartBDto dto = new FormRPartBDto();
+    dto.setGmcNumber("");
+    dto.setGdcNumber("");
+    dto.setPublicHealthNumber("");
+    byte[] pdf = service.generatePdf(dto);
+
+    int problems = compareGeneratedPdf("formr-partb-empty", pdf);
+    assertThat("Unexpected PDF comparison problem count.", problems, is(0));
+  }
+
+  @Test
   void shouldMatchFullFormRPartBPdfWhenDtoPopulated() throws IOException {
     FormRPartBDto dto = new FormRPartBDto();
     dto.setId("form-id-12345");
@@ -257,6 +283,8 @@ class PdfServiceIntegrationTest {
     dto.setForename("Anthony");
     dto.setSurname("Gilliam");
     dto.setGmcNumber("1234567");
+    dto.setGdcNumber("D123456");
+    dto.setPublicHealthNumber("PH123456");
     dto.setEmail("test@testy.com");
     dto.setLocalOfficeName("London");
     dto.setPrevRevalBody("prev reval body");
