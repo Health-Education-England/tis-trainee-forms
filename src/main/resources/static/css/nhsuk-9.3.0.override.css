@@ -27,23 +27,30 @@
   .nhsuk-summary-list__value {
     width: 50%;
   }
+}
 
-  .info-message-container {
-    padding: 1rem;
-    display: flex;
-    border: 2px solid #0072CE;
-    background-color: #b1d9fa;
-    border-radius: 4px;
-  }
+.info-message-container {
+  padding: 1rem;
+  border: 2px solid #0072CE;
+  background-color: #b1d9fa;
+  border-radius: 4px;
+}
 
-  .info-message {
-    margin-left: 1rem;
-    font-weight: 500;
-    font-size: 1.1rem;
-  }
+.info-message {
+  margin-left: 1rem;
+  font-weight: 500;
+  font-size: 1.1rem;
+}
 
-  .info-message-icon {
-    color: #0072CE;
-  }
-
+.info-message-icon {
+  display:inline-block;
+  width:20px;
+  height:20px;
+  border-radius:50%;
+  background:#0072CE;
+  color:white;
+  text-align:center;
+  line-height:20px;
+  font-weight:bold;
+  font-family:Arial;
 }
