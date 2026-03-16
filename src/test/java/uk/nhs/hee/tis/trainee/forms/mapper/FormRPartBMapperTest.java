@@ -99,7 +99,7 @@ class FormRPartBMapperTest {
   }
 
   @Test
-  void shouldMapProgrammeNameFromProgrammeSpecialtyInToDto() {
+  void shouldMapProgrammeNameAndSpecialtyFromProgrammeSpecialtyInToDto() {
     FormRPartB entity = new FormRPartB();
     entity.setProgrammeSpecialty("Internal Medicine");
 
@@ -107,5 +107,7 @@ class FormRPartBMapperTest {
 
     assertThat("Expected programmeName to be mapped from programmeSpecialty.",
         dto.getProgrammeName(), is("Internal Medicine"));
+    assertThat("Expected programmeSpecialty to be mapped from programmeSpecialty.",
+        dto.getProgrammeSpecialty(), is("Internal Medicine"));
   }
 }
