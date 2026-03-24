@@ -33,6 +33,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DELETED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
@@ -202,6 +203,51 @@ class FormRPartAServiceTest {
     verifyNoInteractions(cloudObjectRepository);
   }
 
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldThrowExceptionWhenUpdatingNonModifiableForm(LifecycleState state) {
+    UUID id = UUID.randomUUID();
+    entity.setId(id);
+    entity.setLifecycleState(state);
+    entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+
+    FormRPartADto dto = new FormRPartADto();
+    dto.setId(id.toString());
+    dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    dto.setForename(DEFAULT_FORENAME);
+    dto.setSurname(DEFAULT_SURNAME);
+    dto.setLifecycleState(DRAFT);
+    dto.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+
+    when(repositoryMock.findById(id)).thenReturn(Optional.of(entity));
+
+    assertThrows(IllegalArgumentException.class, () -> service.save(dto));
+    verify(repositoryMock, never()).save(any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = Mode.INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldSaveFormWhenUpdatingModifiableForm(LifecycleState state) {
+    UUID id = UUID.randomUUID();
+    entity.setId(id);
+    entity.setLifecycleState(state);
+    entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+
+    FormRPartADto dto = new FormRPartADto();
+    dto.setId(id.toString());
+    dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    dto.setForename(DEFAULT_FORENAME);
+    dto.setSurname(DEFAULT_SURNAME);
+    dto.setLifecycleState(DRAFT);
+    dto.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+
+    when(repositoryMock.findById(id)).thenReturn(Optional.of(entity));
+    when(repositoryMock.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    service.save(dto);
+    verify(repositoryMock).save(any());
+  }
+
   @Test
   void shouldSaveSubmittedFormRPartA() {
     entity.setId(null);
@@ -218,10 +264,10 @@ class FormRPartAServiceTest {
     dto.setProgrammeSpecialty(DEFAULT_PROGRAMME_SPECIALTY);
 
     when(repositoryMock.save(entity)).thenAnswer(invocation -> {
-      FormRPartA entity = invocation.getArgument(0);
+      FormRPartA invEntity = invocation.getArgument(0);
 
       FormRPartA savedEntity = new FormRPartA();
-      BeanUtils.copyProperties(entity, savedEntity);
+      BeanUtils.copyProperties(invEntity, savedEntity);
       savedEntity.setId(DEFAULT_ID);
       return savedEntity;
     });

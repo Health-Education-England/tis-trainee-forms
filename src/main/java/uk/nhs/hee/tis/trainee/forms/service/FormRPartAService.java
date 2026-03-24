@@ -115,6 +115,18 @@ public class FormRPartAService {
    */
   public FormRPartADto save(FormRPartADto formRPartADto) {
     log.info("Request to save FormRPartA : {}", formRPartADto);
+    Set<LifecycleState> modifiableStates = Set.of(LifecycleState.DRAFT, LifecycleState.UNSUBMITTED);
+
+    if (formRPartADto.getId() != null) {
+      repository.findById(UUID.fromString(formRPartADto.getId())).ifPresent(existingForm -> {
+        if (!modifiableStates.contains(existingForm.getLifecycleState())) {
+          String message = String.format("Form %s is in lifecycle state %s and cannot be modified.",
+              existingForm.getId(), existingForm.getLifecycleState());
+          throw new IllegalArgumentException(message);
+        }
+      });
+    }
+
     FormRPartA formRPartA = mapper.toEntity(formRPartADto);
     if (alwaysStoreFiles || formRPartA.getLifecycleState() == LifecycleState.SUBMITTED) {
       cloudObjectRepository.save(formRPartA);

@@ -33,6 +33,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DELETED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
@@ -52,6 +53,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -386,6 +388,41 @@ class FormRPartBServiceTest {
     verifyNoInteractions(s3FormRPartBRepository);
   }
 
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldThrowExceptionWhenUpdatingNonModifiableForm(LifecycleState state) {
+    UUID id = UUID.randomUUID();
+    entity.setId(id);
+    entity.setLifecycleState(state);
+    entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+
+    FormRPartBDto dto = mapper.toDto(entity);
+    dto.setLifecycleState(DRAFT);
+
+    when(repositoryMock.findById(id)).thenReturn(Optional.of(entity));
+
+    assertThrows(IllegalArgumentException.class, () -> service.save(dto));
+    verify(repositoryMock, never()).save(any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = Mode.INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldSaveFormWhenUpdatingModifiableForm(LifecycleState state) {
+    UUID id = UUID.randomUUID();
+    entity.setId(id);
+    entity.setLifecycleState(state);
+    entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+
+    FormRPartBDto dto = mapper.toDto(entity);
+    dto.setLifecycleState(DRAFT);
+
+    when(repositoryMock.findById(id)).thenReturn(Optional.of(entity));
+    when(repositoryMock.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    service.save(dto);
+    verify(repositoryMock).save(any());
+  }
+
   @Test
   void shouldSaveSubmittedFormRPartB() {
     entity.setId(null);
@@ -394,10 +431,10 @@ class FormRPartBServiceTest {
     FormRPartBDto dto = mapper.toDto(entity);
 
     when(repositoryMock.save(entity)).thenAnswer(invocation -> {
-      FormRPartB entity = invocation.getArgument(0);
+      FormRPartB invEntity = invocation.getArgument(0);
 
       FormRPartB savedEntity = new FormRPartB();
-      BeanUtils.copyProperties(entity, savedEntity);
+      BeanUtils.copyProperties(invEntity, savedEntity);
       savedEntity.setId(DEFAULT_ID);
       return savedEntity;
     });
@@ -444,7 +481,7 @@ class FormRPartBServiceTest {
 
     FormRPartBDto dto = mapper.toDto(entity);
     assertThrows(ApplicationException.class, () -> service.save(dto));
-    verifyNoInteractions(repositoryMock);
+    verify(repositoryMock, never()).save(any());
     verifyNoInteractions(eventBroadcastService);
   }
 
