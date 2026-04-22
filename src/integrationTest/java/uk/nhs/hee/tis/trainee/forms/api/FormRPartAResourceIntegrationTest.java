@@ -285,7 +285,7 @@ class FormRPartAResourceIntegrationTest {
             .with(jwt().jwt(token)))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$", hasSize(1)));
+        .andExpect(jsonPath("$", hasSize(2)));
   }
 
   @Test

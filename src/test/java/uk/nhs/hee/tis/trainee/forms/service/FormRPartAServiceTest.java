@@ -25,6 +25,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -304,11 +305,7 @@ class FormRPartAServiceTest {
   @Test
   void shouldGetFormRPartAs() {
     List<FormRPartA> entities = Collections.singletonList(entity);
-    when(repositoryMock
-        .findByTraineeTisIdAndLifecycleState(DEFAULT_TRAINEE_TIS_ID, LifecycleState.DRAFT))
-        .thenReturn(entities);
-    when(cloudObjectRepository.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID))
-        .thenReturn(new ArrayList<>());
+    when(repositoryMock.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID)).thenReturn(entities);
 
     List<FormRPartSimpleDto> dtos = service.getFormRPartAs();
 
@@ -320,177 +317,30 @@ class FormRPartAServiceTest {
   }
 
   @Test
-  void shouldCombineAllFormRPartAsByTraineeTisId() {
-    List<FormRPartA> entities = Collections.singletonList(entity);
-    when(repositoryMock
-        .findByTraineeTisIdAndLifecycleState(DEFAULT_TRAINEE_TIS_ID, LifecycleState.DRAFT))
-        .thenReturn(entities);
-    FormRPartA cloudEntity = createEntity();
-    cloudEntity.setId(DEFAULT_ID);
-    cloudEntity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
-    cloudEntity.setLifecycleState(UNSUBMITTED);
-    List<FormRPartA> cloudStoredEntities = new ArrayList<>();
-    cloudStoredEntities.add(cloudEntity);
-    when(cloudObjectRepository.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID))
-        .thenReturn(cloudStoredEntities);
-
-    List<FormRPartSimpleDto> dtos = service.getFormRPartAs();
-
-    assertThat("Unexpected numbers of forms.", dtos.size(), is(2));
-
-    FormRPartSimpleDto dto = dtos.stream()
-        .filter(f -> f.getLifecycleState() == LifecycleState.DRAFT)
-        .findAny()
-        .orElseThrow();
-    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
-    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
-    dto = dtos.stream()
-        .filter(f -> f.getLifecycleState() == UNSUBMITTED)
-        .findAny()
-        .orElseThrow();
-    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
-    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
-    assertThat("Unexpected submitted date.", dto.getSubmissionDate(), is(DEFAULT_SUBMISSION_DATE));
-    assertThat("Unexpected lifecycle state.", dto.getLifecycleState(),
-        is(UNSUBMITTED));
-  }
-
-  @Test
-  void shouldGetFormRPartAFromCloudStorageByIdWhenOnlyCloudFormExists() {
-    FormRPartA cloudForm = new FormRPartA();
-    cloudForm.setId(DEFAULT_ID);
-    cloudForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    cloudForm.setForename("Cloud Only");
-    cloudForm.setLifecycleState(UNSUBMITTED);
-
-    when(cloudObjectRepository.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID))
-        .thenReturn(Optional.of(cloudForm));
-
+  void shouldReturnNullGettingFormRPartAByIdWhenFormNotExists() {
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.empty());
 
     FormRPartADto dto = service.getFormRPartAById(DEFAULT_ID_STRING);
 
+    assertThat("Unexpected form.", dto, nullValue());
+  }
+
+  @Test
+  void shouldGetFormRPartAByIdWhenFormExists() {
+    FormRPartA form = new FormRPartA();
+    form.setId(DEFAULT_ID);
+    form.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    form.setLifecycleState(UNSUBMITTED);
+
+    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
+        .thenReturn(Optional.of(form));
+
+    FormRPartADto dto = service.getFormRPartAById(DEFAULT_ID_STRING);
+
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
-    assertThat("Unexpected forename.", dto.getForename(), is("Cloud Only"));
     assertThat("Unexpected status.", dto.getLifecycleState(), is(UNSUBMITTED));
-  }
-
-  @Test
-  void shouldGetFormRPartAFromDatabaseByIdWhenOnlyDatabaseFormExists() {
-    when(cloudObjectRepository.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID))
-        .thenReturn(Optional.empty());
-
-    FormRPartA dbForm = new FormRPartA();
-    dbForm.setId(DEFAULT_ID);
-    dbForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    dbForm.setForename("Database Only");
-    dbForm.setLifecycleState(SUBMITTED);
-
-    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
-        .thenReturn(Optional.of(dbForm));
-
-    FormRPartADto dto = service.getFormRPartAById(DEFAULT_ID_STRING);
-
-    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
-    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
-    assertThat("Unexpected forename.", dto.getForename(), is("Database Only"));
-    assertThat("Unexpected status.", dto.getLifecycleState(), is(SUBMITTED));
-  }
-
-  @Test
-  void shouldGetFormRPartAFromCloudStorageByIdWhenCloudFormIsLatest() {
-    FormRPartA cloudForm = new FormRPartA();
-    cloudForm.setId(DEFAULT_ID);
-    cloudForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    cloudForm.setForename("Cloud Latest");
-    cloudForm.setLifecycleState(UNSUBMITTED);
-    cloudForm.setLastModifiedDate(LocalDateTime.MAX);
-
-    when(cloudObjectRepository.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID))
-        .thenReturn(Optional.of(cloudForm));
-
-    FormRPartA dbForm = new FormRPartA();
-    dbForm.setId(DEFAULT_ID);
-    dbForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    dbForm.setForename("Database Oldest");
-    dbForm.setLifecycleState(SUBMITTED);
-    dbForm.setLastModifiedDate(LocalDateTime.MIN);
-
-    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
-        .thenReturn(Optional.of(dbForm));
-
-    FormRPartADto dto = service.getFormRPartAById(DEFAULT_ID_STRING);
-
-    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
-    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
-    assertThat("Unexpected forename.", dto.getForename(), is("Cloud Latest"));
-    assertThat("Unexpected status.", dto.getLifecycleState(), is(UNSUBMITTED));
-  }
-
-  @Test
-  void shouldGetFormRPartAFromDatabaseByIdWhenDatabaseFormIsLatest() {
-    FormRPartA cloudForm = new FormRPartA();
-    cloudForm.setId(DEFAULT_ID);
-    cloudForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    cloudForm.setForename("Cloud Oldest");
-    cloudForm.setLifecycleState(UNSUBMITTED);
-    cloudForm.setLastModifiedDate(LocalDateTime.MIN);
-
-    when(cloudObjectRepository.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID))
-        .thenReturn(Optional.of(cloudForm));
-
-    FormRPartA dbForm = new FormRPartA();
-    dbForm.setId(DEFAULT_ID);
-    dbForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    dbForm.setForename("Database Latest");
-    dbForm.setLifecycleState(SUBMITTED);
-    dbForm.setLastModifiedDate(LocalDateTime.MAX);
-
-    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
-        .thenReturn(Optional.of(dbForm));
-
-    FormRPartADto dto = service.getFormRPartAById(DEFAULT_ID_STRING);
-
-    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
-    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
-    assertThat("Unexpected forename.", dto.getForename(), is("Database Latest"));
-    assertThat("Unexpected status.", dto.getLifecycleState(), is(SUBMITTED));
-  }
-
-  @ParameterizedTest
-  @EnumSource(LifecycleState.class)
-  void shouldGetFormRPartAFromCloudByIdWhenCloudAndDatabaseEqualModifiedTime(
-      LifecycleState cloudState) {
-    LocalDateTime now = LocalDateTime.now();
-
-    FormRPartA cloudForm = new FormRPartA();
-    cloudForm.setId(DEFAULT_ID);
-    cloudForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    cloudForm.setForename("Cloud Equal");
-    cloudForm.setLifecycleState(cloudState);
-    cloudForm.setLastModifiedDate(now);
-
-    when(cloudObjectRepository.findByIdAndTraineeTisId(DEFAULT_ID_STRING, DEFAULT_TRAINEE_TIS_ID))
-        .thenReturn(Optional.of(cloudForm));
-
-    FormRPartA dbForm = new FormRPartA();
-    dbForm.setId(DEFAULT_ID);
-    dbForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    dbForm.setForename("Database Equal");
-    dbForm.setLifecycleState(SUBMITTED);
-    dbForm.setLastModifiedDate(now);
-
-    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
-        .thenReturn(Optional.of(dbForm));
-
-    FormRPartADto dto = service.getFormRPartAById(DEFAULT_ID_STRING);
-
-    assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
-    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
-    assertThat("Unexpected forename.", dto.getForename(), is("Cloud Equal"));
-    assertThat("Unexpected status.", dto.getLifecycleState(), is(cloudState));
   }
 
   @Test
