@@ -24,16 +24,10 @@ import static java.util.Map.entry;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.ParameterizedType;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
-import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
@@ -43,14 +37,9 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
-import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
-import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
-import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
-import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.DeleteType;
-import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractFormR;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
@@ -157,42 +146,6 @@ public abstract class AbstractCloudRepository<T extends AbstractFormR> {
   }
 
   /**
-   * Find forms for the trainee.
-   *
-   * @param traineeTisId the id of the trainee assigned by TIS
-   * @return a list of forms
-   */
-  public List<T> findByTraineeTisId(String traineeTisId) {
-    ListObjectsV2Request listRequest = ListObjectsV2Request.builder()
-        .bucket(bucketName)
-        .prefix(String.format(getObjectPrefixTemplate(), traineeTisId))
-        .build();
-    ListObjectsV2Response listing = s3Client.listObjectsV2(listRequest);
-    return listing.contents().stream().map(s3Object -> {
-      try {
-        HeadObjectRequest headObjectRequest = HeadObjectRequest.builder()
-            .bucket(bucketName)
-            .key(s3Object.key())
-            .build();
-        HeadObjectResponse headObject = s3Client.headObject(headObjectRequest);
-        Map<String, String> metadata = headObject.metadata();
-        T form = getTypeClass().getConstructor().newInstance();
-        form.setId(UUID.fromString(metadata.get("id")));
-        form.setTraineeTisId(metadata.get(TRAINEE_ID));
-        populateProgrammeMembershipId(form, metadata);
-        populateSubmissionDate(form, metadata);
-        form.setLifecycleState(
-            LifecycleState.valueOf(metadata.get(LIFECYCLE_STATE)
-                .toUpperCase()));
-        return form;
-      } catch (Exception e) {
-        log.error("Problem reading form [{}] from S3 bucket [{}]", s3Object.key(), bucketName, e);
-        return null;
-      }
-    }).filter(Objects::nonNull).collect(Collectors.toList());
-  }
-
-  /**
    * Get the form.
    *
    * @param id           The id of the form
@@ -255,30 +208,4 @@ public abstract class AbstractCloudRepository<T extends AbstractFormR> {
   protected abstract String getObjectKeyTemplate();
 
   protected abstract String getObjectPrefixTemplate();
-
-  private T populateProgrammeMembershipId(T form, Map<String, String> metadata) {
-    try {
-      if (metadata.get(PROGRAMME_MEMBERSHIP_ID) != null) {
-        form.setProgrammeMembershipId(UUID.fromString(metadata.get(PROGRAMME_MEMBERSHIP_ID)));
-      }
-    } catch (IllegalArgumentException e) {
-      log.debug("No linked programme membership for form id {}",
-          metadata.get("id"));
-    }
-    return form;
-  }
-
-  private T populateSubmissionDate(T form, Map<String, String> metadata) {
-    LocalDateTime localDateTime;
-    try {
-      form.setSubmissionDate(LocalDateTime.parse(metadata.get(SUBMISSION_DATE)));
-    } catch (DateTimeParseException e) {
-      log.debug("Existing date {} not in latest format, trying as LocalDate.",
-          e.getParsedString());
-      localDateTime = LocalDate.parse(metadata.get(SUBMISSION_DATE))
-          .atStartOfDay();
-      form.setSubmissionDate(localDateTime);
-    }
-    return form;
-  }
 }

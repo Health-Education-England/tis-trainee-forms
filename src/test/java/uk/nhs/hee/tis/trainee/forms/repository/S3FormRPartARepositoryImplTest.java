@@ -7,8 +7,6 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -23,7 +21,6 @@ import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
@@ -48,13 +45,9 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
-import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
-import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
-import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-import software.amazon.awssdk.services.s3.model.S3Object;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.DeleteType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
@@ -64,7 +57,6 @@ import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 @ExtendWith(MockitoExtension.class)
 class S3FormRPartARepositoryImplTest {
 
-  private static final String KEY = "object.name";
   private static final UUID DEFAULT_ID = UUID.randomUUID();
   private static final String DEFAULT_ID_STRING = DEFAULT_ID.toString();
   private static final String DEFAULT_TRAINEE_TIS_ID = "1";
@@ -75,17 +67,6 @@ class S3FormRPartARepositoryImplTest {
   private static final String DEFAULT_PROGRAMME_MEMBERSHIP_ID = UUID.randomUUID().toString();
   private static final String DEFAULT_SUBMISSION_DATE_STRING = DEFAULT_SUBMISSION_DATE.format(
       DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-  private static final String DEFAULT_FORM_ID = UUID.randomUUID().toString();
-  private static final Map<String, String> DEFAULT_UNSUBMITTED_METADATA = Map
-      .of("id", DEFAULT_FORM_ID, "formtype", "inform", "lifecyclestate",
-          LifecycleState.UNSUBMITTED.name(), "submissiondate",
-          DEFAULT_SUBMISSION_DATE_STRING, "traineeid",
-          DEFAULT_TRAINEE_TIS_ID, "programmemembershipid", DEFAULT_PROGRAMME_MEMBERSHIP_ID);
-  private static final Map<String, String> DEFAULT_METADATA_MISSING_PM = Map
-      .of("id", DEFAULT_FORM_ID, "formtype", "inform", "lifecyclestate",
-          LifecycleState.UNSUBMITTED.name(), "submissiondate",
-          DEFAULT_SUBMISSION_DATE_STRING, "traineeid",
-          DEFAULT_TRAINEE_TIS_ID);
   private static final String FIXED_FIELDS =
       "id,traineeTisId,lifecycleState,submissionDate,lastModifiedDate";
 
@@ -224,109 +205,6 @@ class S3FormRPartARepositoryImplTest {
 
     Exception actual = assertThrows(RuntimeException.class, () -> repo.save(entity));
     assertThat("Unexpected exception type.", actual instanceof ApplicationException);
-  }
-
-  @Test
-  void shouldNotThrowWhenNoLinkedProgrammeMembership() {
-    when(s3Mock.listObjectsV2(ListObjectsV2Request.builder().bucket(bucketName)
-        .prefix(DEFAULT_TRAINEE_TIS_ID + "/forms/formr-a").build()))
-        .thenReturn(s3ListingMock);
-    String otherKey = KEY + "w/error";
-    List<S3Object> s3Objects = List.of(
-        S3Object.builder().key(KEY).build(),
-        S3Object.builder().key(otherKey).build()
-    );
-    when(s3ListingMock.contents()).thenReturn(s3Objects);
-
-    // invalid UUID metadata
-    Map<String, String> metadata = Map.of(
-        "id", DEFAULT_FORM_ID,
-        "traineeid", DEFAULT_TRAINEE_TIS_ID,
-        "programmemembershipid", "INVALID_UUID",
-        "lifecyclestate", "SUBMITTED",
-        "submissiondate", LocalDateTime.now().toString()
-    );
-
-    HeadObjectResponse metadataResponse = HeadObjectResponse.builder()
-        .metadata(metadata).build();
-    when(s3Mock.headObject(
-        HeadObjectRequest.builder().bucket(bucketName).key(KEY).build())).thenReturn(
-        metadataResponse);
-    when(s3Mock.headObject(HeadObjectRequest.builder().bucket(bucketName).key(otherKey).build()))
-        .thenThrow(AwsServiceException.class);
-
-    assertDoesNotThrow(() -> {
-      repo.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    }, "should not throw when no linkedprogramme membership");
-  }
-
-  @Test
-  void shouldGetFormRPartAsByTraineeTisId() {
-    when(s3Mock.listObjectsV2(ListObjectsV2Request.builder().bucket(bucketName)
-        .prefix(DEFAULT_TRAINEE_TIS_ID + "/forms/formr-a").build()))
-        .thenReturn(s3ListingMock);
-    String otherKey = KEY + "w/error";
-    List<S3Object> s3Objects = List.of(
-        S3Object.builder().key(KEY).build(),
-        S3Object.builder().key(otherKey).build()
-    );
-    when(s3ListingMock.contents()).thenReturn(s3Objects);
-
-    HeadObjectResponse metadataResponse = HeadObjectResponse.builder()
-        .metadata(DEFAULT_UNSUBMITTED_METADATA).build();
-    when(s3Mock.headObject(
-        HeadObjectRequest.builder().bucket(bucketName).key(KEY).build())).thenReturn(
-        metadataResponse);
-    when(s3Mock.headObject(HeadObjectRequest.builder().bucket(bucketName).key(otherKey).build()))
-        .thenThrow(AwsServiceException.class);
-
-    List<FormRPartA> entities = repo.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-
-    assertThat("Unexpected numbers of forms.", entities.size(), is(1));
-
-    FormRPartA entity = entities.get(0);
-    assertThat("Unexpected form ID.", entity.getId(), is(UUID.fromString(DEFAULT_FORM_ID)));
-    assertThat("Unexpected trainee ID.", entity.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
-    assertThat("Unexpected submitted date.", entity.getSubmissionDate(),
-        is(DEFAULT_SUBMISSION_DATE));
-    assertThat("Unexpected lifecycle state.", entity.getLifecycleState(),
-        is(LifecycleState.UNSUBMITTED));
-    assertThat("Unexpected programme membership ID.", entity.getProgrammeMembershipId(),
-        is(UUID.fromString(DEFAULT_PROGRAMME_MEMBERSHIP_ID)));
-  }
-
-  @Test
-  void shouldGetFormrPartAsByTraineeTisIdWhenPmMissing() {
-    when(s3Mock.listObjectsV2(ListObjectsV2Request.builder().bucket(bucketName)
-        .prefix(DEFAULT_TRAINEE_TIS_ID + "/forms/formr-a").build()))
-        .thenReturn(s3ListingMock);
-    String otherKey = KEY + "w/error";
-    List<S3Object> s3Objects = List.of(
-        S3Object.builder().key(KEY).build(),
-        S3Object.builder().key(otherKey).build()
-    );
-    when(s3ListingMock.contents()).thenReturn(s3Objects);
-
-    HeadObjectResponse metadataResponse = HeadObjectResponse.builder()
-        .metadata(DEFAULT_METADATA_MISSING_PM).build();
-    when(s3Mock.headObject(
-        HeadObjectRequest.builder().bucket(bucketName).key(KEY).build())).thenReturn(
-        metadataResponse);
-    when(s3Mock.headObject(HeadObjectRequest.builder().bucket(bucketName).key(otherKey).build()))
-        .thenThrow(AwsServiceException.class);
-
-    List<FormRPartA> entities = repo.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-
-    assertThat("Unexpected numbers of forms.", entities.size(), is(1));
-
-    entity = entities.get(0);
-    assertThat("Unexpected form ID.", entity.getId(), is(UUID.fromString(DEFAULT_FORM_ID)));
-    assertThat("Unexpected trainee ID.", entity.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
-    assertThat("Unexpected submitted date.", entity.getSubmissionDate(),
-        is(DEFAULT_SUBMISSION_DATE));
-    assertThat("Unexpected lifecycle state.", entity.getLifecycleState(),
-        is(LifecycleState.UNSUBMITTED));
-    assertNull(entity.getProgrammeMembershipId(), "Unexpected programme membership ID.");
   }
 
   @Test

@@ -147,11 +147,8 @@ public class FormRPartAService {
   public List<FormRPartSimpleDto> getFormRPartAs() {
     String traineeTisId = traineeIdentity.getTraineeId();
     log.info("Request to get FormRPartA list by trainee profileId : {}", traineeTisId);
-    List<FormRPartA> storedFormRPartAs = cloudObjectRepository.findByTraineeTisId(traineeTisId);
-    List<FormRPartA> formRPartAList = repository
-        .findByTraineeTisIdAndLifecycleState(traineeTisId, LifecycleState.DRAFT);
-    storedFormRPartAs.addAll(formRPartAList);
-    return mapper.toSimpleDtos(storedFormRPartAs);
+    List<FormRPartA> formRPartAList = repository.findByTraineeTisId(traineeTisId);
+    return mapper.toSimpleDtos(formRPartAList);
   }
 
   /**
@@ -175,25 +172,10 @@ public class FormRPartAService {
     log.info("Request to get FormRPartA by id : {}", id);
 
     String traineeTisId = traineeIdentity.getTraineeId();
-    Optional<FormRPartA> optionalCloudForm = cloudObjectRepository.findByIdAndTraineeTisId(id,
-        traineeTisId);
     Optional<FormRPartA> optionalDbForm = repository.findByIdAndTraineeTisId(UUID.fromString(id),
         traineeTisId);
 
-    FormRPartA latestForm = null;
-
-    if (optionalCloudForm.isPresent() && optionalDbForm.isPresent()) {
-      FormRPartA cloudForm = optionalCloudForm.get();
-      FormRPartA dbForm = optionalDbForm.get();
-      latestForm = cloudForm.getLastModifiedDate().isBefore(dbForm.getLastModifiedDate()) ? dbForm
-          : cloudForm;
-    } else if (optionalCloudForm.isPresent()) {
-      latestForm = optionalCloudForm.get();
-    } else if (optionalDbForm.isPresent()) {
-      latestForm = optionalDbForm.get();
-    }
-
-    return mapper.toDto(latestForm);
+    return mapper.toDto(optionalDbForm.orElse(null));
   }
 
   /**
