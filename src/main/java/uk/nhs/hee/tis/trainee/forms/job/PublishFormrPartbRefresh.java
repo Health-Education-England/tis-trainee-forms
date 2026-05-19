@@ -115,6 +115,7 @@ public class PublishFormrPartbRefresh extends AbstractPublishRefresh<FormRPartB>
    *                   will be refreshed. If empty, all forms are refreshed.
    * @return The number of published forms.
    */
+  @SchedulerLock(name = "PublishFormrPartbRefresh.execute")
   @Override
   public Integer execute(Optional<LocalDate> cutoffDate) {
     return super.execute(cutoffDate);

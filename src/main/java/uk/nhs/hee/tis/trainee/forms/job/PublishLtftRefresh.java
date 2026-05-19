@@ -118,6 +118,7 @@ public class PublishLtftRefresh extends AbstractPublishRefresh<LtftForm> {
    *                   will be refreshed. If empty, all forms are refreshed.
    * @return The number of published forms.
    */
+  @SchedulerLock(name = "PublishLtftRefresh.execute")
   @Override
   public Integer execute(Optional<LocalDate> cutoffDate) {
     return super.execute(cutoffDate);
