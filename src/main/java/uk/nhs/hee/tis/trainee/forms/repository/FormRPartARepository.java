@@ -21,6 +21,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -58,4 +59,14 @@ public interface FormRPartARepository extends MongoRepository<FormRPartA, UUID> 
    * @return The found forms, empty if none found.
    */
   Stream<FormRPartA> streamByLifecycleStateIn(Set<LifecycleState> states);
+
+  /**
+   * Stream all Form-R Part As with the given states and last modified on or after the cutoff.
+   *
+   * @param states             The states to filter by.
+   * @param lastModifiedCutoff The cutoff date/time; only forms modified on or after are included.
+   * @return The found forms, empty if none found.
+   */
+  Stream<FormRPartA> streamByLifecycleStateInAndLastModifiedDateGreaterThanEqual(
+      Set<LifecycleState> states, LocalDateTime lastModifiedCutoff);
 }

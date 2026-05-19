@@ -29,6 +29,10 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBM
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -37,6 +41,7 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
@@ -79,16 +84,16 @@ public class PublishLtftRefresh extends AbstractPublishRefresh<LtftForm> {
   }
 
   @Override
-  public Stream<LtftForm> streamForms() {
+  public Stream<LtftForm> streamForms(Optional<LocalDate> cutoffDate) {
+    Set<LifecycleState> states = Set.of(APPROVED, DELETED, REJECTED, SUBMITTED, UNSUBMITTED,
+        WITHDRAWN);
     // Listing allowed (non-DRAFT) states avoids any accidental inclusions of future states.
-    return repository.streamByStatus_Current_StateIn(Set.of(
-        APPROVED,
-        DELETED,
-        REJECTED,
-        SUBMITTED,
-        UNSUBMITTED,
-        WITHDRAWN
-    ));
+    if (cutoffDate.isPresent()) {
+      Instant cutoff = cutoffDate.get().atStartOfDay(ZoneOffset.UTC).toInstant();
+      return repository.streamByStatus_Current_StateInAndLastModifiedGreaterThanEqual(
+          states, cutoff);
+    }
+    return repository.streamByStatus_Current_StateIn(states);
   }
 
   @Override
@@ -104,5 +109,17 @@ public class PublishLtftRefresh extends AbstractPublishRefresh<LtftForm> {
   @Override
   public Integer execute() {
     return super.execute();
+  }
+
+  /**
+   * Execute the job to publish exportable LTFT applications as a refresh.
+   *
+   * @param cutoffDate An optional cutoff start date; only forms last modified on or after this date
+   *                   will be refreshed. If empty, all forms are refreshed.
+   * @return The number of published forms.
+   */
+  @Override
+  public Integer execute(Optional<LocalDate> cutoffDate) {
+    return super.execute(cutoffDate);
   }
 }

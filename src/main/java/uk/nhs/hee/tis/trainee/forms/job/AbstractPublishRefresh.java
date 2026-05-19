@@ -22,6 +22,8 @@
 
 package uk.nhs.hee.tis.trainee.forms.job;
 
+import java.time.LocalDate;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
@@ -54,9 +56,11 @@ public abstract class AbstractPublishRefresh<T> {
   /**
    * Get the forms to be refreshed, should also apply any relevant filtering.
    *
+   * @param cutoffDate An optional cutoff start date; only forms last modified on or after this date
+   *                   will be included. If empty, all forms are included.
    * @return The filtered list of forms to be refreshed.
    */
-  protected abstract Stream<T> streamForms();
+  protected abstract Stream<T> streamForms(Optional<LocalDate> cutoffDate);
 
   /**
    * Refresh the given form by publishing to an event topic.
@@ -66,18 +70,20 @@ public abstract class AbstractPublishRefresh<T> {
   protected abstract void publishForm(T form);
 
   /**
-   * Execute the job to publish all exportable forms a refresh.
+   * Execute the job to publish all exportable forms as a refresh.
    *
+   * @param cutoffDate An optional cutoff start date; only forms last modified on or after this date
+   *                   will be refreshed. If empty, all forms are refreshed.
    * @return The number of published forms.
    */
-  protected Integer execute() {
+  protected Integer execute(Optional<LocalDate> cutoffDate) {
     String formType = getFormTypeName();
     log.info("Starting {} downstream refresh.", formType);
 
     AtomicInteger total = new AtomicInteger();
     AtomicInteger published = new AtomicInteger();
 
-    streamForms()
+    streamForms(cutoffDate)
         .forEach(
             form -> {
               total.getAndIncrement();
@@ -95,5 +101,14 @@ public abstract class AbstractPublishRefresh<T> {
 
     log.info("Finished {} downstream refresh, published count: {}/{}.", formType, published, total);
     return published.get();
+  }
+
+  /**
+   * Execute the job to publish all exportable forms as a refresh with no date cutoff.
+   *
+   * @return The number of published forms.
+   */
+  protected Integer execute() {
+    return execute(Optional.empty());
   }
 }

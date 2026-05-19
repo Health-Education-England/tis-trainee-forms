@@ -36,6 +36,9 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.google.common.base.Objects;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -74,7 +77,17 @@ class PublishFormrPartaRefreshTest {
   void shouldNotPublishWhenNoFormrPartasFound() {
     when(repository.streamByLifecycleStateIn(any())).thenReturn(Stream.of());
 
-    job.execute();
+    job.execute(Optional.empty());
+
+    verifyNoInteractions(service);
+  }
+
+  @Test
+  void shouldNotPublishWhenNoFormrPartasFoundWithCutoffDate() {
+    when(repository.streamByLifecycleStateInAndLastModifiedDateGreaterThanEqual(any(),
+        any())).thenReturn(Stream.of());
+
+    job.execute(Optional.of(LocalDate.of(2025, 1, 1)));
 
     verifyNoInteractions(service);
   }
@@ -83,22 +96,43 @@ class PublishFormrPartaRefreshTest {
   @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = {"APPROVED", "DRAFT",
       "REJECTED", "WITHDRAWN"})
   void shouldNotPublishDraftFormrPartas(LifecycleState state) {
-    UUID id1 = UUID.randomUUID();
-    FormRPartA form1 = new FormRPartA();
-    form1.setId(id1);
-
-    UUID id2 = UUID.randomUUID();
-    FormRPartA form2 = new FormRPartA();
-    form2.setId(id2);
-
     ArgumentCaptor<Set<LifecycleState>> statesCaptor = ArgumentCaptor.captor();
     when(repository.streamByLifecycleStateIn(statesCaptor.capture())).thenReturn(Stream.of());
 
-    job.execute();
+    job.execute(Optional.empty());
 
     Set<LifecycleState> states = statesCaptor.getValue();
     assertThat("Unexpected state query count.", states, hasSize(3));
     assertThat("Unexpected state in query.", states, hasItem(state));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = {"APPROVED", "DRAFT",
+      "REJECTED", "WITHDRAWN"})
+  void shouldNotPublishDraftFormrPartasWithCutoffDate(LifecycleState state) {
+    LocalDate since = LocalDate.of(2025, 1, 1);
+    ArgumentCaptor<Set<LifecycleState>> statesCaptor = ArgumentCaptor.captor();
+    when(repository.streamByLifecycleStateInAndLastModifiedDateGreaterThanEqual(
+        statesCaptor.capture(), any())).thenReturn(Stream.of());
+
+    job.execute(Optional.of(since));
+
+    Set<LifecycleState> states = statesCaptor.getValue();
+    assertThat("Unexpected state query count.", states, hasSize(3));
+    assertThat("Unexpected state in query.", states, hasItem(state));
+  }
+
+  @Test
+  void shouldUseCutoffDateWhenProvided() {
+    LocalDate since = LocalDate.of(2025, 6, 15);
+    ArgumentCaptor<LocalDateTime> cutoffCaptor = ArgumentCaptor.captor();
+    when(repository.streamByLifecycleStateInAndLastModifiedDateGreaterThanEqual(any(),
+        cutoffCaptor.capture())).thenReturn(Stream.of());
+
+    job.execute(Optional.of(since));
+
+    assertThat("Unexpected cutoff date.", cutoffCaptor.getValue(),
+        is(since.atStartOfDay()));
   }
 
   @Test
@@ -113,12 +147,27 @@ class PublishFormrPartaRefreshTest {
 
     when(repository.streamByLifecycleStateIn(any())).thenReturn(Stream.of(form1, form2));
 
-    int publishCount = job.execute();
+    int publishCount = job.execute(Optional.empty());
 
     assertThat("Unexpected published Form-R count.", publishCount, is(2));
 
     verify(service).publishUpdateNotification(argThat(hasId(id1)), eq(PUBLISH_TOPIC));
     verify(service).publishUpdateNotification(argThat(hasId(id2)), eq(PUBLISH_TOPIC));
+  }
+
+  @Test
+  void shouldPublishAllFoundFormrPartasWithCutoffDate() {
+    UUID id1 = UUID.randomUUID();
+    FormRPartA form1 = new FormRPartA();
+    form1.setId(id1);
+
+    when(repository.streamByLifecycleStateInAndLastModifiedDateGreaterThanEqual(any(),
+        any())).thenReturn(Stream.of(form1));
+
+    int publishCount = job.execute(Optional.of(LocalDate.of(2025, 1, 1)));
+
+    assertThat("Unexpected published Form-R count.", publishCount, is(1));
+    verify(service).publishUpdateNotification(argThat(hasId(id1)), eq(PUBLISH_TOPIC));
   }
 
   @Test
@@ -135,7 +184,7 @@ class PublishFormrPartaRefreshTest {
     doThrow(RuntimeException.class).when(service)
         .publishUpdateNotification(argThat(hasId(id1)), eq(PUBLISH_TOPIC));
 
-    int publishCount = job.execute();
+    int publishCount = job.execute(Optional.empty());
 
     assertThat("Unexpected published Form-R count.", publishCount, is(1));
 

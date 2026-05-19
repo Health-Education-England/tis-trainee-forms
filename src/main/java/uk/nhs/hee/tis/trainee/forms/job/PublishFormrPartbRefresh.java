@@ -27,6 +27,8 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMIT
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
+import java.time.LocalDate;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -35,6 +37,7 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
@@ -80,13 +83,14 @@ public class PublishFormrPartbRefresh extends AbstractPublishRefresh<FormRPartB>
   }
 
   @Override
-  public Stream<FormRPartB> streamForms() {
+  public Stream<FormRPartB> streamForms(Optional<LocalDate> cutoffDate) {
+    Set<LifecycleState> states = Set.of(DELETED, SUBMITTED, UNSUBMITTED);
     // Listing allowed (non-DRAFT) states avoids any accidental inclusions of future states.
-    return repository.streamByLifecycleStateIn(Set.of(
-        DELETED,
-        SUBMITTED,
-        UNSUBMITTED
-    ));
+    if (cutoffDate.isPresent()) {
+      return repository.streamByLifecycleStateInAndLastModifiedDateGreaterThanEqual(
+          states, cutoffDate.get().atStartOfDay());
+    }
+    return repository.streamByLifecycleStateIn(states);
   }
 
   @Override
@@ -102,5 +106,17 @@ public class PublishFormrPartbRefresh extends AbstractPublishRefresh<FormRPartB>
   @Override
   public Integer execute() {
     return super.execute();
+  }
+
+  /**
+   * Execute the job to publish exportable Form-R Part B applications as a refresh.
+   *
+   * @param cutoffDate An optional cutoff start date; only forms last modified on or after this date
+   *                   will be refreshed. If empty, all forms are refreshed.
+   * @return The number of published forms.
+   */
+  @Override
+  public Integer execute(Optional<LocalDate> cutoffDate) {
+    return super.execute(cutoffDate);
   }
 }
