@@ -4,12 +4,16 @@ application:
   aws:
     sns:
       formr-file-event: dummy
+      formr-refresh: dummy-formr-refresh
       formr-updated: dummy
+      ltft-refresh: dummy-ltft-refresh
     sqs:
       coj-received: dummy
       notification-event: dummy
       profile-move: dummy
   schedules:
+    publish-all-formr-partas: "-"
+    publish-all-formr-partbs: "-"
     publish-all-ltfts: "-"
 
 mongock:

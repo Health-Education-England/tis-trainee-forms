@@ -23,10 +23,13 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
+import java.time.LocalDate;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import uk.nhs.hee.tis.trainee.forms.job.PublishFormrPartaRefresh;
 import uk.nhs.hee.tis.trainee.forms.job.PublishFormrPartbRefresh;
@@ -63,36 +66,50 @@ public class JobResource {
   /**
    * Publish all exportable Form-R Part A records as a refresh.
    *
+   * @param since An optional cutoff start date; only forms last modified on or after this date will
+   *              be published. If absent, all forms are published.
    * @return The number of exported Form-R Part A records.
    */
   @PostMapping("/formr-parta/publish-refresh")
-  public ResponseEntity<Integer> publishFormrPartaRefresh() {
-    log.info("Received request to publish Form-R Part A refresh.");
-    int publishCount = publishFormrPartaRefreshJob.execute();
+  public ResponseEntity<Integer> publishFormrPartaRefresh(
+      @RequestParam Optional<LocalDate> since) {
+    since.ifPresentOrElse(
+        date -> log.info("Received request to publish Form-R Part A refresh since {}.", date),
+        () -> log.info("Received request to publish Form-R Part A refresh."));
+    int publishCount = publishFormrPartaRefreshJob.execute(since);
     return ResponseEntity.ok(publishCount);
   }
 
   /**
    * Publish all exportable Form-R Part B records as a refresh.
    *
+   * @param since An optional cutoff start date; only forms last modified on or after this date will
+   *              be published. If absent, all forms are published.
    * @return The number of exported Form-R Part B records.
    */
   @PostMapping("/formr-partb/publish-refresh")
-  public ResponseEntity<Integer> publishFormrPartbRefresh() {
-    log.info("Received request to publish Form-R Part B refresh.");
-    int publishCount = publishFormrPartbRefreshJob.execute();
+  public ResponseEntity<Integer> publishFormrPartbRefresh(
+      @RequestParam Optional<LocalDate> since) {
+    since.ifPresentOrElse(
+        date -> log.info("Received request to publish Form-R Part B refresh since {}.", date),
+        () -> log.info("Received request to publish Form-R Part B refresh."));
+    int publishCount = publishFormrPartbRefreshJob.execute(since);
     return ResponseEntity.ok(publishCount);
   }
 
   /**
    * Publish all exportable LTFT records as a refresh.
    *
+   * @param since An optional cutoff start date; only forms last modified on or after this date will
+   *              be published. If absent, all forms are published.
    * @return The number of exported LTFT records.
    */
   @PostMapping("/ltft/publish-refresh")
-  public ResponseEntity<Integer> publishLtftRefresh() {
-    log.info("Received request to publish LTFT refresh.");
-    int publishCount = publishLtftRefreshJob.execute();
+  public ResponseEntity<Integer> publishLtftRefresh(@RequestParam Optional<LocalDate> since) {
+    since.ifPresentOrElse(
+        date -> log.info("Received request to publish LTFT refresh since {}.", date),
+        () -> log.info("Received request to publish LTFT refresh."));
+    int publishCount = publishLtftRefreshJob.execute(since);
     return ResponseEntity.ok(publishCount);
   }
 }

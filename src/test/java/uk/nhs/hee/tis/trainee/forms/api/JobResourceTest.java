@@ -28,6 +28,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.OK;
 
+import java.time.LocalDate;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
@@ -53,32 +55,65 @@ class JobResourceTest {
   }
 
   @Test
-  void shouldPublishFormrPartaRefresh() {
-    when(publishFormrPartaRefreshJob.execute()).thenReturn(3);
+  void shouldPublishFormrPartaRefreshWithNoDate() {
+    when(publishFormrPartaRefreshJob.execute(Optional.empty())).thenReturn(3);
 
-    ResponseEntity<Integer> response = controller.publishFormrPartaRefresh();
+    ResponseEntity<Integer> response = controller.publishFormrPartaRefresh(Optional.empty());
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), is(3));
   }
 
   @Test
-  void shouldPublishFormrPartbRefresh() {
-    when(publishFormrPartbRefreshJob.execute()).thenReturn(4);
+  void shouldPublishFormrPartaRefreshWithDate() {
+    LocalDate since = LocalDate.of(2025, 1, 1);
+    when(publishFormrPartaRefreshJob.execute(Optional.of(since))).thenReturn(2);
 
-    ResponseEntity<Integer> response = controller.publishFormrPartbRefresh();
+    ResponseEntity<Integer> response = controller.publishFormrPartaRefresh(Optional.of(since));
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), is(2));
+  }
+
+  @Test
+  void shouldPublishFormrPartbRefreshWithNoDate() {
+    when(publishFormrPartbRefreshJob.execute(Optional.empty())).thenReturn(4);
+
+    ResponseEntity<Integer> response = controller.publishFormrPartbRefresh(Optional.empty());
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), is(4));
   }
 
   @Test
-  void shouldPublishLtftRefresh() {
-    when(publishLtftRefreshJob.execute()).thenReturn(5);
+  void shouldPublishFormrPartbRefreshWithDate() {
+    LocalDate since = LocalDate.of(2025, 1, 1);
+    when(publishFormrPartbRefreshJob.execute(Optional.of(since))).thenReturn(2);
 
-    ResponseEntity<Integer> response = controller.publishLtftRefresh();
+    ResponseEntity<Integer> response = controller.publishFormrPartbRefresh(Optional.of(since));
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), is(2));
+  }
+
+  @Test
+  void shouldPublishLtftRefreshWithNoDate() {
+    when(publishLtftRefreshJob.execute(Optional.empty())).thenReturn(5);
+
+    ResponseEntity<Integer> response = controller.publishLtftRefresh(Optional.empty());
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), is(5));
+  }
+
+  @Test
+  void shouldPublishLtftRefreshWithDate() {
+    LocalDate since = LocalDate.of(2025, 1, 1);
+    when(publishLtftRefreshJob.execute(Optional.of(since))).thenReturn(3);
+
+    ResponseEntity<Integer> response = controller.publishLtftRefresh(Optional.of(since));
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), is(3));
   }
 }

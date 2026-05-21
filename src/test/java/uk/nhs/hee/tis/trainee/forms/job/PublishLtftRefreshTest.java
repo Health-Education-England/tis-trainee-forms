@@ -32,6 +32,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -66,7 +70,17 @@ class PublishLtftRefreshTest {
   void shouldNotPublishWhenNoLtftsFound() {
     when(repository.streamByStatus_Current_StateIn(any())).thenReturn(Stream.of());
 
-    job.execute();
+    job.execute(Optional.empty());
+
+    verifyNoInteractions(service);
+  }
+
+  @Test
+  void shouldNotPublishWhenNoLtftsFoundWithCutoffDate() {
+    when(repository.streamByStatus_Current_StateInAndLastModifiedGreaterThanEqual(any(),
+        any())).thenReturn(Stream.of());
+
+    job.execute(Optional.of(LocalDate.of(2025, 1, 1)));
 
     verifyNoInteractions(service);
   }
@@ -74,22 +88,42 @@ class PublishLtftRefreshTest {
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = "DRAFT")
   void shouldNotPublishDraftLtfts(LifecycleState state) {
-    UUID id1 = UUID.randomUUID();
-    LtftForm form1 = new LtftForm();
-    form1.setId(id1);
-
-    UUID id2 = UUID.randomUUID();
-    LtftForm form2 = new LtftForm();
-    form2.setId(id2);
-
     ArgumentCaptor<Set<LifecycleState>> statesCaptor = ArgumentCaptor.captor();
     when(repository.streamByStatus_Current_StateIn(statesCaptor.capture())).thenReturn(Stream.of());
 
-    job.execute();
+    job.execute(Optional.empty());
 
     Set<LifecycleState> states = statesCaptor.getValue();
     assertThat("Unexpected state query count.", states, hasSize(6));
     assertThat("Unexpected state in query.", states, hasItem(state));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = "DRAFT")
+  void shouldNotPublishDraftLtftsWithCutoffDate(LifecycleState state) {
+    LocalDate since = LocalDate.of(2025, 1, 1);
+    ArgumentCaptor<Set<LifecycleState>> statesCaptor = ArgumentCaptor.captor();
+    when(repository.streamByStatus_Current_StateInAndLastModifiedGreaterThanEqual(
+        statesCaptor.capture(), any())).thenReturn(Stream.of());
+
+    job.execute(Optional.of(since));
+
+    Set<LifecycleState> states = statesCaptor.getValue();
+    assertThat("Unexpected state query count.", states, hasSize(6));
+    assertThat("Unexpected state in query.", states, hasItem(state));
+  }
+
+  @Test
+  void shouldUseCutoffDateWhenProvided() {
+    LocalDate since = LocalDate.of(2025, 6, 15);
+    Instant expectedCutoff = since.atStartOfDay(ZoneOffset.UTC).toInstant();
+    ArgumentCaptor<Instant> cutoffCaptor = ArgumentCaptor.captor();
+    when(repository.streamByStatus_Current_StateInAndLastModifiedGreaterThanEqual(any(),
+        cutoffCaptor.capture())).thenReturn(Stream.of());
+
+    job.execute(Optional.of(since));
+
+    assertThat("Unexpected cutoff instant.", cutoffCaptor.getValue(), is(expectedCutoff));
   }
 
   @Test
@@ -104,12 +138,27 @@ class PublishLtftRefreshTest {
 
     when(repository.streamByStatus_Current_StateIn(any())).thenReturn(Stream.of(form1, form2));
 
-    int publishCount = job.execute();
+    int publishCount = job.execute(Optional.empty());
 
     assertThat("Unexpected published LTFT count.", publishCount, is(2));
 
     verify(service).publishUpdateNotification(form1, null, PUBLISH_TOPIC);
     verify(service).publishUpdateNotification(form2, null, PUBLISH_TOPIC);
+  }
+
+  @Test
+  void shouldPublishAllFoundLtftsWithCutoffDate() {
+    UUID id1 = UUID.randomUUID();
+    LtftForm form1 = new LtftForm();
+    form1.setId(id1);
+
+    when(repository.streamByStatus_Current_StateInAndLastModifiedGreaterThanEqual(any(),
+        any())).thenReturn(Stream.of(form1));
+
+    int publishCount = job.execute(Optional.of(LocalDate.of(2025, 1, 1)));
+
+    assertThat("Unexpected published LTFT count.", publishCount, is(1));
+    verify(service).publishUpdateNotification(form1, null, PUBLISH_TOPIC);
   }
 
   @Test
@@ -126,7 +175,7 @@ class PublishLtftRefreshTest {
     doThrow(RuntimeException.class).when(service)
         .publishUpdateNotification(form1, null, PUBLISH_TOPIC);
 
-    int publishCount = job.execute();
+    int publishCount = job.execute(Optional.empty());
 
     assertThat("Unexpected published LTFT count.", publishCount, is(1));
 

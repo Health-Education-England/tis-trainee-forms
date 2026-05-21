@@ -22,6 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.repository;
 
 import jakarta.validation.constraints.NotNull;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -70,6 +71,16 @@ public interface LtftFormRepository extends MongoRepository<LtftForm, UUID> {
    * @return The found forms, empty if none found.
    */
   Stream<LtftForm> streamByStatus_Current_StateIn(Set<LifecycleState> states);
+
+  /**
+   * Stream all LTFT forms with the given states and last modified on or after the cutoff.
+   *
+   * @param states             The states to filter by.
+   * @param lastModifiedCutoff The cutoff instant; only forms modified on or after are included.
+   * @return The found forms, empty if none found.
+   */
+  Stream<LtftForm> streamByStatus_Current_StateInAndLastModifiedGreaterThanEqual(
+      Set<LifecycleState> states, Instant lastModifiedCutoff);
 
   /**
    * Find the LTFT form with the given ID and one of the given DBCs.
