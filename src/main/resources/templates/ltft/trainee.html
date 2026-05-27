@@ -210,11 +210,15 @@
             <dd class="nhsuk-summary-list__value" th:text="${not #strings.isEmpty(var.programmeMembership?.name)} ? ${var.programmeMembership?.name} : _">Not provided</dd>
           </div>
           <div class="nhsuk-summary-list__row">
+            <dt class="nhsuk-summary-list__key">Current completion date</dt>
+            <dd class="nhsuk-summary-list__value" th:text="${(var.programmeMembership?.endDate != null ? #temporals.format(var.programmeMembership.endDate, 'dd MMMM yyyy') : 'Not provided') + ' (Programme end date on TIS)'}">
+          </div>
+          <div class="nhsuk-summary-list__row">
             <dt class="nhsuk-summary-list__key">Working hours percentage change</dt>
             <dd class="nhsuk-summary-list__value" th:text="${(var.programmeMembership?.wte != null ? #numbers.formatDecimal(var.programmeMembership.wte * 100, 1, 0) + '%' : 'Not provided') + ' -> ' + (var.change?.wte != null ? #numbers.formatDecimal(var.change?.wte * 100, 1, 0) + '%' : 'Not provided')}"></dd>
           </div>
           <div class="nhsuk-summary-list__row">
-            <dt class="nhsuk-summary-list__key">Start date</dt>
+            <dt class="nhsuk-summary-list__key">LTFT Start date</dt>
             <dd class="nhsuk-summary-list__value">
               <span th:text="${var.change?.startDate != null ? #temporals.format(var.change.startDate, 'dd MMMM yyyy') : 'Not provided'}"></span>
               <span th:if="${var.shortNotice}">
@@ -223,15 +227,12 @@
               </span>
             </dd>
           </div>
-          <div class="nhsuk-summary-list__row">
-            <dt class="nhsuk-summary-list__key">Current completion date</dt>
-            <dd class="nhsuk-summary-list__value" th:text="${(var.programmeMembership?.endDate != null ? #temporals.format(var.programmeMembership.endDate, 'dd MMMM yyyy') : 'Not provided') + ' (Programme end date on TIS)'}">
-          </div>
-          <div class="nhsuk-summary-list__row">
-            <dt class="nhsuk-summary-list__key">Estimated completion date after these changes</dt>
-            <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(var.change?.cctDate, 'dd MMMM yyyy')} ?: _">Not provided</dd>
-          </div>
-          <div><strong>Please note:</strong> This new completion date is an estimate as it does not take into account your full circumstances (e.g. Out of Programme, Parental Leave). Your formal completion date will be agreed at ARCP.</div>
+          <p>
+            <span th:text="${((var.programmeMembership?.wte != null ? var.programmeMembership.wte : 0) > (var.change?.wte != null ? var.change?.wte : 0) ? 'Reducing' : 'Increasing') + ' your working hours from ' + (var.programmeMembership?.wte != null ? #numbers.formatDecimal(var.programmeMembership.wte * 100, 1, 0) + '%' : 'Not provided') + ' to ' + (var.change?.wte != null ? #numbers.formatDecimal(var.change.wte * 100, 1, 0) + '%' : 'Not provided') + ' will'}"></span>
+            <strong th:text="${(var.programmeMembership?.wte != null ? var.programmeMembership.wte : 0) > (var.change?.wte != null ? var.change?.wte : 0) ? 'extend' : 'shorten'}"></strong>
+            your programme completion date.
+          </p>
+          <p>Your formal completion date will be agreed at ARCP.</p>
         </div>
       </div>
       <div class="nhsuk-card">

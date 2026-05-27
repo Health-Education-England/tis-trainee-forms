@@ -1167,7 +1167,6 @@ class LtftServiceTest {
             .wte(0.5)
             .startDate(LocalDate.MIN)
             .endDate(LocalDate.EPOCH)
-            .cctDate(LocalDate.MAX)
             .build())
         .build();
     entity.setContent(content);
@@ -1188,7 +1187,6 @@ class LtftServiceTest {
     assertThat("Unexpected WTE.", change.wte(), is(0.5));
     assertThat("Unexpected start date.", change.startDate(), is(LocalDate.MIN));
     assertThat("Unexpected end date.", change.endDate(), is(LocalDate.EPOCH));
-    assertThat("Unexpected CCT date.", change.cctDate(), is(LocalDate.MAX));
   }
 
   @Test
@@ -1217,7 +1215,6 @@ class LtftServiceTest {
     assertThat("Unexpected WTE.", change.wte(), nullValue());
     assertThat("Unexpected start date.", change.startDate(), nullValue());
     assertThat("Unexpected end date.", change.endDate(), nullValue());
-    assertThat("Unexpected CCT date.", change.cctDate(), nullValue());
   }
 
   @Test
@@ -2854,7 +2851,6 @@ class LtftServiceTest {
     UUID newCalculationId = UUID.randomUUID();
     LocalDate newStartDate = LocalDate.now();
     LocalDate newEndDate = newStartDate.plusYears(1);
-    LocalDate newCctDate = newStartDate.plusYears(2);
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .id(ID)
         .traineeTisId(TRAINEE_ID)
@@ -2865,7 +2861,6 @@ class LtftServiceTest {
             .wte(0.5)
             .startDate(newStartDate)
             .endDate(newEndDate)
-            .cctDate(newCctDate)
             .build())
         .programmeMembership(ProgrammeMembershipDto.builder()
             .id(PM_UUID)
@@ -2884,7 +2879,6 @@ class LtftServiceTest {
             .wte(1.0)
             .startDate(LocalDate.MIN)
             .endDate(LocalDate.EPOCH)
-            .cctDate(LocalDate.MAX)
             .build())
         .build());
 
@@ -2904,7 +2898,6 @@ class LtftServiceTest {
     assertThat("Unexpected WTE.", change.wte(), is(0.5));
     assertThat("Unexpected start date.", change.startDate(), is(newStartDate));
     assertThat("Unexpected end date.", change.endDate(), is(newEndDate));
-    assertThat("Unexpected CCT date.", change.cctDate(), is(newCctDate));
   }
 
   @ParameterizedTest

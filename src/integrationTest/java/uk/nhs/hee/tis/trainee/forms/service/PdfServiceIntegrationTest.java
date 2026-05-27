@@ -136,7 +136,6 @@ class PdfServiceIntegrationTest {
             .wte(0.6)
             .startDate(LocalDate.of(2026, 3, 1))
             .endDate(LocalDate.of(2027, 3, 1))
-            .cctDate(LocalDate.of(2028, 3, 1))
             .build())
         .reasons(ReasonsDto.builder()
             .selected(List.of("Caring Responsibilities", "Other"))

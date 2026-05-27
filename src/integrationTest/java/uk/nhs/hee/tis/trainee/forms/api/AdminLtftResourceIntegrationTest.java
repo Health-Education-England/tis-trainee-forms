@@ -1288,7 +1288,6 @@ class AdminLtftResourceIntegrationTest {
             .startDate(startDate)
             .endDate(endDate)
             .wte(0.75)
-            .cctDate(cctDate)
             .build())
         .reasons(Reasons.builder().build())
         .declarations(Declarations.builder().build())
@@ -1332,12 +1331,6 @@ class AdminLtftResourceIntegrationTest {
     String startDateString = startDate.format(datePattern);
     assertThat("Unexpected start date.", pdfText,
         containsString("Start Date " + startDateString + System.lineSeparator()));
-
-    String cctDateString = cctDate.format(datePattern);
-    assertThat("Unexpected end date.", pdfText,
-        containsString("End Date " + cctDateString + System.lineSeparator()));
-    assertThat("Unexpected CCT date.", pdfText,
-        containsString("Programme end date " + cctDateString + System.lineSeparator()));
   }
 
   @Test

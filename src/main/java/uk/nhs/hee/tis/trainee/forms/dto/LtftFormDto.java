@@ -104,7 +104,6 @@ public record LtftFormDto(
    * @param wte           The whole time equivalent after the change.
    * @param startDate     The start date of the change.
    * @param endDate       The end date of the change.
-   * @param cctDate       The expected CCT date after this change is applied.
    */
   @Builder
   public record CctChangeDto(
@@ -114,8 +113,7 @@ public record LtftFormDto(
       @DecimalMax("1.0")
       Double wte,
       LocalDate startDate,
-      LocalDate endDate,
-      LocalDate cctDate) {
+      LocalDate endDate) {
 
   }
 

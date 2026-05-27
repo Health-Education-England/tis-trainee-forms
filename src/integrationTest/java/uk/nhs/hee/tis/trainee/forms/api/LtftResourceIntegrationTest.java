@@ -1405,7 +1405,6 @@ class LtftResourceIntegrationTest {
             .startDate(changeStartDate)
             .endDate(endDate)
             .wte(0.75)
-            .cctDate(cctDate)
             .build())
         .reasons(LtftContent.Reasons.builder().build())
         .declarations(LtftContent.Declarations.builder().build())
@@ -1734,7 +1733,6 @@ class LtftResourceIntegrationTest {
             .startDate(changeStartDate)
             .endDate(endDate)
             .wte(0.75)
-            .cctDate(cctDate)
             .build())
         .reasons(LtftContent.Reasons.builder().build())
         .declarations(LtftContent.Declarations.builder().build())
@@ -1776,12 +1774,7 @@ class LtftResourceIntegrationTest {
         containsString("Change to your completion date for General Practice"));
     assertThat("Unexpected programme.", pdfText,
         containsString("Programme General Practice" + System.lineSeparator()));
-    assertThat("Unexpected precentage change.", removeLineBreak(pdfText),
-        containsString("Working hours percentage change 85% -> 75%"));
     DateTimeFormatter datePattern = DateTimeFormatter.ofPattern("dd MMMM yyyy");
-    String startDateString = changeStartDate.format(datePattern);
-    assertThat("Unexpected start date.", removeLineBreak(pdfText),
-        containsString("Start date " + startDateString));
     assertThat("Unexpected 16 weeks warning.", removeLineBreak(pdfText),
         containsString(
             "Warning: Giving less than 16 weeks notice to change your working hours is classed as a late application and will only be considered on an exceptional basis."));
@@ -1789,12 +1782,83 @@ class LtftResourceIntegrationTest {
     assertThat("Unexpected current end date.", removeLineBreak(pdfText),
         containsString(
             "Current completion date " + endDateString + " (Programme end date on TIS)"));
-    String cctDateString = cctDate.format(datePattern);
-    assertThat("Unexpected end date.", removeLineBreak(pdfText),
-        containsString("Estimated completion date after these changes " + cctDateString));
+    assertThat("Unexpected precentage change.", removeLineBreak(pdfText),
+        containsString("Working hours percentage change 85% -> 75%"));
+    String startDateString = changeStartDate.format(datePattern);
+    assertThat("Unexpected start date.", removeLineBreak(pdfText),
+        containsString("LTFT Start date " + startDateString));
     assertThat("Unexpected note.", removeLineBreak(pdfText),
         containsString(
-            "Please note: This new completion date is an estimate as it does not take into account your full circumstances (e.g. Out of Programme, Parental Leave). Your formal completion date will be agreed at ARCP."));
+            "Reducing your working hours from 85% to 75% will extend programme completion date. Your formal completion date will be agreed at ARCP."));
+  }
+
+  @Test
+  void shouldGetDetailPdfChangeSummaryWhenIncreaseWte() throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setAssignedAdmin(Person.builder().build(), null);
+
+    LocalDate startDate = LocalDate.now();
+    LocalDate endDate = startDate.plusYears(1);
+    LocalDate changeStartDate = startDate.plusMonths(1);
+    LocalDate cctDate = endDate.plusYears(2);
+
+    LtftContent content = LtftContent.builder()
+        .personalDetails(LtftContent.PersonalDetails.builder().build())
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(DBC_1)
+            .name("General Practice")
+            .startDate(startDate)
+            .endDate(endDate)
+            .wte(0.6)
+            .build())
+        .change(CctChange.builder()
+            .type(CctChangeType.LTFT)
+            .startDate(changeStartDate)
+            .endDate(endDate)
+            .wte(0.8)
+            .build())
+        .reasons(LtftContent.Reasons.builder().build())
+        .declarations(LtftContent.Declarations.builder().build())
+        .discussions(Discussions.builder().build())
+        .build();
+    ltft.setContent(content);
+
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+
+    AbstractAuditedForm.Status.StatusInfo statusInfo = AbstractAuditedForm.Status.StatusInfo.builder()
+        .state(SUBMITTED).timestamp(Instant.now())
+        .build();
+    ltft.setStatus(AbstractAuditedForm.Status.builder()
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED)
+                .timestamp(latestSubmitted).build()))
+        .build()
+    );
+
+    ltft = template.insert(ltft);
+
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
+    MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
+            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+            .with(jwt().jwt(token)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_PDF))
+        .andReturn();
+
+    byte[] response = result.getResponse().getContentAsByteArray();
+    PDDocument pdf = Loader.loadPDF(response);
+    PDFTextStripper textStripper = new PDFTextStripper();
+    textStripper.setAddMoreFormatting(false);
+    String pdfText = textStripper.getText(pdf);
+
+    assertThat("Unexpected precentage change.", removeLineBreak(pdfText),
+        containsString("Working hours percentage change 60% -> 80%"));
+    assertThat("Unexpected note.", removeLineBreak(pdfText),
+        containsString(
+            "Increasing your working hours from 60% to 80% will shorten programme completion date. Your formal completion date will be agreed at ARCP."));
   }
 
   @Test
