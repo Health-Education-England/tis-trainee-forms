@@ -1,6 +1,7 @@
 /*
  * The MIT License (MIT)
- * Copyright 2020 Crown Copyright (Health Education England)
+ *
+ * Copyright 2026 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -18,22 +19,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.model;
+package uk.nhs.hee.tis.trainee.forms.repository;
 
-import java.time.LocalDate;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.stereotype.Repository;
+import uk.nhs.hee.tis.trainee.forms.model.FormrPartbSubmissionHistory;
 
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class Declaration {
+/**
+ * A repository for LTFT submission history items.
+ */
+@Repository
+public interface FormrPartbSubmissionHistoryRepository extends
+    MongoRepository<FormrPartbSubmissionHistory, UUID> {
 
-  private String declarationType;
-  private LocalDate dateOfEntry;
-  private String title;
-  private String locationOfEntry;
+  /**
+   * Find all Form-R Part B submissions belonging to the given trainee.
+   *
+   * @param traineeId The ID of the trainee.
+   * @return A list of found Form-R Part B submissions.
+   */
+  List<FormrPartbSubmissionHistory> findByTraineeTisId(String traineeId);
 }

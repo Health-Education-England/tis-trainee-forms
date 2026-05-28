@@ -1,6 +1,7 @@
 /*
  * The MIT License (MIT)
- * Copyright 2020 Crown Copyright (Health Education England)
+ *
+ * Copyright 2026 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -16,24 +17,30 @@
  * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
  * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
  */
 
 package uk.nhs.hee.tis.trainee.forms.model;
 
-import java.time.LocalDate;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.mapping.Document;
+import uk.nhs.hee.tis.trainee.forms.model.content.FormrPartaContent;
 
+/**
+ * A FormR Part A form submission entity.
+ */
+@Document("FormrPartaSubmissionHistory")
 @Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class Declaration {
+@ToString(callSuper = true)
+@EqualsAndHashCode(callSuper = true)
+@CompoundIndex(def = "{'formRef': 1, 'revision': 1}", unique = true)
+public class FormrPartaSubmissionHistory extends AbstractAuditedForm<FormrPartaContent> {
 
-  private String declarationType;
-  private LocalDate dateOfEntry;
-  private String title;
-  private String locationOfEntry;
+  @Override
+  public String getFormType() {
+    return "formrPartaSubmissionHistory";
+  }
 }

@@ -21,9 +21,15 @@
 
 package uk.nhs.hee.tis.trainee.forms.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class CovidDeclaration {
 
   private String selfRateForCovid;
