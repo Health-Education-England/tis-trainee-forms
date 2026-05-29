@@ -98,12 +98,13 @@ public record LtftFormDto(
   /**
    * The calculated LTFT change.
    *
-   * @param id            The ID of the CCT change used to start the application.
-   * @param calculationId The ID of the CCT calculation used to start the application.
-   * @param type          The type of change.
-   * @param wte           The whole time equivalent after the change.
-   * @param startDate     The start date of the change.
-   * @param endDate       The end date of the change.
+   * @param id                 The ID of the CCT change used to start the application.
+   * @param calculationId      The ID of the CCT calculation used to start the application.
+   * @param type               The type of change.
+   * @param wte                The whole time equivalent after the change.
+   * @param startDate          The start date of the change.
+   * @param alternateStartDate Alternate start date if the start date is short-dated.
+   * @param endDate            The end date of the change.
    */
   @Builder
   public record CctChangeDto(
@@ -113,6 +114,7 @@ public record LtftFormDto(
       @DecimalMax("1.0")
       Double wte,
       LocalDate startDate,
+      LocalDate alternateStartDate,
       LocalDate endDate) {
 
   }
