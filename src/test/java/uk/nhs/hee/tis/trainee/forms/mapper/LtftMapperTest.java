@@ -305,7 +305,8 @@ class LtftMapperTest {
 
     LtftAdminSummaryDto dto = mapper.toAdminSummaryDto(entity);
 
-    assertThat("Unexpected alternate start date.", dto.alternateStartDate(), is(alternateStartDate));
+    assertThat("Unexpected alternate start date.",
+        dto.alternateStartDate(), is(alternateStartDate));
   }
 
   @Test
