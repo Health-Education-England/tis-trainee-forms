@@ -37,6 +37,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
@@ -286,6 +287,43 @@ class LtftMapperTest {
 
     assertThat("Unexpected status detail DTO.", dto.reason(), nullValue());
     assertThat("Unexpected status detail DTO.", dto.message(), nullValue());
+  }
+
+  @Test
+  void shouldMapAlternateStartDateToAdminSummaryDto() {
+    LocalDate alternateStartDate = LocalDate.of(2026, 6, 1);
+
+    LtftForm entity = new LtftForm();
+    entity.setStatus(Status.builder()
+        .current(StatusInfo.builder().build())
+        .build());
+    entity.setContent(LtftContent.builder()
+        .change(CctChange.builder()
+            .alternateStartDate(alternateStartDate)
+            .build())
+        .build());
+
+    LtftAdminSummaryDto dto = mapper.toAdminSummaryDto(entity);
+
+    assertThat("Unexpected alternate start date.",
+        dto.alternateStartDate(), is(alternateStartDate));
+  }
+
+  @Test
+  void shouldMapNullAlternateStartDateToAdminSummaryDto() {
+    LtftForm entity = new LtftForm();
+    entity.setStatus(Status.builder()
+        .current(StatusInfo.builder().build())
+        .build());
+    entity.setContent(LtftContent.builder()
+        .change(CctChange.builder()
+            .alternateStartDate(null)
+            .build())
+        .build());
+
+    LtftAdminSummaryDto dto = mapper.toAdminSummaryDto(entity);
+
+    assertThat("Unexpected alternate start date.", dto.alternateStartDate(), nullValue());
   }
 
   @Test

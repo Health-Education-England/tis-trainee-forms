@@ -96,6 +96,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctChangeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
@@ -416,6 +417,55 @@ class LtftResourceIntegrationTest {
             .content(formToSaveJson))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.formRef", nullValue()));
+  }
+
+  @Test
+  void shouldReturnAlternateStartDateWhenLtftFormFound() throws Exception {
+    LocalDate alternateStartDate = LocalDate.now().plusWeeks(24);
+
+    LtftForm ltft = new LtftForm();
+    ltft.setId(ID);
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setContent(LtftContent.builder()
+        .change(CctChange.builder()
+            .startDate(LocalDate.now().plusWeeks(20))
+            .alternateStartDate(alternateStartDate)
+            .build())
+        .build());
+    template.insert(ltft);
+
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
+    mockMvc.perform(get("/api/ltft/" + ID)
+            .with(jwt().jwt(token)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.change.alternateStartDate", is(alternateStartDate.toString())));
+  }
+
+  @Test
+  void shouldPersistAlternateStartDateWhenLtftFormCreated() throws Exception {
+    LocalDate alternateStartDate = LocalDate.now().plusWeeks(24);
+
+    LtftFormDto formToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .name("test")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
+        .change(CctChangeDto.builder()
+            .startDate(LocalDate.now().plusWeeks(20))
+            .alternateStartDate(alternateStartDate)
+            .build())
+        .build();
+    String formToSaveJson = mapper.writeValueAsString(formToSave);
+
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
+    mockMvc.perform(post("/api/ltft")
+            .with(jwt().jwt(token))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToSaveJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.change.alternateStartDate", is(alternateStartDate.toString())));
   }
 
   @Test
@@ -1389,6 +1439,7 @@ class LtftResourceIntegrationTest {
     LocalDate startDate = LocalDate.now();
     LocalDate endDate = startDate.plusYears(1);
     LocalDate changeStartDate = startDate.plusMonths(1);
+    LocalDate alternateStartDate = startDate.plusMonths(7);
     LocalDate cctDate = endDate.plusYears(2);
 
     LtftContent content = LtftContent.builder()
@@ -1403,6 +1454,7 @@ class LtftResourceIntegrationTest {
         .change(CctChange.builder()
             .type(CctChangeType.LTFT)
             .startDate(changeStartDate)
+            .alternateStartDate(alternateStartDate)
             .endDate(endDate)
             .wte(0.75)
             .build())
@@ -1473,7 +1525,15 @@ class LtftResourceIntegrationTest {
     assertThat("Unexpected change start date question.", removeLineBreak(pdfText),
         containsString("When should this change to your working hours begin?"));
     assertThat("Unexpected change start date." + System.lineSeparator(), pdfText,
-        containsString(startDate.format(formatter)));
+        containsString(changeStartDate.format(formatter)));
+
+    // Alternate start date
+    assertThat("Unexpected alternate start date section header.", pdfText,
+        containsString("Alternate start date" + System.lineSeparator()));
+    assertThat("Unexpected alternate start date question.", removeLineBreak(pdfText),
+        containsString("Alternative start for change to your working hours?"));
+    assertThat("Unexpected alternate start date value.", pdfText,
+        containsString(alternateStartDate.format(formatter)));
   }
 
   @Test
@@ -1717,6 +1777,7 @@ class LtftResourceIntegrationTest {
     LocalDate startDate = LocalDate.now();
     LocalDate endDate = startDate.plusYears(1);
     LocalDate changeStartDate = startDate.plusMonths(1);
+    LocalDate alternateStartDate = startDate.plusMonths(7);
     LocalDate cctDate = endDate.plusYears(2);
 
     LtftContent content = LtftContent.builder()
@@ -1731,6 +1792,7 @@ class LtftResourceIntegrationTest {
         .change(CctChange.builder()
             .type(CctChangeType.LTFT)
             .startDate(changeStartDate)
+            .alternateStartDate(alternateStartDate)
             .endDate(endDate)
             .wte(0.75)
             .build())
@@ -1787,6 +1849,12 @@ class LtftResourceIntegrationTest {
     String startDateString = changeStartDate.format(datePattern);
     assertThat("Unexpected start date.", removeLineBreak(pdfText),
         containsString("LTFT Start date " + startDateString));
+    String alternateStartDateString = alternateStartDate.format(datePattern);
+    assertThat("Unexpected alternate start date.", pdfText,
+        containsString("Alternate start date" + System.lineSeparator()));
+    assertThat("Unexpected alternate start date value.", removeLineBreak(pdfText),
+        containsString("Alternative start for change to your working hours? "
+            + alternateStartDateString));
     assertThat("Unexpected note.", removeLineBreak(pdfText),
         containsString(
             "Reducing your working hours from 85% to 75% will extend programme completion date. Your formal completion date will be agreed at ARCP."));

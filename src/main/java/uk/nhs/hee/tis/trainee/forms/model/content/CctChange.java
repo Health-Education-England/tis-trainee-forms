@@ -29,12 +29,13 @@ import org.springframework.data.mongodb.core.mapping.Field;
 /**
  * The calculated LTFT change.
  *
- * @param id            The ID of the CCT change used to start the application.
- * @param calculationId The ID of the CCT calculation used to start the application.
- * @param type          The type of change.
- * @param wte           The whole time equivalent after the change.
- * @param startDate     The start date of the change.
- * @param endDate       The end date of the change.
+ * @param id                 The ID of the CCT change used to start the application.
+ * @param calculationId      The ID of the CCT calculation used to start the application.
+ * @param type               The type of change.
+ * @param wte                The whole time equivalent after the change.
+ * @param startDate          The start date of the change.
+ * @param alternateStartDate Alternate start date if the main start date is short-dated.
+ * @param endDate            The end date of the change.
  */
 @Builder
 public record CctChange(
@@ -44,6 +45,7 @@ public record CctChange(
     CctChangeType type,
     Double wte,
     LocalDate startDate,
+    LocalDate alternateStartDate,
     LocalDate endDate) {
 
 }

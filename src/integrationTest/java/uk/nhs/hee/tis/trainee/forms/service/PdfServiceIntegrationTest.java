@@ -172,6 +172,215 @@ class PdfServiceIntegrationTest {
   }
 
   @Test
+  void shouldMatchFullLtftTraineePdfWhenDtoPopulated() throws IOException {
+    LtftFormDto dto = LtftFormDto.builder()
+        .formRef("ltft_47165_040")
+        .created(LocalDate.of(2021, 2, 3).atTime(4, 5)
+            .atZone(zoneId).toInstant())
+        .lastModified(LocalDate.of(2026, 7, 8).atTime(9, 10)
+            .atZone(zoneId).toInstant())
+        .status(StatusDto.builder()
+            .current(StatusInfoDto.builder()
+                .state(LifecycleState.SUBMITTED)
+                .build())
+            .build())
+        .personalDetails(PersonalDetailsDto.builder()
+            .title("Dr")
+            .forenames("Anthony")
+            .surname("Gilliam")
+            .email("anthony.gilliam@example.com")
+            .telephoneNumber("07700 900000")
+            .mobileNumber("07700 900000")
+            .gmcNumber("1234567")
+            .gdcNumber("D123456")
+            .skilledWorkerVisaHolder(false)
+            .build())
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .name("General Practice")
+            .startDate(LocalDate.of(2024, 3, 1))
+            .endDate(LocalDate.of(2027, 3, 1))
+            .wte(0.8)
+            .build())
+        .change(CctChangeDto.builder()
+            .wte(0.6)
+            .startDate(LocalDate.of(2026, 3, 1))
+            .endDate(LocalDate.of(2027, 3, 1))
+            .build())
+        .reasons(ReasonsDto.builder()
+            .selected(List.of("Caring Responsibilities", "Other"))
+            .otherDetail("A trainee described reason detail")
+            .supportingInformation("Trainee supplied supporting information")
+            .build())
+        .discussions(DiscussionsDto.builder()
+            .tpdName("Tee Pee-Dee")
+            .tpdEmail("tpd@example.com")
+            .other(List.of(
+                PersonDto.builder()
+                    .name("Ed Super")
+                    .email("ed.super@example.com")
+                    .role("Educational Supervisor")
+                    .build(),
+                PersonDto.builder()
+                    .name("Person Two")
+                    .email("person.2@example.com")
+                    .role("Test Person")
+                    .build()
+            ))
+            .build())
+        .declarations(DeclarationsDto.builder()
+            .informationIsCorrect(true)
+            .discussedWithTpd(false)
+            .notGuaranteed(true)
+            .build())
+        .build();
+
+    byte[] generatedBytes = service.generatePdf(dto, "trainee");
+
+    int problems = compareGeneratedPdf("ltft-trainee", generatedBytes);
+    assertThat("Unexpected PDF comparison problem count.", problems, is(0));
+  }
+
+  @Test
+  void shouldMatchAlternateLtftAdminPdfWhenDtoPopulated() throws IOException {
+    LtftFormDto dto = LtftFormDto.builder()
+        .formRef("ltft_47165_040")
+        .created(LocalDate.of(2021, 2, 3).atTime(4, 5)
+            .atZone(zoneId).toInstant())
+        .lastModified(LocalDate.of(2026, 7, 8).atTime(9, 10)
+            .atZone(zoneId).toInstant())
+        .status(StatusDto.builder()
+            .current(StatusInfoDto.builder()
+                .state(LifecycleState.SUBMITTED)
+                .build())
+            .build())
+        .personalDetails(PersonalDetailsDto.builder()
+            .title("Dr")
+            .forenames("Anthony")
+            .surname("Gilliam")
+            .email("anthony.gilliam@example.com")
+            .telephoneNumber("07700 900000")
+            .mobileNumber("07700 900000")
+            .gmcNumber("1234567")
+            .gdcNumber("D123456")
+            .skilledWorkerVisaHolder(false)
+            .build())
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .name("General Practice")
+            .startDate(LocalDate.of(2024, 3, 1))
+            .endDate(LocalDate.of(2027, 3, 1))
+            .wte(0.8)
+            .build())
+        .change(CctChangeDto.builder()
+            .wte(0.6)
+            .startDate(LocalDate.of(2026, 3, 1))
+            .alternateStartDate(LocalDate.of(2026, 9, 1))
+            .endDate(LocalDate.of(2027, 3, 1))
+            .build())
+        .reasons(ReasonsDto.builder()
+            .selected(List.of("Caring Responsibilities", "Other"))
+            .otherDetail("A trainee described reason detail")
+            .supportingInformation("Trainee supplied supporting information")
+            .build())
+        .discussions(DiscussionsDto.builder()
+            .tpdName("Tee Pee-Dee")
+            .tpdEmail("tpd@example.com")
+            .other(List.of(
+                PersonDto.builder()
+                    .name("Ed Super")
+                    .email("ed.super@example.com")
+                    .role("Educational Supervisor")
+                    .build(),
+                PersonDto.builder()
+                    .name("Person Two")
+                    .email("person.2@example.com")
+                    .role("Test Person")
+                    .build()
+            ))
+            .build())
+        .declarations(DeclarationsDto.builder()
+            .informationIsCorrect(true)
+            .discussedWithTpd(false)
+            .notGuaranteed(true)
+            .build())
+        .build();
+
+    byte[] generatedBytes = service.generatePdf(dto, "admin");
+
+    int problems = compareGeneratedPdf("ltft-admin-alternate", generatedBytes);
+    assertThat("Unexpected PDF comparison problem count.", problems, is(0));
+  }
+
+  @Test
+  void shouldMatchAlternateLtftTraineePdfWhenDtoPopulated() throws IOException {
+    LtftFormDto dto = LtftFormDto.builder()
+        .formRef("ltft_47165_040")
+        .created(LocalDate.of(2021, 2, 3).atTime(4, 5)
+            .atZone(zoneId).toInstant())
+        .lastModified(LocalDate.of(2026, 7, 8).atTime(9, 10)
+            .atZone(zoneId).toInstant())
+        .status(StatusDto.builder()
+            .current(StatusInfoDto.builder()
+                .state(LifecycleState.SUBMITTED)
+                .build())
+            .build())
+        .personalDetails(PersonalDetailsDto.builder()
+            .title("Dr")
+            .forenames("Anthony")
+            .surname("Gilliam")
+            .email("anthony.gilliam@example.com")
+            .telephoneNumber("07700 900000")
+            .mobileNumber("07700 900000")
+            .gmcNumber("1234567")
+            .gdcNumber("D123456")
+            .skilledWorkerVisaHolder(false)
+            .build())
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .name("General Practice")
+            .startDate(LocalDate.of(2024, 3, 1))
+            .endDate(LocalDate.of(2027, 3, 1))
+            .wte(0.8)
+            .build())
+        .change(CctChangeDto.builder()
+            .wte(0.6)
+            .startDate(LocalDate.of(2026, 3, 1))
+            .alternateStartDate(LocalDate.of(2026, 9, 1))
+            .endDate(LocalDate.of(2027, 3, 1))
+            .build())
+        .reasons(ReasonsDto.builder()
+            .selected(List.of("Caring Responsibilities", "Other"))
+            .otherDetail("A trainee described reason detail")
+            .supportingInformation("Trainee supplied supporting information")
+            .build())
+        .discussions(DiscussionsDto.builder()
+            .tpdName("Tee Pee-Dee")
+            .tpdEmail("tpd@example.com")
+            .other(List.of(
+                PersonDto.builder()
+                    .name("Ed Super")
+                    .email("ed.super@example.com")
+                    .role("Educational Supervisor")
+                    .build(),
+                PersonDto.builder()
+                    .name("Person Two")
+                    .email("person.2@example.com")
+                    .role("Test Person")
+                    .build()
+            ))
+            .build())
+        .declarations(DeclarationsDto.builder()
+            .informationIsCorrect(true)
+            .discussedWithTpd(false)
+            .notGuaranteed(true)
+            .build())
+        .build();
+
+    byte[] generatedBytes = service.generatePdf(dto, "trainee");
+
+    int problems = compareGeneratedPdf("ltft-trainee-alternate", generatedBytes);
+    assertThat("Unexpected PDF comparison problem count.", problems, is(0));
+  }
+
+  @Test
   void shouldMatchEmptyFormRPartAPdfWhenDtoEmpty() throws IOException {
     FormRPartADto dto = new FormRPartADto();
     byte[] pdf = service.generatePdf(dto);

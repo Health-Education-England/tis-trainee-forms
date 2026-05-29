@@ -27,7 +27,6 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.INV
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.UNKNOWN;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.VALID;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
-import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
 import jakarta.annotation.Nullable;
@@ -80,6 +79,7 @@ public abstract class LtftMapper {
   @Mapping(target = "personalDetails", source = "entity")
   @Mapping(target = "programmeName", source = "content.programmeMembership.name")
   @Mapping(target = "proposedStartDate", source = "content.change.startDate")
+  @Mapping(target = "alternateStartDate", source = "content.change.alternateStartDate")
   @Mapping(target = "submissionDate", source = "status.submitted")
   @Mapping(target = "reason", source = "content.reasons.selected",
       qualifiedByName = "JoinWithComma")
