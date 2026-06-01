@@ -637,7 +637,7 @@ class AdminLtftResourceIntegrationTest {
   @Test
   void shouldReturnSummaryContentWhenLtftWithMatchingDbc() throws Exception {
     LocalDate startDate = LocalDate.now().plusWeeks(20);
-    LocalDate alternateStartDate = LocalDate.now().plusWeeks(24);
+    LocalDate altStartDate = LocalDate.now().plusWeeks(24);
 
     LtftForm form = new LtftForm();
     form.setTraineeTisId("47165");
@@ -651,7 +651,7 @@ class AdminLtftResourceIntegrationTest {
             .build())
         .change(CctChange.builder()
             .startDate(startDate)
-            .alternateStartDate(alternateStartDate)
+            .altStartDate(altStartDate)
             .build())
         .reasons(Reasons.builder()
             .selected(List.of("Other", "Caring responsibilities"))
@@ -697,7 +697,7 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.content[0].personalDetails.gdcNumber", is("D123456")))
         .andExpect(jsonPath("$.content[0].programmeName", is("General Practice")))
         .andExpect(jsonPath("$.content[0].proposedStartDate", is(startDate.toString())))
-        .andExpect(jsonPath("$.content[0].alternateStartDate", is(alternateStartDate.toString())))
+        .andExpect(jsonPath("$.content[0].altStartDate", is(altStartDate.toString())))
         .andExpect(jsonPath("$.content[0].submissionDate", is(latestSubmittedDate.toString())))
         .andExpect(jsonPath("$.content[0].reason", is("Caring responsibilities, Other")))
         .andExpect(jsonPath("$.content[0].daysToStart", is(140)))
@@ -987,7 +987,7 @@ class AdminLtftResourceIntegrationTest {
   @Test
   void shouldGetDetailJsonWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
     LocalDate startDate = LocalDate.now().plusWeeks(20);
-    LocalDate alternateStartDate = LocalDate.now().plusWeeks(24);
+    LocalDate altStartDate = LocalDate.now().plusWeeks(24);
 
     LtftForm form = new LtftForm();
     form.setTraineeTisId("47165");
@@ -1001,7 +1001,7 @@ class AdminLtftResourceIntegrationTest {
             .build())
         .change(CctChange.builder()
             .startDate(startDate)
-            .alternateStartDate(alternateStartDate)
+            .altStartDate(altStartDate)
             .build())
         .reasons(Reasons.builder()
             .selected(List.of("Other", "Caring responsibilities"))
@@ -1043,7 +1043,7 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.personalDetails.gdcNumber", is("D123456")))
         .andExpect(jsonPath("$.programmeMembership.name", is("General Practice")))
         .andExpect(jsonPath("$.change.startDate", is(startDate.toString())))
-        .andExpect(jsonPath("$.change.alternateStartDate", is(alternateStartDate.toString())))
+        .andExpect(jsonPath("$.change.altStartDate", is(altStartDate.toString())))
         .andExpect(jsonPath("$.reasons.selected", hasSize(2)))
         .andExpect(jsonPath("$.reasons.selected", hasItems("Caring responsibilities", "Other")))
         .andExpect(jsonPath("$.discussions.tpdEmail", is("tpd@example.com")))
@@ -1283,7 +1283,7 @@ class AdminLtftResourceIntegrationTest {
 
     LocalDate startDate = LocalDate.now();
     LocalDate endDate = startDate.plusYears(1);
-    LocalDate alternateStartDate = startDate.plusMonths(6);
+    LocalDate altStartDate = startDate.plusMonths(6);
     LocalDate cctDate = endDate.plusYears(1);
 
     LtftContent content = LtftContent.builder()
@@ -1293,7 +1293,7 @@ class AdminLtftResourceIntegrationTest {
             .build())
         .change(CctChange.builder()
             .startDate(startDate)
-            .alternateStartDate(alternateStartDate)
+            .altStartDate(altStartDate)
             .endDate(endDate)
             .wte(0.75)
             .build())
@@ -1339,9 +1339,9 @@ class AdminLtftResourceIntegrationTest {
     String startDateString = startDate.format(datePattern);
     assertThat("Unexpected start date.", pdfText,
         containsString("Start Date " + startDateString + System.lineSeparator()));
-    String alternateStartDateString = alternateStartDate.format(datePattern);
+    String altStartDateString = altStartDate.format(datePattern);
     assertThat("Unexpected alternate start date.", pdfText,
-        containsString("Alternate Start Date " + alternateStartDateString + System.lineSeparator()));
+        containsString("Alternate Start Date " + altStartDateString + System.lineSeparator()));
   }
 
   @Test

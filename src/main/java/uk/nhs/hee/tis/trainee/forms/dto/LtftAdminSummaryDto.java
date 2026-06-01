@@ -30,18 +30,18 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 /**
  * A DTO for an admin-focused LTFT summary record.
  *
- * @param id                 The identifier of the LTFT application.
- * @param personalDetails    The personal details of the applicant.
- * @param programmeName      The programme name associated with the LTFT application.
- * @param proposedStartDate  The proposed start date of the LTFT change.
- * @param alternateStartDate The alternate start date if the proposed start date is short-dated.
- * @param submissionDate     The date the LTFT application was submitted.
- * @param reason             The reason given for applying for LTFT.
- * @param daysToStart        How many days until the start of the LTFT change.
- * @param shortNotice        Whether the LTFT application was submitted at short notice.
- * @param tpd                The details of the notification sent to the TPD.
- * @param status             The current status of the LTFT application.
- * @param assignedAdmin      The admin assigned to process the LTFT application.
+ * @param id                The identifier of the LTFT application.
+ * @param personalDetails   The personal details of the applicant.
+ * @param programmeName     The programme name associated with the LTFT application.
+ * @param proposedStartDate The proposed start date of the LTFT change.
+ * @param altStartDate      The alternate start date if the proposed start date is short-dated.
+ * @param submissionDate    The date the LTFT application was submitted.
+ * @param reason            The reason given for applying for LTFT.
+ * @param daysToStart       How many days until the start of the LTFT change.
+ * @param shortNotice       Whether the LTFT application was submitted at short notice.
+ * @param tpd               The details of the notification sent to the TPD.
+ * @param status            The current status of the LTFT application.
+ * @param assignedAdmin     The admin assigned to process the LTFT application.
  */
 @Builder
 public record LtftAdminSummaryDto(
@@ -50,7 +50,7 @@ public record LtftAdminSummaryDto(
     LtftAdminPersonalDetailsDto personalDetails,
     String programmeName,
     LocalDate proposedStartDate,
-    LocalDate alternateStartDate,
+    LocalDate altStartDate,
     LocalDate submissionDate,
     String reason,
     Integer daysToStart,

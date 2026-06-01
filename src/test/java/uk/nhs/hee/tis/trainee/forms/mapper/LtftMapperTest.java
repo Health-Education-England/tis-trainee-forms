@@ -290,8 +290,8 @@ class LtftMapperTest {
   }
 
   @Test
-  void shouldMapAlternateStartDateToAdminSummaryDto() {
-    LocalDate alternateStartDate = LocalDate.of(2026, 6, 1);
+  void shouldMapAltStartDateToAdminSummaryDto() {
+    LocalDate altStartDate = LocalDate.of(2026, 6, 1);
 
     LtftForm entity = new LtftForm();
     entity.setStatus(Status.builder()
@@ -299,31 +299,31 @@ class LtftMapperTest {
         .build());
     entity.setContent(LtftContent.builder()
         .change(CctChange.builder()
-            .alternateStartDate(alternateStartDate)
+            .altStartDate(altStartDate)
             .build())
         .build());
 
     LtftAdminSummaryDto dto = mapper.toAdminSummaryDto(entity);
 
     assertThat("Unexpected alternate start date.",
-        dto.alternateStartDate(), is(alternateStartDate));
+        dto.altStartDate(), is(altStartDate));
   }
 
   @Test
-  void shouldMapNullAlternateStartDateToAdminSummaryDto() {
+  void shouldMapNullAltStartDateToAdminSummaryDto() {
     LtftForm entity = new LtftForm();
     entity.setStatus(Status.builder()
         .current(StatusInfo.builder().build())
         .build());
     entity.setContent(LtftContent.builder()
         .change(CctChange.builder()
-            .alternateStartDate(null)
+            .altStartDate(null)
             .build())
         .build());
 
     LtftAdminSummaryDto dto = mapper.toAdminSummaryDto(entity);
 
-    assertThat("Unexpected alternate start date.", dto.alternateStartDate(), nullValue());
+    assertThat("Unexpected alternate start date.", dto.altStartDate(), nullValue());
   }
 
   @Test
