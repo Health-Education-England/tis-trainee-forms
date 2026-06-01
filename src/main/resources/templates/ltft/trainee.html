@@ -92,11 +92,11 @@
             <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(var.change?.startDate, 'dd MMMM yyyy')} ?: _">Not provided</dd>
           </div>
         </div>
-        <div class="nhsuk-card__content" th:if="${var.change?.alternateStartDate != null}">
+        <div class="nhsuk-card__content" th:if="${var.change?.altStartDate != null}">
           <h2 class="nhsuk-card__heading nhsuk-card__heading--feature">Alternate start date</h2><br/>
           <div class="nhsuk-summary-list__row">
             <dt class="nhsuk-summary-list__key">Alternative start for change to your working hours?</dt>
-            <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(var.change?.alternateStartDate, 'dd MMMM yyyy')} ?: _">Not provided</dd>
+            <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(var.change?.altStartDate, 'dd MMMM yyyy')} ?: _">Not provided</dd>
           </div>
         </div>
       </div>

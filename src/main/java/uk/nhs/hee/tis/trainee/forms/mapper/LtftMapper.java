@@ -79,7 +79,7 @@ public abstract class LtftMapper {
   @Mapping(target = "personalDetails", source = "entity")
   @Mapping(target = "programmeName", source = "content.programmeMembership.name")
   @Mapping(target = "proposedStartDate", source = "content.change.startDate")
-  @Mapping(target = "alternateStartDate", source = "content.change.alternateStartDate")
+  @Mapping(target = "altStartDate", source = "content.change.altStartDate")
   @Mapping(target = "submissionDate", source = "status.submitted")
   @Mapping(target = "reason", source = "content.reasons.selected",
       qualifiedByName = "JoinWithComma")
