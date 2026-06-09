@@ -76,7 +76,6 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
-import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartBRepositoryImpl;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
 @SpringBootTest
@@ -104,9 +103,6 @@ class FormRPartBResourceIntegrationTest {
 
   @MockitoBean
   SnsTemplate snsTemplate;
-
-  @MockitoBean
-  S3FormRPartBRepositoryImpl s3FormRPartBRepository;
 
   @MockitoBean
   SnsClient snsClient;

@@ -50,8 +50,6 @@ import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
-import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartARepositoryImpl;
-import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartBRepositoryImpl;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
 @ExtendWith(MockitoExtension.class)
@@ -73,10 +71,6 @@ class FormRelocateServiceTest {
   @Mock
   private FormRPartBRepository formRPartBRepositoryMock;
   @Mock
-  private S3FormRPartARepositoryImpl abstractCloudRepositoryAMock;
-  @Mock
-  private S3FormRPartBRepositoryImpl abstractCloudRepositoryBMock;
-  @Mock
   private S3Client amazonS3Mock;
 
   @Mock
@@ -97,8 +91,6 @@ class FormRelocateServiceTest {
     service = new FormRelocateService(
         formRPartARepositoryMock,
         formRPartBRepositoryMock,
-        abstractCloudRepositoryAMock,
-        abstractCloudRepositoryBMock,
         ltftServiceMock
     );
 
@@ -243,12 +235,9 @@ class FormRelocateServiceTest {
   }
 
   @Test
-  void shouldMoveUnsubmittedFormInDbAndS3() {
+  void shouldMoveUnsubmittedFormInDb() {
     formRPartA.setLifecycleState(LifecycleState.UNSUBMITTED);
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartA));
-    when(abstractCloudRepositoryAMock
-        .findByIdAndTraineeTisId(FORM_ID.toString(), DEFAULT_TRAINEE_ID))
-        .thenReturn(Optional.of(formRPartA));
 
     service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE_ID);
 
@@ -265,30 +254,12 @@ class FormRelocateServiceTest {
         is(DEFAULT_SUBMISSION_DATE));
     assertThat("Unexpected lifecycleState.", formRPartA.getLifecycleState(),
         is(LifecycleState.UNSUBMITTED));
-
-    // should update S3
-    verify(abstractCloudRepositoryBMock, never()).save(any());
-    verify(abstractCloudRepositoryAMock).save(formRPartACaptor.capture());
-    FormRPartA s3FormRPartA = formRPartACaptor.getValue();
-    assertThat("Unexpected form ID.", s3FormRPartA.getId(), is(FORM_ID));
-    assertThat("Unexpected trainee ID.", s3FormRPartA.getTraineeTisId(),
-        is(TARGET_TRAINEE_ID));
-    assertThat("Unexpected forename.", s3FormRPartA.getForename(), is(DEFAULT_FORENAME));
-    assertThat("Unexpected surname.", s3FormRPartA.getSurname(), is(DEFAULT_SURNAME));
-    assertThat("Unexpected submissionDate.", s3FormRPartA.getSubmissionDate(),
-        is(DEFAULT_SUBMISSION_DATE));
-    assertThat("Unexpected lifecycleState.", s3FormRPartA.getLifecycleState(),
-        is(LifecycleState.UNSUBMITTED));
-    verify(abstractCloudRepositoryAMock).delete(FORM_ID.toString(), DEFAULT_TRAINEE_ID);
   }
 
   @Test
-  void shouldMoveSubmittedFormInDbAndS3() {
+  void shouldMoveSubmittedFormInDb() {
     when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
     when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartB));
-    when(abstractCloudRepositoryBMock
-        .findByIdAndTraineeTisId(FORM_ID.toString(), DEFAULT_TRAINEE_ID))
-        .thenReturn(Optional.of(formRPartB));
 
     service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE_ID);
 
@@ -304,129 +275,6 @@ class FormRelocateServiceTest {
     assertThat("Unexpected submissionDate.", formRPartB.getSubmissionDate(),
         is(DEFAULT_SUBMISSION_DATE));
     assertThat("Unexpected lifecycleState.", formRPartB.getLifecycleState(),
-        is(LifecycleState.SUBMITTED));
-
-    // should update S3
-    verify(abstractCloudRepositoryAMock, never()).save(any());
-    verify(abstractCloudRepositoryBMock).save(formRPartBCaptor.capture());
-    FormRPartB s3FormRPartB = formRPartBCaptor.getValue();
-    assertThat("Unexpected form ID.", s3FormRPartB.getId(), is(FORM_ID));
-    assertThat("Unexpected trainee ID.", s3FormRPartB.getTraineeTisId(),
-        is(TARGET_TRAINEE_ID));
-    assertThat("Unexpected forename.", s3FormRPartB.getForename(), is(DEFAULT_FORENAME));
-    assertThat("Unexpected surname.", s3FormRPartB.getSurname(), is(DEFAULT_SURNAME));
-    assertThat("Unexpected submissionDate.", s3FormRPartB.getSubmissionDate(),
-        is(DEFAULT_SUBMISSION_DATE));
-    assertThat("Unexpected lifecycleState.", s3FormRPartB.getLifecycleState(),
-        is(LifecycleState.SUBMITTED));
-    verify(abstractCloudRepositoryBMock).delete(FORM_ID.toString(), DEFAULT_TRAINEE_ID);
-  }
-
-  @Test
-  void shouldRollBackAndThrowExceptionWhenFormAInS3NotFound() {
-    formRPartA.setLifecycleState(LifecycleState.UNSUBMITTED);
-    when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartA));
-    when(abstractCloudRepositoryAMock
-        .findByIdAndTraineeTisId(FORM_ID.toString(), DEFAULT_TRAINEE_ID))
-        .thenReturn(Optional.empty());
-
-    assertThrows(ApplicationException.class, () ->
-        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE_ID));
-
-    // should roll back DB
-    verify(formRPartARepositoryMock, times(2)).save(formRPartACaptor.capture());
-    verify(formRPartBRepositoryMock, never()).save(any());
-
-    List<FormRPartA> formRPartAs = formRPartACaptor.getAllValues();
-    assertThat("Unexpected form ID.", formRPartAs.get(1).getId(), is(FORM_ID));
-    assertThat("Unexpected trainee ID.", formRPartAs.get(1).getTraineeTisId(),
-        is(DEFAULT_TRAINEE_ID));
-    assertThat("Unexpected forename.", formRPartAs.get(1).getForename(),
-        is(DEFAULT_FORENAME));
-    assertThat("Unexpected surname.", formRPartAs.get(1).getSurname(), is(DEFAULT_SURNAME));
-    assertThat("Unexpected submissionDate.", formRPartAs.get(1).getSubmissionDate(),
-        is(DEFAULT_SUBMISSION_DATE));
-    assertThat("Unexpected lifecycleState.", formRPartAs.get(1).getLifecycleState(),
-        is(LifecycleState.UNSUBMITTED));
-
-    // should try roll back S3 but not saving as form not found
-    verify(abstractCloudRepositoryAMock, never()).save(any());
-    verify(abstractCloudRepositoryBMock, never()).save(any());
-  }
-
-  @Test
-  void shouldRollBackAndThrowExceptionWhenFormBInS3NotFound() {
-    when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
-    when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartB));
-    when(abstractCloudRepositoryBMock
-        .findByIdAndTraineeTisId(FORM_ID.toString(), DEFAULT_TRAINEE_ID))
-        .thenReturn(Optional.empty());
-
-    assertThrows(ApplicationException.class, () ->
-        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE_ID));
-
-    // should roll back DB
-    verify(formRPartARepositoryMock, never()).save(any());
-    verify(formRPartBRepositoryMock, times(2)).save(formRPartBCaptor.capture());
-
-    List<FormRPartB> formRPartBs = formRPartBCaptor.getAllValues();
-    assertThat("Unexpected form ID.", formRPartBs.get(1).getId(), is(FORM_ID));
-    assertThat("Unexpected trainee ID.", formRPartBs.get(1).getTraineeTisId(),
-        is(DEFAULT_TRAINEE_ID));
-    assertThat("Unexpected forename.", formRPartBs.get(1).getForename(),
-        is(DEFAULT_FORENAME));
-    assertThat("Unexpected surname.", formRPartBs.get(1).getSurname(), is(DEFAULT_SURNAME));
-    assertThat("Unexpected submissionDate.", formRPartBs.get(1).getSubmissionDate(),
-        is(DEFAULT_SUBMISSION_DATE));
-    assertThat("Unexpected lifecycleState.", formRPartBs.get(1).getLifecycleState(),
-        is(LifecycleState.SUBMITTED));
-
-    // should try roll back S3 but not saving as form not found
-    verify(abstractCloudRepositoryAMock, never()).save(any());
-    verify(abstractCloudRepositoryBMock, never()).save(any());
-  }
-
-  @Test
-  void shouldRollBackAndThrowExceptionWhenMoveSubmittedFormInS3Fail() {
-    when(formRPartARepositoryMock.findById(FORM_ID)).thenReturn(Optional.empty());
-    when(formRPartBRepositoryMock.findById(FORM_ID)).thenReturn(Optional.of(formRPartB));
-    when(abstractCloudRepositoryBMock
-        .findByIdAndTraineeTisId(FORM_ID.toString(), DEFAULT_TRAINEE_ID))
-        .thenReturn(Optional.of(formRPartB));
-
-    when(abstractCloudRepositoryBMock.save(formRPartB)).thenThrow(ApplicationException.class);
-    assertThrows(ApplicationException.class, () ->
-        service.relocateForm(FORM_ID_STRING, TARGET_TRAINEE_ID));
-
-    // should roll back DB
-    verify(formRPartARepositoryMock, never()).save(any());
-    verify(formRPartBRepositoryMock, times(2)).save(formRPartBCaptor.capture());
-
-    List<FormRPartB> formRPartBs = formRPartBCaptor.getAllValues();
-    assertThat("Unexpected form ID.", formRPartBs.get(1).getId(), is(FORM_ID));
-    assertThat("Unexpected trainee ID.", formRPartBs.get(1).getTraineeTisId(),
-        is(DEFAULT_TRAINEE_ID));
-    assertThat("Unexpected forename.", formRPartBs.get(1).getForename(),
-        is(DEFAULT_FORENAME));
-    assertThat("Unexpected surname.", formRPartBs.get(1).getSurname(), is(DEFAULT_SURNAME));
-    assertThat("Unexpected submissionDate.", formRPartBs.get(1).getSubmissionDate(),
-        is(DEFAULT_SUBMISSION_DATE));
-    assertThat("Unexpected lifecycleState.", formRPartBs.get(1).getLifecycleState(),
-        is(LifecycleState.SUBMITTED));
-
-    // should roll back S3
-    verify(abstractCloudRepositoryAMock, never()).save(any());
-    verify(abstractCloudRepositoryBMock).save(formRPartBCaptor.capture());
-    FormRPartB s3FormRPartB = formRPartBCaptor.getValue();
-    assertThat("Unexpected form ID.", s3FormRPartB.getId(), is(FORM_ID));
-    assertThat("Unexpected trainee ID.", s3FormRPartB.getTraineeTisId(),
-        is(DEFAULT_TRAINEE_ID));
-    assertThat("Unexpected forename.", s3FormRPartB.getForename(),
-        is(DEFAULT_FORENAME));
-    assertThat("Unexpected surname.", s3FormRPartB.getSurname(), is(DEFAULT_SURNAME));
-    assertThat("Unexpected submissionDate.", s3FormRPartB.getSubmissionDate(),
-        is(DEFAULT_SUBMISSION_DATE));
-    assertThat("Unexpected lifecycleState.", s3FormRPartB.getLifecycleState(),
         is(LifecycleState.SUBMITTED));
   }
 
@@ -541,7 +389,5 @@ class FormRelocateServiceTest {
 
     verify(formRPartARepositoryMock, never()).save(any());
     verify(formRPartBRepositoryMock, never()).save(any());
-    verifyNoInteractions(abstractCloudRepositoryAMock);
-    verifyNoInteractions(abstractCloudRepositoryBMock);
   }
 }

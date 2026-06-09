@@ -43,7 +43,6 @@ import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
-import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartBRepositoryImpl;
 import uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService.FormrFileEventDto;
 
 @Slf4j
@@ -68,8 +67,6 @@ public class FormRPartBService {
 
   private final FormRPartBRepository formRPartBRepository;
 
-  private final S3FormRPartBRepositoryImpl s3ObjectRepository;
-
   private final ObjectMapper objectMapper;
 
   private final TraineeIdentity traineeIdentity;
@@ -78,14 +75,10 @@ public class FormRPartBService {
 
   private final String formRPartBUpdatedTopic;
 
-  @Value("${application.file-store.always-store}")
-  private boolean alwaysStoreFiles;
-
   /**
    * Constructor for a FormR PartB service.
    *
    * @param formRPartBRepository   spring data repository
-   * @param s3ObjectRepository     S3 Repository for forms
    * @param formRPartBMapper       maps between the form entity and dto
    * @param objectMapper           The object mapper.
    * @param traineeIdentity        The trainee identity.
@@ -93,14 +86,11 @@ public class FormRPartBService {
    * @param formRPartBUpdatedTopic The SNS topic for FormR PartB updated events.
    */
   public FormRPartBService(FormRPartBRepository formRPartBRepository,
-      S3FormRPartBRepositoryImpl s3ObjectRepository,
-      FormRPartBMapper formRPartBMapper,
-      ObjectMapper objectMapper, TraineeIdentity traineeIdentity,
+      FormRPartBMapper formRPartBMapper, ObjectMapper objectMapper, TraineeIdentity traineeIdentity,
       EventBroadcastService eventBroadcastService,
       @Value("${application.aws.sns.formr-updated}") String formRPartBUpdatedTopic) {
     this.formRPartBRepository = formRPartBRepository;
     this.formRPartBMapper = formRPartBMapper;
-    this.s3ObjectRepository = s3ObjectRepository;
     this.objectMapper = objectMapper;
     this.traineeIdentity = traineeIdentity;
     this.eventBroadcastService = eventBroadcastService;
@@ -127,11 +117,6 @@ public class FormRPartBService {
     }
 
     FormRPartB formRPartB = formRPartBMapper.toEntity(formRPartBDto);
-    if (alwaysStoreFiles || formRPartB.getLifecycleState() == LifecycleState.SUBMITTED) {
-      s3ObjectRepository.save(formRPartB);
-    }
-
-    // Forms stored in cloud are still stored to Mongo for backwards compatibility.
     formRPartB = formRPartBRepository.save(formRPartB);
     FormRPartBDto formDto = formRPartBMapper.toDto(formRPartB);
     if (formRPartB.getLifecycleState() == LifecycleState.SUBMITTED) {
@@ -234,7 +219,6 @@ public class FormRPartBService {
 
     return formRPartBRepository.findById(id)
         .map(this::partialDelete)
-        .map(s3ObjectRepository::save) // TODO: remove S3 update when fully migrated.
         .map(formRPartBMapper::toDto);
   }
 
@@ -284,7 +268,6 @@ public class FormRPartBService {
               form.getTraineeTisId(), form.getId());
           return formRPartB;
         })
-        .map(s3ObjectRepository::save) // TODO: remove S3 update when fully migrated.
         .map(formRPartBMapper::toDto);
   }
 

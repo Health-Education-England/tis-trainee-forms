@@ -30,14 +30,11 @@ import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractForm;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
-import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartARepositoryImpl;
-import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartBRepositoryImpl;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
 
@@ -49,8 +46,6 @@ public class FormRelocateService {
 
   private final FormRPartARepository formRPartARepository;
   private final FormRPartBRepository formRPartBRepository;
-  private final S3FormRPartARepositoryImpl abstractCloudRepositoryA;
-  private final S3FormRPartBRepositoryImpl abstractCloudRepositoryB;
 
   private final LtftService ltftService;
 
@@ -59,19 +54,11 @@ public class FormRelocateService {
    *
    * @param formRPartARepository  spring data repository (Form R Part A)
    * @param formRPartBRepository  spring data repository (Form R Part B)
-   * @param abstractCloudRepositoryA  abstract cloud repository (Form R Part A)
-   * @param abstractCloudRepositoryB  abstract cloud repository (Form R Part B)
    * @param ltftService           LTFT service
    */
-  public FormRelocateService(FormRPartARepository formRPartARepository,
-                             FormRPartBRepository formRPartBRepository,
-                             S3FormRPartARepositoryImpl abstractCloudRepositoryA,
-                             S3FormRPartBRepositoryImpl abstractCloudRepositoryB,
-                             LtftService ltftService) {
+  public FormRelocateService(FormRPartARepository formRPartARepository, FormRPartBRepository formRPartBRepository, LtftService ltftService) {
     this.formRPartARepository = formRPartARepository;
     this.formRPartBRepository = formRPartBRepository;
-    this.abstractCloudRepositoryA = abstractCloudRepositoryA;
-    this.abstractCloudRepositoryB = abstractCloudRepositoryB;
     this.ltftService = ltftService;
   }
 
@@ -182,10 +169,6 @@ public class FormRelocateService {
                                String toTraineeId) {
     abstractForm.setTraineeTisId(toTraineeId);
     updateTargetTraineeInDb(abstractForm, toTraineeId);
-
-    if (abstractForm.getLifecycleState() != LifecycleState.DRAFT) {
-      relocateFormInS3(abstractForm, fromTraineeId, toTraineeId);
-    }
   }
 
   private void updateTargetTraineeInDb(AbstractForm abstractForm, String targetTrainee) {
@@ -196,46 +179,5 @@ public class FormRelocateService {
     }
     log.info("Form with ID " + abstractForm.getId()
         + " moved under " + targetTrainee + " in DB ");
-  }
-
-  private void relocateFormInS3(AbstractForm abstractForm,
-                                String sourceTrainee,
-                                String targetTrainee) {
-    String formId = abstractForm.getId().toString();
-
-    if (abstractForm instanceof FormRPartA formRPartA) {
-      // set LifecycleState same as S3 form
-      Optional<FormRPartA> s3Form =
-          abstractCloudRepositoryA.findByIdAndTraineeTisId(formId, sourceTrainee);
-      if (!s3Form.isPresent()) {
-        log.error("Fail to get form from S3 with ID " + formId);
-        throw new ApplicationException("Fail to get form from S3  with ID " + formId);
-      }
-      formRPartA.setLifecycleState(s3Form.get().getLifecycleState());
-
-      // Create form under new trainee and delete it from the old trainee
-      abstractCloudRepositoryA.save(formRPartA);
-      log.info("Form " + formId + " in S3 relocated from "
-          + sourceTrainee + " to " + targetTrainee);
-      abstractCloudRepositoryA.delete(formId, sourceTrainee);
-      log.info("Form " + formId + " in S3 deleted from " + sourceTrainee + ".");
-
-    } else if (abstractForm instanceof FormRPartB formRPartB) {
-      // set LifecycleState same as S3 form
-      Optional<FormRPartB> s3Form =
-          abstractCloudRepositoryB.findByIdAndTraineeTisId(formId, sourceTrainee);
-      if (!s3Form.isPresent()) {
-        log.error("Fail to get form from S3 with ID " + formId);
-        throw new ApplicationException("Fail to get form from S3  with ID " + formId);
-      }
-      formRPartB.setLifecycleState(s3Form.get().getLifecycleState());
-
-      // Create form under new trainee and delete it from the old trainee
-      abstractCloudRepositoryB.save(formRPartB);
-      log.info("Form " + formId + " in S3 relocated from "
-          + sourceTrainee + " to " + targetTrainee);
-      abstractCloudRepositoryB.delete(formId, sourceTrainee);
-      log.info("Form " + formId + " in S3 deleted from " + sourceTrainee + ".");
-    }
   }
 }

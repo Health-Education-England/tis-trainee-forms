@@ -74,7 +74,6 @@ import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
-import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartARepositoryImpl;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
 @SpringBootTest
@@ -104,9 +103,6 @@ class FormRPartAResourceIntegrationTest {
 
   @Autowired
   private MongoTemplate template;
-
-  @MockitoBean
-  S3FormRPartARepositoryImpl s3FormRPartARepository;
 
   @MockitoBean
   SnsClient snsClient;

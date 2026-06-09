@@ -60,9 +60,7 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.BeanUtils;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.util.ReflectionUtils;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import uk.nhs.hee.tis.trainee.forms.dto.DeclarationDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
@@ -76,7 +74,6 @@ import uk.nhs.hee.tis.trainee.forms.model.Declaration;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.model.Work;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
-import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartBRepositoryImpl;
 import uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService.FormrFileEventDto;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 
@@ -126,8 +123,6 @@ class FormRPartBServiceTest {
 
   @Mock
   private FormRPartBRepository repositoryMock;
-  @Mock
-  private S3FormRPartBRepositoryImpl s3FormRPartBRepository;
 
   @Mock
   private EventBroadcastService eventBroadcastService;
@@ -136,8 +131,6 @@ class FormRPartBServiceTest {
 
   private TraineeIdentity traineeIdentity;
 
-  @Captor
-  private ArgumentCaptor<PutObjectRequest> putRequestCaptor;
   @Captor
   private ArgumentCaptor<FormRPartB> formRPartBCaptor;
 
@@ -161,8 +154,7 @@ class FormRPartBServiceTest {
     field.setAccessible(true);
     ReflectionUtils.setField(field, mapper, new CovidDeclarationMapperImpl());
 
-    service = new FormRPartBService(
-        repositoryMock, s3FormRPartBRepository, mapper, objectMapper, traineeIdentity,
+    service = new FormRPartBService(repositoryMock, mapper, objectMapper, traineeIdentity,
         eventBroadcastService, FORM_R_PART_B_UPDATED_TOPIC);
     initData();
   }
@@ -281,113 +273,6 @@ class FormRPartBServiceTest {
     return declarationDto;
   }
 
-  @ParameterizedTest(name = "Should save to db and cloud when always store files "
-      + "and form state is {0}.")
-  @EnumSource(value = LifecycleState.class, names = {"DRAFT", "UNSUBMITTED"})
-  void shouldSaveFormRPartBToDbAndCloudWhenAlwaysStoreFiles(LifecycleState state) {
-    entity.setId(null);
-    entity.setLifecycleState(state);
-    FormRPartBDto dto = mapper.toDto(entity);
-
-    when(repositoryMock.save(entity)).thenAnswer(invocation -> {
-      FormRPartB entity = invocation.getArgument(0);
-
-      FormRPartB savedEntity = new FormRPartB();
-      BeanUtils.copyProperties(entity, savedEntity);
-      savedEntity.setId(DEFAULT_ID);
-      return savedEntity;
-    });
-
-    ReflectionTestUtils.setField(service, "alwaysStoreFiles", true);
-
-    FormRPartBDto savedDto = service.save(dto);
-
-    assertThat("Unexpected form ID.", savedDto.getId(), is(DEFAULT_ID_STRING));
-    assertThat("Unexpected trainee ID.", savedDto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
-    assertThat("Unexpected forename.", savedDto.getForename(), is(DEFAULT_FORENAME));
-    assertThat("Unexpected surname.", savedDto.getSurname(), is(DEFAULT_SURNAME));
-    assertThat("Unexpected work.", savedDto.getWork(), is(Collections.singletonList(workDto)));
-    assertThat("Unexpected total leave.", savedDto.getTotalLeave(), is(DEFAULT_TOTAL_LEAVE));
-    assertThat("Unexpected isHonest flag.", savedDto.getIsHonest(), is(DEFAULT_IS_HONEST));
-    assertThat("Unexpected isHealthy flag.", savedDto.getIsHealthy(), is(DEFAULT_IS_HEALTHY));
-    assertThat("Unexpected health statement.", savedDto.getHealthStatement(),
-        is(DEFAULT_HEALTHY_STATEMENT));
-    assertThat("Unexpected havePreviousDeclarations flag.", savedDto.getHavePreviousDeclarations(),
-        is(DEFAULT_HAVE_PREVIOUS_DECLARATIONS));
-    assertThat("Unexpected previous declarations.", savedDto.getPreviousDeclarations(),
-        is(Collections.singletonList(previousDeclarationDto)));
-    assertThat("Unexpected previous declaration summary.", savedDto.getPreviousDeclarationSummary(),
-        is(DEFAULT_PREVIOUS_DECLARATION_SUMMARY));
-    assertThat("Unexpected haveCurrentDeclarations flag.", savedDto.getHaveCurrentDeclarations(),
-        is(DEFAULT_HAVE_CURRENT_DECLARATIONS));
-    assertThat("Unexpected current declarations.", savedDto.getCurrentDeclarations(),
-        is(Collections.singletonList(currentDeclarationDto)));
-    assertThat("Unexpected current declaration summary.", savedDto.getCurrentDeclarationSummary(),
-        is(DEFAULT_CURRENT_DECLARATION_SUMMARY));
-    assertThat("Unexpected haveCurrentUnresolvedDeclarations flag.",
-        savedDto.getHaveCurrentUnresolvedDeclarations(),
-        is(DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS));
-    assertThat("Unexpected havePreviousUnresolvedDeclarations flag.",
-        savedDto.getHavePreviousUnresolvedDeclarations(),
-        is(DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS));
-
-    verify(repositoryMock).save(entity);
-    verify(s3FormRPartBRepository).save(entity);
-  }
-
-  @ParameterizedTest(name = "Should save to db only when not always store files "
-      + "and form state is {0}.")
-  @EnumSource(value = LifecycleState.class, names = {"DRAFT", "UNSUBMITTED"})
-  void shouldSaveFormRPartBToDbWhenNotAlwaysStoreFiles(LifecycleState state) {
-    entity.setId(null);
-    entity.setLifecycleState(state);
-    FormRPartBDto dto = mapper.toDto(entity);
-
-    when(repositoryMock.save(entity)).thenAnswer(invocation -> {
-      FormRPartB entity = invocation.getArgument(0);
-
-      FormRPartB savedEntity = new FormRPartB();
-      BeanUtils.copyProperties(entity, savedEntity);
-      savedEntity.setId(DEFAULT_ID);
-      return savedEntity;
-    });
-    ReflectionTestUtils.setField(service, "alwaysStoreFiles", false);
-
-    FormRPartBDto savedDto = service.save(dto);
-
-    assertThat("Unexpected form ID.", savedDto.getId(), is(DEFAULT_ID_STRING));
-    assertThat("Unexpected trainee ID.", savedDto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
-    assertThat("Unexpected forename.", savedDto.getForename(), is(DEFAULT_FORENAME));
-    assertThat("Unexpected surname.", savedDto.getSurname(), is(DEFAULT_SURNAME));
-    assertThat("Unexpected work.", savedDto.getWork(), is(Collections.singletonList(workDto)));
-    assertThat("Unexpected total leave.", savedDto.getTotalLeave(), is(DEFAULT_TOTAL_LEAVE));
-    assertThat("Unexpected isHonest flag.", savedDto.getIsHonest(), is(DEFAULT_IS_HONEST));
-    assertThat("Unexpected isHealthy flag.", savedDto.getIsHealthy(), is(DEFAULT_IS_HEALTHY));
-    assertThat("Unexpected health statement.", savedDto.getHealthStatement(),
-        is(DEFAULT_HEALTHY_STATEMENT));
-    assertThat("Unexpected havePreviousDeclarations flag.", savedDto.getHavePreviousDeclarations(),
-        is(DEFAULT_HAVE_PREVIOUS_DECLARATIONS));
-    assertThat("Unexpected previous declarations.", savedDto.getPreviousDeclarations(),
-        is(Collections.singletonList(previousDeclarationDto)));
-    assertThat("Unexpected previous declaration summary.", savedDto.getPreviousDeclarationSummary(),
-        is(DEFAULT_PREVIOUS_DECLARATION_SUMMARY));
-    assertThat("Unexpected haveCurrentDeclarations flag.", savedDto.getHaveCurrentDeclarations(),
-        is(DEFAULT_HAVE_CURRENT_DECLARATIONS));
-    assertThat("Unexpected current declarations.", savedDto.getCurrentDeclarations(),
-        is(Collections.singletonList(currentDeclarationDto)));
-    assertThat("Unexpected current declaration summary.", savedDto.getCurrentDeclarationSummary(),
-        is(DEFAULT_CURRENT_DECLARATION_SUMMARY));
-    assertThat("Unexpected haveCurrentUnresolvedDeclarations flag.",
-        savedDto.getHaveCurrentUnresolvedDeclarations(),
-        is(DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS));
-    assertThat("Unexpected havePreviousUnresolvedDeclarations flag.",
-        savedDto.getHavePreviousUnresolvedDeclarations(),
-        is(DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS));
-
-    verify(repositoryMock).save(entity);
-    verifyNoInteractions(s3FormRPartBRepository);
-  }
-
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = {"DRAFT", "UNSUBMITTED"})
   void shouldThrowExceptionWhenUpdatingNonModifiableForm(LifecycleState state) {
@@ -470,19 +355,16 @@ class FormRPartBServiceTest {
         is(DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS));
 
     verify(repositoryMock).save(entity);
-    verify(s3FormRPartBRepository).save(entity);
   }
 
   @Test
   void shouldThrowExceptionWhenFormRPartBNotSaved() {
     entity.setLifecycleState(SUBMITTED);
     entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
-    when(s3FormRPartBRepository.save(any())).thenThrow(ApplicationException.class);
+    when(repositoryMock.save(any())).thenThrow(ApplicationException.class);
 
     FormRPartBDto dto = mapper.toDto(entity);
     assertThrows(ApplicationException.class, () -> service.save(dto));
-    verify(repositoryMock, never()).save(any());
-    verifyNoInteractions(eventBroadcastService);
   }
 
   @Test
@@ -568,7 +450,6 @@ class FormRPartBServiceTest {
   @Test
   void shouldPartialDeleteFormRPartBById() {
     when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
-    when(s3FormRPartBRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     Optional<FormRPartBDto> resultDto = service.partialDeleteFormRPartBById(DEFAULT_ID);
 
@@ -581,7 +462,6 @@ class FormRPartBServiceTest {
     assertThat("Unexpected DTO.", resultDto.get(), is(mapper.toDto(expectedForm)));
 
     verify(repositoryMock).save(any());
-    verify(s3FormRPartBRepository).save(any());
     verify(eventBroadcastService).publishFormRPartBEvent(any(), any(), any());
     verify(eventBroadcastService).publishFormrFileEvent(any());
   }
@@ -589,7 +469,6 @@ class FormRPartBServiceTest {
   @Test
   void shouldPublishEventWhenPartialDeletingFormRPartB() {
     when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
-    when(s3FormRPartBRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     service.partialDeleteFormRPartBById(DEFAULT_ID);
 
@@ -705,7 +584,6 @@ class FormRPartBServiceTest {
     when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
     entity.setLifecycleState(UNSUBMITTED);
     when(repositoryMock.save(entity)).thenReturn(entity);
-    when(s3FormRPartBRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     Optional<FormRPartBDto> resultDtoOptional = service.unsubmitFormRPartBById(DEFAULT_ID);
 
@@ -720,7 +598,6 @@ class FormRPartBServiceTest {
     assertThat("Unexpected lifecycle state.", resultDto.getLifecycleState(), is(UNSUBMITTED));
 
     verify(repositoryMock).save(any());
-    verify(s3FormRPartBRepository).save(any());
     verify(eventBroadcastService).publishFormRPartBEvent(any(), any(), any());
     verify(eventBroadcastService).publishFormrFileEvent(any());
   }
@@ -733,7 +610,6 @@ class FormRPartBServiceTest {
     when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
     entity.setLifecycleState(UNSUBMITTED);
     when(repositoryMock.save(entity)).thenReturn(entity);
-    when(s3FormRPartBRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     service.unsubmitFormRPartBById(DEFAULT_ID);
 

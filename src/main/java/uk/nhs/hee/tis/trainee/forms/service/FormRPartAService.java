@@ -43,7 +43,6 @@ import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
-import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartARepositoryImpl;
 import uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService.FormrFileEventDto;
 
 @Slf4j
@@ -68,8 +67,6 @@ public class FormRPartAService {
 
   private final FormRPartARepository repository;
 
-  private final S3FormRPartARepositoryImpl cloudObjectRepository;
-
   private final ObjectMapper objectMapper;
 
   private final TraineeIdentity traineeIdentity;
@@ -78,33 +75,23 @@ public class FormRPartAService {
 
   private final String formRPartAUpdatedTopic;
 
-  @Value("${application.file-store.always-store}")
-  private boolean alwaysStoreFiles;
-
-  @Value("${application.file-store.bucket}")
-  private String bucketName;
-
   /**
    * Constructor for a FormR PartA service.
    *
    * @param repository             Spring data repository.
-   * @param cloudObjectRepository  Repository to storage form in the cloud.
    * @param mapper                 Maps between the form entity and DTO.
    * @param objectMapper           The object mapper.
    * @param traineeIdentity        The trainee identity.
    * @param eventBroadcastService  The event broadcast service.
    * @param formRPartAUpdatedTopic The SNS topic for FormR PartA updated events.
    */
-  public FormRPartAService(FormRPartARepository repository,
-      S3FormRPartARepositoryImpl cloudObjectRepository,
-      FormRPartAMapper mapper,
+  public FormRPartAService(FormRPartARepository repository, FormRPartAMapper mapper,
       ObjectMapper objectMapper, TraineeIdentity traineeIdentity,
       EventBroadcastService eventBroadcastService,
       @Value("${application.aws.sns.formr-updated}") String formRPartAUpdatedTopic) {
     this.eventBroadcastService = eventBroadcastService;
     this.formRPartAUpdatedTopic = formRPartAUpdatedTopic;
     this.repository = repository;
-    this.cloudObjectRepository = cloudObjectRepository;
     this.mapper = mapper;
     this.objectMapper = objectMapper;
     this.traineeIdentity = traineeIdentity;
@@ -128,11 +115,6 @@ public class FormRPartAService {
     }
 
     FormRPartA formRPartA = mapper.toEntity(formRPartADto);
-    if (alwaysStoreFiles || formRPartA.getLifecycleState() == LifecycleState.SUBMITTED) {
-      cloudObjectRepository.save(formRPartA);
-    }
-
-    // Forms stored in cloud are still stored to Mongo for backwards compatibility.
     formRPartA = repository.save(formRPartA);
     FormRPartADto formDto = mapper.toDto(formRPartA);
     if (formRPartA.getLifecycleState() == LifecycleState.SUBMITTED) {
@@ -234,7 +216,6 @@ public class FormRPartAService {
 
     return repository.findById(id)
         .map(this::partialDelete)
-        .map(cloudObjectRepository::save) // TODO: remove S3 update when fully migrated.
         .map(mapper::toDto);
   }
 
@@ -284,7 +265,6 @@ public class FormRPartAService {
               form.getTraineeTisId(), form.getId());
           return formRPartA;
         })
-        .map(cloudObjectRepository::save) // TODO: remove S3 update when fully migrated.
         .map(mapper::toDto);
   }
 

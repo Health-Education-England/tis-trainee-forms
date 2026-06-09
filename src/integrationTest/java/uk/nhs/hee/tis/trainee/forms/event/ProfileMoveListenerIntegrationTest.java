@@ -24,7 +24,6 @@ package uk.nhs.hee.tis.trainee.forms.event;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.testcontainers.containers.localstack.LocalStackContainer.Service.S3;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.SQS;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
@@ -71,7 +70,6 @@ class ProfileMoveListenerIntegrationTest {
   private static final String FROM_TRAINEE_ID = UUID.randomUUID().toString();
   private static final String TO_TRAINEE_ID = UUID.randomUUID().toString();
 
-  private static final String S3_BUCKET = "test-filestore-bucket";
   private static final String PROFILE_MOVE_QUEUE = UUID.randomUUID().toString();
 
   @Container
@@ -82,7 +80,7 @@ class ProfileMoveListenerIntegrationTest {
   @Container
   private static final LocalStackContainer localstack = new LocalStackContainer(
       DockerImageNames.LOCALSTACK)
-      .withServices(SQS, S3)
+      .withServices(SQS)
       .withExposedPorts(4566);
 
   @DynamicPropertySource
@@ -95,26 +93,12 @@ class ProfileMoveListenerIntegrationTest {
     registry.add("spring.cloud.aws.sqs.endpoint",
         () -> localstack.getEndpointOverride(SQS).toString());
     registry.add("spring.cloud.aws.sqs.enabled", () -> true);
-
-    registry.add("application.filestore.bucket", () -> S3_BUCKET);
-    registry.add("spring.cloud.aws.s3.endpoint",
-        () -> localstack.getEndpointOverride(S3).toString());
-    registry.add("spring.cloud.aws.s3.path-style-access-enabled", () -> true);
   }
 
   @BeforeAll
   static void setUpBeforeAll() throws IOException, InterruptedException {
     localstack.execInContainer("awslocal", "sqs", "create-queue", "--queue-name",
         PROFILE_MOVE_QUEUE);
-
-    // Create S3 bucket
-    String[] createBucketCmd = {
-        "awslocal", "s3api", "create-bucket",
-        "--bucket", S3_BUCKET,
-        "--region", localstack.getRegion()
-    };
-    var bucketResult = localstack.execInContainer(createBucketCmd);
-    assertThat("S3 bucket creation failed", bucketResult.getExitCode(), is(0));
   }
 
   @Autowired
@@ -317,7 +301,7 @@ class ProfileMoveListenerIntegrationTest {
   }
 
   @Test
-  void shouldMoveFormRandS3FileWhenProfileMove() throws IOException, InterruptedException {
+  void shouldMoveFormRWhenProfileMove() throws IOException, InterruptedException {
     //forms to move
     UUID id1 = UUID.randomUUID();
     FormRPartA formPartA = new FormRPartA();
@@ -327,47 +311,6 @@ class ProfileMoveListenerIntegrationTest {
     formPartA.setSubmissionDate(LocalDateTime.of(2024, 1, 1, 0, 0, 0));
     formPartA.setTraineeTisId(FROM_TRAINEE_ID);
     template.insert(formPartA);
-
-    // First verify S3 bucket exists
-    String[] checkBucketCmd = {
-        "awslocal",
-        "s3",
-        "ls",
-        "s3://" + S3_BUCKET
-    };
-    var bucketResult = localstack.execInContainer(checkBucketCmd);
-    assertThat("Unexpected missing S3 bucket.", bucketResult.getExitCode(), is(0));
-
-    String formJson = """
-        {
-          "id": "%s",
-          "college": "another college",
-          "lifecycleState": "SUBMITTED",
-          "submissionDate": "2024-01-01T00:00:00",
-          "traineeTisId": "%s"
-        }
-        """.formatted(id1, FROM_TRAINEE_ID);
-    String sourceKey = String.format("%s/forms/formr-a/%s.json", FROM_TRAINEE_ID, id1);
-    String[] createFileCmd = {
-        "/bin/sh",
-        "-c",
-        String.format("printf '%s' > /tmp/form.json " +
-            "&& awslocal s3 cp /tmp/form.json s3://%s/%s " +
-            "&& rm /tmp/form.json", formJson, S3_BUCKET, sourceKey)
-    };
-    var createResult = localstack.execInContainer(createFileCmd);
-    assertThat("Unexpected failed S3 file creation.", createResult.getExitCode(), is(0));
-
-    // Verify the file exists
-    String[] checkSourceCmd = {
-        "awslocal",
-        "s3api",
-        "head-object",
-        "--bucket", S3_BUCKET,
-        "--key", sourceKey
-    };
-    var verifyResult = localstack.execInContainer(checkSourceCmd);
-    assertThat("Unexpected missing source S3 file.", verifyResult.getExitCode(), is(0));
 
     // trigger the move
     String eventString = """
@@ -401,28 +344,6 @@ class ProfileMoveListenerIntegrationTest {
     FormRPartA movedForm = movedFormRpartAs.get(0);
     movedForm.setTraineeTisId(FROM_TRAINEE_ID);
     assertThat("Unexpected moved FormR PartA data.", movedForm, is(formPartA));
-
-    String targetKey = String.format("%s/forms/formr-a/%s.json", TO_TRAINEE_ID, id1);
-
-    // Verify target S3 file creation and source file deletion
-    await()
-        .pollInterval(Duration.ofSeconds(2))
-        .atMost(Duration.ofSeconds(10))
-        .ignoreExceptions()
-        .untilAsserted(() -> {
-          // Check target file exists
-          String[] checkTargetCmd = {
-              "awslocal", "s3api", "head-object",
-              "--bucket", S3_BUCKET,
-              "--key", targetKey
-          };
-          var targetResult = localstack.execInContainer(checkTargetCmd);
-          assertThat("Target S3 file should exist", targetResult.getExitCode(), is(0));
-
-          // Check source file does not exist
-          var sourceResult = localstack.execInContainer(checkSourceCmd);
-          assertThat("Source S3 file should be deleted", sourceResult.getExitCode(), is(255));
-        });
   }
 
   @Test
