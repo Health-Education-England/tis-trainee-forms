@@ -52,9 +52,7 @@ class LtftMapperTest {
 
   @BeforeEach
   void setUp() {
-    TemporalMapperImpl temporalMapper = new TemporalMapperImpl();
-    temporalMapper.zoneId = ZoneId.of("Etc/UTC");
-
+    TemporalMapper temporalMapper = new TemporalMapper(ZoneId.of("Etc/UTC"));
     mapper = new LtftMapperImpl(temporalMapper);
 
     // The temporal mapper must also be injected in to the abstract LTFT mapper.

@@ -22,6 +22,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.job;
 
+import static java.time.ZoneOffset.UTC;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
@@ -36,8 +37,9 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.google.common.base.Objects;
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -49,12 +51,11 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatcher;
-import org.springframework.test.util.ReflectionTestUtils;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
-import uk.nhs.hee.tis.trainee.forms.mapper.CovidDeclarationMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapperImpl;
+import uk.nhs.hee.tis.trainee.forms.mapper.TemporalMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
@@ -73,9 +74,7 @@ class PublishFormrPartbRefreshTest {
     repository = mock(FormRPartBRepository.class);
     service = mock(FormRPartBService.class);
 
-    FormRPartBMapper mapper = new FormRPartBMapperImpl();
-    ReflectionTestUtils.setField(mapper, "covidDeclarationMapper",
-        new CovidDeclarationMapperImpl());
+    FormRPartBMapper mapper = new FormRPartBMapperImpl(new TemporalMapper(ZoneId.of("Etc/UTC")));
 
     job = new PublishFormrPartbRefresh(repository, service, mapper, PUBLISH_TOPIC);
   }
@@ -132,13 +131,14 @@ class PublishFormrPartbRefreshTest {
   @Test
   void shouldUseCutoffDateWhenProvided() {
     LocalDate since = LocalDate.of(2025, 6, 15);
-    ArgumentCaptor<LocalDateTime> cutoffCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<Instant> cutoffCaptor = ArgumentCaptor.captor();
     when(repository.streamByLifecycleStateInAndLastModifiedDateGreaterThanEqual(any(),
         cutoffCaptor.capture())).thenReturn(Stream.of());
 
     job.execute(Optional.of(since));
 
-    assertThat("Unexpected cutoff date.", cutoffCaptor.getValue(), is(since.atStartOfDay()));
+    assertThat("Unexpected cutoff date.", cutoffCaptor.getValue(),
+        is(since.atStartOfDay().toInstant(UTC)));
   }
 
   @Test

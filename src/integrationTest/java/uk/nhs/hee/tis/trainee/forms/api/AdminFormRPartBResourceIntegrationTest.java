@@ -36,7 +36,10 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMIT
 
 import io.awspring.cloud.sns.core.SnsTemplate;
 import java.net.URI;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
@@ -47,6 +50,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -66,7 +70,9 @@ import software.amazon.awssdk.services.sns.model.PublishRequest;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
+import uk.nhs.hee.tis.trainee.forms.model.content.FormrPartbContent;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -89,6 +95,9 @@ class AdminFormRPartBResourceIntegrationTest {
 
   @Autowired
   private MongoTemplate template;
+
+  @Value("${application.timezone}")
+  private ZoneId timezone;
 
   @MockitoBean
   private SnsTemplate snsTemplate;
@@ -204,7 +213,7 @@ class AdminFormRPartBResourceIntegrationTest {
     FormRPartB form = new FormRPartB();
     form.setId(FORM_ID);
     form.setTraineeTisId(TRAINEE_ID);
-    form.setSubmissionDate(LocalDateTime.now());
+    form.setStatus(Status.builder().submitted(Instant.now()).build());
     template.insert(form);
 
     when(snsClient.publish(any(PublishRequest.class)))
@@ -227,7 +236,7 @@ class AdminFormRPartBResourceIntegrationTest {
     FormRPartB form = new FormRPartB();
     form.setId(FORM_ID);
     form.setTraineeTisId(TRAINEE_ID);
-    form.setSubmissionDate(LocalDateTime.now());
+    form.setStatus(Status.builder().submitted(Instant.now()).build());
     template.insert(form);
 
     mockMvc.perform(request(method, uriTemplate, FORM_ID)
@@ -238,21 +247,20 @@ class AdminFormRPartBResourceIntegrationTest {
   @ParameterizedTest(name = "Should not return {0} forms in list")
   @EnumSource(value = LifecycleState.class, names = {"DRAFT", "DELETED"})
   void shouldNotReturnDraftOrDeletedFormsInList(LifecycleState excludedState) throws Exception {
-
     FormRPartB submittedForm = new FormRPartB();
     submittedForm.setId(UUID.randomUUID());
     submittedForm.setTraineeTisId(TRAINEE_ID);
     submittedForm.setLifecycleState(SUBMITTED);
-    submittedForm.setSubmissionDate(LocalDateTime.now());
     template.insert(submittedForm);
 
     FormRPartB excludedForm = new FormRPartB();
     excludedForm.setId(UUID.randomUUID());
     excludedForm.setTraineeTisId(TRAINEE_ID);
+    excludedForm.setStatus(Status.builder().submitted(excludedState == DELETED
+            ? Instant.now().minus(Duration.ofDays(5))
+            : null)
+        .build());
     excludedForm.setLifecycleState(excludedState);
-    excludedForm.setSubmissionDate(excludedState == DELETED
-        ? LocalDateTime.now().minusDays(5)
-        : null);
     template.insert(excludedForm);
 
     mockMvc.perform(get("/api/admin/formr-partb")
@@ -271,8 +279,8 @@ class AdminFormRPartBResourceIntegrationTest {
     FormRPartB includedForm = new FormRPartB();
     includedForm.setId(UUID.randomUUID());
     includedForm.setTraineeTisId(TRAINEE_ID);
+    includedForm.setStatus(Status.builder().submitted(Instant.now()).build());
     includedForm.setLifecycleState(includedState);
-    includedForm.setSubmissionDate(LocalDateTime.now());
     template.insert(includedForm);
 
     FormRPartB draftForm = new FormRPartB();
@@ -284,8 +292,9 @@ class AdminFormRPartBResourceIntegrationTest {
     FormRPartB deletedForm = new FormRPartB();
     deletedForm.setId(UUID.randomUUID());
     deletedForm.setTraineeTisId(TRAINEE_ID);
+    deletedForm.setStatus(
+        Status.builder().submitted(Instant.now().minus(Duration.ofDays(2))).build());
     deletedForm.setLifecycleState(DELETED);
-    deletedForm.setSubmissionDate(LocalDateTime.now().minusDays(2));
     template.insert(deletedForm);
 
     mockMvc.perform(get("/api/admin/formr-partb")
@@ -304,12 +313,15 @@ class AdminFormRPartBResourceIntegrationTest {
     submittedForm.setId(UUID.randomUUID());
     submittedForm.setTraineeTisId(TRAINEE_ID);
     submittedForm.setLifecycleState(SUBMITTED);
-    LocalDateTime submissionDate = LocalDateTime.now();
-    submittedForm.setSubmissionDate(submissionDate);
-    submittedForm.setIsArcp(true);
-    submittedForm.setProgrammeSpecialty("Cardiology");
+    LocalDateTime submissionDate = LocalDateTime.ofInstant(submittedForm.getStatus().submitted(),
+        timezone);
+
     UUID programmeMembershipId = UUID.randomUUID();
-    submittedForm.setProgrammeMembershipId(programmeMembershipId);
+    submittedForm.setContent(FormrPartbContent.builder()
+        .isArcp(true)
+        .programmeSpecialty("Cardiology")
+        .programmeMembershipId(programmeMembershipId)
+        .build());
     template.insert(submittedForm);
 
     mockMvc.perform(get("/api/admin/formr-partb")
@@ -326,6 +338,8 @@ class AdminFormRPartBResourceIntegrationTest {
         .andExpect(jsonPath("$[0].programmeStartDate").doesNotExist())
         .andExpect(jsonPath("$[0].programmeMembershipId")
             .value(programmeMembershipId.toString()))
+        // TODO: this can fail due to Jackson trimming trailing 0s during serialization.
+        //  May not be an issue once DTO is migrated to Instant.
         .andExpect(jsonPath("$[0].submissionDate")
             .value(submissionDate.truncatedTo(ChronoUnit.MILLIS).toString()))
         .andExpect(jsonPath("$[0].formType").value("formr-partb"));

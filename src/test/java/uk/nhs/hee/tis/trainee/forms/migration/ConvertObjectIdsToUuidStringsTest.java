@@ -34,6 +34,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.mongodb.client.result.DeleteResult;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -48,17 +49,16 @@ import org.springframework.core.env.Environment;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.test.util.ReflectionTestUtils;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest.Builder;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
-import uk.nhs.hee.tis.trainee.forms.mapper.CovidDeclarationMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapperImpl;
+import uk.nhs.hee.tis.trainee.forms.mapper.TemporalMapper;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractForm;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
@@ -86,11 +86,11 @@ class ConvertObjectIdsToUuidStringsTest {
     when(env.getProperty("application.file-store.bucket")).thenReturn(BUCKET_NAME);
 
     partAService = mock(FormRPartAService.class);
-    FormRPartAMapper partAMapper = new FormRPartAMapperImpl();
+    FormRPartAMapper partAMapper = new FormRPartAMapperImpl(
+        new TemporalMapper(ZoneId.of("Etc/UTC")));
     partBService = mock(FormRPartBService.class);
-    FormRPartBMapper partBMapper = new FormRPartBMapperImpl();
-    ReflectionTestUtils.setField(partBMapper, "covidDeclarationMapper",
-        new CovidDeclarationMapperImpl());
+    FormRPartBMapper partBMapper = new FormRPartBMapperImpl(
+        new TemporalMapper(ZoneId.of("Etc/UTC")));
     migration = new ConvertObjectIdsToUuidStrings(template, s3, env,
         partAService, partAMapper,
         partBService, partBMapper);

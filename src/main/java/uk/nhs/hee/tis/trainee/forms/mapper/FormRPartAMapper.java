@@ -21,6 +21,9 @@
 
 package uk.nhs.hee.tis.trainee.forms.mapper;
 
+import static org.mapstruct.InjectionStrategy.CONSTRUCTOR;
+import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
+
 import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -28,20 +31,35 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = SPRING, uses = TemporalMapper.class, injectionStrategy = CONSTRUCTOR)
 public interface FormRPartAMapper {
 
-  @Mapping(target = "programmeName", source = "programmeSpecialty")
+  @Mapping(target = "id", source = "id")
+  @Mapping(target = "traineeTisId", source = "traineeTisId")
+  @Mapping(target = "content", source = "content")
+  @Mapping(target = "content.programmeName", source = "content.programmeSpecialty")
+  @Mapping(target = "lifecycleState", source = "status.current.state")
+  @Mapping(target = "submissionDate", source = "status.submitted")
+  @Mapping(target = "lastModifiedDate", source = "lastModified")
   FormRPartADto toDto(FormRPartA formRPartA);
 
-  FormRPartA toEntity(FormRPartADto formRPartADto);
+  @Mapping(target = "id", source = "existingEntity.id")
+  @Mapping(target = "traineeTisId", source = "dto.traineeTisId")
+  @Mapping(target = "formRef", source = "existingEntity.formRef")
+  @Mapping(target = "revision", source = "existingEntity.revision")
+  @Mapping(target = "content", source = "dto.content")
+  @Mapping(target = "status", source = "existingEntity.status")
+  @Mapping(target = "lifecycleState", ignore = true)
+  FormRPartA toEntity(FormRPartADto dto, FormRPartA existingEntity);
 
-  List<FormRPartADto> toDtos(List<FormRPartA> formRPartAs);
-
-  List<FormRPartA> toEntities(List<FormRPartADto> formRPartADtos);
-
-  @Mapping(target = "programmeStartDate", source = "startDate")
-  @Mapping(target = "programmeName", source = "programmeSpecialty")
+  @Mapping(target = "id", source = "id")
+  @Mapping(target = "traineeTisId", source = "traineeTisId")
+  @Mapping(target = "isArcp", source = "content.isArcp")
+  @Mapping(target = "programmeMembershipId", source = "content.programmeMembershipId")
+  @Mapping(target = "submissionDate", source = "status.submitted")
+  @Mapping(target = "lifecycleState", source = "status.current.state")
+  @Mapping(target = "programmeName", source = "content.programmeSpecialty")
+  @Mapping(target = "programmeStartDate", source = "content.startDate")
   @Mapping(target = "formType", constant = "formr-parta")
   FormRPartSimpleDto toSimpleDto(FormRPartA formRPartA);
 

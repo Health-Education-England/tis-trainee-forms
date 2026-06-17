@@ -21,9 +21,12 @@
 
 package uk.nhs.hee.tis.trainee.forms.service;
 
+import static java.time.ZoneOffset.UTC;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -39,7 +42,9 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMIT
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -59,10 +64,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.BeanUtils;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
+import uk.nhs.hee.tis.trainee.forms.dto.content.FormrPartaContentDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapperImpl;
+import uk.nhs.hee.tis.trainee.forms.mapper.TemporalMapper;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
+import uk.nhs.hee.tis.trainee.forms.model.content.FormrPartaContent;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
 import uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService.FormrFileEventDto;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
@@ -75,7 +85,7 @@ class FormRPartAServiceTest {
   private static final String DEFAULT_TRAINEE_TIS_ID = "1";
   private static final String DEFAULT_FORENAME = "DEFAULT_FORENAME";
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";
-  private static final LocalDateTime DEFAULT_SUBMISSION_DATE = LocalDateTime.now();
+  private static final Instant DEFAULT_SUBMISSION_DATE = Instant.now();
   private static final String DEFAULT_PROGRAMME_SPECIALTY = "Cardiology";
   private static final String FORM_R_PART_A_UPDATED_TOPIC = "arn:aws:sns:topic";
 
@@ -98,9 +108,10 @@ class FormRPartAServiceTest {
   void setUp() {
     traineeIdentity = new TraineeIdentity();
     traineeIdentity.setTraineeId(DEFAULT_TRAINEE_TIS_ID);
+
     service = new FormRPartAService(
         repositoryMock,
-        new FormRPartAMapperImpl(),
+        new FormRPartAMapperImpl(new TemporalMapper(ZoneId.of("Etc/UTC"))),
         new ObjectMapper().findAndRegisterModules(), traineeIdentity,
         eventBroadcastService,
         FORM_R_PART_A_UPDATED_TOPIC);
@@ -111,15 +122,21 @@ class FormRPartAServiceTest {
    * init test data.
    */
   FormRPartA createEntity() {
-    FormRPartA entity = new FormRPartA();
-    entity.setId(DEFAULT_ID);
-    entity.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    entity.setForename(DEFAULT_FORENAME);
-    entity.setSurname(DEFAULT_SURNAME);
-    entity.setLifecycleState(LifecycleState.DRAFT);
-    entity.setIsArcp(true);
-    entity.setProgrammeSpecialty(DEFAULT_PROGRAMME_SPECIALTY);
-    return entity;
+    FormRPartA newEntity = new FormRPartA();
+    newEntity.setId(DEFAULT_ID);
+    newEntity.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    newEntity.setContent(FormrPartaContent.builder()
+        .isArcp(true)
+        .programmeSpecialty(DEFAULT_PROGRAMME_SPECIALTY)
+        .forename(DEFAULT_FORENAME)
+        .surname(DEFAULT_SURNAME)
+        .build());
+    newEntity.setStatus(Status.builder()
+        .current(StatusInfo.builder()
+            .state(DRAFT)
+            .build())
+        .build());
+    return newEntity;
   }
 
   @ParameterizedTest
@@ -127,16 +144,21 @@ class FormRPartAServiceTest {
   void shouldThrowExceptionWhenUpdatingNonModifiableForm(LifecycleState state) {
     UUID id = UUID.randomUUID();
     entity.setId(id);
-    entity.setLifecycleState(state);
-    entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+    entity.setStatus(Status.builder()
+        .current(StatusInfo.builder().state(state).build())
+        .submitted(DEFAULT_SUBMISSION_DATE)
+        .build());
 
     FormRPartADto dto = new FormRPartADto();
     dto.setId(id.toString());
     dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    dto.setForename(DEFAULT_FORENAME);
-    dto.setSurname(DEFAULT_SURNAME);
     dto.setLifecycleState(DRAFT);
-    dto.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+    dto.setSubmissionDate(LocalDateTime.ofInstant(DEFAULT_SUBMISSION_DATE, UTC));
+
+    FormrPartaContentDto content = new FormrPartaContentDto();
+    content.setForename(DEFAULT_FORENAME);
+    content.setSurname(DEFAULT_SURNAME);
+    dto.setContent(content);
 
     when(repositoryMock.findById(id)).thenReturn(Optional.of(entity));
 
@@ -149,16 +171,21 @@ class FormRPartAServiceTest {
   void shouldSaveFormWhenUpdatingModifiableForm(LifecycleState state) {
     UUID id = UUID.randomUUID();
     entity.setId(id);
-    entity.setLifecycleState(state);
-    entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+    entity.setStatus(Status.builder()
+        .current(StatusInfo.builder().state(state).build())
+        .submitted(DEFAULT_SUBMISSION_DATE)
+        .build());
 
     FormRPartADto dto = new FormRPartADto();
     dto.setId(id.toString());
     dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    dto.setForename(DEFAULT_FORENAME);
-    dto.setSurname(DEFAULT_SURNAME);
     dto.setLifecycleState(DRAFT);
-    dto.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+    dto.setSubmissionDate(LocalDateTime.ofInstant(DEFAULT_SUBMISSION_DATE, UTC));
+
+    FormrPartaContentDto content = new FormrPartaContentDto();
+    content.setForename(DEFAULT_FORENAME);
+    content.setSurname(DEFAULT_SURNAME);
+    dto.setContent(content);
 
     when(repositoryMock.findById(id)).thenReturn(Optional.of(entity));
     when(repositoryMock.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -169,20 +196,19 @@ class FormRPartAServiceTest {
 
   @Test
   void shouldSaveSubmittedFormRPartA() {
-    entity.setId(null);
-    entity.setLifecycleState(SUBMITTED);
-    entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
-
     FormRPartADto dto = new FormRPartADto();
     dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    dto.setForename(DEFAULT_FORENAME);
-    dto.setSurname(DEFAULT_SURNAME);
     dto.setLifecycleState(SUBMITTED);
-    dto.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
-    dto.setIsArcp(true);
-    dto.setProgrammeSpecialty(DEFAULT_PROGRAMME_SPECIALTY);
+    dto.setSubmissionDate(LocalDateTime.ofInstant(DEFAULT_SUBMISSION_DATE, UTC));
 
-    when(repositoryMock.save(entity)).thenAnswer(invocation -> {
+    FormrPartaContentDto content = new FormrPartaContentDto();
+    content.setForename(DEFAULT_FORENAME);
+    content.setSurname(DEFAULT_SURNAME);
+    content.setIsArcp(true);
+    content.setProgrammeSpecialty(DEFAULT_PROGRAMME_SPECIALTY);
+    dto.setContent(content);
+
+    when(repositoryMock.save(any())).thenAnswer(invocation -> {
       FormRPartA invEntity = invocation.getArgument(0);
 
       FormRPartA savedEntity = new FormRPartA();
@@ -195,23 +221,28 @@ class FormRPartAServiceTest {
 
     assertThat("Unexpected form ID.", savedDto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", savedDto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
-    assertThat("Unexpected forename.", savedDto.getForename(), is(DEFAULT_FORENAME));
-    assertThat("Unexpected surname.", savedDto.getSurname(), is(DEFAULT_SURNAME));
+    assertThat("Unexpected forename.", savedDto.getContent().getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", savedDto.getContent().getSurname(), is(DEFAULT_SURNAME));
 
-    verify(repositoryMock).save(entity);
+    verify(repositoryMock).save(any());
   }
 
   @Test
   void shouldThrowExceptionWhenFormRPartANotSaved() {
-    entity.setLifecycleState(SUBMITTED);
-    entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+    entity.setStatus(Status.builder()
+        .current(StatusInfo.builder().state(SUBMITTED).build())
+        .submitted(DEFAULT_SUBMISSION_DATE)
+        .build());
 
     FormRPartADto dto = new FormRPartADto();
     dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    dto.setForename(DEFAULT_FORENAME);
-    dto.setSurname(DEFAULT_SURNAME);
     dto.setLifecycleState(SUBMITTED);
-    dto.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+    dto.setSubmissionDate(LocalDateTime.ofInstant(DEFAULT_SUBMISSION_DATE, UTC));
+
+    FormrPartaContentDto content = new FormrPartaContentDto();
+    content.setForename(DEFAULT_FORENAME);
+    content.setSurname(DEFAULT_SURNAME);
+    dto.setContent(content);
 
     when(repositoryMock.save(any())).thenThrow(ApplicationException.class);
 
@@ -347,10 +378,7 @@ class FormRPartAServiceTest {
         hasEntry("traineeTisId", DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected content lifecycle state.", fileEvent.formContentDto(),
         hasEntry("lifecycleState", DELETED.toString()));
-    assertThat("Unexpected content forename.", fileEvent.formContentDto(),
-        hasEntry("forename", null));
-    assertThat("Unexpected content surname.", fileEvent.formContentDto(),
-        hasEntry("surname", null));
+    assertThat("Unexpected content.", fileEvent.formContentDto().keySet(), not(hasItem("content")));
   }
 
   @Test
@@ -366,15 +394,20 @@ class FormRPartAServiceTest {
   @Test
   void shouldPublishEventWhenSavingSubmittedFormRPartA() {
     entity.setId(null);
-    entity.setLifecycleState(SUBMITTED);
-    entity.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+    entity.setStatus(Status.builder()
+        .current(StatusInfo.builder().state(SUBMITTED).build())
+        .submitted(DEFAULT_SUBMISSION_DATE)
+        .build());
 
     FormRPartADto dto = new FormRPartADto();
     dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    dto.setForename(DEFAULT_FORENAME);
-    dto.setSurname(DEFAULT_SURNAME);
     dto.setLifecycleState(SUBMITTED);
-    dto.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
+    dto.setSubmissionDate(LocalDateTime.ofInstant(DEFAULT_SUBMISSION_DATE, UTC));
+
+    FormrPartaContentDto content = new FormrPartaContentDto();
+    content.setForename(DEFAULT_FORENAME);
+    content.setSurname(DEFAULT_SURNAME);
+    dto.setContent(content);
 
     when(repositoryMock.save(any())).thenAnswer(invocation -> {
       FormRPartA toSave = invocation.getArgument(0);
@@ -424,9 +457,12 @@ class FormRPartAServiceTest {
 
     FormRPartADto dto = new FormRPartADto();
     dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    dto.setForename(DEFAULT_FORENAME);
-    dto.setSurname(DEFAULT_SURNAME);
     dto.setLifecycleState(state);
+
+    FormrPartaContentDto content = new FormrPartaContentDto();
+    content.setForename(DEFAULT_FORENAME);
+    content.setSurname(DEFAULT_SURNAME);
+    dto.setContent(content);
 
     when(repositoryMock.save(any())).thenAnswer(invocation -> {
       FormRPartA toSave = invocation.getArgument(0);
@@ -455,8 +491,8 @@ class FormRPartAServiceTest {
     assertThat("Unexpected Id.", resultDto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected Trainee TIS Id.", resultDto.getTraineeTisId(),
         is(DEFAULT_TRAINEE_TIS_ID));
-    assertThat("Unexpected forename.", resultDto.getForename(), is(DEFAULT_FORENAME));
-    assertThat("Unexpected surname.", resultDto.getSurname(), is(DEFAULT_SURNAME));
+    assertThat("Unexpected forename.", resultDto.getContent().getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", resultDto.getContent().getSurname(), is(DEFAULT_SURNAME));
     assertThat("Unexpected lifecycle state.", resultDto.getLifecycleState(), is(UNSUBMITTED));
 
     verify(repositoryMock).save(any());

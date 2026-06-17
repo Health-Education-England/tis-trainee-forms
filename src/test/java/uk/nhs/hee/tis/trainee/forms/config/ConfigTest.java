@@ -80,9 +80,12 @@ class ConfigTest {
 
     FormRPartBDto example = objectMapper.readValue(json, FormRPartBDto.class);
 
-    assertThat("Unexpected string deserialization.", example.getGmcNumber(), is("gmc"));
-    assertThat("Unexpected string deserialization.", example.getSurname(), is(nullValue()));
-    assertThat("Unexpected string deserialization.", example.getWork().get(0).getTypeOfWork(),
+    assertThat("Unexpected string deserialization.", example.getContent().getGmcNumber(),
+        is("gmc"));
+    assertThat("Unexpected string deserialization.", example.getContent().getSurname(),
+        is(nullValue()));
+    assertThat("Unexpected string deserialization.",
+        example.getContent().getWork().get(0).getTypeOfWork(),
         is("type of work"));
   }
 }

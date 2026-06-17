@@ -21,35 +21,35 @@
 
 package uk.nhs.hee.tis.trainee.forms.mapper;
 
+import static java.time.ZoneOffset.UTC;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 
-import java.lang.reflect.Field;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
+import uk.nhs.hee.tis.trainee.forms.model.content.FormrPartbContent;
 
 @ExtendWith(MockitoExtension.class)
 class FormRPartBMapperTest {
 
-  private final FormRPartBMapper mapper = new FormRPartBMapperImpl();
-
-  @Mock
-  private CovidDeclarationMapper covidDeclarationMapper;
+  private FormRPartBMapper mapper;
 
   @BeforeEach
-  void setUp() throws Exception {
-    Field field = FormRPartBMapperImpl.class.getDeclaredField("covidDeclarationMapper");
-    field.setAccessible(true);
-    field.set(mapper, covidDeclarationMapper);
+  void setUp() {
+    TemporalMapper temporalMapper = new TemporalMapper(ZoneId.of("Etc/UTC"));
+    mapper = new FormRPartBMapperImpl(temporalMapper);
   }
 
   @Test
@@ -64,13 +64,19 @@ class FormRPartBMapperTest {
     UUID id = UUID.randomUUID();
     entity.setId(id);
     entity.setTraineeTisId("12345");
-    entity.setProgrammeSpecialty("General Practice");
-    entity.setIsArcp(true);
-    entity.setLifecycleState(SUBMITTED);
+
     UUID programmeMembershipId = UUID.randomUUID();
-    entity.setProgrammeMembershipId(programmeMembershipId);
-    LocalDateTime submissionDateTime = LocalDateTime.of(2023, 6, 30, 10, 45);
-    entity.setSubmissionDate(submissionDateTime);
+    entity.setContent(FormrPartbContent.builder()
+        .programmeSpecialty("General Practice")
+        .isArcp(true)
+        .programmeMembershipId(programmeMembershipId)
+        .build());
+
+    Instant submitted = Instant.parse("2023-06-30T10:45:00Z");
+    entity.setStatus(Status.builder()
+        .current(StatusInfo.builder().state(SUBMITTED).build())
+        .submitted(submitted)
+        .build());
 
     FormRPartSimpleDto dto = mapper.toSimpleDto(entity);
 
@@ -79,7 +85,8 @@ class FormRPartBMapperTest {
     assertThat("Unexpected programmeStartDate.", dto.getProgrammeStartDate(), nullValue());
     assertThat("Unexpected programmeName.", dto.getProgrammeName(), is("General Practice"));
     assertThat("Unexpected isArcp.", dto.getIsArcp(), is(true));
-    assertThat("Unexpected submissionDate.", dto.getSubmissionDate(), is(submissionDateTime));
+    assertThat("Unexpected submissionDate.", dto.getSubmissionDate(),
+        is(LocalDateTime.ofInstant(submitted, UTC)));
     assertThat("Unexpected lifecycleState.", dto.getLifecycleState(), is(SUBMITTED));
     assertThat("Unexpected programmeMembershipId.", dto.getProgrammeMembershipId(),
         is(programmeMembershipId));
@@ -101,13 +108,15 @@ class FormRPartBMapperTest {
   @Test
   void shouldMapProgrammeNameAndSpecialtyFromProgrammeSpecialtyInToDto() {
     FormRPartB entity = new FormRPartB();
-    entity.setProgrammeSpecialty("Internal Medicine");
+    entity.setContent(FormrPartbContent.builder()
+        .programmeSpecialty("Internal Medicine")
+        .build());
 
     var dto = mapper.toDto(entity);
 
     assertThat("Expected programmeName to be mapped from programmeSpecialty.",
-        dto.getProgrammeName(), is("Internal Medicine"));
+        dto.getContent().getProgrammeName(), is("Internal Medicine"));
     assertThat("Expected programmeSpecialty to be mapped from programmeSpecialty.",
-        dto.getProgrammeSpecialty(), is("Internal Medicine"));
+        dto.getContent().getProgrammeSpecialty(), is("Internal Medicine"));
   }
 }

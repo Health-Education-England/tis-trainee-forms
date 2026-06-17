@@ -28,22 +28,16 @@ import static org.hamcrest.Matchers.nullValue;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class TemporalMapperTest {
 
-  private TemporalMapperImpl mapper;
-
-  @BeforeEach
-  void setUp() {
-    mapper = new TemporalMapperImpl();
-  }
-
   @Test
   void shouldConvertNullInstantToNullLocalDate() {
+    TemporalMapper mapper = new TemporalMapper(ZoneId.of("Etc/UTC"));
+
     LocalDate localDate = mapper.toLocalDate(null);
 
     assertThat("Unexpected local date.", localDate, nullValue());
@@ -54,7 +48,7 @@ class TemporalMapperTest {
   void shouldConvertInstantToLocalDate(ZoneId zoneId) {
     Instant now = Instant.now();
 
-    mapper.zoneId = zoneId;
+    TemporalMapper mapper = new TemporalMapper(zoneId);
     LocalDate localDate = mapper.toLocalDate(now);
 
     assertThat("Unexpected local date.", localDate, is(LocalDate.now(zoneId)));
@@ -62,6 +56,7 @@ class TemporalMapperTest {
 
   @Test
   void shouldCalculateNullDaysUntilWhenLocalDateNull() {
+    TemporalMapper mapper = new TemporalMapper(ZoneId.of("Etc/UTC"));
     Integer daysUntil = mapper.calculateDaysUntil(null);
 
     assertThat("Unexpected days until.", daysUntil, nullValue());
@@ -72,7 +67,7 @@ class TemporalMapperTest {
   void shouldCalculateDaysUntilWhenLocalDateInPast(ZoneId zoneId) {
     LocalDate future = LocalDate.now(zoneId).minusDays(7);
 
-    mapper.zoneId = zoneId;
+    TemporalMapper mapper = new TemporalMapper(zoneId);
     Integer daysUntil = mapper.calculateDaysUntil(future);
 
     assertThat("Unexpected days until.", daysUntil, is(-7));
@@ -83,7 +78,7 @@ class TemporalMapperTest {
   void shouldCalculateDaysUntilWhenLocalDateSameDay(ZoneId zoneId) {
     LocalDate future = LocalDate.now(zoneId);
 
-    mapper.zoneId = zoneId;
+    TemporalMapper mapper = new TemporalMapper(zoneId);
     Integer daysUntil = mapper.calculateDaysUntil(future);
 
     assertThat("Unexpected days until.", daysUntil, is(0));
@@ -94,7 +89,7 @@ class TemporalMapperTest {
   void shouldCalculateDaysUntilWhenLocalDateInFuture(ZoneId zoneId) {
     LocalDate future = LocalDate.now(zoneId).plusDays(7);
 
-    mapper.zoneId = zoneId;
+    TemporalMapper mapper = new TemporalMapper(zoneId);
     Integer daysUntil = mapper.calculateDaysUntil(future);
 
     assertThat("Unexpected days until.", daysUntil, is(7));

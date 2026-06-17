@@ -21,7 +21,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.repository;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -36,16 +36,17 @@ import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 @Repository
 public interface FormRPartARepository extends MongoRepository<FormRPartA, UUID> {
 
-  @Query("{ 'traineeTisId': ?0, 'lifecycleState': { $nin: ['DELETED', 'DRAFT'] } }")
+  @Query("{ 'traineeTisId': ?0, 'status.current.state': { $nin: ['DELETED', 'DRAFT'] } }")
   List<FormRPartA> findNotDraftNorDeletedByTraineeTisId(String traineeTisId);
 
-  @Query("{ '_id': ?0, 'lifecycleState': { $nin: ['DELETED', 'DRAFT'] } }")
+  @Query("{ '_id': ?0, 'status.current.state': { $nin: ['DELETED', 'DRAFT'] } }")
   Optional<FormRPartA> findByIdAndNotDraftNorDeleted(UUID id);
 
   Optional<FormRPartA> findByIdAndTraineeTisId(UUID id, String traineeTisId);
 
   @Query(
-      fields = "{traineeTisId:1, id:1, programmeMembershipId:1, submissionDate:1, lifecycleState:1}"
+      value = "{ 'traineeTisId': ?0, 'status.current.state': ?1 }",
+      fields = "{'traineeTisId':1, id:1, 'content.programmeMembershipId':1, 'status.submitted':1, 'status.current.state':1}"
   )
   List<FormRPartA> findByTraineeTisIdAndLifecycleState(String traineeTisId,
       LifecycleState lifecycleState);
@@ -58,6 +59,7 @@ public interface FormRPartARepository extends MongoRepository<FormRPartA, UUID> 
    * @param states The states to filter by.
    * @return The found forms, empty if none found.
    */
+  @Query("{ 'status.current.state': { $in: ?0 } }")
   Stream<FormRPartA> streamByLifecycleStateIn(Set<LifecycleState> states);
 
   /**
@@ -67,6 +69,7 @@ public interface FormRPartARepository extends MongoRepository<FormRPartA, UUID> 
    * @param lastModifiedCutoff The cutoff date/time; only forms modified on or after are included.
    * @return The found forms, empty if none found.
    */
+  @Query("{ 'status.current.state': { $in: ?0 }, 'lastModified': { $gte: ?1 } }")
   Stream<FormRPartA> streamByLifecycleStateInAndLastModifiedDateGreaterThanEqual(
-      Set<LifecycleState> states, LocalDateTime lastModifiedCutoff);
+      Set<LifecycleState> states, Instant lastModifiedCutoff);
 }

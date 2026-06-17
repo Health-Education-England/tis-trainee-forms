@@ -23,15 +23,16 @@
 package uk.nhs.hee.tis.trainee.forms.model.content;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import lombok.Builder;
 import lombok.Data;
 import uk.nhs.hee.tis.trainee.forms.model.CovidDeclaration;
 import uk.nhs.hee.tis.trainee.forms.model.Declaration;
 import uk.nhs.hee.tis.trainee.forms.model.Work;
 
 @Data
+@Builder
 public class FormrPartbContent implements FormContent {
 
   private UUID programmeMembershipId;
@@ -50,7 +51,7 @@ public class FormrPartbContent implements FormContent {
   private LocalDate prevRevalDate;
   private String programmeSpecialty;
   private String dualSpecialty;
-  private List<Work> work = new ArrayList<>();
+  private List<Work> work;
   private Integer sicknessAbsence;
   private Integer parentalLeave;
   private Integer careerBreaks;
@@ -64,10 +65,10 @@ public class FormrPartbContent implements FormContent {
   private Boolean isComplying;
   private String healthStatement;
   private Boolean havePreviousDeclarations;
-  private List<Declaration> previousDeclarations = new ArrayList<>();
+  private List<Declaration> previousDeclarations;
   private String previousDeclarationSummary;
   private Boolean haveCurrentDeclarations;
-  private List<Declaration> currentDeclarations = new ArrayList<>();
+  private List<Declaration> currentDeclarations;
   private String currentDeclarationSummary;
   private String compliments;
   private Boolean haveCovidDeclarations;

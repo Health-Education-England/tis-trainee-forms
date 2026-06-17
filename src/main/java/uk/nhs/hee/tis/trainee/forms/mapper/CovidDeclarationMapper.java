@@ -21,11 +21,13 @@
 
 package uk.nhs.hee.tis.trainee.forms.mapper;
 
+import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
+
 import org.mapstruct.Mapper;
 import uk.nhs.hee.tis.trainee.forms.dto.CovidDeclarationDto;
 import uk.nhs.hee.tis.trainee.forms.model.CovidDeclaration;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = SPRING)
 public interface CovidDeclarationMapper {
 
   CovidDeclarationDto toDto(CovidDeclaration covidDeclaration);

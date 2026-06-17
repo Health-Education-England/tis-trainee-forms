@@ -32,6 +32,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,7 +40,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapperImpl;
-import uk.nhs.hee.tis.trainee.forms.mapper.TemporalMapperImpl;
+import uk.nhs.hee.tis.trainee.forms.mapper.TemporalMapper;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.LtftSubmissionHistory;
 import uk.nhs.hee.tis.trainee.forms.repository.LtftSubmissionHistoryRepository;
@@ -56,7 +57,7 @@ class LtftSubmissionHistoryServiceTest {
   @BeforeEach
   void setUp() {
     repository = mock(LtftSubmissionHistoryRepository.class);
-    LtftMapper mapper = new LtftMapperImpl(new TemporalMapperImpl());
+    LtftMapper mapper = new LtftMapperImpl(new TemporalMapper(ZoneId.of("Etc/UTC")));
     service = new LtftSubmissionHistoryService(repository, mapper);
   }
 

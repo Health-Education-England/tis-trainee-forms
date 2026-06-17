@@ -83,7 +83,7 @@ public class FormRPartBResource {
   /**
    * POST  /formr-partb : Create a new FormRPartB.
    *
-   * @param dto   the dto to create
+   * @param dto the dto to create
    * @return the ResponseEntity with status 201 (Created) and with body the new dto, or with status
    * 400 (Bad Request) if the formRPartB has already an ID
    * @throws URISyntaxException if the Location URI syntax is incorrect
@@ -113,7 +113,7 @@ public class FormRPartBResource {
   /**
    * PUT /formr-partb : Update a FormRPartB.
    *
-   * @param dto   the dto to update
+   * @param dto the dto to update
    * @return the ResponseEntity with status 200 and with body the new dto, or with status 500
    * (Internal Server Error) if the dto couldn't be updated. If the id is not provided, will create
    * a new FormRPartB
@@ -155,7 +155,7 @@ public class FormRPartBResource {
   /**
    * GET /formr-partb/:id.
    *
-   * @param id    The ID of the form
+   * @param id The ID of the form
    * @return the formR partB based on the id
    */
   @GetMapping("/formr-partb/{id}")
@@ -164,8 +164,8 @@ public class FormRPartBResource {
 
     FormRPartBDto formRPartBDto = service.getFormRPartBById(id);
     if (formRPartBDto != null) {
-      log.info("Retrieved FormRPartB id {} for trainee {} programme membership {}",
-          id, formRPartBDto.getTraineeTisId(), formRPartBDto.getProgrammeMembershipId());
+      log.info("Retrieved FormRPartB id {} for trainee {} programme membership {}", id,
+          formRPartBDto.getTraineeTisId(), formRPartBDto.getContent().getProgrammeMembershipId());
     }
     return ResponseEntity.of(Optional.ofNullable(formRPartBDto));
   }
@@ -173,7 +173,7 @@ public class FormRPartBResource {
   /**
    * DELETE: /formr-partb/:id.
    *
-   * @param id    The ID of the form
+   * @param id The ID of the form
    * @return the status of the deletion.
    */
   @DeleteMapping("/formr-partb/{id}")

@@ -24,9 +24,11 @@ package uk.nhs.hee.tis.trainee.forms.model.content;
 
 import java.time.LocalDate;
 import java.util.UUID;
+import lombok.Builder;
 import lombok.Data;
 
 @Data
+@Builder
 public class FormrPartaContent implements FormContent {
 
   private UUID programmeMembershipId;

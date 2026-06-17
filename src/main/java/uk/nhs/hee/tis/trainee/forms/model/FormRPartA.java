@@ -21,52 +21,17 @@
 
 package uk.nhs.hee.tis.trainee.forms.model;
 
-import java.time.LocalDate;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import org.springframework.data.mongodb.core.mapping.Document;
+import uk.nhs.hee.tis.trainee.forms.model.content.FormrPartaContent;
 
 @Document(collection = "FormRPartA")
 @Data
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
-public class FormRPartA extends AbstractFormR {
-
-  private Boolean isArcp;
-
-  private String forename;
-  private String surname;
-  private String gmcNumber;
-  private String gdcNumber;
-  private String publicHealthNumber;
-  private String localOfficeName;
-  private LocalDate dateOfBirth;
-  private String gender;
-  private String immigrationStatus;
-  private String qualification;
-  private LocalDate dateAttained;
-  private String medicalSchool;
-  private String address1;
-  private String address2;
-  private String address3;
-  private String address4;
-  private String postCode;
-  private String telephoneNumber;
-  private String mobileNumber;
-  private String email;
-  private String declarationType;
-  private Boolean isLeadingToCct;
-  private String programmeSpecialty;
-  private String cctSpecialty1;
-  private String cctSpecialty2;
-  private String college;
-  private LocalDate completionDate;
-  private String trainingGrade;
-  private LocalDate startDate;
-  private String programmeMembershipType;
-  private String wholeTimeEquivalent;
-  private String otherImmigrationStatus;
+public class FormRPartA extends AbstractFormR<FormrPartaContent> {
 
   @Override
   public String getFormType() {

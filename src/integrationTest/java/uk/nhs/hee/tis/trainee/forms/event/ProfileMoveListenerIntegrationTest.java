@@ -34,7 +34,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
 import java.io.IOException;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -57,10 +57,13 @@ import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.LtftSubmissionHistory;
+import uk.nhs.hee.tis.trainee.forms.model.content.FormrPartaContent;
+import uk.nhs.hee.tis.trainee.forms.model.content.FormrPartbContent;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -124,18 +127,24 @@ class ProfileMoveListenerIntegrationTest {
     UUID id1 = UUID.randomUUID();
     FormRPartA formPartA = new FormRPartA();
     formPartA.setId(id1);
-    formPartA.setCollege("another college");
+    formPartA.setContent(FormrPartaContent.builder()
+        .college("another college")
+        .build());
     formPartA.setLifecycleState(DRAFT);
     formPartA.setTraineeTisId(FROM_TRAINEE_ID);
     template.insert(formPartA);
+    formPartA = template.findById(id1, FormRPartA.class); // Ensures consistent timestamps.
 
     UUID id2 = UUID.randomUUID();
     FormRPartA formPartA2 = new FormRPartA();
     formPartA2.setId(id2);
-    formPartA2.setCollege("some college");
+    formPartA2.setContent(FormrPartaContent.builder()
+        .college("some college")
+        .build());
     formPartA2.setLifecycleState(DRAFT);
     formPartA2.setTraineeTisId(FROM_TRAINEE_ID);
     template.insert(formPartA2);
+    formPartA2 = template.findById(id2, FormRPartA.class); // Ensures consistent timestamps.
 
     String eventString = """
         {
@@ -170,6 +179,7 @@ class ProfileMoveListenerIntegrationTest {
         .findFirst()
         .orElseThrow();
     movedForm1.setTraineeTisId(FROM_TRAINEE_ID);
+    movedForm1.setLastModified(formPartA.getLastModified());
     assertThat("Unexpected moved FormR PartA data.", movedForm1, is(formPartA));
 
     FormRPartA movedForm2 = movedFormRpartAs.stream()
@@ -177,6 +187,7 @@ class ProfileMoveListenerIntegrationTest {
         .findFirst()
         .orElseThrow();
     movedForm2.setTraineeTisId(FROM_TRAINEE_ID);
+    movedForm2.setLastModified(formPartA2.getLastModified());
     assertThat("Unexpected moved FormR PartA data.", movedForm2, is(formPartA2));
   }
 
@@ -186,18 +197,24 @@ class ProfileMoveListenerIntegrationTest {
     UUID id1 = UUID.randomUUID();
     FormRPartB formRPartB = new FormRPartB();
     formRPartB.setId(id1);
-    formRPartB.setCompliments("some compliments");
+    formRPartB.setContent(FormrPartbContent.builder()
+        .compliments("some compliments")
+        .build());
     formRPartB.setLifecycleState(DRAFT);
     formRPartB.setTraineeTisId(FROM_TRAINEE_ID);
     template.insert(formRPartB);
+    formRPartB = template.findById(id1, FormRPartB.class); // Ensures consistent timestamps.
 
     UUID id2 = UUID.randomUUID();
     FormRPartB formRPartB2 = new FormRPartB();
     formRPartB2.setId(id2);
-    formRPartB2.setCompliments("other compliments");
+    formRPartB2.setContent(FormrPartbContent.builder()
+        .compliments("other compliments")
+        .build());
     formRPartB2.setLifecycleState(DRAFT);
     formRPartB2.setTraineeTisId(FROM_TRAINEE_ID);
     template.insert(formRPartB2);
+    formRPartB2 = template.findById(id2, FormRPartB.class); // Ensures consistent timestamps.
 
     String eventString = """
         {
@@ -232,6 +249,7 @@ class ProfileMoveListenerIntegrationTest {
         .findFirst()
         .orElseThrow();
     movedForm1.setTraineeTisId(FROM_TRAINEE_ID);
+    movedForm1.setLastModified(formRPartB.getLastModified());
     assertThat("Unexpected moved FormR PartB data.", movedForm1, is(formRPartB));
 
     FormRPartB movedForm2 = movedFormRpartBs.stream()
@@ -239,6 +257,7 @@ class ProfileMoveListenerIntegrationTest {
         .findFirst()
         .orElseThrow();
     movedForm2.setTraineeTisId(FROM_TRAINEE_ID);
+    movedForm2.setLastModified(formRPartB2.getLastModified());
     assertThat("Unexpected moved FormR PartB data.", movedForm2, is(formRPartB2));
   }
 
@@ -247,18 +266,24 @@ class ProfileMoveListenerIntegrationTest {
     UUID id1 = UUID.randomUUID();
     FormRPartA formPartA = new FormRPartA();
     formPartA.setId(id1);
-    formPartA.setCollege("another college");
+    formPartA.setContent(FormrPartaContent.builder()
+        .college("another college")
+        .build());
     formPartA.setLifecycleState(DRAFT);
     formPartA.setTraineeTisId(TO_TRAINEE_ID);
     template.insert(formPartA);
+    formPartA = template.findById(id1, FormRPartA.class); // Ensures consistent timestamps.
 
     UUID id2 = UUID.randomUUID();
     FormRPartA formPartA2 = new FormRPartA();
     formPartA2.setId(id2);
-    formPartA2.setCollege("some college");
+    formPartA2.setContent(FormrPartaContent.builder()
+        .college("some college")
+        .build());
     formPartA2.setLifecycleState(DRAFT);
     formPartA2.setTraineeTisId("another trainee");
     template.insert(formPartA2);
+    formPartA2 = template.findById(id2, FormRPartA.class); // Ensures consistent timestamps.
 
     String eventString = """
         {
@@ -301,16 +326,19 @@ class ProfileMoveListenerIntegrationTest {
   }
 
   @Test
-  void shouldMoveFormRWhenProfileMove() throws IOException, InterruptedException {
+  void shouldMoveFormRWhenProfileMove() throws IOException {
     //forms to move
     UUID id1 = UUID.randomUUID();
     FormRPartA formPartA = new FormRPartA();
     formPartA.setId(id1);
-    formPartA.setCollege("another college");
+    formPartA.setContent(FormrPartaContent.builder()
+        .college("another college")
+        .build());
     formPartA.setLifecycleState(SUBMITTED);
-    formPartA.setSubmissionDate(LocalDateTime.of(2024, 1, 1, 0, 0, 0));
+    formPartA.setStatus(Status.builder().submitted(Instant.parse("2024-01-01T00:00:00Z")).build());
     formPartA.setTraineeTisId(FROM_TRAINEE_ID);
     template.insert(formPartA);
+    formPartA = template.findById(id1, FormRPartA.class); // Ensures consistent timestamps.
 
     // trigger the move
     String eventString = """
@@ -343,6 +371,7 @@ class ProfileMoveListenerIntegrationTest {
     // Verify form data is unchanged except for traineeId
     FormRPartA movedForm = movedFormRpartAs.get(0);
     movedForm.setTraineeTisId(FROM_TRAINEE_ID);
+    movedForm.setLastModified(formPartA.getLastModified());
     assertThat("Unexpected moved FormR PartA data.", movedForm, is(formPartA));
   }
 

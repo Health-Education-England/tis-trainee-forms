@@ -21,12 +21,14 @@
 
 package uk.nhs.hee.tis.trainee.forms.service;
 
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DELETED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
+
 import com.amazonaws.xray.spring.aop.XRayEnabled;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.Instant;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -42,6 +44,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
+import uk.nhs.hee.tis.trainee.forms.model.Person;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
 import uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService.FormrFileEventDto;
 
@@ -52,16 +55,6 @@ import uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService.FormrFileEvent
 public class FormRPartAService {
 
   public static final String FORM_TYPE = "formr-a";
-
-  private static final String ATTRIBUTE_NAME_LIFE_CYCLE_STATE = "lifecycleState";
-
-  private static final Set<String> FIXED_FIELDS = Set.of(
-      "id",
-      "traineeTisId",
-      ATTRIBUTE_NAME_LIFE_CYCLE_STATE,
-      "submissionDate",
-      "lastModifiedDate"
-  );
 
   private final FormRPartAMapper mapper;
 
@@ -102,22 +95,54 @@ public class FormRPartAService {
    */
   public FormRPartADto save(FormRPartADto formRPartADto) {
     log.info("Request to save FormRPartA : {}", formRPartADto);
-    Set<LifecycleState> modifiableStates = Set.of(LifecycleState.DRAFT, LifecycleState.UNSUBMITTED);
+    FormRPartA existingForm = null;
+    Set<LifecycleState> modifiableStates = Set.of(DRAFT, UNSUBMITTED);
 
     if (formRPartADto.getId() != null) {
-      repository.findById(UUID.fromString(formRPartADto.getId())).ifPresent(existingForm -> {
+      Optional<FormRPartA> foundForm = repository.findById(UUID.fromString(formRPartADto.getId()));
+
+      if (foundForm.isPresent()) {
+        existingForm = foundForm.get();
         if (!modifiableStates.contains(existingForm.getLifecycleState())) {
           String message = String.format("Form %s is in lifecycle state %s and cannot be modified.",
               existingForm.getId(), existingForm.getLifecycleState());
           throw new IllegalArgumentException(message);
         }
-      });
+      }
     }
 
-    FormRPartA formRPartA = mapper.toEntity(formRPartADto);
+    FormRPartA formRPartA = mapper.toEntity(formRPartADto, existingForm);
+
+    if (existingForm == null
+        || formRPartADto.getLifecycleState() != existingForm.getLifecycleState()) {
+      LifecycleState newLifecycleState = formRPartADto.getLifecycleState();
+      Person modifiedBy;
+      int revision;
+
+      if (newLifecycleState == DRAFT || newLifecycleState == SUBMITTED) {
+        modifiedBy = Person.builder()
+            .name(traineeIdentity.getName())
+            .email(traineeIdentity.getEmail())
+            .role(traineeIdentity.getRole())
+            .build();
+        revision = formRPartA.getRevision();
+      } else {
+        // TODO: used admin identity if we need to handle admin transitions here.
+        modifiedBy = Person.builder()
+            .name("Unknown Admin")
+            .email("no-reply@tis.nhs.uk")
+            .role("ADMIN")
+            .build();
+        revision = newLifecycleState == UNSUBMITTED ? formRPartA.getRevision() + 1
+            : formRPartA.getRevision();
+      }
+
+      formRPartA.setLifecycleState(newLifecycleState, null, modifiedBy, revision);
+    }
+
     formRPartA = repository.save(formRPartA);
     FormRPartADto formDto = mapper.toDto(formRPartA);
-    if (formRPartA.getLifecycleState() == LifecycleState.SUBMITTED) {
+    if (formRPartA.getLifecycleState() == SUBMITTED) {
       publishFormRUpdateEvent(formDto);
     }
     return formDto;
@@ -193,7 +218,7 @@ public class FormRPartAService {
     FormRPartA form = optionalForm.get();
     LifecycleState state = form.getLifecycleState();
 
-    if (!state.equals(LifecycleState.DRAFT)) {
+    if (!state.equals(DRAFT)) {
       String message = String.format("Unable to delete forms with lifecycle state %s.", state);
       log.warn(message);
       throw new IllegalArgumentException(message);
@@ -226,18 +251,8 @@ public class FormRPartAService {
    * @return The partially deleted form.
    */
   private FormRPartA partialDelete(FormRPartA form) {
-    JsonNode jsonForm = objectMapper.valueToTree(form);
-
-    for (Iterator<String> fieldIterator = jsonForm.fieldNames(); fieldIterator.hasNext(); ) {
-      String fieldName = fieldIterator.next();
-
-      if (!FIXED_FIELDS.contains(fieldName)) {
-        fieldIterator.remove();
-      }
-    }
-    ((ObjectNode) jsonForm).put(ATTRIBUTE_NAME_LIFE_CYCLE_STATE,
-        LifecycleState.DELETED.name());
-    form = objectMapper.convertValue(jsonForm, FormRPartA.class);
+    form.setContent(null);
+    form.setLifecycleState(DELETED);
 
     repository.save(form);
     publishFormRUpdateEvent(mapper.toDto(form));
@@ -258,7 +273,7 @@ public class FormRPartAService {
 
     return repository.findById(id)
         .map(form -> {
-          form.setLifecycleState(LifecycleState.UNSUBMITTED);
+          form.setLifecycleState(UNSUBMITTED);
           FormRPartA formRPartA = repository.save(form);
           publishFormRUpdateEvent(mapper.toDto(form));
           log.info("Unsubmitted successfully for trainee {} with form Id {} (FormRPartA)",

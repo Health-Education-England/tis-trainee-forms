@@ -113,8 +113,8 @@ public class FormRPartAValidator {
 
     if (lifecycleState.equals(LifecycleState.SUBMITTED)) {
       //temporary - should be replaced by annotation
-      if (formRPartADto.getWholeTimeEquivalent() == null
-          || formRPartADto.getWholeTimeEquivalent().isEmpty()) {
+      String wte = formRPartADto.getContent().getWholeTimeEquivalent();
+      if (wte == null || wte.isEmpty()) {
         fieldErrors.add(new FieldError(FORMR_PARTA_DTO_NAME, "wholeTimeEquivalent",
             "wholeTimeEquivalent is missing or empty"));
       }

@@ -31,9 +31,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -46,8 +47,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.services.s3.S3Client;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
+import uk.nhs.hee.tis.trainee.forms.model.content.FormrPartaContent;
+import uk.nhs.hee.tis.trainee.forms.model.content.FormrPartbContent;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
 import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
@@ -61,7 +66,7 @@ class FormRelocateServiceTest {
   private static final String DEFAULT_TRAINEE_ID = "DEFAULT_TRAINEE";
   private static final String DEFAULT_FORENAME = "DEFAULT_FORENAME";
   private static final String DEFAULT_SURNAME = "DEFAULT_SURNAME";
-  private static final LocalDateTime DEFAULT_SUBMISSION_DATE = LocalDateTime.now();
+  private static final Instant DEFAULT_SUBMISSION_DATE = Instant.now();
 
 
   private FormRelocateService service;
@@ -97,18 +102,26 @@ class FormRelocateServiceTest {
     formRPartA = new FormRPartA();
     formRPartA.setId(FORM_ID);
     formRPartA.setTraineeTisId(DEFAULT_TRAINEE_ID);
-    formRPartA.setForename(DEFAULT_FORENAME);
-    formRPartA.setSurname(DEFAULT_SURNAME);
-    formRPartA.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
-    formRPartA.setLifecycleState(DRAFT);
+    formRPartA.setContent(FormrPartaContent.builder()
+        .forename(DEFAULT_FORENAME)
+        .surname(DEFAULT_SURNAME)
+        .build());
+    formRPartA.setStatus(Status.builder()
+        .current(StatusInfo.builder().state(DRAFT).build())
+        .submitted(DEFAULT_SUBMISSION_DATE)
+        .build());
 
     formRPartB = new FormRPartB();
     formRPartB.setId(FORM_ID);
     formRPartB.setTraineeTisId(DEFAULT_TRAINEE_ID);
-    formRPartB.setForename(DEFAULT_FORENAME);
-    formRPartB.setSurname(DEFAULT_SURNAME);
-    formRPartB.setSubmissionDate(DEFAULT_SUBMISSION_DATE);
-    formRPartB.setLifecycleState(LifecycleState.SUBMITTED);
+    formRPartB.setContent(FormrPartbContent.builder()
+        .forename(DEFAULT_FORENAME)
+        .surname(DEFAULT_SURNAME)
+        .build());
+    formRPartB.setStatus(Status.builder()
+        .current(StatusInfo.builder().state(SUBMITTED).build())
+        .submitted(DEFAULT_SUBMISSION_DATE)
+        .build());
   }
 
   @Test
@@ -124,9 +137,9 @@ class FormRelocateServiceTest {
     FormRPartA formRPartA = formRPartACaptor.getValue();
     assertThat("Unexpected form ID.", formRPartA.getId(), is(FORM_ID));
     assertThat("Unexpected trainee ID.", formRPartA.getTraineeTisId(), is(TARGET_TRAINEE_ID));
-    assertThat("Unexpected forename.", formRPartA.getForename(), is(DEFAULT_FORENAME));
-    assertThat("Unexpected surname.", formRPartA.getSurname(), is(DEFAULT_SURNAME));
-    assertThat("Unexpected submissionDate.", formRPartA.getSubmissionDate(),
+    assertThat("Unexpected forename.", formRPartA.getContent().getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", formRPartA.getContent().getSurname(), is(DEFAULT_SURNAME));
+    assertThat("Unexpected submissionDate.", formRPartA.getStatus().submitted(),
         is(DEFAULT_SUBMISSION_DATE));
     assertThat("Unexpected lifecycleState.", formRPartA.getLifecycleState(),
         is(DRAFT));
@@ -200,9 +213,9 @@ class FormRelocateServiceTest {
     assertThat("Unexpected form ID.", formRPartA.getId(), is(FORM_ID));
     assertThat("Unexpected trainee ID.", formRPartA.getTraineeTisId(),
         is(DEFAULT_TRAINEE_ID));
-    assertThat("Unexpected forename.", formRPartA.getForename(), is(DEFAULT_FORENAME));
-    assertThat("Unexpected surname.", formRPartA.getSurname(), is(DEFAULT_SURNAME));
-    assertThat("Unexpected submissionDate.", formRPartA.getSubmissionDate(),
+    assertThat("Unexpected forename.", formRPartA.getContent().getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", formRPartA.getContent().getSurname(), is(DEFAULT_SURNAME));
+    assertThat("Unexpected submissionDate.", formRPartA.getStatus().submitted(),
         is(DEFAULT_SUBMISSION_DATE));
     assertThat("Unexpected lifecycleState.", formRPartA.getLifecycleState(),
         is(DRAFT));
@@ -226,9 +239,9 @@ class FormRelocateServiceTest {
     assertThat("Unexpected form ID.", formRPartB.getId(), is(FORM_ID));
     assertThat("Unexpected trainee ID.", formRPartB.getTraineeTisId(),
         is(DEFAULT_TRAINEE_ID));
-    assertThat("Unexpected forename.", formRPartB.getForename(), is(DEFAULT_FORENAME));
-    assertThat("Unexpected surname.", formRPartB.getSurname(), is(DEFAULT_SURNAME));
-    assertThat("Unexpected submissionDate.", formRPartB.getSubmissionDate(),
+    assertThat("Unexpected forename.", formRPartB.getContent().getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", formRPartB.getContent().getSurname(), is(DEFAULT_SURNAME));
+    assertThat("Unexpected submissionDate.", formRPartB.getStatus().submitted(),
         is(DEFAULT_SUBMISSION_DATE));
     assertThat("Unexpected lifecycleState.", formRPartB.getLifecycleState(),
         is(LifecycleState.SUBMITTED));
@@ -248,9 +261,9 @@ class FormRelocateServiceTest {
     FormRPartA formRPartA = formRPartACaptor.getValue();
     assertThat("Unexpected form ID.", formRPartA.getId(), is(FORM_ID));
     assertThat("Unexpected trainee ID.", formRPartA.getTraineeTisId(), is(TARGET_TRAINEE_ID));
-    assertThat("Unexpected forename.", formRPartA.getForename(), is(DEFAULT_FORENAME));
-    assertThat("Unexpected surname.", formRPartA.getSurname(), is(DEFAULT_SURNAME));
-    assertThat("Unexpected submissionDate.", formRPartA.getSubmissionDate(),
+    assertThat("Unexpected forename.", formRPartA.getContent().getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", formRPartA.getContent().getSurname(), is(DEFAULT_SURNAME));
+    assertThat("Unexpected submissionDate.", formRPartA.getStatus().submitted(),
         is(DEFAULT_SUBMISSION_DATE));
     assertThat("Unexpected lifecycleState.", formRPartA.getLifecycleState(),
         is(LifecycleState.UNSUBMITTED));
@@ -270,9 +283,9 @@ class FormRelocateServiceTest {
     FormRPartB formRPartB = formRPartBCaptor.getValue();
     assertThat("Unexpected form ID.", formRPartB.getId(), is(FORM_ID));
     assertThat("Unexpected trainee ID.", formRPartB.getTraineeTisId(), is(TARGET_TRAINEE_ID));
-    assertThat("Unexpected forename.", formRPartB.getForename(), is(DEFAULT_FORENAME));
-    assertThat("Unexpected surname.", formRPartB.getSurname(), is(DEFAULT_SURNAME));
-    assertThat("Unexpected submissionDate.", formRPartB.getSubmissionDate(),
+    assertThat("Unexpected forename.", formRPartB.getContent().getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", formRPartB.getContent().getSurname(), is(DEFAULT_SURNAME));
+    assertThat("Unexpected submissionDate.", formRPartB.getStatus().submitted(),
         is(DEFAULT_SUBMISSION_DATE));
     assertThat("Unexpected lifecycleState.", formRPartB.getLifecycleState(),
         is(LifecycleState.SUBMITTED));

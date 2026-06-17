@@ -131,10 +131,10 @@ public class FormRPartBValidator {
         });
       }
       //temporary check:
-      if (formRPartBDto.getCurrRevalDate() != null
-          && formRPartBDto.getCurrRevalDate().isBefore(LocalDate.now())) {
+      LocalDate currRevalDate = formRPartBDto.getContent().getCurrRevalDate();
+      if (currRevalDate != null && currRevalDate.isBefore(LocalDate.now())) {
         log.warn("Current revalidation date {} is not in the future in FormRPartB {}",
-            formRPartBDto.getCurrRevalDate(), formRPartBDto.getId());
+            currRevalDate, formRPartBDto.getId());
       }
     }
     return fieldErrors;

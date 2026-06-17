@@ -23,13 +23,13 @@ package uk.nhs.hee.tis.trainee.forms.migration;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.util.AssertionErrors.assertNull;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -37,21 +37,22 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
-import uk.nhs.hee.tis.trainee.forms.mapper.CovidDeclarationMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapperImpl;
+import uk.nhs.hee.tis.trainee.forms.mapper.TemporalMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.model.Work;
+import uk.nhs.hee.tis.trainee.forms.model.content.FormrPartbContent;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 
 @ExtendWith(MockitoExtension.class)
 class SortWorkPlacementsTest {
+
   private static final LocalDate OLDEST_WORK = LocalDate.of(2000, 1, 1);
   private static final LocalDate MIDDLE_WORK = LocalDate.of(2010, 10, 10);
   private static final LocalDate NEWEST_WORK = LocalDate.of(2020, 2, 5);
@@ -66,16 +67,13 @@ class SortWorkPlacementsTest {
   private MongoTemplate template;
 
   @Mock
-  private CovidDeclarationMapper covidDeclarationMapper;
-
-  @Mock
   private FormRPartBService service;
 
-  @InjectMocks
-  FormRPartBMapper mapper = new FormRPartBMapperImpl();
+  private FormRPartBMapper mapper;
 
   @BeforeEach
   void setUp() {
+    mapper = new FormRPartBMapperImpl(new TemporalMapper(ZoneId.of("Etc/UTC")));
     migration = new SortWorkPlacements(template, service, mapper);
 
     workOldest = new Work();
@@ -95,7 +93,9 @@ class SortWorkPlacementsTest {
     workInOrder.add(workOldest);
 
     FormRPartB form = new FormRPartB();
-    form.setWork(workInOrder);
+    form.setContent(FormrPartbContent.builder()
+        .work(workInOrder)
+        .build());
 
     when(template.findAll(FormRPartB.class)).thenReturn(Collections.singletonList(form));
 
@@ -115,9 +115,10 @@ class SortWorkPlacementsTest {
     workInOrder.add(workOldest);
 
     FormRPartB form = new FormRPartB();
-    form.setWork(workInOrder);
+    form.setContent(FormrPartbContent.builder()
+        .work(workInOrder)
+        .build());
 
-    when(covidDeclarationMapper.toDto(any())).thenReturn(null);
     when(template.findAll(FormRPartB.class)).thenReturn(Collections.singletonList(form));
 
     //when
@@ -128,7 +129,7 @@ class SortWorkPlacementsTest {
     verify(service).save(formCaptor.capture());
 
     FormRPartBDto updatedForm = formCaptor.getValue();
-    List<WorkDto> sortedWorkDto = updatedForm.getWork();
+    List<WorkDto> sortedWorkDto = updatedForm.getContent().getWork();
     assertNull("Unexpected work ordering.",
         sortedWorkDto.get(0).getEndDate());
     assertThat("Unexpected work ordering.",
@@ -144,7 +145,9 @@ class SortWorkPlacementsTest {
     workInOrder.add(workNewest);
 
     FormRPartB form = new FormRPartB();
-    form.setWork(workInOrder);
+    form.setContent(FormrPartbContent.builder()
+        .work(workInOrder)
+        .build());
 
     when(template.findAll(FormRPartB.class)).thenReturn(Collections.singletonList(form));
 
@@ -156,7 +159,7 @@ class SortWorkPlacementsTest {
     verify(service).save(formCaptor.capture());
 
     FormRPartBDto updatedForm = formCaptor.getValue();
-    List<WorkDto> sortedWorkDto = updatedForm.getWork();
+    List<WorkDto> sortedWorkDto = updatedForm.getContent().getWork();
     assertThat("Unexpected work ordering.",
         sortedWorkDto.get(0).getEndDate().isAfter(sortedWorkDto.get(1).getEndDate()), is(true));
     assertThat("Unexpected work ordering.",

@@ -21,23 +21,14 @@
 
 package uk.nhs.hee.tis.trainee.forms.model;
 
-import java.time.LocalDateTime;
-import java.util.UUID;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.Setter;
 import lombok.ToString;
-import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.model.content.FormContent;
 
 @Data
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
-public abstract class AbstractFormR extends AbstractForm {
-
-  @Setter
-  private LifecycleState lifecycleState;
-  private LocalDateTime submissionDate;
-  private LocalDateTime lastModifiedDate;
-  private UUID programmeMembershipId;
+public abstract class AbstractFormR<T extends FormContent> extends AbstractAuditedForm<T> {
 
 }

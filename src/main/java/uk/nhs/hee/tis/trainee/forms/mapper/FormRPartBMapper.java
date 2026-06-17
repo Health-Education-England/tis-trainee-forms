@@ -20,31 +20,46 @@
 
 package uk.nhs.hee.tis.trainee.forms.mapper;
 
+import static org.mapstruct.InjectionStrategy.CONSTRUCTOR;
+import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
+
 import java.util.List;
-import org.mapstruct.InheritInverseConfiguration;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 
-@Mapper(componentModel = "spring", uses = {CovidDeclarationMapper.class})
+@Mapper(componentModel = SPRING, uses = {CovidDeclarationMapper.class,
+    TemporalMapper.class}, injectionStrategy = CONSTRUCTOR)
 public interface FormRPartBMapper {
 
-  @Mapping(target = "programmeSpecialty", source = "programmeSpecialty")
-  @Mapping(target = "programmeName", source = "programmeSpecialty")
-  @Mapping(target = "covidDeclarationDto", source = "covidDeclaration")
+  @Mapping(target = "id", source = "id")
+  @Mapping(target = "traineeTisId", source = "traineeTisId")
+  @Mapping(target = "content", source = "content")
+  @Mapping(target = "content.programmeName", source = "content.programmeSpecialty")
+  @Mapping(target = "lifecycleState", source = "status.current.state")
+  @Mapping(target = "submissionDate", source = "status.submitted")
+  @Mapping(target = "lastModifiedDate", source = "lastModified")
   FormRPartBDto toDto(FormRPartB formRPartB);
 
-  @InheritInverseConfiguration
-  FormRPartB toEntity(FormRPartBDto formRPartBDto);
-
-  List<FormRPartBDto> toDtos(List<FormRPartB> formRPartBs);
-
-  List<FormRPartB> toEntities(List<FormRPartBDto> formRPartBDtos);
+  @Mapping(target = "id", source = "existingEntity.id")
+  @Mapping(target = "traineeTisId", source = "dto.traineeTisId")
+  @Mapping(target = "formRef", source = "existingEntity.formRef")
+  @Mapping(target = "revision", source = "existingEntity.revision")
+  @Mapping(target = "content", source = "dto.content")
+  @Mapping(target = "status", source = "existingEntity.status")
+  @Mapping(target = "lifecycleState", ignore = true)
+  FormRPartB toEntity(FormRPartBDto dto, FormRPartB existingEntity);
 
   //programmeStartDate is unmapped as FormRPartB does not have a startDate field
-  @Mapping(target = "programmeName", source = "programmeSpecialty")
+  @Mapping(target = "id", source = "id")
+  @Mapping(target = "traineeTisId", source = "traineeTisId")
+  @Mapping(target = "isArcp", source = "content.isArcp")
+  @Mapping(target = "programmeMembershipId", source = "content.programmeMembershipId")
+  @Mapping(target = "submissionDate", source = "status.submitted")
+  @Mapping(target = "lifecycleState", source = "status.current.state")
+  @Mapping(target = "programmeName", source = "content.programmeSpecialty")
   @Mapping(target = "formType", constant = "formr-partb")
   FormRPartSimpleDto toSimpleDto(FormRPartB formRPartB);
 

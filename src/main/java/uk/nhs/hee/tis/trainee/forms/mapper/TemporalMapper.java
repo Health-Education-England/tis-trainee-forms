@@ -21,24 +21,31 @@
 
 package uk.nhs.hee.tis.trainee.forms.mapper;
 
-import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
-
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
-import org.mapstruct.Mapper;
 import org.mapstruct.Named;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 /**
  * A mapper for temporal types.
  */
-@Mapper(componentModel = SPRING)
-public abstract class TemporalMapper {
+@Component
+public class TemporalMapper {
 
-  @Value("${application.timezone}")
-  ZoneId zoneId;
+  private final ZoneId zoneId;
+
+  /**
+   * Create an instance of the temporal mapper.
+   *
+   * @param zoneId The application zone ID to use during mapping.
+   */
+  public TemporalMapper(@Value("${application.timezone}") ZoneId zoneId) {
+    this.zoneId = zoneId;
+  }
 
   /**
    * Convert an {@link Instant} to a {@link LocalDate}.
@@ -48,6 +55,26 @@ public abstract class TemporalMapper {
    */
   public LocalDate toLocalDate(Instant instant) {
     return instant == null ? null : LocalDate.ofInstant(instant, zoneId);
+  }
+
+  /**
+   * Convert an {@link Instant} to a {@link LocalDateTime}.
+   *
+   * @param instant The instant to convert.
+   * @return The zoned LocalDateTime, based on the application's timezone.
+   */
+  public LocalDateTime toLocalDateTime(Instant instant) {
+    return instant == null ? null : LocalDateTime.ofInstant(instant, zoneId);
+  }
+
+  /**
+   * Convert a {@link LocalDate} to an {@link Instant}.
+   *
+   * @param localDateTime The LocalDate to convert.
+   * @return The Instant, based on the application's timezone.
+   */
+  public Instant toInstant(LocalDateTime localDateTime) {
+    return localDateTime == null ? null : localDateTime.atZone(zoneId).toInstant();
   }
 
   /**
