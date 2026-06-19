@@ -35,6 +35,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.domain.Persistable;
 import org.springframework.data.mongodb.core.index.Indexed;
+import uk.nhs.hee.tis.trainee.forms.config.StateStage;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
@@ -192,6 +193,7 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
      * @param modifiedBy    The Person who made this status change.
      * @param timestamp     The timestamp of the status change.
      * @param revision      The revision number associated with this status change.
+     * @param reviewStage   The review stage associated with this status change, if any.
      */
     @Builder
     public record StatusInfo(
@@ -202,7 +204,8 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
         Person assignedAdmin,
         Person modifiedBy,
         Instant timestamp,
-        Integer revision
+        Integer revision,
+        StateStage reviewStage
     ) {
 
     }

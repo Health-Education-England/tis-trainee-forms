@@ -16,6 +16,24 @@ application:
       coj-received: ${COJ_RECEIVED_QUEUE:}
       notification-event: ${NOTIFICATION_EVENT_QUEUE:}
       profile-move: ${PROFILE_MOVE_QUEUE:}
+  review-workflows:
+    "1-1RSSQ6R": # DBC code as the map key (Thames Valley)
+      - label: "Programme/Education Team Triage"
+        enabled: true
+      - label: "Programme Manager Review"
+        enabled: true
+      - label: "Associate Dean Approval"
+        enabled: true
+    "1-1RUZUSF": # DBC code as the map key (Wessex)
+      - label: "Programme/Education Team Triage"
+        enabled: true
+      - label: "Education Team Review"
+        enabled: true
+      - label: "APD Approval"
+        enabled: true
+    "1-1RUZV1D": # DBC code as the map key (KSS, if they had a one-step review)
+      - label: "Completeness checks"
+        enabled: true
   schedules:
     publish-all-formr-partas: "-"
     publish-all-formr-partbs: "-"
