@@ -115,6 +115,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.ReasonsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
+import uk.nhs.hee.tis.trainee.forms.dto.ReviewWorkflowDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
@@ -2108,6 +2109,53 @@ class LtftServiceTest {
   }
 
   @Test
+  void shouldLookUpFormByIdWhenGettingReviewWorkflow() {
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.empty());
+
+    service.getReviewWorkflow(ID);
+
+    verify(repository).findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        eq(ID), any());
+  }
+
+  @Test
+  void shouldLookUpFormByAdminDbcsWhenGettingReviewWorkflow() {
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.empty());
+
+    service.getReviewWorkflow(ID);
+
+    verify(repository).findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        any(), eq(Set.of(ADMIN_GROUP)));
+  }
+
+  @Test
+  void shouldReturnEmptyWhenFormNotFoundForReviewWorkflow() {
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.empty());
+
+    Optional<ReviewWorkflowDto> result = service.getReviewWorkflow(ID);
+
+    assertThat("Unexpected result presence.", result.isPresent(), is(false));
+  }
+
+  @Test
+  void shouldReturnWorkflowDtoFromServiceWhenFormFound() {
+    LtftForm form = new LtftForm();
+    ReviewWorkflowDto expectedDto = new ReviewWorkflowDto(List.of("Triage", "Dean Approval"), 0);
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+    when(reviewStageService.getWorkflowDto(form)).thenReturn(expectedDto);
+
+    Optional<ReviewWorkflowDto> result = service.getReviewWorkflow(ID);
+
+    assertThat("Unexpected result presence.", result.isPresent(), is(true));
+    assertThat("Unexpected workflow dto.", result.get(), is(expectedDto));
+  }
+
+  @Test
   void shouldLookUpFormByIdWhenAdvancingReviewStage()
       throws MethodArgumentNotValidException {
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
@@ -2280,6 +2328,54 @@ class LtftServiceTest {
     assertThat("Unexpected history state 0.", history.get(0).state(), is(SUBMITTED));
     assertThat("Unexpected history state 1.", history.get(1).state(), is(SUBMITTED));
     assertThat("Unexpected history review stage 1.", history.get(1).reviewStage(), is(nextStage));
+  }
+
+  @Test
+  void shouldSetAdminAsModifiedByWhenAdvancingReviewStage()
+      throws MethodArgumentNotValidException {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setLifecycleState(SUBMITTED);
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+    when(reviewStageService.resolveAdvance(any()))
+        .thenReturn(Optional.of(new ReviewStageStatus(1, "Manager Review")));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> optionalDto = service.advanceReviewStage(ID);
+
+    assertThat("Unexpected form presence.", optionalDto.isPresent(), is(true));
+    RedactedPersonDto modifiedBy = optionalDto.get().status().current().modifiedBy();
+    assertThat("Unexpected modified name.", modifiedBy.name(), is(ADMIN_NAME));
+    assertThat("Unexpected modified email.", modifiedBy.email(), is(ADMIN_EMAIL));
+    assertThat("Unexpected modified role.", modifiedBy.role(), is("ADMIN"));
+  }
+
+  @Test
+  void shouldStoreDetailWhenAdvancingReviewStageWithDetail()
+      throws MethodArgumentNotValidException {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setLifecycleState(SUBMITTED);
+
+    LftfStatusInfoDetailDto detail = LftfStatusInfoDetailDto.builder()
+        .reason("Triage complete")
+        .message("Moving to manager review.")
+        .build();
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+    when(reviewStageService.resolveAdvance(any()))
+        .thenReturn(Optional.of(new ReviewStageStatus(1, "Manager Review")));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> optionalDto = service.advanceReviewStage(ID, detail);
+
+    assertThat("Unexpected form presence.", optionalDto.isPresent(), is(true));
+    LftfStatusInfoDetailDto storedDetail = optionalDto.get().status().current().detail();
+    assertThat("Unexpected detail reason.", storedDetail.reason(), is("Triage complete"));
+    assertThat("Unexpected detail message.", storedDetail.message(), is("Moving to manager review."));
   }
 
   @ParameterizedTest

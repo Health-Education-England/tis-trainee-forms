@@ -49,7 +49,6 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
-import uk.nhs.hee.tis.trainee.forms.model.ReviewStageStatus;
 
 class AbstractAuditedFormTest {
 
@@ -589,6 +588,53 @@ class AbstractAuditedFormTest {
 
     assertThat("Unexpected review stage.", form.getStatus().current().reviewStage(),
         is(reviewStage));
+  }
+
+  @Test
+  void shouldSetProvidedDetailWhenCallingSetReviewStageWithDetailAndModifiedBy() {
+    form.setLifecycleState(SUBMITTED);
+    StatusDetail newDetail = StatusDetail.builder().reason("Triage done").message("notes").build();
+    Person modifiedBy = Person.builder().name("Ad Min").email("ad@test.com").role("ADMIN").build();
+
+    form.setReviewStage(new ReviewStageStatus(1, "Manager Review"), newDetail, modifiedBy);
+
+    assertThat("Unexpected detail.", form.getStatus().current().detail(), is(newDetail));
+  }
+
+  @Test
+  void shouldSetNullDetailWhenCallingSetReviewStageWithNullDetail() {
+    StatusDetail existingDetail = StatusDetail.builder().reason("existing").build();
+    form.setLifecycleState(SUBMITTED, existingDetail, null, 0);
+
+    form.setReviewStage(new ReviewStageStatus(1, "Manager Review"), null, null);
+
+    assertThat("Unexpected detail after null.", form.getStatus().current().detail(), nullValue());
+  }
+
+  @Test
+  void shouldSetProvidedModifiedByWhenCallingSetReviewStageWithModifiedBy() {
+    form.setLifecycleState(SUBMITTED);
+    Person modifiedBy = Person.builder().name("Ad Min").email("ad@test.com").role("ADMIN").build();
+
+    form.setReviewStage(new ReviewStageStatus(1, "Manager Review"), null, modifiedBy);
+
+    assertThat("Unexpected modifiedBy.", form.getStatus().current().modifiedBy(), is(modifiedBy));
+  }
+
+  @Test
+  void shouldNotAffectSubmittedTimestampWhenCallingSetReviewStageWithDetailAndModifiedBy() {
+    Instant submittedTime = Instant.parse("2026-01-01T10:00:00Z");
+    form.setStatus(Status.builder()
+        .current(StatusInfo.builder().state(SUBMITTED).build())
+        .submitted(submittedTime)
+        .history(List.of())
+        .build());
+    Person modifiedBy = Person.builder().name("Ad Min").email("ad@test.com").role("ADMIN").build();
+
+    form.setReviewStage(new ReviewStageStatus(1, "Manager Review"),
+        StatusDetail.builder().reason("done").build(), modifiedBy);
+
+    assertThat("Unexpected submitted timestamp.", form.getStatus().submitted(), is(submittedTime));
   }
 
   /**

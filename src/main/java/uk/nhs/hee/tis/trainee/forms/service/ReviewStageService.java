@@ -25,8 +25,10 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMIT
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
 import jakarta.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import uk.nhs.hee.tis.trainee.forms.dto.ReviewWorkflowDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import uk.nhs.hee.tis.trainee.forms.config.ReviewWorkflowProperties;
@@ -64,7 +66,48 @@ public class ReviewStageService {
   }
 
   /**
-   * Resolve the {@link ReviewStageStatus} to set on the form when transitioning to the given target
+   * Build the {@link ReviewWorkflowDto} for the given form.
+   *
+   * <p>The {@code stages} list contains only enabled stages, with one exception: if the form is
+   * currently SUBMITTED and its active review stage is disabled (e.g. the stage was disabled after
+   * the form entered it), that stage is also included at its correct position.
+   *
+   * <p>The {@code currentStage} field is the zero-based index of the form's current review stage
+   * within the returned {@code stages} list, or {@code null} if the form is not SUBMITTED or has
+   * no active review stage.
+   *
+   * @param form The form to inspect.
+   * @return The workflow DTO describing the visible stages and the form's current position.
+   */
+  public ReviewWorkflowDto getWorkflowDto(LtftForm form) {
+    String dbc = getDesignatedBodyCode(form);
+    List<StateStage> allStages = getConfiguredStages(dbc);
+
+    ReviewStageStatus currentReviewStage = getCurrentReviewStage(form);
+    boolean isSubmitted = form.getStatus() != null
+        && form.getStatus().current() != null
+        && form.getStatus().current().state() == SUBMITTED;
+    Integer currentAbsoluteIndex = (isSubmitted && currentReviewStage != null)
+        ? currentReviewStage.index() : null;
+
+    List<String> visibleLabels = new ArrayList<>();
+    Integer currentVisiblePosition = null;
+
+    for (int i = 0; i < allStages.size(); i++) {
+      StateStage stage = allStages.get(i);
+      boolean isCurrent = currentAbsoluteIndex != null && currentAbsoluteIndex == i;
+      if (stage.enabled() || isCurrent) {
+        if (isCurrent) {
+          currentVisiblePosition = visibleLabels.size();
+        }
+        visibleLabels.add(stage.label());
+      }
+    }
+
+    return new ReviewWorkflowDto(visibleLabels, currentVisiblePosition);
+  }
+
+  /**
    * lifecycle state.
    *
    * <p>When entering SUBMITTED the first <em>enabled</em> stage for the form's DBC is returned. If

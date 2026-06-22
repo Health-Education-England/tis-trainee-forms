@@ -156,17 +156,34 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
 
   /**
    * Set the current review stage of the form without changing any other state, appending to the
-   * status history.
+   * status history. The existing detail and modifiedBy are copied from the current status.
    *
    * @param reviewStage The new review stage.
    */
   public void setReviewStage(@Nullable ReviewStageStatus reviewStage) {
+    StatusDetail currentDetail =
+        status == null || status.current == null ? null : status.current.detail;
+    Person currentModifiedBy =
+        status == null || status.current == null ? null : status.current.modifiedBy;
+    setReviewStage(reviewStage, currentDetail, currentModifiedBy);
+  }
+
+  /**
+   * Set the current review stage of the form without changing any other state, appending to the
+   * status history. The provided detail and modifiedBy are recorded in the new history entry.
+   *
+   * @param reviewStage The new review stage.
+   * @param detail      The status detail to record, or {@code null} to clear.
+   * @param modifiedBy  The person making this change, or {@code null} if unknown.
+   */
+  public void setReviewStage(@Nullable ReviewStageStatus reviewStage,
+      @Nullable StatusDetail detail, @Nullable Person modifiedBy) {
     StatusInfo statusInfo = StatusInfo.builder()
         .state(getLifecycleState())
-        .detail(status == null || status.current == null ? null : status.current.detail)
+        .detail(detail)
         .assignedAdmin(
             status == null || status.current == null ? null : status.current.assignedAdmin)
-        .modifiedBy(status == null || status.current == null ? null : status.current.modifiedBy)
+        .modifiedBy(modifiedBy)
         .timestamp(Instant.now())
         .revision(status == null || status.current == null ? null : status.current.revision)
         .reviewStage(reviewStage)

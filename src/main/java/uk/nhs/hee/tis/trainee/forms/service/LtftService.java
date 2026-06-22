@@ -66,6 +66,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
+import uk.nhs.hee.tis.trainee.forms.dto.ReviewWorkflowDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
@@ -630,18 +631,61 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   }
 
   /**
+   * Get the review workflow state for an LTFT form associated with the calling admin's local
+   * office.
+   *
+   * @param formId The ID of the form.
+   * @return The workflow DTO, or empty if no form was found for the admin's DBCs.
+   */
+  public Optional<ReviewWorkflowDto> getReviewWorkflow(UUID formId) {
+    log.info("Getting review workflow for LTFT form {} as admin [{}]", formId,
+        adminIdentity.getEmail());
+    Set<String> dbcs = adminIdentity.getGroups();
+    Optional<LtftForm> optForm =
+        ltftFormRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(formId,
+            dbcs);
+
+    if (optForm.isEmpty()) {
+      log.warn("Could not get review workflow for form {} since no form exists for DBCs [{}]",
+          formId, dbcs);
+      return Optional.empty();
+    }
+
+    return Optional.of(reviewStageService.getWorkflowDto(optForm.get()));
+  }
+
+  /**
    * Advance the review stage of an LTFT form for the calling admin's local office.
    *
-   * <p>If the form is at its final configured review stage, this action transitions the form to
-   * APPROVED. Otherwise the form advances to the next review stage whilst remaining SUBMITTED.
+   * <p>Delegates to {@link #advanceReviewStage(UUID, LftfStatusInfoDetailDto)} with no detail.
    *
    * @param formId The ID of the form to advance.
    * @return The updated LTFT application, or empty if the form was not found or does not belong to
    *     the admin's local office.
-   * @throws MethodArgumentNotValidException If the form is not currently SUBMITTED.
+   * @throws MethodArgumentNotValidException If the form is not currently SUBMITTED or is already
+   *                                         at the final review stage.
    */
   public Optional<LtftFormDto> advanceReviewStage(UUID formId)
       throws MethodArgumentNotValidException {
+    return advanceReviewStage(formId, null);
+  }
+
+  /**
+   * Advance the review stage of an LTFT form for the calling admin's local office.
+   *
+   * <p>If the form is already at its final configured review stage this action is rejected.
+   * Transitioning to APPROVED or another terminal state must be performed via
+   * {@link #updateStatusAsAdmin(UUID, LifecycleState, LftfStatusInfoDetailDto)}.
+   *
+   * @param formId The ID of the form to advance.
+   * @param detail Optional detail to record alongside the stage change.
+   * @return The updated LTFT application, or empty if the form was not found or does not belong to
+   *     the admin's local office.
+   * @throws MethodArgumentNotValidException If the form is not currently SUBMITTED or is already
+   *                                         at the final review stage.
+   */
+  public Optional<LtftFormDto> advanceReviewStage(UUID formId,
+      @Nullable LftfStatusInfoDetailDto detail) throws MethodArgumentNotValidException {
     Set<String> dbcs = adminIdentity.getGroups();
     log.info("Advancing review stage of LTFT form {} for admin [{}] with DBCs [{}]",
         formId, adminIdentity.getEmail(), dbcs);
@@ -667,7 +711,8 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
           "review stage can only be advanced when the form is SUBMITTED"));
       try {
         MethodParameter parameter = new MethodParameter(
-            this.getClass().getDeclaredMethod("advanceReviewStage", UUID.class), 0);
+            this.getClass().getDeclaredMethod("advanceReviewStage", UUID.class,
+                LftfStatusInfoDetailDto.class), 0);
         throw new MethodArgumentNotValidException(parameter, result);
       } catch (NoSuchMethodException e) {
         throw new IllegalStateException("Unable to reflect advanceReviewStage method.", e);
@@ -678,7 +723,13 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
 
     if (nextStage.isPresent()) {
       // Advance within SUBMITTED to the next stage.
-      form.setReviewStage(nextStage.get());
+      Person modifiedBy = Person.builder()
+          .name(adminIdentity.getName())
+          .email(adminIdentity.getEmail())
+          .role(adminIdentity.getRole())
+          .build();
+      StatusDetail detailEntity = mapper.toStatusDetail(detail);
+      form.setReviewStage(nextStage.get(), detailEntity, modifiedBy);
       LtftForm savedForm = ltftFormRepository.save(form);
       publishUpdateNotification(savedForm, FORM_ATTRIBUTE_FORM_STATUS, ltftStatusUpdateTopic);
       return Optional.of(mapper.toDto(savedForm));
@@ -692,7 +743,8 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
           "review stage cannot be advanced past the final stage"));
       try {
         MethodParameter parameter = new MethodParameter(
-            this.getClass().getDeclaredMethod("advanceReviewStage", UUID.class), 0);
+            this.getClass().getDeclaredMethod("advanceReviewStage", UUID.class,
+                LftfStatusInfoDetailDto.class), 0);
         throw new MethodArgumentNotValidException(parameter, result);
       } catch (NoSuchMethodException e) {
         throw new IllegalStateException("Unable to reflect advanceReviewStage method.", e);

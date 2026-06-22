@@ -22,6 +22,8 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -41,6 +43,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.EnumSource.Mode;
 import uk.nhs.hee.tis.trainee.forms.config.ReviewWorkflowProperties;
 import uk.nhs.hee.tis.trainee.forms.config.StateStage;
+import uk.nhs.hee.tis.trainee.forms.dto.ReviewWorkflowDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
@@ -462,7 +465,8 @@ class ReviewStageServiceTest {
     LtftForm form = formAtReviewStage(DBC, 0, "Triage");
 
     assertTrue(service.canTransitionToLifecycleState(form, targetState),
-        "Expected terminal transition allowed from enabled stage when all subsequent stages disabled.");
+        "Expected terminal transition allowed from enabled stage when all subsequent "
+            + "stages disabled.");
   }
 
   @ParameterizedTest
@@ -488,7 +492,7 @@ class ReviewStageServiceTest {
     LtftForm form = formAtReviewStage(DBC, 1, "Manager Review");
 
     assertTrue(service.canTransitionToLifecycleState(form, targetState),
-        "Expected terminal transition allowed from disabled stage with no enabled stages after it.");
+        "Expected terminal transition allowed from disabled stage with no enabled stages after.");
   }
 
   @ParameterizedTest
@@ -513,6 +517,143 @@ class ReviewStageServiceTest {
 
     assertTrue(service.canTransitionToLifecycleState(form, UNSUBMITTED),
         "Expected UNSUBMIT to be allowed from a disabled stage.");
+  }
+
+  // -- getWorkflowDto --
+
+  @Test
+  void shouldReturnEmptyStagesWhenNoWorkflowConfigured() {
+    LtftForm form = formWithDbc(DBC);
+
+    ReviewWorkflowDto dto = service.getWorkflowDto(form);
+
+    assertThat("Unexpected stages.", dto.stages(), empty());
+    assertThat("Unexpected current stage.", dto.currentStage(), nullValue());
+  }
+
+  @Test
+  void shouldReturnOnlyEnabledStageLabelsWhenFormNotSubmitted() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        stage("Triage"), disabledStage("Middle"), stage("Dean Approval"))));
+
+    LtftForm form = formWithDbc(DBC); // not SUBMITTED
+
+    ReviewWorkflowDto dto = service.getWorkflowDto(form);
+
+    assertThat("Unexpected stages.", dto.stages(), contains("Triage", "Dean Approval"));
+    assertThat("Unexpected current stage.", dto.currentStage(), nullValue());
+  }
+
+  @Test
+  void shouldReturnNullCurrentStageWhenFormNotSubmitted() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        stage("Triage"), stage("Manager Review"), stage("Dean Approval"))));
+
+    LtftForm form = formWithDbc(DBC); // no status set
+
+    ReviewWorkflowDto dto = service.getWorkflowDto(form);
+
+    assertThat("Unexpected current stage when not submitted.", dto.currentStage(), nullValue());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = "SUBMITTED")
+  void shouldReturnNullCurrentStageForNonSubmittedStates(LifecycleState state) {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(stage("Triage"))));
+
+    LtftForm form = formWithDbc(DBC);
+    form.setStatus(Status.builder()
+        .current(StatusInfo.builder().state(state)
+            .reviewStage(new ReviewStageStatus(0, "Triage")).build())
+        .build());
+
+    ReviewWorkflowDto dto = service.getWorkflowDto(form);
+
+    assertThat("Unexpected current stage for state " + state + ".", dto.currentStage(),
+        nullValue());
+  }
+
+  @Test
+  void shouldReturnCurrentStagePositionInVisibleListWhenFormSubmitted() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        stage("Triage"), stage("Manager Review"), stage("Dean Approval"))));
+
+    LtftForm form = formAtReviewStage(DBC, 1, "Manager Review");
+
+    ReviewWorkflowDto dto = service.getWorkflowDto(form);
+
+    assertThat("Unexpected stages.", dto.stages(),
+        contains("Triage", "Manager Review", "Dean Approval"));
+    assertThat("Unexpected current stage.", dto.currentStage(), is(1));
+  }
+
+  @Test
+  void shouldReturnCurrentStageRemappedPositionWhenDisabledStagesExistBefore() {
+    // Disabled stage at index 1 shifts Dean Approval from abs-index 2 to visible-index 1.
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        stage("Triage"), disabledStage("Middle"), stage("Dean Approval"))));
+
+    LtftForm form = formAtReviewStage(DBC, 2, "Dean Approval");
+
+    ReviewWorkflowDto dto = service.getWorkflowDto(form);
+
+    assertThat("Unexpected stages.", dto.stages(), contains("Triage", "Dean Approval"));
+    assertThat("Unexpected current stage.", dto.currentStage(), is(1));
+  }
+
+  @Test
+  void shouldExcludeDisabledStageWhenFormIsNotCurrentlyInIt() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        stage("Triage"), disabledStage("Middle"), stage("Dean Approval"))));
+
+    LtftForm form = formAtReviewStage(DBC, 0, "Triage");
+
+    ReviewWorkflowDto dto = service.getWorkflowDto(form);
+
+    assertThat("Unexpected stages.", dto.stages(), contains("Triage", "Dean Approval"));
+    assertThat("Unexpected current stage.", dto.currentStage(), is(0));
+  }
+
+  @Test
+  void shouldIncludeCurrentDisabledStageInListAtCorrectPosition() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        stage("Triage"), disabledStage("Middle"), stage("Dean Approval"))));
+
+    LtftForm form = formAtReviewStage(DBC, 1, "Middle");
+
+    ReviewWorkflowDto dto = service.getWorkflowDto(form);
+
+    assertThat("Unexpected stages.", dto.stages(), contains("Triage", "Middle", "Dean Approval"));
+    assertThat("Unexpected current stage.", dto.currentStage(), is(1));
+  }
+
+  @Test
+  void shouldReturnNullCurrentStageWhenSubmittedWithNoReviewStage() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(stage("Triage"))));
+
+    LtftForm form = formWithDbc(DBC);
+    form.setStatus(Status.builder()
+        .current(StatusInfo.builder().state(SUBMITTED).build()) // no reviewStage
+        .build());
+
+    ReviewWorkflowDto dto = service.getWorkflowDto(form);
+
+    assertThat("Unexpected stages.", dto.stages(), contains("Triage"));
+    assertThat("Unexpected current stage when no review stage set.", dto.currentStage(),
+        nullValue());
+  }
+
+  @Test
+  void shouldReturnEmptyStagesAndNullCurrentStageWhenAllStagesDisabled() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        disabledStage("Triage"), disabledStage("Middle"))));
+
+    LtftForm form = formWithDbc(DBC);
+
+    ReviewWorkflowDto dto = service.getWorkflowDto(form);
+
+    assertThat("Unexpected stages when all disabled.", dto.stages(), empty());
+    assertThat("Unexpected current stage when all disabled.", dto.currentStage(), nullValue());
   }
 }
 
