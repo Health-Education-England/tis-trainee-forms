@@ -185,7 +185,8 @@ class ReviewStageServiceTest {
     LtftForm form = formAtReviewStage(DBC, 1, "Manager Review");
     ReviewStageStatus result = service.resolveReviewStageForTransition(form, SUBMITTED);
 
-    assertThat("Unexpected review stage when all stages disabled on re-submit.", result, nullValue());
+    assertThat("Unexpected review stage when all stages disabled on re-submit.", result,
+        nullValue());
   }
 
   @Test

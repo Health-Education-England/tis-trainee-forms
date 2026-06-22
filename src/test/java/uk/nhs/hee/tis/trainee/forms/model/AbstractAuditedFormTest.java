@@ -534,7 +534,8 @@ class AbstractAuditedFormTest {
 
     form.setReviewStage(new ReviewStageStatus(0, "Triage"));
 
-    assertThat("Unexpected assigned admin.", form.getStatus().current().assignedAdmin(), is(admin));
+    assertThat("Unexpected assigned admin.", form.getStatus().current().assignedAdmin(),
+        is(admin));
   }
 
   @Test

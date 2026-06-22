@@ -115,11 +115,11 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.ReasonsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
-import uk.nhs.hee.tis.trainee.forms.dto.ReviewWorkflowDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.RedactedPersonDto;
+import uk.nhs.hee.tis.trainee.forms.dto.ReviewWorkflowDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
@@ -2375,7 +2375,8 @@ class LtftServiceTest {
     assertThat("Unexpected form presence.", optionalDto.isPresent(), is(true));
     LftfStatusInfoDetailDto storedDetail = optionalDto.get().status().current().detail();
     assertThat("Unexpected detail reason.", storedDetail.reason(), is("Triage complete"));
-    assertThat("Unexpected detail message.", storedDetail.message(), is("Moving to manager review."));
+    assertThat("Unexpected detail message.", storedDetail.message(),
+        is("Moving to manager review."));
   }
 
   @ParameterizedTest
