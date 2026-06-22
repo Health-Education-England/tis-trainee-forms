@@ -32,6 +32,7 @@ import java.util.UUID;
 import lombok.Builder;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.model.ReviewStageStatus;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Create;
 import uk.nhs.hee.tis.trainee.forms.dto.validation.Update;
 import uk.nhs.hee.tis.trainee.forms.dto.views.Admin;
@@ -194,6 +195,7 @@ public record LtftFormDto(
      * @param modifiedBy    The Person who made this status change.
      * @param timestamp     The timestamp of the status change.
      * @param revision      The revision number associated with this status change.
+     * @param reviewStage   The review stage associated with this status change, if any.
      */
     @Builder
     public record StatusInfoDto(
@@ -204,7 +206,8 @@ public record LtftFormDto(
         RedactedPersonDto assignedAdmin,
         RedactedPersonDto modifiedBy,
         Instant timestamp,
-        Integer revision
+        Integer revision,
+        ReviewStageStatus reviewStage
     ) {
 
     }

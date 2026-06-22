@@ -35,7 +35,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.domain.Persistable;
 import org.springframework.data.mongodb.core.index.Indexed;
-import uk.nhs.hee.tis.trainee.forms.config.StateStage;
+import jakarta.annotation.Nullable;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
@@ -125,6 +125,21 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
    */
   public void setLifecycleState(LifecycleState lifecycleState, StatusDetail detail,
       Person modifiedBy, int revision) {
+    setLifecycleState(lifecycleState, detail, modifiedBy, revision, null);
+  }
+
+  /**
+   * Set the current lifecycle state of the form, appending to the status history. This does not
+   * consider whether a state transition is valid or not, it simply sets the state.
+   *
+   * @param lifecycleState The new lifecycle state.
+   * @param detail         Any status detail.
+   * @param modifiedBy     The Person who made this status change.
+   * @param revision       The revision number associated with this status change.
+   * @param reviewStage    The review stage to associate with this status change, or null.
+   */
+  public void setLifecycleState(LifecycleState lifecycleState, StatusDetail detail,
+      Person modifiedBy, int revision, @Nullable ReviewStageStatus reviewStage) {
     StatusInfo statusInfo = StatusInfo.builder()
         .state(lifecycleState)
         .detail(detail)
@@ -133,9 +148,31 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
         .modifiedBy(modifiedBy)
         .timestamp(Instant.now())
         .revision(revision)
+        .reviewStage(reviewStage)
         .build();
 
     updateStatusInfo(statusInfo, true);
+  }
+
+  /**
+   * Set the current review stage of the form without changing any other state, appending to the
+   * status history.
+   *
+   * @param reviewStage The new review stage.
+   */
+  public void setReviewStage(@Nullable ReviewStageStatus reviewStage) {
+    StatusInfo statusInfo = StatusInfo.builder()
+        .state(getLifecycleState())
+        .detail(status == null || status.current == null ? null : status.current.detail)
+        .assignedAdmin(
+            status == null || status.current == null ? null : status.current.assignedAdmin)
+        .modifiedBy(status == null || status.current == null ? null : status.current.modifiedBy)
+        .timestamp(Instant.now())
+        .revision(status == null || status.current == null ? null : status.current.revision)
+        .reviewStage(reviewStage)
+        .build();
+
+    updateStatusInfo(statusInfo, false);
   }
 
   /**
@@ -205,7 +242,7 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
         Person modifiedBy,
         Instant timestamp,
         Integer revision,
-        StateStage reviewStage
+        ReviewStageStatus reviewStage
     ) {
 
     }
