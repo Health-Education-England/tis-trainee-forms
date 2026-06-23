@@ -725,6 +725,22 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
       }
     }
 
+    if (form.getStatus().current().reviewStage() == null) {
+      log.warn("Cannot advance review stage of form {} as it has no active review stage.",
+          formId);
+      BeanPropertyBindingResult result = new BeanPropertyBindingResult(form, "form");
+      result.addError(new FieldError(FORM_OBJECT_NAME, FORM_ATTRIBUTE_FORM_STATUS,
+          "review stage can only be advanced from an active review stage"));
+      try {
+        MethodParameter parameter = new MethodParameter(
+            this.getClass().getDeclaredMethod(METHOD_ADVANCE_REVIEW_STAGE, UUID.class,
+                LftfStatusInfoDetailDto.class), 0);
+        throw new MethodArgumentNotValidException(parameter, result);
+      } catch (NoSuchMethodException e) {
+        throw new IllegalStateException("Unable to reflect advanceReviewStage method.", e);
+      }
+    }
+
     Optional<ReviewStageStatus> nextStage = reviewStageService.resolveAdvance(form);
 
     if (nextStage.isPresent()) {

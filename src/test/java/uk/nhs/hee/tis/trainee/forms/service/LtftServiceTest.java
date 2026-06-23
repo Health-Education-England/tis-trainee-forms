@@ -2238,9 +2238,42 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldThrowExceptionAdvancingReviewStageWhenAtFinalStage() {
+  void shouldThrowExceptionAdvancingReviewStageWhenNoActiveReviewStage() {
+    // Form is SUBMITTED but has no reviewStage — pre-workflow form or missing stage data.
     LtftForm form = new LtftForm();
     form.setLifecycleState(SUBMITTED);
+    // reviewStage is null (setLifecycleState does not set a reviewStage)
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+
+    MethodArgumentNotValidException exception = assertThrows(MethodArgumentNotValidException.class,
+        () -> service.advanceReviewStage(ID));
+
+    List<FieldError> fieldErrors = exception.getFieldErrors();
+    assertThat("Unexpected error count.", fieldErrors, hasSize(1));
+
+    FieldError fieldError = fieldErrors.get(0);
+    assertThat("Unexpected object name.", fieldError.getObjectName(), is("LtftForm"));
+    assertThat("Unexpected field.", fieldError.getField(), is("status.current.state"));
+    assertThat("Unexpected message.", fieldError.getDefaultMessage(),
+        is("review stage can only be advanced from an active review stage"));
+
+    verify(repository, never()).save(any());
+    verify(reviewStageService, never()).resolveAdvance(any());
+  }
+
+  @Test
+  void shouldThrowExceptionAdvancingReviewStageWhenAtFinalStage() {
+    // Form is SUBMITTED with a non-null reviewStage — resolveAdvance returning empty
+    // means the form is genuinely at the final stage.
+    LtftForm form = new LtftForm();
+    form.setStatus(Status.builder()
+        .current(StatusInfo.builder()
+            .state(SUBMITTED)
+            .reviewStage(new ReviewStageStatus(2, "Dean Approval"))
+            .build())
+        .build());
 
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
@@ -2265,7 +2298,12 @@ class LtftServiceTest {
   void shouldAdvanceReviewStageWhenNextStageAvailable() throws MethodArgumentNotValidException {
     LtftForm form = new LtftForm();
     form.setId(ID);
-    form.setLifecycleState(SUBMITTED);
+    form.setStatus(Status.builder()
+        .current(StatusInfo.builder()
+            .state(SUBMITTED)
+            .reviewStage(new ReviewStageStatus(0, "Triage"))
+            .build())
+        .build());
 
     ReviewStageStatus nextStage = new ReviewStageStatus(1, "Manager Review");
 
@@ -2291,7 +2329,12 @@ class LtftServiceTest {
       throws MethodArgumentNotValidException {
     LtftForm form = new LtftForm();
     form.setId(ID);
-    form.setLifecycleState(SUBMITTED);
+    form.setStatus(Status.builder()
+        .current(StatusInfo.builder()
+            .state(SUBMITTED)
+            .reviewStage(new ReviewStageStatus(0, "Triage"))
+            .build())
+        .build());
 
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
@@ -2310,7 +2353,14 @@ class LtftServiceTest {
       throws MethodArgumentNotValidException {
     LtftForm form = new LtftForm();
     form.setId(ID);
-    form.setLifecycleState(SUBMITTED);
+    StatusInfo initialStatus = StatusInfo.builder()
+        .state(SUBMITTED)
+        .reviewStage(new ReviewStageStatus(0, "Triage"))
+        .build();
+    form.setStatus(Status.builder()
+        .current(initialStatus)
+        .history(List.of(initialStatus)) // initial entry, as setLifecycleState would produce
+        .build());
 
     ReviewStageStatus nextStage = new ReviewStageStatus(1, "Manager Review");
 
@@ -2335,7 +2385,12 @@ class LtftServiceTest {
       throws MethodArgumentNotValidException {
     LtftForm form = new LtftForm();
     form.setId(ID);
-    form.setLifecycleState(SUBMITTED);
+    form.setStatus(Status.builder()
+        .current(StatusInfo.builder()
+            .state(SUBMITTED)
+            .reviewStage(new ReviewStageStatus(0, "Triage"))
+            .build())
+        .build());
 
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
@@ -2357,7 +2412,12 @@ class LtftServiceTest {
       throws MethodArgumentNotValidException {
     LtftForm form = new LtftForm();
     form.setId(ID);
-    form.setLifecycleState(SUBMITTED);
+    form.setStatus(Status.builder()
+        .current(StatusInfo.builder()
+            .state(SUBMITTED)
+            .reviewStage(new ReviewStageStatus(0, "Triage"))
+            .build())
+        .build());
 
     LftfStatusInfoDetailDto detail = LftfStatusInfoDetailDto.builder()
         .reason("Triage complete")
