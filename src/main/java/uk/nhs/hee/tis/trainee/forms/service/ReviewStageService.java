@@ -108,7 +108,7 @@ public class ReviewStageService {
   }
 
   /**
-   * lifecycle state.
+   * Resolve the review stage to apply when transitioning the form to a new lifecycle state.
    *
    * <p>When entering SUBMITTED the first <em>enabled</em> stage for the form's DBC is returned. If
    * no enabled stages are configured (or no workflow exists) {@code null} is returned, indicating
@@ -168,7 +168,18 @@ public class ReviewStageService {
     }
 
     ReviewStageStatus current = getCurrentReviewStage(form);
-    int currentIndex = current != null ? current.index() : 0;
+    if (current == null) {
+      log.warn("Form {} has a review workflow but no current review stage; cannot advance.",
+          form.getId());
+      return Optional.empty();
+    }
+
+    int currentIndex = current.index();
+    if (currentIndex < 0 || currentIndex >= stages.size()) {
+      log.warn("Form {} has invalid review stage index {}; cannot advance.", form.getId(),
+          currentIndex);
+      return Optional.empty();
+    }
 
     Optional<ReviewStageStatus> next = nextEnabledStageAfter(stages, currentIndex);
     if (next.isPresent()) {
@@ -245,6 +256,9 @@ public class ReviewStageService {
    * @return The list of configured stages, never {@code null}.
    */
   private List<StateStage> getConfiguredStages(@Nullable String dbc) {
+    if (dbc == null) {
+      return List.of();
+    }
     List<StateStage> stages = reviewWorkflowProperties.getReviewWorkflows().get(dbc);
     return stages != null ? stages : List.of();
   }

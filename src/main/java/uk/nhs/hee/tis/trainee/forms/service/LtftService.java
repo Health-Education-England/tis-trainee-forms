@@ -812,9 +812,10 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   private void validateLifecycleTransition(LtftForm form, LifecycleState targetState)
       throws MethodArgumentNotValidException {
     if (!LifecycleState.canTransitionTo(form, targetState)) {
-      log.warn(
-          "Could not update form {}, invalid lifecycle transition from {} to {} for form type '{}'",
-          form.getId(), form.getStatus().current().state(), targetState, form.getFormType());
+      LifecycleState currentState = (form.getStatus() != null && form.getStatus().current() != null)
+          ? form.getStatus().current().state() : null;
+      log.warn("Could not update form {}, invalid lifecycle transition from {} to {} "
+              + "for form type '{}'", form.getId(), currentState, targetState, form.getFormType());
 
       BeanPropertyBindingResult result = new BeanPropertyBindingResult(form, "form");
       result.addError(new FieldError(FORM_OBJECT_NAME, FORM_ATTRIBUTE_FORM_STATUS,

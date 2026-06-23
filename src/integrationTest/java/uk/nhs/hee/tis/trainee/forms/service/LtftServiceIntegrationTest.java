@@ -666,7 +666,8 @@ class LtftServiceIntegrationTest {
   }
 
   @Test
-  void shouldRestartFromFirstReviewStageWhenResubmittingAfterUnsubmit() throws MethodArgumentNotValidException {
+  void shouldRestartFromFirstReviewStageWhenResubmittingAfterUnsubmit()
+      throws MethodArgumentNotValidException {
     LtftFormDto dto = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("test form")
@@ -689,8 +690,9 @@ class LtftServiceIntegrationTest {
     LtftFormDto resubmitted = service.submitLtftForm(draft.id(), null).orElseThrow();
 
     StatusInfoDto current = resubmitted.status().current();
-    assertThat("Unexpected review stage index on re-submit.", current.reviewStage().index(), is(0));
-    assertThat("Unexpected review stage label on re-submit.", current.reviewStage().label(),
-        is("Programme/Education Team Triage"));
+    assertThat("Unexpected review stage index on re-submit.",
+        current.reviewStage().index(), is(0));
+    assertThat("Unexpected review stage label on re-submit.",
+        current.reviewStage().label(), is("Programme/Education Team Triage"));
   }
 }

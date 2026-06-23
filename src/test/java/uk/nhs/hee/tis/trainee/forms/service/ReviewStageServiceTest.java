@@ -96,6 +96,12 @@ class ReviewStageServiceTest {
     return form;
   }
 
+  private LtftForm formWithNoProgrammeMembership() {
+    LtftForm form = new LtftForm();
+    form.setContent(LtftContent.builder().build()); // content present but no programmeMembership
+    return form;
+  }
+
   // -- resolveReviewStageForTransition --
 
   @Test
@@ -187,6 +193,16 @@ class ReviewStageServiceTest {
 
     assertThat("Unexpected review stage when all stages disabled on re-submit.", result,
         nullValue());
+  }
+
+  @Test
+  void shouldReturnNullWhenFormHasContentButNoProgrammeMembership() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(stage("Triage"))));
+
+    LtftForm form = formWithNoProgrammeMembership();
+    ReviewStageStatus result = service.resolveReviewStageForTransition(form, SUBMITTED);
+
+    assertThat("Unexpected review stage when no programme membership.", result, nullValue());
   }
 
   @Test
@@ -315,6 +331,68 @@ class ReviewStageServiceTest {
     assertTrue(result.isPresent(), "Expected next stage after skipping multiple disabled stages.");
     assertThat("Unexpected next stage index.", result.get().index(), is(3));
     assertThat("Unexpected next stage label.", result.get().label(), is("Stage D"));
+  }
+
+  @Test
+  void shouldReturnEmptyWhenNoCurrentReviewStageAndWorkflowConfigured() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        stage("Triage"), stage("Manager Review"))));
+
+    // Form has no status at all — getCurrentReviewStage returns null → cannot advance
+    LtftForm form = formWithDbc(DBC);
+    Optional<ReviewStageStatus> result = service.resolveAdvance(form);
+
+    assertTrue(result.isEmpty(),
+        "Expected empty optional when there is no current review stage to advance from.");
+  }
+
+  @Test
+  void shouldReturnEmptyWhenStatusPresentButCurrentIsNull() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        stage("Triage"), stage("Manager Review"))));
+
+    // Status is non-null but current() is null — hits the second condition in getCurrentReviewStage
+    LtftForm form = formWithDbc(DBC);
+    form.setStatus(Status.builder().build()); // current() is null
+    Optional<ReviewStageStatus> result = service.resolveAdvance(form);
+
+    assertTrue(result.isEmpty(),
+        "Expected empty optional when status is present but current status is null.");
+  }
+
+  @Test
+  void shouldReturnEmptyWhenReviewStageIndexIsNegative() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(stage("Triage"))));
+
+    // A negative index (e.g. -2) is invalid and triggers the currentIndex < 0 guard
+    LtftForm form = formAtReviewStage(DBC, -2, "invalid");
+    Optional<ReviewStageStatus> result = service.resolveAdvance(form);
+
+    assertTrue(result.isEmpty(),
+        "Expected empty optional for a negative review stage index.");
+  }
+
+  @Test
+  void shouldReturnEmptyWhenReviewStageIndexExceedsWorkflowSize() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(stage("Triage")))); // 1 stage
+
+    // Index 5 is out of bounds for a workflow with only 1 stage
+    LtftForm form = formAtReviewStage(DBC, 5, "stale");
+    Optional<ReviewStageStatus> result = service.resolveAdvance(form);
+
+    assertTrue(result.isEmpty(),
+        "Expected empty optional when review stage index exceeds workflow size.");
+  }
+
+  @Test
+  void shouldReturnEmptyWhenFormHasNoProgrammeMembershipForAdvance() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(stage("Triage"))));
+
+    LtftForm form = formWithNoProgrammeMembership();
+    Optional<ReviewStageStatus> result = service.resolveAdvance(form);
+
+    assertTrue(result.isEmpty(),
+        "Expected empty optional when form has no programme membership.");
   }
 
   @Test
@@ -520,6 +598,33 @@ class ReviewStageServiceTest {
         "Expected UNSUBMIT to be allowed from a disabled stage.");
   }
 
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
+  void shouldAllowTerminalTransitionWhenFormHasNoProgrammeMembership(
+      LifecycleState targetState) {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(stage("Triage"))));
+
+    // No programme membership → dbc is null → no configured stages → allow
+    LtftForm form = formWithNoProgrammeMembership();
+
+    assertTrue(service.canTransitionToLifecycleState(form, targetState),
+        "Expected terminal transition allowed when form has no programme membership.");
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
+  void shouldDenyTerminalTransitionWhenStatusPresentButCurrentIsNullAndWorkflowConfigured(
+      LifecycleState targetState) {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(stage("Triage"))));
+
+    // Status is non-null but current() is null — getCurrentReviewStage returns null
+    LtftForm form = formWithDbc(DBC);
+    form.setStatus(Status.builder().build()); // current() is null
+
+    assertFalse(service.canTransitionToLifecycleState(form, targetState),
+        "Expected terminal transition denied when status.current() is null but workflow exists.");
+  }
+
   // -- getWorkflowDto --
 
   @Test
@@ -656,5 +761,33 @@ class ReviewStageServiceTest {
     assertThat("Unexpected stages when all disabled.", dto.stages(), empty());
     assertThat("Unexpected current stage when all disabled.", dto.currentStage(), nullValue());
   }
-}
 
+  @Test
+  void shouldReturnEmptyStagesWhenFormHasContentButNoProgrammeMembership() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(stage("Triage"))));
+
+    LtftForm form = formWithNoProgrammeMembership();
+
+    ReviewWorkflowDto dto = service.getWorkflowDto(form);
+
+    assertThat("Unexpected stages when no programme membership.", dto.stages(), empty());
+    assertThat("Unexpected current stage when no programme membership.", dto.currentStage(),
+        nullValue());
+  }
+
+  @Test
+  void shouldReturnNullCurrentStageWhenStatusPresentButCurrentIsNull() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        stage("Triage"), stage("Manager Review"))));
+
+    // Status is non-null but current() is null — isSubmitted evaluates to false
+    LtftForm form = formWithDbc(DBC);
+    form.setStatus(Status.builder().build()); // current() is null
+
+    ReviewWorkflowDto dto = service.getWorkflowDto(form);
+
+    assertThat("Unexpected stages.", dto.stages(), contains("Triage", "Manager Review"));
+    assertThat("Unexpected current stage when status.current() is null.", dto.currentStage(),
+        nullValue());
+  }
+}

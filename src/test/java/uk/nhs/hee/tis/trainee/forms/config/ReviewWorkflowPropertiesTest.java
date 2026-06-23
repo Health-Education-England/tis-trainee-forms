@@ -34,6 +34,7 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class ReviewWorkflowPropertiesTest {
@@ -160,6 +161,7 @@ class ReviewWorkflowPropertiesTest {
   }
 
   @ParameterizedTest
+  @NullSource
   @ValueSource(strings = {" ", "\t", "\n", ""})
   void shouldThrowWhenStageLabelIsBlankOrEmpty(String blankLabel) {
     StateStage bad = stage(blankLabel, true);
