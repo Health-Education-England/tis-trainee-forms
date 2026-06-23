@@ -666,7 +666,7 @@ class LtftServiceIntegrationTest {
   }
 
   @Test
-  void shouldRestartFromFirstReviewStageWhenResubmittingAfterUnsubmit() {
+  void shouldRestartFromFirstReviewStageWhenResubmittingAfterUnsubmit() throws MethodArgumentNotValidException {
     LtftFormDto dto = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("test form")
@@ -679,8 +679,9 @@ class LtftServiceIntegrationTest {
     LtftFormDto draft = service.createLtftForm(dto).orElseThrow();
     LtftFormDto submitted = service.submitLtftForm(draft.id(), null).orElseThrow();
 
-    // Advance to stage 1 then unsubmit.
     adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
+    // Advance to stage 1 then unsubmit.
+    service.advanceReviewStage(submitted.id(), null).orElseThrow();
     LftfStatusInfoDetailDto reason = new LftfStatusInfoDetailDto("reason", "message");
     service.unsubmitLtftForm(submitted.id(), reason).orElseThrow();
 

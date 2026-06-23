@@ -526,7 +526,11 @@ class AbstractAuditedFormTest {
 
   @Test
   void shouldRetainAssignedAdminWhenSettingReviewStage() {
-    Person admin = Person.builder().name("Ad Min").email("ad.min@example.com").role("ADMIN").build();
+    Person admin = Person.builder()
+        .name("Ad Min")
+        .email("ad.min@example.com")
+        .role("ADMIN")
+        .build();
     form.setStatus(Status.builder()
         .current(StatusInfo.builder().state(SUBMITTED).assignedAdmin(admin).build())
         .history(List.of())
