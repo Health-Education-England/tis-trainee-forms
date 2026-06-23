@@ -230,9 +230,9 @@ public class ReviewStageService {
 
     ReviewStageStatus currentReviewStage = getCurrentReviewStage(form);
     if (currentReviewStage == null) {
-      log.warn("Form {} has a review workflow but no current review stage; "
-          + "denying transition to {}.", form.getId(), targetState);
-      return false;
+      log.debug("Form {} has no review stage; treating as pre-workflow form — allowing transition "
+          + "to {}.", form.getId(), targetState);
+      return true;
     }
 
     // At the effective final stage when no enabled stages exist after the current index.

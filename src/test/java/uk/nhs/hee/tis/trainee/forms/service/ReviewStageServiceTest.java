@@ -474,18 +474,18 @@ class ReviewStageServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
-  void shouldDenyTerminalTransitionWhenWorkflowExistsButNoCurrentReviewStage(
+  void shouldAllowTerminalTransitionWhenWorkflowExistsButNoCurrentReviewStage(
       LifecycleState targetState) {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(stage("Triage"))));
 
-    // Form has content + DBC but no reviewStage in current status.
+    // Form has content + DBC but no reviewStage in current status — pre-workflow form.
     LtftForm form = formWithDbc(DBC);
     form.setStatus(Status.builder()
         .current(StatusInfo.builder().state(SUBMITTED).build()) // reviewStage is null
         .build());
 
-    assertFalse(service.canTransitionToLifecycleState(form, targetState),
-        "Expected terminal transition to be denied when reviewStage is null but workflow exists.");
+    assertTrue(service.canTransitionToLifecycleState(form, targetState),
+        "Expected terminal transition to be allowed for pre-workflow form with null reviewStage.");
   }
 
   @Test
@@ -613,16 +613,17 @@ class ReviewStageServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
-  void shouldDenyTerminalTransitionWhenStatusPresentButCurrentIsNullAndWorkflowConfigured(
+  void shouldAllowTerminalTransitionWhenStatusPresentButCurrentIsNullAndWorkflowConfigured(
       LifecycleState targetState) {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(stage("Triage"))));
 
-    // Status is non-null but current() is null — getCurrentReviewStage returns null
+    // Status is non-null but current() is null — getCurrentReviewStage returns null.
+    // Treated as a pre-workflow form; transition is allowed.
     LtftForm form = formWithDbc(DBC);
     form.setStatus(Status.builder().build()); // current() is null
 
-    assertFalse(service.canTransitionToLifecycleState(form, targetState),
-        "Expected terminal transition denied when status.current() is null but workflow exists.");
+    assertTrue(service.canTransitionToLifecycleState(form, targetState),
+        "Expected terminal transition allowed when status.current() is null — pre-workflow form.");
   }
 
   // -- getWorkflowDto --

@@ -42,6 +42,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -627,6 +629,40 @@ class LtftServiceIntegrationTest {
     assertThat("Unexpected result presence.", result.isPresent(), is(true));
     assertThat("Unexpected state.", result.get().status().current().state(),
         is(LifecycleState.APPROVED));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
+  void shouldAllowTerminalTransitionForPreWorkflowFormWithNoReviewStage(
+      LifecycleState targetState) throws MethodArgumentNotValidException {
+    adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
+
+    // Simulate a pre-workflow form: SUBMITTED with no reviewStage, for a DBC that now has a
+    // 3-stage workflow. This mirrors forms that were already SUBMITTED when review stages were
+    // first deployed for the DBC.
+    LtftForm form = new LtftForm();
+    form.setContent(LtftContent.builder()
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(DBC_THREE_STAGES)
+            .build())
+        .build());
+    form.setStatus(Status.builder()
+        .current(StatusInfo.builder()
+            .state(LifecycleState.SUBMITTED)
+            .build()) // no reviewStage — submitted before workflow was deployed
+        .history(List.of())
+        .build());
+    template.save(form);
+
+    // Provide a reason; required for REJECTED/WITHDRAWN, harmless for APPROVED.
+    LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("pre-workflow transition", null);
+
+    Optional<LtftFormDto> result = service.updateStatusAsAdmin(form.getId(), targetState, detail);
+
+    assertThat("Unexpected result presence.", result.isPresent(), is(true));
+    assertThat("Unexpected state.", result.get().status().current().state(), is(targetState));
+    assertThat("Unexpected review stage after transition.",
+        result.get().status().current().reviewStage(), nullValue());
   }
 
   @Test
