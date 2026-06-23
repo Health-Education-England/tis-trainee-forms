@@ -26,7 +26,7 @@ application:
         enabled: true
     "1-1RUZUSF": # DBC code as the map key (Wessex)
       - label: "Programme/Education Team Triage"
-        enabled: true
+        enabled: false
       - label: "Education Team Review"
         enabled: true
       - label: "APD Approval"
@@ -34,6 +34,9 @@ application:
     "1-1RUZV1D": # DBC code as the map key (KSS, if they had a one-step review)
       - label: "Completeness checks"
         enabled: true
+    "1-1RSSPZ7": # East Midlands (if they had, but no longer have, a one-step review)
+      - label: "Programme/Education Team Triage"
+        enabled: false
   schedules:
     publish-all-formr-partas: "-"
     publish-all-formr-partbs: "-"
