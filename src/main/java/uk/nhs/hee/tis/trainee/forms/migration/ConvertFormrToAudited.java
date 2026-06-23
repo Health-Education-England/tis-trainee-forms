@@ -23,6 +23,7 @@
 package uk.nhs.hee.tis.trainee.forms.migration;
 
 import static java.time.ZoneOffset.UTC;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DELETED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
@@ -36,24 +37,31 @@ import io.mongock.api.annotations.Execution;
 import io.mongock.api.annotations.RollbackExecution;
 import java.io.IOException;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
+import software.amazon.awssdk.services.s3.model.ObjectVersion;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
@@ -102,14 +110,15 @@ public class ConvertFormrToAudited {
 
   private final String bucket;
 
+  private int lastLoggedPercent = 0;
+
   /**
    * Constructor for ConvertFormrToAudited.
    */
-  public ConvertFormrToAudited(MongoTemplate mongoTemplate, S3Client s3Client,
-      @Value("${application.filestore.bucket}") String bucket) {
+  public ConvertFormrToAudited(MongoTemplate mongoTemplate, S3Client s3Client, Environment env) {
     this.mongoTemplate = mongoTemplate;
     this.s3Client = s3Client;
-    this.bucket = bucket;
+    this.bucket = env.getProperty("application.file-store.bucket");
   }
 
   /**
@@ -137,11 +146,20 @@ public class ConvertFormrToAudited {
     Query query = Query.query(Criteria.where(FIELD_CONTENT).exists(false))
         .with(Sort.by(Sort.Direction.ASC, FIELD_LAST_MODIFIED_DATE));
     List<Document> forms = mongoTemplate.find(query, Document.class, collectionName);
+    log.info("Found {} forms of type {}", forms.size(), collectionName);
+
+    int successCount = 0;
+    int failureCount = 0;
 
     for (Document form : forms) {
       String traineeId = form.getString(FIELD_TRAINEE_ID);
       LifecycleState lifecycleState = LifecycleState.valueOf(form.getString(FIELD_LIFECYCLE_STATE));
       String formRef = lifecycleState != DRAFT ? getFormRef(traineeId, formClass) : null;
+
+      // Delete any built submission history so it can be retried without duplication.
+      if (formRef != null) {
+        deleteSubmissionHistory(formRef, submissionHistoryClass);
+      }
 
       List<Map<String, Object>> history;
 
@@ -152,17 +170,40 @@ public class ConvertFormrToAudited {
         UUID formId = UUID.fromString(form.get(FIELD_ID).toString());
         String formKey = bucketKeyTemplate.formatted(traineeId, formId);
         try {
-          history = rebuildHistoryFromS3(formRef, formKey, submissionHistoryClass);
+          history = rebuildHistoryFromS3(formRef, formKey, submissionHistoryClass,
+              lifecycleState != DELETED);
         } catch (Exception e) {
-          // Delete any built submission history so it can be retried without duplication.
-          deleteSubmissionHistory(formRef, submissionHistoryClass);
           logRecoverableExceptions(e, formId, formKey, lifecycleState);
+          failureCount++;
           continue;
         }
       }
 
       Document migratedForm = transformForm(true, formRef, form, formClass, history);
       mongoTemplate.save(migratedForm, collectionName);
+      successCount++;
+      logProgress(successCount, failureCount, forms.size());
+    }
+
+    log.info("Successfully migrated {} forms of type {}, with {} failures", successCount,
+        collectionName, failureCount);
+  }
+
+  /**
+   * Log the progress every 10 percent.
+   *
+   * @param successCount The number of successfully migrated forms.
+   * @param failureCount The number of failed migrations.
+   * @param total        The total number of forms to be migrated.
+   */
+  private void logProgress(int successCount, int failureCount, int total) {
+    int processed = successCount + failureCount;
+    int percent = processed * 100 / total;
+
+    if (percent > lastLoggedPercent) {
+      log.info("Progress: {}% ({}/{}) (success={} failure={})", percent, processed, total,
+          successCount, failureCount);
+      lastLoggedPercent = percent;
     }
   }
 
@@ -173,80 +214,89 @@ public class ConvertFormrToAudited {
    * @param formRef                    The form reference for the form.
    * @param formKey                    The S3 key for the form.
    * @param formSubmissionHistoryClass The class of the submission history for the form.
+   * @param createSnapshots            Whether to create snapshots of the form for submitted
+   *                                   versions.
    * @return A list of statuses representing the form history.
    * @throws IOException        If submitted form content could not be parsed.
    * @throws NoSuchKeyException If the form did not exist in S3.
    */
   private List<Map<String, Object>> rebuildHistoryFromS3(String formRef, String formKey,
-      Class<?> formSubmissionHistoryClass) throws IOException, NoSuchKeyException {
+      Class<?> formSubmissionHistoryClass, boolean createSnapshots)
+      throws IOException, NoSuchKeyException {
     var versionResponse = s3Client.listObjectVersions(req -> req.bucket(bucket)
         .prefix(formKey)
         .build());
-    var versions = versionResponse.versions();
+    List<ObjectVersion> versions = versionResponse.versions();
+
+    if (versions.isEmpty()) {
+      throw NoSuchKeyException.builder().message("No versions found for key: " + formKey).build();
+    }
 
     int revision = 0;
     List<Map<String, Object>> history = new ArrayList<>();
+    AtomicReference<String> lastState = new AtomicReference<>();
 
-    for (var versionIterator = versions.listIterator(versions.size());
-        versionIterator.hasPrevious(); ) {
-      boolean firstVersion = !versionIterator.hasNext();
-      String versionId = versionIterator.previous().versionId();
+    List<HeadObjectResponse> versionHeads = versions.stream()
+        .map(version -> s3Client.headObject(req -> req
+            .bucket(bucket)
+            .key(formKey)
+            .versionId(version.versionId())
+            .build()))
+        // Filter out historical versions with no metadata, they are not reliable for rebuild.
+        .filter(head -> !head.metadata().isEmpty())
+        // Filter versions to remove duplicate states e.g. changes made by migrators.
+        .filter(versionHead -> {
+          String versionLifecycleState = versionHead.metadata().get(METADATA_LIFECYCLE_STATE);
+          boolean isLatestUnique = !Objects.equals(versionLifecycleState, lastState.get());
+          lastState.set(versionLifecycleState);
+          return isLatestUnique;
+        })
+        .toList();
 
-      var versionHead = s3Client.headObject(req -> req
-          .bucket(bucket)
-          .key(formKey)
-          .versionId(versionId)
-          .build());
+    for (var versionHeadIterator = versionHeads.listIterator(versionHeads.size());
+        versionHeadIterator.hasPrevious(); ) {
+      boolean firstVersion = !versionHeadIterator.hasNext();
+      HeadObjectResponse versionHead = versionHeadIterator.previous();
+      String versionId = versionHead.versionId();
 
-      Instant versionLastModified = versionHead.lastModified();
       String versionLifecycleState = versionHead.metadata().get(METADATA_LIFECYCLE_STATE);
-      Document versionDocument;
+      List<String> allowedFirstStates = List.of(SUBMITTED.toString(), DELETED.toString());
 
-      if (firstVersion && !versionLifecycleState.equals(SUBMITTED.toString())) {
-        // The first S3 version should always be a SUBMITTED form.
+      if (firstVersion && !allowedFirstStates.contains(versionLifecycleState)) {
+        // The first S3 version should always be a SUBMITTED or DELETED form.
         throw new IllegalArgumentException(
             "Unexpected lifecycle state %s for first version of form %s".formatted(
                 versionLifecycleState, formKey));
       }
 
-      if (versionLifecycleState.equals(SUBMITTED.toString())) {
-        // Get content and capture current trainee details.
-        GetObjectRequest request = GetObjectRequest.builder()
-            .bucket(bucket)
-            .key(formKey)
-            .versionId(versionId)
-            .build();
-
-        try (var content = s3Client.getObject(request)) {
-          JsonNode versionContent = new ObjectMapper().registerModule(new JavaTimeModule())
-              .readTree(content);
-          versionDocument = Document.parse(versionContent.toString());
-        }
-      } else {
-        // If not submitted, then the history will be an admin action.
-        versionDocument = new Document(Map.of(
-            FIELD_LIFECYCLE_STATE, versionLifecycleState,
-            FIELD_FORENAME, "Unknown",
-            FIELD_SURNAME, "Admin",
-            FIELD_EMAIL, "no-reply@tis.nhs.uk"
-        ));
-      }
+      Document versionDocument = getVersionDocument(formKey, versionId);
+      Instant submitted = getInstantFromLocalDateTime(versionDocument.get(FIELD_SUBMISSION_DATE));
 
       if (firstVersion) {
         // Create a dummy DRAFT version based on first available version details.
-        Instant submitted = getInstantFromLocalDateTime(versionDocument.get(FIELD_SUBMISSION_DATE));
         history.add(
-            buildStatusInfo(DRAFT.toString(), versionDocument, submitted, revision));
+            buildStatusInfo(DRAFT.toString(), versionDocument, submitted, 0));
+
+        if (versionLifecycleState.equals(DELETED.toString())) {
+          // If the first version is DELETED there is no history, create a dummy SUBMITTED version.
+          history.add(
+              buildStatusInfo(SUBMITTED.toString(), versionDocument, submitted, 0));
+        }
       }
 
+      // Revision is incremented on each unsubmission.
       if (versionLifecycleState.equals(UNSUBMITTED.toString())) {
         revision++;
       }
 
+      // If the version is SUBMITTED, use the known submission date instead of modified timestamp.
+      Instant versionLastModified = versionLifecycleState.equals(SUBMITTED.toString()) ? submitted
+          : versionHead.lastModified();
       history.add(
           buildStatusInfo(versionLifecycleState, versionDocument, versionLastModified, revision));
+      fixLatestTimestamp(history);
 
-      if (versionLifecycleState.equals(SUBMITTED.toString())) {
+      if (createSnapshots && versionLifecycleState.equals(SUBMITTED.toString())) {
         Document document = transformForm(false, formRef, versionDocument,
             formSubmissionHistoryClass,
             history);
@@ -256,6 +306,44 @@ public class ConvertFormrToAudited {
     }
 
     return history;
+  }
+
+  /**
+   * Get a document representing the content of the version, will be dummied for non-submitted.
+   *
+   * @param formKey   The S3 key for the form.
+   * @param versionId The S3 version ID for the form.
+   * @return A document representing the form version.
+   * @throws IOException If the form content could not be parsed.
+   */
+  public Document getVersionDocument(String formKey, String versionId) throws IOException {
+    // Get content and capture current trainee details.
+    GetObjectRequest request = GetObjectRequest.builder()
+        .bucket(bucket)
+        .key(formKey)
+        .versionId(versionId)
+        .build();
+
+    try (var content = s3Client.getObject(request)) {
+      JsonNode versionContent = new ObjectMapper().registerModule(new JavaTimeModule())
+          .readTree(content);
+      return Document.parse(versionContent.toString());
+    }
+  }
+
+  /**
+   * Due to missing time information legacy timestamps are set to start of day, if this puts the
+   * timestamp before the previous history item then it will instead copy the previous timestamp.
+   *
+   * @param history The history to fix.
+   */
+  private void fixLatestTimestamp(List<Map<String, Object>> history) {
+    Instant latestTimestamp = (Instant) history.get(history.size() - 1).get(FIELD_TIMESTAMP);
+    Instant previousTimestamp = (Instant) history.get(history.size() - 2).get(FIELD_TIMESTAMP);
+
+    if (latestTimestamp.isBefore(previousTimestamp)) {
+      history.get(history.size() - 1).put(FIELD_TIMESTAMP, previousTimestamp);
+    }
   }
 
   /**
@@ -276,36 +364,42 @@ public class ConvertFormrToAudited {
     Map<String, Object> content = new HashMap<>(form);
 
     // Remove non-content fields.
-    UUID formId = UUID.fromString(content.remove(FIELD_ID).toString());
+    String idKey = content.containsKey(FIELD_ID) ? FIELD_ID : "id"; // S3 uses "id".
+    UUID formId = UUID.fromString(content.remove(idKey).toString());
     content.remove(FIELD_CLASS);
     String traineeId = (String) content.remove(FIELD_TRAINEE_ID);
-    Instant lastModified = getInstantFromLocalDateTime(content.remove(FIELD_LAST_MODIFIED_DATE));
+    content.remove(FIELD_LAST_MODIFIED_DATE);
     content.remove(FIELD_LIFECYCLE_STATE);
-    Optional<Instant> submissionDate = Optional.ofNullable(content.remove(FIELD_SUBMISSION_DATE))
-        .map(this::getInstantFromLocalDateTime);
+    content.remove(FIELD_SUBMISSION_DATE);
 
     Document migratedForm = new Document();
     migratedForm.put(FIELD_ID, copyFormId ? formId : UUID.randomUUID());
     migratedForm.put(FIELD_TRAINEE_ID, traineeId);
-    migratedForm.put(FIELD_CONTENT, content);
-    migratedForm.put(FIELD_LAST_MODIFIED, lastModified);
-    migratedForm.put(FIELD_CLASS, formClass.getName());
 
     if (formRef != null) {
       migratedForm.put(FIELD_FORM_REF, formRef);
     }
 
     Map<String, Object> latestState = history.get(history.size() - 1);
+    migratedForm.put(FIELD_REVISION, latestState.get(FIELD_REVISION));
+    migratedForm.put(FIELD_CONTENT, content);
 
     // Build status.
-    Map<String, Object> status = new HashMap<>();
+    Map<String, Object> status = new LinkedHashMap<>();
     status.put(FIELD_CURRENT, latestState);
+
+    // Get the latest submitted timestamp.
+    history.stream()
+        .filter(h -> h.get(FIELD_STATE) == SUBMITTED)
+        .map(h -> (Instant) h.get(FIELD_TIMESTAMP))
+        .max(Comparator.comparing(Instant::toEpochMilli))
+        .ifPresent(date -> status.put(FIELD_SUBMITTED, date));
     status.put(FIELD_HISTORY, history);
-    submissionDate.ifPresent(date -> status.put(FIELD_SUBMITTED, date));
     migratedForm.put(FIELD_STATUS, status);
 
-    migratedForm.put(FIELD_REVISION, latestState.get(FIELD_REVISION));
     migratedForm.put(FIELD_CREATED, history.get(0).get(FIELD_TIMESTAMP));
+    migratedForm.put(FIELD_LAST_MODIFIED, history.get(history.size() - 1).get(FIELD_TIMESTAMP));
+    migratedForm.put(FIELD_CLASS, formClass.getName());
 
     return migratedForm;
   }
@@ -318,8 +412,17 @@ public class ConvertFormrToAudited {
    * @return The corresponding Instant.
    */
   private Instant getInstantFromLocalDateTime(Object dateObj) {
-    return dateObj instanceof Date date ? date.toInstant()
-        : LocalDateTime.parse(dateObj.toString()).toInstant(UTC);
+    if (dateObj instanceof Date date) {
+      return date.toInstant();
+    }
+
+    try {
+      return LocalDateTime.parse(dateObj.toString()).toInstant(UTC);
+    } catch (DateTimeParseException e) {
+      log.debug("Failed to parse date {} as LocalDateTime, trying as LocalDate", dateObj, e);
+      // Use end of day to avoid any ordering issues where unsubmit and resubmit were same day.
+      return LocalDate.parse(dateObj.toString()).atStartOfDay().toInstant(UTC);
+    }
   }
 
   /**
@@ -344,6 +447,41 @@ public class ConvertFormrToAudited {
   }
 
   /**
+   * Get the details of the modifying user, may be a trainee or admin depending on the action.
+   *
+   * @param form           The form content to get details from.
+   * @param lifecycleState The end lifecycle state of the modification action.
+   * @return A map containing the details of the modifying user.
+   */
+  private Map<String, String> getModifiedBy(Document form, LifecycleState lifecycleState) {
+    String name;
+    String email;
+    String role;
+
+    if (lifecycleState == DRAFT || lifecycleState == SUBMITTED) {
+      // When constructing DRAFT and SUBMITTED from DELETED forms name and email is not available.
+      String forename = form.containsKey(FIELD_FORENAME) ? form.getString(FIELD_FORENAME) : "";
+      String surname = form.containsKey(FIELD_SURNAME) ? form.getString(FIELD_SURNAME) : "";
+      String fullName = (forename + " " + surname).trim();
+      name = fullName.isBlank() ? "Name Deleted" : fullName;
+
+      email = form.containsKey(FIELD_EMAIL) ? form.get(FIELD_EMAIL).toString()
+          : "no-reply@trainee.tis.nhs.uk";
+      role = "TRAINEE";
+    } else {
+      name = "Unknown Admin";
+      email = "no-reply@tis.nhs.uk";
+      role = "ADMIN";
+    }
+
+    Map<String, String> modifiedBy = new LinkedHashMap<>();
+    modifiedBy.put(FIELD_NAME, name);
+    modifiedBy.put(FIELD_EMAIL, email);
+    modifiedBy.put(FIELD_ROLE, role);
+    return modifiedBy;
+  }
+
+  /**
    * Build a status info map for the given lifecycle state and form details.
    *
    * @param state        The lifecycle state to build the status info for.
@@ -356,23 +494,13 @@ public class ConvertFormrToAudited {
       int revision) {
     LifecycleState lifecycleState = LifecycleState.valueOf(state);
 
-    String role = switch (lifecycleState) {
-      case DRAFT, SUBMITTED -> "TRAINEE";
-      case UNSUBMITTED, DELETED -> "ADMIN";
-      default -> throw new IllegalStateException("Unexpected value: " + lifecycleState);
-    };
+    Map<String, Object> statusInfo = new LinkedHashMap<>();
+    statusInfo.put(FIELD_STATE, lifecycleState);
+    statusInfo.put(FIELD_MODIFIED_BY, getModifiedBy(form, lifecycleState));
+    statusInfo.put(FIELD_TIMESTAMP, lastModified);
+    statusInfo.put(FIELD_REVISION, revision);
 
-    return Map.of(
-        FIELD_STATE, lifecycleState,
-        FIELD_MODIFIED_BY, Map.of(
-            FIELD_NAME,
-            (form.getString(FIELD_FORENAME) + " " + form.getString(FIELD_SURNAME)).trim(),
-            FIELD_EMAIL, form.getString(FIELD_EMAIL),
-            FIELD_ROLE, role
-        ),
-        FIELD_TIMESTAMP, lastModified,
-        FIELD_REVISION, revision
-    );
+    return statusInfo;
   }
 
   /**
@@ -398,12 +526,13 @@ public class ConvertFormrToAudited {
     } else if (e instanceof IllegalArgumentException) {
       log.error("Skipping migration of form: {}", formKey, e);
     } else {
-      throw new RuntimeException("Unrecoverable error occurred while migrating form.", e);
+      log.error("Unrecoverable error occurred while migrating form: {}", formKey);
+      throw new RuntimeException(e);
     }
   }
 
   /**
-   * Delete submission history for the given form reference. This is used to cleanup any history
+   * Delete submission history for the given form reference. This is used to clean up any history
    * created for forms that fail to migrate, to avoid orphaned history documents remaining after the
    * migration is complete.
    *

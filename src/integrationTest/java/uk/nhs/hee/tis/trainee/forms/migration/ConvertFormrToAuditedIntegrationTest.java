@@ -56,6 +56,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.core.env.Environment;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.MediaType;
@@ -122,7 +123,7 @@ class ConvertFormrToAuditedIntegrationTest {
     registry.add("spring.cloud.aws.credentials.access-key", localstack::getAccessKey);
     registry.add("spring.cloud.aws.credentials.secret-key", localstack::getSecretKey);
 
-    registry.add("application.filestore.bucket", () -> S3_BUCKET);
+    registry.add("application.file-store.bucket", () -> S3_BUCKET);
     registry.add("spring.cloud.aws.s3.endpoint",
         () -> localstack.getEndpointOverride(S3).toString());
     registry.add("spring.cloud.aws.s3.path-style-access-enabled", () -> true);
@@ -169,13 +170,16 @@ class ConvertFormrToAuditedIntegrationTest {
   private S3Client s3Client;
 
   @Autowired
+  private Environment env;
+
+  @Autowired
   private ObjectMapper objectMapper;
 
   private ConvertFormrToAudited migration;
 
   @BeforeEach
   void setUp() {
-    migration = new ConvertFormrToAudited(mongoTemplate, s3Client, S3_BUCKET);
+    migration = new ConvertFormrToAudited(mongoTemplate, s3Client, env);
   }
 
   @AfterEach
@@ -186,7 +190,141 @@ class ConvertFormrToAuditedIntegrationTest {
 
   @ParameterizedTest
   @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
-  void shouldMigrateDraftForm(Class<? extends AbstractFormR> formClass) {
+  void shouldMigrateFormMetadata(Class<? extends AbstractFormR<?>> formClass)
+      throws JsonProcessingException {
+    UUID formId = UUID.randomUUID();
+    String traineeId = UUID.randomUUID().toString();
+    LocalDateTime submissionDate = LocalDateTime.now().minusDays(10);
+    LocalDateTime lastModifiedDate = LocalDateTime.now().minusDays(5);
+    Map<String, Object> originalFields = createFormFields(formClass, formId, traineeId, SUBMITTED,
+        submissionDate, lastModifiedDate, "1");
+
+    String collectionName = mongoTemplate.getCollectionName(formClass);
+    mongoTemplate.save(new Document(originalFields), collectionName);
+
+    uploadForm(originalFields, formClass);
+
+    migration.migrateCollections();
+
+    Optional<? extends AbstractFormR<?>> foundForm = getMigratedForm(formId, formClass);
+    assertThat("Expected form not found.", foundForm.isPresent(), is(true));
+
+    AbstractFormR<?> migratedForm = foundForm.get();
+    assertThat("Unexpected form type.", migratedForm, instanceOf(formClass));
+
+    assertThat("Unexpected form ID.", migratedForm.getId(), is(formId));
+    assertThat("Unexpected trainee ID.", migratedForm.getTraineeTisId(), is(traineeId));
+
+    String expectedFormRef = "formr_part%s_%s_001".formatted(
+        formClass == FormRPartA.class ? "a" : "b", traineeId);
+    assertThat("Unexpected form reference.", migratedForm.getFormRef(), is(expectedFormRef));
+    assertThat("Unexpected revision.", migratedForm.getRevision(), is(0));
+
+    assertThat("Unexpected lifecycle state.", migratedForm.getLifecycleState(), is(SUBMITTED));
+    assertThat("Unexpected created.", migratedForm.getCreated(),
+        is(submissionDate.toInstant(UTC).truncatedTo(MILLIS)));
+    assertThat("Unexpected last modified.", migratedForm.getLastModified(),
+        is(submissionDate.toInstant(UTC).truncatedTo(MILLIS)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
+  void shouldMigrateFormStatus(Class<? extends AbstractFormR<?>> formClass)
+      throws JsonProcessingException {
+    UUID formId = UUID.randomUUID();
+    String traineeId = UUID.randomUUID().toString();
+    LocalDateTime submissionDate = LocalDateTime.now().minusDays(10);
+    LocalDateTime lastModifiedDate = LocalDateTime.now().minusDays(5);
+    Map<String, Object> originalFields = createFormFields(formClass, formId, traineeId, SUBMITTED,
+        submissionDate, lastModifiedDate, "1");
+
+    String collectionName = mongoTemplate.getCollectionName(formClass);
+    mongoTemplate.save(new Document(originalFields), collectionName);
+
+    uploadForm(originalFields, formClass);
+
+    migration.migrateCollections();
+
+    Optional<? extends AbstractFormR<?>> foundForm = getMigratedForm(formId, formClass);
+    assertThat("Expected form not found.", foundForm.isPresent(), is(true));
+
+    AbstractFormR<?> migratedForm = foundForm.get();
+    assertThat("Unexpected form type.", migratedForm, instanceOf(formClass));
+
+    Status status = migratedForm.getStatus();
+    assertThat("Unexpected submitted timestamp.", status.submitted(),
+        is(submissionDate.toInstant(UTC).truncatedTo(MILLIS)));
+
+    StatusInfo current = status.current();
+    assertThat("Unexpected current state.", current.state(), is(SUBMITTED));
+    assertThat("Unexpected current revision.", current.revision(), is(0));
+    assertThat("Unexpected current modified by.", current.modifiedBy(), is(Person.builder()
+        .name("forename_1 surname_1")
+        .email("email_1")
+        .role("TRAINEE")
+        .build()
+    ));
+    assertThat("Unexpected current assigned admin.", current.assignedAdmin(), nullValue());
+    assertThat("Unexpected current detail.", current.detail(), nullValue());
+
+    // The status timestamp is based on S3 version history, we cannot assert exact values because it
+    // is tied to the insertion into the localstack S3 instance and NOT any data we easily control.
+    assertThat("Unexpected current timestamp.", current.timestamp(), notNullValue());
+
+    List<StatusInfo> statusHistory = status.history();
+    assertThat("Unexpected status history count.", statusHistory, hasSize(2));
+    assertThat("Unexpected lastest status history.", statusHistory.get(1), is(current));
+
+    StatusInfo status1 = statusHistory.get(0);
+    assertThat("Unexpected history state.", status1.state(), is(DRAFT));
+    assertThat("Unexpected history revision.", status1.revision(), is(0));
+    assertThat("Unexpected history modified by.", status1.modifiedBy(), is(Person.builder()
+        .name("forename_1 surname_1")
+        .email("email_1")
+        .role("TRAINEE")
+        .build()
+    ));
+    assertThat("Unexpected history assigned admin.", status1.assignedAdmin(), nullValue());
+    assertThat("Unexpected history detail.", status1.detail(), nullValue());
+    assertThat("Unexpected history timestamp.", status1.timestamp(), notNullValue());
+  }
+
+  @ParameterizedTest
+  @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
+  void shouldMigrateFormContent(Class<? extends AbstractFormR<?>> formClass)
+      throws JsonProcessingException {
+    UUID formId = UUID.randomUUID();
+    String traineeId = UUID.randomUUID().toString();
+    LocalDateTime submissionDate = LocalDateTime.now().minusDays(10);
+    LocalDateTime lastModifiedDate = LocalDateTime.now().minusDays(5);
+    Map<String, Object> originalFields = createFormFields(formClass, formId, traineeId, SUBMITTED,
+        submissionDate, lastModifiedDate, "1");
+
+    String collectionName = mongoTemplate.getCollectionName(formClass);
+    mongoTemplate.save(new Document(originalFields), collectionName);
+
+    uploadForm(originalFields, formClass);
+
+    migration.migrateCollections();
+
+    Optional<? extends AbstractFormR<?>> foundForm = getMigratedForm(formId, formClass);
+    assertThat("Expected form not found.", foundForm.isPresent(), is(true));
+
+    AbstractFormR<?> migratedForm = foundForm.get();
+    assertThat("Unexpected form type.", migratedForm, instanceOf(formClass));
+
+    FormContent content = migratedForm.getContent();
+
+    if (formClass == FormRPartA.class) {
+      assertPartaContent((FormrPartaContent) content, originalFields);
+    } else {
+      assertPartbContent((FormrPartbContent) content, originalFields);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
+  void shouldMigrateDraftHistory(Class<? extends AbstractFormR<?>> formClass) {
     UUID formId = UUID.randomUUID();
     String traineeId = UUID.randomUUID().toString();
     LocalDateTime lastModifiedDate = LocalDateTime.now().minusDays(5);
@@ -198,21 +336,25 @@ class ConvertFormrToAuditedIntegrationTest {
 
     migration.migrateCollections();
 
-    Optional<? extends AbstractFormR> foundForm = getMigratedForm(formId, formClass);
+    Optional<? extends AbstractFormR<?>> foundForm = getMigratedForm(formId, formClass);
     assertThat("Expected form not found.", foundForm.isPresent(), is(true));
 
-    AbstractFormR migratedForm = foundForm.get();
+    AbstractFormR<?> migratedForm = foundForm.get();
     assertThat("Unexpected form type.", migratedForm, instanceOf(formClass));
 
-    assertThat("Unexpected form ID.", migratedForm.getId(), is(formId));
-    assertThat("Unexpected trainee ID.", migratedForm.getTraineeTisId(), is(traineeId));
+    Status status = migratedForm.getStatus();
+    List<StatusInfo> statusHistory = status.history();
+    assertThat("Unexpected status history count.", statusHistory, hasSize(1));
+    assertThat("Unexpected lastest status history.", statusHistory.get(0), is(status.current()));
 
-    // TODO: other forms fields cannot be verified until the form classes are refactored.
+    StatusInfo status1 = statusHistory.get(0);
+    assertThat("Unexpected history state.", status1.state(), is(DRAFT));
+    assertThat("Unexpected history revision.", status1.revision(), is(0));
   }
 
   @ParameterizedTest
   @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
-  void shouldMigrateSubmittedForm(Class<? extends AbstractFormR> formClass)
+  void shouldMigrateSubmittedHistory(Class<? extends AbstractFormR<?>> formClass)
       throws JsonProcessingException {
     UUID formId = UUID.randomUUID();
     String traineeId = UUID.randomUUID().toString();
@@ -228,21 +370,29 @@ class ConvertFormrToAuditedIntegrationTest {
 
     migration.migrateCollections();
 
-    Optional<? extends AbstractFormR> foundForm = getMigratedForm(formId, formClass);
+    Optional<? extends AbstractFormR<?>> foundForm = getMigratedForm(formId, formClass);
     assertThat("Expected form not found.", foundForm.isPresent(), is(true));
 
-    AbstractFormR migratedForm = foundForm.get();
+    AbstractFormR<?> migratedForm = foundForm.get();
     assertThat("Unexpected form type.", migratedForm, instanceOf(formClass));
 
-    assertThat("Unexpected form ID.", migratedForm.getId(), is(formId));
-    assertThat("Unexpected trainee ID.", migratedForm.getTraineeTisId(), is(traineeId));
+    Status status = migratedForm.getStatus();
+    List<StatusInfo> statusHistory = status.history();
+    assertThat("Unexpected status history count.", statusHistory, hasSize(2));
+    assertThat("Unexpected lastest status history.", statusHistory.get(1), is(status.current()));
 
-    // TODO: other forms fields cannot be verified until the form classes are refactored.
+    StatusInfo status1 = statusHistory.get(0);
+    assertThat("Unexpected history state.", status1.state(), is(DRAFT));
+    assertThat("Unexpected history revision.", status1.revision(), is(0));
+
+    StatusInfo status2 = statusHistory.get(1);
+    assertThat("Unexpected history state.", status2.state(), is(SUBMITTED));
+    assertThat("Unexpected history revision.", status2.revision(), is(0));
   }
 
   @ParameterizedTest
   @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
-  void shouldMigrateUnsubmittedForm(Class<? extends AbstractFormR> formClass)
+  void shouldMigrateUnsubmittedHistory(Class<? extends AbstractFormR<?>> formClass)
       throws JsonProcessingException {
     UUID formId = UUID.randomUUID();
     String traineeId = UUID.randomUUID().toString();
@@ -266,21 +416,33 @@ class ConvertFormrToAuditedIntegrationTest {
 
     migration.migrateCollections();
 
-    Optional<? extends AbstractFormR> foundForm = getMigratedForm(formId, formClass);
+    Optional<? extends AbstractFormR<?>> foundForm = getMigratedForm(formId, formClass);
     assertThat("Expected form not found.", foundForm.isPresent(), is(true));
 
-    AbstractFormR migratedForm = foundForm.get();
+    AbstractFormR<?> migratedForm = foundForm.get();
     assertThat("Unexpected form type.", migratedForm, instanceOf(formClass));
 
-    assertThat("Unexpected form ID.", migratedForm.getId(), is(formId));
-    assertThat("Unexpected trainee ID.", migratedForm.getTraineeTisId(), is(traineeId));
+    Status status = migratedForm.getStatus();
+    List<StatusInfo> statusHistory = status.history();
+    assertThat("Unexpected status history count.", statusHistory, hasSize(3));
+    assertThat("Unexpected lastest status history.", statusHistory.get(2), is(status.current()));
 
-    // TODO: other forms fields cannot be verified until the form classes are refactored.
+    StatusInfo status1 = statusHistory.get(0);
+    assertThat("Unexpected history state.", status1.state(), is(DRAFT));
+    assertThat("Unexpected history revision.", status1.revision(), is(0));
+
+    StatusInfo status2 = statusHistory.get(1);
+    assertThat("Unexpected history state.", status2.state(), is(SUBMITTED));
+    assertThat("Unexpected history revision.", status2.revision(), is(0));
+
+    StatusInfo status3 = statusHistory.get(2);
+    assertThat("Unexpected history state.", status3.state(), is(UNSUBMITTED));
+    assertThat("Unexpected history revision.", status3.revision(), is(1));
   }
 
   @ParameterizedTest
   @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
-  void shouldMigrateResubmittedForm(Class<? extends AbstractFormR> formClass)
+  void shouldMigrateResubmittedHistory(Class<? extends AbstractFormR<?>> formClass)
       throws JsonProcessingException {
     UUID formId = UUID.randomUUID();
     String traineeId = UUID.randomUUID().toString();
@@ -311,21 +473,37 @@ class ConvertFormrToAuditedIntegrationTest {
 
     migration.migrateCollections();
 
-    Optional<? extends AbstractFormR> foundForm = getMigratedForm(formId, formClass);
+    Optional<? extends AbstractFormR<?>> foundForm = getMigratedForm(formId, formClass);
     assertThat("Expected form not found.", foundForm.isPresent(), is(true));
 
-    AbstractFormR migratedForm = foundForm.get();
+    AbstractFormR<?> migratedForm = foundForm.get();
     assertThat("Unexpected form type.", migratedForm, instanceOf(formClass));
 
-    assertThat("Unexpected form ID.", migratedForm.getId(), is(formId));
-    assertThat("Unexpected trainee ID.", migratedForm.getTraineeTisId(), is(traineeId));
+    Status status = migratedForm.getStatus();
+    List<StatusInfo> statusHistory = status.history();
+    assertThat("Unexpected status history count.", statusHistory, hasSize(4));
+    assertThat("Unexpected lastest status history.", statusHistory.get(3), is(status.current()));
 
-    // TODO: other forms fields cannot be verified until the form classes are refactored.
+    StatusInfo status1 = statusHistory.get(0);
+    assertThat("Unexpected history state.", status1.state(), is(DRAFT));
+    assertThat("Unexpected history revision.", status1.revision(), is(0));
+
+    StatusInfo status2 = statusHistory.get(1);
+    assertThat("Unexpected history state.", status2.state(), is(SUBMITTED));
+    assertThat("Unexpected history revision.", status2.revision(), is(0));
+
+    StatusInfo status3 = statusHistory.get(2);
+    assertThat("Unexpected history state.", status3.state(), is(UNSUBMITTED));
+    assertThat("Unexpected history revision.", status3.revision(), is(1));
+
+    StatusInfo status4 = statusHistory.get(3);
+    assertThat("Unexpected history state.", status4.state(), is(SUBMITTED));
+    assertThat("Unexpected history revision.", status4.revision(), is(1));
   }
 
   @ParameterizedTest
   @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
-  void shouldMigrateDeletedForm(Class<? extends AbstractFormR> formClass)
+  void shouldMigrateDeletedHistory(Class<? extends AbstractFormR<?>> formClass)
       throws JsonProcessingException {
     UUID formId = UUID.randomUUID();
     String traineeId = UUID.randomUUID().toString();
@@ -362,21 +540,41 @@ class ConvertFormrToAuditedIntegrationTest {
 
     migration.migrateCollections();
 
-    Optional<? extends AbstractFormR> foundForm = getMigratedForm(formId, formClass);
+    Optional<? extends AbstractFormR<?>> foundForm = getMigratedForm(formId, formClass);
     assertThat("Expected form not found.", foundForm.isPresent(), is(true));
 
-    AbstractFormR migratedForm = foundForm.get();
+    AbstractFormR<?> migratedForm = foundForm.get();
     assertThat("Unexpected form type.", migratedForm, instanceOf(formClass));
 
-    assertThat("Unexpected form ID.", migratedForm.getId(), is(formId));
-    assertThat("Unexpected trainee ID.", migratedForm.getTraineeTisId(), is(traineeId));
+    Status status = migratedForm.getStatus();
+    List<StatusInfo> statusHistory = status.history();
+    assertThat("Unexpected status history count.", statusHistory, hasSize(5));
+    assertThat("Unexpected lastest status history.", statusHistory.get(4), is(status.current()));
 
-    // TODO: other forms fields cannot be verified until the form classes are refactored.
+    StatusInfo status1 = statusHistory.get(0);
+    assertThat("Unexpected history state.", status1.state(), is(DRAFT));
+    assertThat("Unexpected history revision.", status1.revision(), is(0));
+
+    StatusInfo status2 = statusHistory.get(1);
+    assertThat("Unexpected history state.", status2.state(), is(SUBMITTED));
+    assertThat("Unexpected history revision.", status2.revision(), is(0));
+
+    StatusInfo status3 = statusHistory.get(2);
+    assertThat("Unexpected history state.", status3.state(), is(UNSUBMITTED));
+    assertThat("Unexpected history revision.", status3.revision(), is(1));
+
+    StatusInfo status4 = statusHistory.get(3);
+    assertThat("Unexpected history state.", status4.state(), is(SUBMITTED));
+    assertThat("Unexpected history revision.", status4.revision(), is(1));
+
+    StatusInfo status5 = statusHistory.get(4);
+    assertThat("Unexpected history state.", status5.state(), is(DELETED));
+    assertThat("Unexpected history revision.", status5.revision(), is(1));
   }
 
   @ParameterizedTest
   @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
-  void shouldSnapshotSubmittedFormHistoryMetadata(Class<? extends AbstractFormR> formClass)
+  void shouldSnapshotSubmittedFormHistoryMetadata(Class<? extends AbstractFormR<?>> formClass)
       throws JsonProcessingException {
     UUID formId = UUID.randomUUID();
     String traineeId = UUID.randomUUID().toString();
@@ -411,12 +609,12 @@ class ConvertFormrToAuditedIntegrationTest {
     assertThat("Unexpected created.", history.getCreated(),
         is(submissionDate.toInstant(UTC).truncatedTo(MILLIS)));
     assertThat("Unexpected last modified.", history.getLastModified(),
-        is(lastModifiedDate.toInstant(UTC).truncatedTo(MILLIS)));
+        is(submissionDate.toInstant(UTC).truncatedTo(MILLIS)));
   }
 
   @ParameterizedTest
   @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
-  void shouldSnapshotSubmittedFormHistoryStatus(Class<? extends AbstractFormR> formClass)
+  void shouldSnapshotSubmittedFormHistoryStatus(Class<? extends AbstractFormR<?>> formClass)
       throws JsonProcessingException {
     UUID formId = UUID.randomUUID();
     String traineeId = UUID.randomUUID().toString();
@@ -461,23 +659,23 @@ class ConvertFormrToAuditedIntegrationTest {
     assertThat("Unexpected status history count.", statusHistory, hasSize(2));
     assertThat("Unexpected lastest status history.", statusHistory.get(1), is(current));
 
-    StatusInfo firstStatus = statusHistory.get(0);
-    assertThat("Unexpected history state.", firstStatus.state(), is(DRAFT));
-    assertThat("Unexpected history revision.", firstStatus.revision(), is(0));
-    assertThat("Unexpected history modified by.", firstStatus.modifiedBy(), is(Person.builder()
+    StatusInfo status1 = statusHistory.get(0);
+    assertThat("Unexpected history state.", status1.state(), is(DRAFT));
+    assertThat("Unexpected history revision.", status1.revision(), is(0));
+    assertThat("Unexpected history modified by.", status1.modifiedBy(), is(Person.builder()
         .name("forename_1 surname_1")
         .email("email_1")
         .role("TRAINEE")
         .build()
     ));
-    assertThat("Unexpected history assigned admin.", firstStatus.assignedAdmin(), nullValue());
-    assertThat("Unexpected history detail.", firstStatus.detail(), nullValue());
-    assertThat("Unexpected history timestamp.", firstStatus.timestamp(), notNullValue());
+    assertThat("Unexpected history assigned admin.", status1.assignedAdmin(), nullValue());
+    assertThat("Unexpected history detail.", status1.detail(), nullValue());
+    assertThat("Unexpected history timestamp.", status1.timestamp(), notNullValue());
   }
 
   @ParameterizedTest
   @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
-  void shouldSnapshotSubmittedFormHistoryContent(Class<? extends AbstractFormR> formClass)
+  void shouldSnapshotSubmittedFormHistoryContent(Class<? extends AbstractFormR<?>> formClass)
       throws JsonProcessingException {
     UUID formId = UUID.randomUUID();
     String traineeId = UUID.randomUUID().toString();
@@ -514,8 +712,8 @@ class ConvertFormrToAuditedIntegrationTest {
    * @param formClass The class of the migrated form.
    * @return The migrated form, if found.
    */
-  private Optional<? extends AbstractFormR> getMigratedForm(UUID formId,
-      Class<? extends AbstractFormR> formClass) {
+  private Optional<? extends AbstractFormR<?>> getMigratedForm(UUID formId,
+      Class<? extends AbstractFormR<?>> formClass) {
     if (formClass == FormRPartA.class) {
       return partaRepository.findById(formId);
     } else {
@@ -531,7 +729,7 @@ class ConvertFormrToAuditedIntegrationTest {
    * @return The migrated form submission history, or empty if not found.
    */
   private List<? extends AbstractAuditedForm<?>> getMigratedFormSubmissionHistory(String traineeId,
-      Class<? extends AbstractFormR> formClass) {
+      Class<? extends AbstractFormR<?>> formClass) {
     if (formClass == FormRPartA.class) {
       return partaSubmissionHistoryRepository.findByTraineeTisId(traineeId);
     } else {
@@ -551,7 +749,7 @@ class ConvertFormrToAuditedIntegrationTest {
    * @param contentSuffix    A suffix to apply to content values.
    * @return The created form.
    */
-  private Map<String, Object> createFormFields(Class<? extends AbstractFormR> formClass,
+  private Map<String, Object> createFormFields(Class<? extends AbstractFormR<?>> formClass,
       UUID formId, String traineeId, LifecycleState lifecycleState, LocalDateTime submissionDate,
       LocalDateTime lastModifiedDate, String contentSuffix) {
     Map<String, Object> formFields = new HashMap<>();
@@ -821,8 +1019,8 @@ class ConvertFormrToAuditedIntegrationTest {
    * @param formClass  The class of the form to upload.
    * @throws JsonProcessingException If the document was not valid JSON.
    */
-  private void uploadForm(Map<String, Object> formFields, Class<? extends AbstractFormR> formClass)
-      throws JsonProcessingException {
+  private void uploadForm(Map<String, Object> formFields,
+      Class<? extends AbstractFormR<?>> formClass) throws JsonProcessingException {
     UUID formId = (UUID) formFields.get(FIELD_FORM_ID);
     String traineeId = (String) formFields.get(FIELD_TRAINEE_ID);
     String lifecycleState = (String) formFields.get(FIELD_LIFECYCLE_STATE);
@@ -838,5 +1036,25 @@ class ConvertFormrToAuditedIntegrationTest {
             .build(),
         RequestBody.fromBytes(objectMapper.writeValueAsBytes(formFields))
     );
+  }
+
+  /**
+   * Assert that the given modifiedBy user matches the expected values.
+   *
+   * @param lifecycleState The lifecycle state of the form.
+   * @param modifiedBy     The modifiedBy user to check.
+   * @param suffix         The suffix used to generate the expected values.
+   */
+  private void assertModifiedBy(LifecycleState lifecycleState, Person modifiedBy, String suffix) {
+    if (lifecycleState == DRAFT || lifecycleState == SUBMITTED) {
+      assertThat("Unexpected modifiedBy name.", modifiedBy.name(),
+          is("Forename_" + suffix + " Surname_" + suffix));
+      assertThat("Unexpected modifiedBy email.", modifiedBy.email(), is("email_" + suffix));
+      assertThat("Unexpected modifiedBy role.", modifiedBy.role(), is("TRAINEE"));
+    } else {
+      assertThat("Unexpected modifiedBy name.", modifiedBy.name(), is("Unknown Admin"));
+      assertThat("Unexpected modifiedBy email.", modifiedBy.email(), is("no-reply@tis.nhs.uk"));
+      assertThat("Unexpected modifiedBy role.", modifiedBy.role(), is("ADMIN"));
+    }
   }
 }

@@ -49,8 +49,10 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBM
 
 import com.mongodb.client.result.DeleteResult;
 import java.io.ByteArrayInputStream;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -65,6 +67,8 @@ import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
+import org.mockito.stubbing.OngoingStubbing;
+import org.springframework.core.env.Environment;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -73,6 +77,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.ListObjectVersionsRequest;
+import software.amazon.awssdk.services.s3.model.ListObjectVersionsRequest.Builder;
 import software.amazon.awssdk.services.s3.model.ListObjectVersionsResponse;
 import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
@@ -99,12 +104,9 @@ class ConvertFormrToAuditedTest {
 
   private static final UUID FORM_ID = UUID.randomUUID();
   private static final String TRAINEE_ID = UUID.randomUUID().toString();
-  private static final Instant SUBMISSION_DATE = Instant.now()
-      .minus(20, DAYS)
-      .truncatedTo(MILLIS);
-  private static final Instant LAST_MODIFIED = Instant.now()
-      .minus(10, DAYS)
-      .truncatedTo(MILLIS);
+  private static final Instant SUBMISSION_DATE_1 = Instant.now().minus(20, DAYS);
+  private static final Instant SUBMISSION_DATE_2 = Instant.now().minus(10, DAYS);
+  private static final Instant LAST_MODIFIED = Instant.now().minus(5, DAYS);
 
   private static final String PART_A_COLLECTION = "form-r-part-a";
   private static final String PART_B_COLLECTION = "form-r-part-b";
@@ -123,12 +125,17 @@ class ConvertFormrToAuditedTest {
   void setUp() {
     mongoTemplate = mock(MongoTemplate.class);
     s3Client = mock(S3Client.class);
-    migration = new ConvertFormrToAudited(mongoTemplate, s3Client, S3_BUCKET);
+    Environment env = mock(Environment.class);
+    when(env.getProperty("application.file-store.bucket")).thenReturn(S3_BUCKET);
+    migration = new ConvertFormrToAudited(mongoTemplate, s3Client, env);
+
+    when(mongoTemplate.getCollectionName(any())).thenReturn("");
+    when(mongoTemplate.remove(any(), any(String.class))).thenReturn(DeleteResult.acknowledged(0));
   }
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, names = {"SUBMITTED", "UNSUBMITTED", "DELETED"})
-  void shouldSkipFormWhenNotDraftAndNoHistory(LifecycleState state) {
+  void shouldSkipFormWhenNotDraftAndNotFoundInS3(LifecycleState state) {
     String collectionName = "form-r-part-x";
     when(mongoTemplate.getCollectionName(any())).thenReturn(collectionName);
 
@@ -179,15 +186,11 @@ class ConvertFormrToAuditedTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, names = {"SUBMITTED", "UNSUBMITTED", "DELETED"})
-  void shouldCleanUpHistoryWhenNotDraftAndNoHistory(LifecycleState state) {
+  void shouldSkipFormWhenNotDraftAndNoHistory(LifecycleState state) {
     String collectionName = "form-r-part-x";
     when(mongoTemplate.getCollectionName(any())).thenReturn(collectionName);
-    when(mongoTemplate.getCollectionName(FormrPartaSubmissionHistory.class)).thenReturn(
-        PART_A_HISTORY_COLLECTION);
-    when(mongoTemplate.getCollectionName(FormrPartbSubmissionHistory.class)).thenReturn(
-        PART_B_HISTORY_COLLECTION);
 
-    Document before = new Document(Map.of(
+    Document before1 = new Document(Map.of(
         "_id", UUID.randomUUID(),
         "traineeTisId", TRAINEE_ID,
         "forename", "Anthony",
@@ -197,20 +200,39 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
+    Document before2 = new Document(Map.of(
+        "_id", FORM_ID,
+        "traineeTisId", TRAINEE_ID,
+        "forename", "Anthony",
+        "surname", "Gilliam",
+        "email", "anthony.gilliam@example.com",
+        "lifecycleState", "DRAFT",
+        "lastModifiedDate", Date.from(LAST_MODIFIED),
+        "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
+    ));
     when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before));
+        .thenReturn(List.of(before1, before2));
 
     when(s3Client.listObjectVersions(
         ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
-        .thenThrow(NoSuchKeyException.class);
+        .thenReturn(ListObjectVersionsResponse.builder().build());
 
     when(mongoTemplate.remove(any(), any(String.class))).thenReturn(DeleteResult.acknowledged(1));
 
     migration.migrateCollections();
 
-    verify(mongoTemplate, never()).save(any(), eq(collectionName));
-    verify(mongoTemplate).remove(any(), eq(PART_A_HISTORY_COLLECTION));
-    verify(mongoTemplate).remove(any(), eq(PART_B_HISTORY_COLLECTION));
+    ArgumentCaptor<Document> documentCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate, times(2)).save(documentCaptor.capture(), eq(collectionName));
+
+    List<Document> migrated = documentCaptor.getAllValues();
+
+    Document migrated1 = migrated.get(0);
+    assertThat("Unexpected form ID.", migrated1.get("_id"), is(FORM_ID));
+    assertThat("Unexpected form class.", migrated1.get("_class"), is(FormRPartA.class.getName()));
+
+    Document migrated2 = migrated.get(1);
+    assertThat("Unexpected form ID.", migrated2.get("_id"), is(FORM_ID));
+    assertThat("Unexpected form class.", migrated2.get("_class"), is(FormRPartB.class.getName()));
   }
 
   @ParameterizedTest
@@ -270,50 +292,6 @@ class ConvertFormrToAuditedTest {
     Document migrated2 = migrated.get(1);
     assertThat("Unexpected form ID.", migrated2.get("_id"), is(FORM_ID));
     assertThat("Unexpected form class.", migrated2.get("_class"), is(FormRPartB.class.getName()));
-  }
-
-  @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, names = {"UNSUBMITTED", "DELETED"})
-  void shouldCleanUpHistoryWhenFirstVersionNotSubmitted(LifecycleState state) {
-    String collectionName = "form-r-part-x";
-    when(mongoTemplate.getCollectionName(any())).thenReturn(collectionName);
-    when(mongoTemplate.getCollectionName(FormrPartaSubmissionHistory.class)).thenReturn(
-        PART_A_HISTORY_COLLECTION);
-    when(mongoTemplate.getCollectionName(FormrPartbSubmissionHistory.class)).thenReturn(
-        PART_B_HISTORY_COLLECTION);
-
-    Document before = new Document(Map.of(
-        "_id", UUID.randomUUID(),
-        "traineeTisId", TRAINEE_ID,
-        "forename", "Anthony",
-        "surname", "Gilliam",
-        "email", "anthony.gilliam@example.com",
-        "lifecycleState", state.toString(),
-        "lastModifiedDate", Date.from(LAST_MODIFIED),
-        "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
-    ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before));
-
-    when(s3Client.listObjectVersions(
-        ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
-        .thenReturn(ListObjectVersionsResponse.builder()
-            .versions(ObjectVersion.builder().versionId(UUID.randomUUID().toString()).build())
-            .build());
-
-    when(s3Client.headObject(ArgumentMatchers.<Consumer<HeadObjectRequest.Builder>>any()))
-        .thenReturn(HeadObjectResponse.builder()
-            .lastModified(LAST_MODIFIED)
-            .metadata(Map.of(METADATA_STATE, DRAFT.toString()))
-            .build());
-
-    when(mongoTemplate.remove(any(), any(String.class))).thenReturn(DeleteResult.acknowledged(1));
-
-    migration.migrateCollections();
-
-    verify(mongoTemplate, never()).save(any(), eq(collectionName));
-    verify(mongoTemplate).remove(any(), eq(PART_A_HISTORY_COLLECTION));
-    verify(mongoTemplate).remove(any(), eq(PART_B_HISTORY_COLLECTION));
   }
 
   @ParameterizedTest
@@ -380,56 +358,7 @@ class ConvertFormrToAuditedTest {
 
   @ParameterizedTest
   @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
-  void shouldCleanUpHistoryWhenS3ContentNotValid(Class<?> formClass) {
-    String collectionName = formClass == FormRPartA.class ? PART_A_COLLECTION : PART_B_COLLECTION;
-    when(mongoTemplate.getCollectionName(formClass)).thenReturn(collectionName);
-    when(mongoTemplate.getCollectionName(FormrPartaSubmissionHistory.class)).thenReturn(
-        PART_A_HISTORY_COLLECTION);
-    when(mongoTemplate.getCollectionName(FormrPartbSubmissionHistory.class)).thenReturn(
-        PART_B_HISTORY_COLLECTION);
-
-    Document before = new Document(Map.of(
-        "_id", UUID.randomUUID(),
-        "traineeTisId", TRAINEE_ID,
-        "forename", "Anthony",
-        "surname", "Gilliam",
-        "email", "anthony.gilliam@example.com",
-        "lifecycleState", "SUBMITTED",
-        "lastModifiedDate", Date.from(LAST_MODIFIED),
-        "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
-    ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before));
-
-    when(s3Client.listObjectVersions(
-        ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
-        .thenReturn(ListObjectVersionsResponse.builder()
-            .versions(ObjectVersion.builder().versionId(UUID.randomUUID().toString()).build())
-            .build());
-
-    when(s3Client.headObject(ArgumentMatchers.<Consumer<HeadObjectRequest.Builder>>any()))
-        .thenReturn(HeadObjectResponse.builder()
-            .lastModified(LAST_MODIFIED)
-            .metadata(Map.of(METADATA_STATE, SUBMITTED.toString()))
-            .build());
-
-    String s3Content1 = "not a valid form";
-    when(s3Client.getObject(any(GetObjectRequest.class)))
-        .thenReturn(new ResponseInputStream<>(GetObjectResponse.builder().build(),
-            new ByteArrayInputStream(s3Content1.getBytes())));
-
-    when(mongoTemplate.remove(any(), any(String.class))).thenReturn(DeleteResult.acknowledged(1));
-
-    migration.migrateCollections();
-
-    verify(mongoTemplate, never()).save(any(), eq(collectionName));
-    verify(mongoTemplate).remove(any(),
-        eq(formClass == FormRPartA.class ? PART_A_HISTORY_COLLECTION : PART_B_HISTORY_COLLECTION));
-  }
-
-  @ParameterizedTest
-  @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
-  void shouldStopMigrationWithCleanHistoryWhenUnhandledExceptionOccurs(Class<?> formClass) {
+  void shouldStopMigrationWhenUnhandledExceptionOccurs(Class<?> formClass) {
     String collectionName = formClass == FormRPartA.class ? PART_A_COLLECTION : PART_B_COLLECTION;
     when(mongoTemplate.getCollectionName(formClass)).thenReturn(collectionName);
     when(mongoTemplate.getCollectionName(FormrPartaSubmissionHistory.class)).thenReturn(
@@ -469,8 +398,6 @@ class ConvertFormrToAuditedTest {
     assertThrows(RuntimeException.class, () -> migration.migrateCollections());
 
     verify(mongoTemplate, never()).save(any(), eq(collectionName));
-    verify(mongoTemplate).remove(any(),
-        eq(formClass == FormRPartA.class ? PART_A_HISTORY_COLLECTION : PART_B_HISTORY_COLLECTION));
   }
 
   @ParameterizedTest
@@ -486,13 +413,15 @@ class ConvertFormrToAuditedTest {
         "surname", "Gilliam",
         "email", "anthony.gilliam@example.com",
         "contentKey", "contentValue",
-        "lifecycleState", "DRAFT",
-        "submissionDate", Date.from(SUBMISSION_DATE),
+        "lifecycleState", "SUBMITTED",
+        "submissionDate", Date.from(SUBMISSION_DATE_1),
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
     when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
         .thenReturn(List.of(before));
+
+    mockS3Endpoints(1);
 
     migration.migrateCollections();
 
@@ -503,8 +432,8 @@ class ConvertFormrToAuditedTest {
     assertThat("Unexpected migrated form.", migrated, notNullValue());
 
     assertThat("Unexpected root keys.", migrated.keySet(),
-        containsInAnyOrder("_id", "traineeTisId", "revision", "content", "status", "created",
-            "lastModified", "_class"));
+        containsInAnyOrder("_id", "traineeTisId", "formRef", "revision", "content", "status",
+            "created", "lastModified", "_class"));
 
     Map<String, Object> migratedStatus = getEmbeddedMap(migrated, List.of("status"));
     assertThat("Unexpected status keys.", migratedStatus.keySet(),
@@ -543,9 +472,9 @@ class ConvertFormrToAuditedTest {
     assertThat("Unexpected trainee ID.", migrated.getString("traineeTisId"), is(TRAINEE_ID));
 
     assertThat("Unexpected created timestamp.", migrated.get("created", Instant.class),
-        is(LAST_MODIFIED));
+        is(LAST_MODIFIED.truncatedTo(MILLIS)));
     assertThat("Unexpected modified timestamp.", migrated.get("lastModified", Instant.class),
-        is(LAST_MODIFIED));
+        is(LAST_MODIFIED.truncatedTo(MILLIS)));
     assertThat("Unexpected document class.", migrated.getString("_class"), is(formClass.getName()));
   }
 
@@ -577,6 +506,39 @@ class ConvertFormrToAuditedTest {
     assertThat("Unexpected migrated form.", migrated, notNullValue());
 
     assertThat("Unexpected form reference.", migrated.get("formRef"), nullValue());
+  }
+
+  @ParameterizedTest
+  @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
+  void shouldNotCleanUpHistoryWhenNoFormRefGenerated(Class<?> formClass) {
+    String collectionName = formClass == FormRPartA.class ? PART_A_COLLECTION : PART_B_COLLECTION;
+    when(mongoTemplate.getCollectionName(formClass)).thenReturn(collectionName);
+    when(mongoTemplate.getCollectionName(FormrPartaSubmissionHistory.class)).thenReturn(
+        PART_A_HISTORY_COLLECTION);
+    when(mongoTemplate.getCollectionName(FormrPartbSubmissionHistory.class)).thenReturn(
+        PART_B_HISTORY_COLLECTION);
+
+    Document before = new Document(Map.of(
+        "_id", UUID.randomUUID(),
+        "traineeTisId", TRAINEE_ID,
+        "forename", "Anthony",
+        "surname", "Gilliam",
+        "email", "anthony.gilliam@example.com",
+        "lifecycleState", DRAFT.toString(),
+        "lastModifiedDate", Date.from(LAST_MODIFIED),
+        "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
+    ));
+    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
+        .thenReturn(List.of(before));
+
+    when(s3Client.listObjectVersions(
+        ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
+        .thenThrow(NoSuchKeyException.class);
+
+    migration.migrateCollections();
+
+    verify(mongoTemplate, never()).remove(any(), eq(PART_A_HISTORY_COLLECTION));
+    verify(mongoTemplate, never()).remove(any(), eq(PART_B_HISTORY_COLLECTION));
   }
 
   @ParameterizedTest
@@ -614,16 +576,16 @@ class ConvertFormrToAuditedTest {
     when(s3Client.headObject(ArgumentMatchers.<Consumer<HeadObjectRequest.Builder>>any()))
         .thenReturn(HeadObjectResponse.builder()
             .lastModified(LAST_MODIFIED)
-            .metadata(Map.of(METADATA_STATE, SUBMITTED.toString()))
+            .metadata(Map.of(METADATA_STATE, state.toString()))
             .build())
         .thenReturn(HeadObjectResponse.builder()
             .lastModified(LAST_MODIFIED)
-            .metadata(Map.of(METADATA_STATE, state.toString()))
+            .metadata(Map.of(METADATA_STATE, SUBMITTED.toString()))
             .build());
 
     String s3ContentTemplate = """
             {
-              "_id": "%s",
+              "id": "%s",
               "traineeTisId": "%s",
               "forename": "Anthony",
               "surname": "Gilliam",
@@ -636,11 +598,11 @@ class ConvertFormrToAuditedTest {
     when(s3Client.getObject(any(GetObjectRequest.class)))
         .thenReturn(new ResponseInputStream<>(GetObjectResponse.builder().build(),
             new ByteArrayInputStream(s3ContentTemplate.formatted(FORM_ID, TRAINEE_ID, SUBMITTED,
-                LocalDateTime.ofInstant(SUBMISSION_DATE, UTC),
+                LocalDateTime.ofInstant(SUBMISSION_DATE_1, UTC),
                 LocalDateTime.ofInstant(LAST_MODIFIED, UTC)).getBytes())))
         .thenReturn(new ResponseInputStream<>(GetObjectResponse.builder().build(),
             new ByteArrayInputStream(s3ContentTemplate.formatted(FORM_ID, TRAINEE_ID, state,
-                LocalDateTime.ofInstant(SUBMISSION_DATE, UTC),
+                LocalDateTime.ofInstant(SUBMISSION_DATE_1, UTC),
                 LocalDateTime.ofInstant(LAST_MODIFIED, UTC)).getBytes())));
 
     migration.migrateCollections();
@@ -653,6 +615,41 @@ class ConvertFormrToAuditedTest {
 
     assertThat("Unexpected form reference.", migrated.get("formRef"),
         is("formr_parta_" + TRAINEE_ID + "_003"));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"SUBMITTED", "UNSUBMITTED", "DELETED"})
+  void shouldCleanUpHistoryWhenFormRefGenerated(LifecycleState state) {
+    String collectionName = "form-r-part-x";
+    when(mongoTemplate.getCollectionName(any())).thenReturn(collectionName);
+    when(mongoTemplate.getCollectionName(FormrPartaSubmissionHistory.class)).thenReturn(
+        PART_A_HISTORY_COLLECTION);
+    when(mongoTemplate.getCollectionName(FormrPartbSubmissionHistory.class)).thenReturn(
+        PART_B_HISTORY_COLLECTION);
+
+    Document before = new Document(Map.of(
+        "_id", UUID.randomUUID(),
+        "traineeTisId", TRAINEE_ID,
+        "forename", "Anthony",
+        "surname", "Gilliam",
+        "email", "anthony.gilliam@example.com",
+        "lifecycleState", state.toString(),
+        "lastModifiedDate", Date.from(LAST_MODIFIED),
+        "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
+    ));
+    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
+        .thenReturn(List.of(before));
+
+    when(s3Client.listObjectVersions(
+        ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
+        .thenThrow(NoSuchKeyException.class);
+
+    when(mongoTemplate.remove(any(), any(String.class))).thenReturn(DeleteResult.acknowledged(1));
+
+    migration.migrateCollections();
+
+    verify(mongoTemplate).remove(any(), eq(PART_A_HISTORY_COLLECTION));
+    verify(mongoTemplate).remove(any(), eq(PART_B_HISTORY_COLLECTION));
   }
 
   @ParameterizedTest
@@ -695,74 +692,14 @@ class ConvertFormrToAuditedTest {
         "_id", FORM_ID,
         "traineeTisId", TRAINEE_ID,
         "lifecycleState", DELETED.toString(),
-        "submissionDate", Date.from(SUBMISSION_DATE),
+        "submissionDate", Date.from(SUBMISSION_DATE_1),
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
     when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
         .thenReturn(List.of(before));
 
-    when(s3Client.listObjectVersions(
-        ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
-        .thenReturn(ListObjectVersionsResponse.builder()
-            .versions(
-                ObjectVersion.builder().versionId(SUBMITTED_2_VERSION).build(),
-                ObjectVersion.builder().versionId(UNSUBMITTED_VERSION).build(),
-                ObjectVersion.builder().versionId(SUBMITTED_1_VERSION).build()
-            )
-            .build());
-
-    when(s3Client.headObject(ArgumentMatchers.<Consumer<HeadObjectRequest.Builder>>any()))
-        .thenAnswer(inv -> {
-          Consumer<HeadObjectRequest.Builder> builder = inv.getArgument(0);
-          HeadObjectRequest request = HeadObjectRequest.builder().applyMutation(builder).build();
-
-          LifecycleState lifecycleState = switch (request.versionId()) {
-            case SUBMITTED_1_VERSION, SUBMITTED_2_VERSION -> SUBMITTED;
-            case UNSUBMITTED_VERSION -> UNSUBMITTED;
-            default -> throw new IllegalStateException("Unexpected value: " + request.versionId());
-          };
-
-          Instant lastModified = switch (request.versionId()) {
-            case SUBMITTED_1_VERSION -> SUBMITTED_1_MODIFIED;
-            case SUBMITTED_2_VERSION -> SUBMITTED_2_MODIFIED;
-            case UNSUBMITTED_VERSION -> UNSUBMITTED_MODIFIED;
-            default -> throw new IllegalStateException("Unexpected value: " + request.versionId());
-          };
-
-          return HeadObjectResponse.builder()
-              .lastModified(lastModified)
-              .metadata(Map.of(METADATA_STATE, lifecycleState.toString()))
-              .build();
-        });
-
-    String s3Content1 = """
-            {
-              "_id": "%s",
-              "lifecycleState": "SUBMITTED",
-              "forename": "Tony",
-              "surname": "Gill",
-              "email": "tony.gill@example.com",
-              "submissionDate": "2024-03-06T16:43:10.413",
-              "lastModifiedDate": "2025-04-07T16:43:10.413"
-            }
-        """.formatted(FORM_ID);
-    String s3Content2 = """
-            {
-              "_id": "%s",
-              "lifecycleState": "SUBMITTED",
-              "forename": "Anthony",
-              "surname": "Gilliam",
-              "email": "anthony.gilliam@example.com",
-              "submissionDate": "2026-05-08T16:43:10.413",
-              "lastModifiedDate": "2027-06-09T16:43:10.413"
-            }
-        """.formatted(FORM_ID);
-    when(s3Client.getObject(any(GetObjectRequest.class)))
-        .thenReturn(new ResponseInputStream<>(GetObjectResponse.builder().build(),
-            new ByteArrayInputStream(s3Content1.getBytes())))
-        .thenReturn(new ResponseInputStream<>(GetObjectResponse.builder().build(),
-            new ByteArrayInputStream(s3Content2.getBytes())));
+    mockS3Endpoints(3);
 
     migration.migrateCollections();
 
@@ -861,7 +798,7 @@ class ConvertFormrToAuditedTest {
         "surname", "Gilliam",
         "email", "anthony.gilliam@example.com",
         "lifecycleState", state.toString(),
-        "submissionDate", Date.from(SUBMISSION_DATE),
+        "submissionDate", Date.from(SUBMISSION_DATE_1),
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
@@ -883,16 +820,16 @@ class ConvertFormrToAuditedTest {
     when(s3Client.headObject(ArgumentMatchers.<Consumer<HeadObjectRequest.Builder>>any()))
         .thenReturn(HeadObjectResponse.builder()
             .lastModified(LAST_MODIFIED)
-            .metadata(Map.of(METADATA_STATE, SUBMITTED.toString()))
+            .metadata(Map.of(METADATA_STATE, state.toString()))
             .build())
         .thenReturn(HeadObjectResponse.builder()
             .lastModified(LAST_MODIFIED)
-            .metadata(Map.of(METADATA_STATE, state.toString()))
+            .metadata(Map.of(METADATA_STATE, SUBMITTED.toString()))
             .build());
 
     String s3ContentTemplate = """
             {
-              "_id": "%s",
+              "id": "%s",
               "traineeTisId": "%s",
               "forename": "Anthony",
               "surname": "Gilliam",
@@ -905,11 +842,11 @@ class ConvertFormrToAuditedTest {
     when(s3Client.getObject(any(GetObjectRequest.class)))
         .thenReturn(new ResponseInputStream<>(GetObjectResponse.builder().build(),
             new ByteArrayInputStream(s3ContentTemplate.formatted(FORM_ID, TRAINEE_ID, SUBMITTED,
-                LocalDateTime.ofInstant(SUBMISSION_DATE, UTC),
+                LocalDateTime.ofInstant(SUBMISSION_DATE_1, UTC),
                 LocalDateTime.ofInstant(LAST_MODIFIED, UTC)).getBytes())))
         .thenReturn(new ResponseInputStream<>(GetObjectResponse.builder().build(),
             new ByteArrayInputStream(s3ContentTemplate.formatted(FORM_ID, TRAINEE_ID, state,
-                LocalDateTime.ofInstant(SUBMISSION_DATE, UTC),
+                LocalDateTime.ofInstant(SUBMISSION_DATE_1, UTC),
                 LocalDateTime.ofInstant(LAST_MODIFIED, UTC)).getBytes())));
 
     migration.migrateCollections();
@@ -925,7 +862,7 @@ class ConvertFormrToAuditedTest {
         containsInAnyOrder("current", "submitted", "history"));
 
     var submitted = migratedStatus.get("submitted");
-    assertThat("Unexpected submitted date.", submitted, is(SUBMISSION_DATE));
+    assertThat("Unexpected submitted date.", submitted, is(SUBMISSION_DATE_1));
   }
 
   @ParameterizedTest
@@ -961,7 +898,7 @@ class ConvertFormrToAuditedTest {
         containsInAnyOrder("state", "modifiedBy", "timestamp", "revision"));
     assertThat("Unexpected lifecycle state.", migratedCurrent.get("state"), is(DRAFT));
     assertThat("Unexpected current status timestamp.", migratedCurrent.get("timestamp"),
-        is(LAST_MODIFIED));
+        is(LAST_MODIFIED.truncatedTo(MILLIS)));
     assertThat("Unexpected current status revision.", migratedCurrent.get("revision"), is(0));
   }
 
@@ -997,7 +934,7 @@ class ConvertFormrToAuditedTest {
 
     String s3Content = """
             {
-              "_id": "%s",
+              "id": "%s",
               "traineeTisId": "%s",
               "lifecycleState": "%s",
               "forename": "Anthony",
@@ -1006,7 +943,7 @@ class ConvertFormrToAuditedTest {
               "submissionDate": "%s",
               "lastModifiedDate": "%s"
             }
-        """.formatted(FORM_ID, TRAINEE_ID, state, LocalDateTime.ofInstant(SUBMISSION_DATE, UTC),
+        """.formatted(FORM_ID, TRAINEE_ID, state, LocalDateTime.ofInstant(SUBMISSION_DATE_1, UTC),
         LocalDateTime.ofInstant(LAST_MODIFIED, UTC));
     when(s3Client.getObject(any(GetObjectRequest.class)))
         .thenReturn(new ResponseInputStream<>(GetObjectResponse.builder().build(),
@@ -1057,16 +994,29 @@ class ConvertFormrToAuditedTest {
     when(s3Client.headObject(ArgumentMatchers.<Consumer<HeadObjectRequest.Builder>>any()))
         .thenReturn(HeadObjectResponse.builder()
             .lastModified(LAST_MODIFIED)
-            .metadata(Map.of(METADATA_STATE, SUBMITTED.toString()))
+            .metadata(Map.of(METADATA_STATE, state.toString()))
             .build())
         .thenReturn(HeadObjectResponse.builder()
             .lastModified(LAST_MODIFIED)
-            .metadata(Map.of(METADATA_STATE, state.toString()))
+            .metadata(Map.of(METADATA_STATE, SUBMITTED.toString()))
             .build());
 
-    String s3Content = """
+    String submittedContent = """
             {
-              "_id": "%s",
+              "id": "%s",
+              "traineeTisId": "%s",
+              "forename": "Anthony",
+              "surname": "Gilliam",
+              "email": "anthony.gilliam@example.com",
+              "lifecycleState": "SUBMITTED",
+              "submissionDate": "%s",
+              "lastModifiedDate": "%s"
+            }
+        """.formatted(FORM_ID, TRAINEE_ID, LocalDateTime.ofInstant(SUBMISSION_DATE_1, UTC),
+        LocalDateTime.ofInstant(LAST_MODIFIED, UTC));
+    String transitionedContent = """
+            {
+              "id": "%s",
               "traineeTisId": "%s",
               "forename": "Anthony",
               "surname": "Gilliam",
@@ -1075,11 +1025,13 @@ class ConvertFormrToAuditedTest {
               "submissionDate": "%s",
               "lastModifiedDate": "%s"
             }
-        """.formatted(FORM_ID, TRAINEE_ID, state, LocalDateTime.ofInstant(SUBMISSION_DATE, UTC),
+        """.formatted(FORM_ID, TRAINEE_ID, state, LocalDateTime.ofInstant(SUBMISSION_DATE_1, UTC),
         LocalDateTime.ofInstant(LAST_MODIFIED, UTC));
     when(s3Client.getObject(any(GetObjectRequest.class)))
         .thenReturn(new ResponseInputStream<>(GetObjectResponse.builder().build(),
-            new ByteArrayInputStream(s3Content.getBytes())));
+            new ByteArrayInputStream(submittedContent.getBytes())))
+        .thenReturn(new ResponseInputStream<>(GetObjectResponse.builder().build(),
+            new ByteArrayInputStream(transitionedContent.getBytes())));
 
     migration.migrateCollections();
 
@@ -1100,7 +1052,7 @@ class ConvertFormrToAuditedTest {
 
   @ParameterizedTest
   @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
-  void shouldRebuildStatusHistoryFromS3Versions(Class<?> formClass) {
+  void shouldSetCurrentModifiedByToDummyTraineeWhenVersionsDeleted(Class<?> formClass) {
     String collectionName = formClass == FormRPartA.class ? PART_A_COLLECTION : PART_B_COLLECTION;
     when(mongoTemplate.getCollectionName(formClass)).thenReturn(collectionName);
 
@@ -1108,7 +1060,6 @@ class ConvertFormrToAuditedTest {
         "_id", FORM_ID,
         "traineeTisId", TRAINEE_ID,
         "lifecycleState", DELETED.toString(),
-        "submissionDate", Date.from(SUBMISSION_DATE),
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
@@ -1118,67 +1069,66 @@ class ConvertFormrToAuditedTest {
     when(s3Client.listObjectVersions(
         ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
         .thenReturn(ListObjectVersionsResponse.builder()
-            .versions(
-                ObjectVersion.builder().versionId(DELETED_VERSION).build(),
-                ObjectVersion.builder().versionId(SUBMITTED_2_VERSION).build(),
-                ObjectVersion.builder().versionId(UNSUBMITTED_VERSION).build(),
-                ObjectVersion.builder().versionId(SUBMITTED_1_VERSION).build()
-            )
+            .versions(ObjectVersion.builder().versionId(DELETED_VERSION).build())
             .build());
 
-    when(s3Client.headObject(ArgumentMatchers.<Consumer<HeadObjectRequest.Builder>>any()))
-        .thenAnswer(inv -> {
-          Consumer<HeadObjectRequest.Builder> builder = inv.getArgument(0);
-          HeadObjectRequest request = HeadObjectRequest.builder().applyMutation(builder).build();
+    mockHeadObject();
+    mockGetObject();
 
-          LifecycleState lifecycleState = switch (request.versionId()) {
-            case DELETED_VERSION -> DELETED;
-            case SUBMITTED_1_VERSION, SUBMITTED_2_VERSION -> SUBMITTED;
-            case UNSUBMITTED_VERSION -> UNSUBMITTED;
-            default -> throw new IllegalStateException("Unexpected value: " + request.versionId());
-          };
+    migration.migrateCollections();
 
-          Instant lastModified = switch (request.versionId()) {
-            case DELETED_VERSION -> DELETED_MODIFIED;
-            case SUBMITTED_1_VERSION -> SUBMITTED_1_MODIFIED;
-            case SUBMITTED_2_VERSION -> SUBMITTED_2_MODIFIED;
-            case UNSUBMITTED_VERSION -> UNSUBMITTED_MODIFIED;
-            default -> throw new IllegalStateException("Unexpected value: " + request.versionId());
-          };
+    ArgumentCaptor<Document> documentCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).save(documentCaptor.capture(), eq(collectionName));
 
-          return HeadObjectResponse.builder()
-              .lastModified(lastModified)
-              .metadata(Map.of(METADATA_STATE, lifecycleState.toString()))
-              .build();
-        });
+    Document migrated = documentCaptor.getValue();
+    assertThat("Unexpected migrated form.", migrated, notNullValue());
 
-    String s3Content1 = """
-            {
-              "_id": "%s",
-              "lifecycleState": "SUBMITTED",
-              "forename": "Tony",
-              "surname": "Gill",
-              "email": "tony.gill@example.com",
-              "submissionDate": "%s",
-              "lastModifiedDate": "2025-04-07T16:43:10.413"
-            }
-        """.formatted(FORM_ID, LocalDateTime.ofInstant(SUBMISSION_DATE, UTC));
-    String s3Content2 = """
-            {
-              "_id": "%s",
-              "lifecycleState": "SUBMITTED",
-              "forename": "Anthony",
-              "surname": "Gilliam",
-              "email": "anthony.gilliam@example.com",
-              "submissionDate": "2026-05-08T16:43:10.413",
-              "lastModifiedDate": "2027-06-09T16:43:10.413"
-            }
-        """.formatted(FORM_ID);
-    when(s3Client.getObject(any(GetObjectRequest.class)))
-        .thenReturn(new ResponseInputStream<>(GetObjectResponse.builder().build(),
-            new ByteArrayInputStream(s3Content1.getBytes())))
-        .thenReturn(new ResponseInputStream<>(GetObjectResponse.builder().build(),
-            new ByteArrayInputStream(s3Content2.getBytes())));
+    Map<String, Object> status = getEmbeddedMap(migrated, List.of("status"));
+    List<Map<String, Object>> history = (List<Map<String, Object>>) status.get("history");
+    assertThat("Unexpected history size.", history, hasSize(3));
+
+    Map<String, Object> modifiedBy = (Map<String, Object>) history.get(0).get("modifiedBy");
+    assertThat("Unexpected modifiedBy keys.", modifiedBy.keySet(),
+        containsInAnyOrder("name", "email", "role"));
+    assertThat("Unexpected modifiedBy name.", modifiedBy.get("name"), is("Name Deleted"));
+    assertThat("Unexpected modifiedBy email.", modifiedBy.get("email"),
+        is("no-reply@trainee.tis.nhs.uk"));
+    assertThat("Unexpected modifiedBy role.", modifiedBy.get("role"), is("TRAINEE"));
+
+    modifiedBy = (Map<String, Object>) history.get(1).get("modifiedBy");
+    assertThat("Unexpected modifiedBy keys.", modifiedBy.keySet(),
+        containsInAnyOrder("name", "email", "role"));
+    assertThat("Unexpected modifiedBy name.", modifiedBy.get("name"), is("Name Deleted"));
+    assertThat("Unexpected modifiedBy email.", modifiedBy.get("email"),
+        is("no-reply@trainee.tis.nhs.uk"));
+    assertThat("Unexpected modifiedBy role.", modifiedBy.get("role"), is("TRAINEE"));
+
+    modifiedBy = (Map<String, Object>) history.get(2).get("modifiedBy");
+    assertThat("Unexpected modifiedBy keys.", modifiedBy.keySet(),
+        containsInAnyOrder("name", "email", "role"));
+    assertThat("Unexpected modifiedBy name.", modifiedBy.get("name"), is("Unknown Admin"));
+    assertThat("Unexpected modifiedBy email.", modifiedBy.get("email"), is("no-reply@tis.nhs.uk"));
+    assertThat("Unexpected modifiedBy role.", modifiedBy.get("role"), is("ADMIN"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
+  void shouldRebuildStatusHistoryFromS3Versions(Class<?> formClass) {
+    String collectionName = formClass == FormRPartA.class ? PART_A_COLLECTION : PART_B_COLLECTION;
+    when(mongoTemplate.getCollectionName(formClass)).thenReturn(collectionName);
+
+    Document before = new Document(Map.of(
+        "_id", FORM_ID,
+        "traineeTisId", TRAINEE_ID,
+        "lifecycleState", DELETED.toString(),
+        "submissionDate", Date.from(SUBMISSION_DATE_1),
+        "lastModifiedDate", Date.from(LAST_MODIFIED),
+        "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
+    ));
+    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
+        .thenReturn(List.of(before));
+
+    mockS3Endpoints(4);
 
     migration.migrateCollections();
 
@@ -1199,12 +1149,12 @@ class ConvertFormrToAuditedTest {
     Map<String, Object> historyItem = history.get(0);
     assertThat("Unexpected history state.", historyItem.get("state"), is(DRAFT));
     assertThat("Unexpected history last modified.", historyItem.get("timestamp"),
-        is(SUBMISSION_DATE));
+        is(SUBMISSION_DATE_1));
 
     historyItem = history.get(1);
     assertThat("Unexpected history state.", historyItem.get("state"), is(SUBMITTED));
     assertThat("Unexpected history last modified.", historyItem.get("timestamp"),
-        is(SUBMITTED_1_MODIFIED));
+        is(SUBMISSION_DATE_1));
 
     historyItem = history.get(2);
     assertThat("Unexpected history state.", historyItem.get("state"), is(UNSUBMITTED));
@@ -1214,12 +1164,291 @@ class ConvertFormrToAuditedTest {
     historyItem = history.get(3);
     assertThat("Unexpected history state.", historyItem.get("state"), is(SUBMITTED));
     assertThat("Unexpected history last modified.", historyItem.get("timestamp"),
-        is(SUBMITTED_2_MODIFIED));
+        is(SUBMISSION_DATE_2));
 
     historyItem = history.get(4);
     assertThat("Unexpected history state.", historyItem.get("state"), is(DELETED));
     assertThat("Unexpected history last modified.", historyItem.get("timestamp"),
         is(DELETED_MODIFIED));
+  }
+
+  @ParameterizedTest
+  @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
+  void shouldRebuildStatusHistoryWhenS3VersionsDeleted(Class<?> formClass) {
+    String collectionName = formClass == FormRPartA.class ? PART_A_COLLECTION : PART_B_COLLECTION;
+    when(mongoTemplate.getCollectionName(formClass)).thenReturn(collectionName);
+
+    Document before = new Document(Map.of(
+        "_id", FORM_ID,
+        "traineeTisId", TRAINEE_ID,
+        "lifecycleState", DELETED.toString(),
+        "submissionDate", Date.from(SUBMISSION_DATE_1),
+        "lastModifiedDate", Date.from(DELETED_MODIFIED),
+        "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
+    ));
+    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
+        .thenReturn(List.of(before));
+
+    when(s3Client.listObjectVersions(
+        ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
+        .thenReturn(ListObjectVersionsResponse.builder()
+            .versions(ObjectVersion.builder().versionId(DELETED_VERSION).build())
+            .build());
+
+    mockHeadObject();
+    mockGetObject();
+
+    migration.migrateCollections();
+
+    ArgumentCaptor<Document> documentCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).save(documentCaptor.capture(), eq(collectionName));
+
+    Document migrated = documentCaptor.getValue();
+    assertThat("Unexpected migrated form.", migrated, notNullValue());
+
+    Map<String, Object> status = getEmbeddedMap(migrated, List.of("status"));
+
+    Map<String, Object> current = (Map<String, Object>) status.get("current");
+    assertThat("Unexpected current state.", current.get("state"), is(DELETED));
+
+    List<Map<String, Object>> history = (List<Map<String, Object>>) status.get("history");
+    assertThat("Unexpected history size.", history, hasSize(3));
+
+    Map<String, Object> historyItem = history.get(0);
+    assertThat("Unexpected history state.", historyItem.get("state"), is(DRAFT));
+    assertThat("Unexpected history last modified.", historyItem.get("timestamp"),
+        is(SUBMISSION_DATE_2));
+
+    historyItem = history.get(1);
+    assertThat("Unexpected history state.", historyItem.get("state"), is(SUBMITTED));
+    assertThat("Unexpected history last modified.", historyItem.get("timestamp"),
+        is(SUBMISSION_DATE_2));
+
+    historyItem = history.get(2);
+    assertThat("Unexpected history state.", historyItem.get("state"), is(DELETED));
+    assertThat("Unexpected history last modified.", historyItem.get("timestamp"),
+        is(DELETED_MODIFIED));
+  }
+
+  @ParameterizedTest
+  @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
+  void shouldIgnoreRepeatedStatesInS3Versions(Class<?> formClass) {
+    String collectionName = formClass == FormRPartA.class ? PART_A_COLLECTION : PART_B_COLLECTION;
+    when(mongoTemplate.getCollectionName(formClass)).thenReturn(collectionName);
+
+    Document before = new Document(Map.of(
+        "_id", FORM_ID,
+        "traineeTisId", TRAINEE_ID,
+        "lifecycleState", SUBMITTED.toString(),
+        "submissionDate", Date.from(SUBMISSION_DATE_2),
+        "lastModifiedDate", Date.from(SUBMITTED_2_MODIFIED),
+        "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
+    ));
+    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
+        .thenReturn(List.of(before));
+
+    OngoingStubbing<ListObjectVersionsResponse> listObjectVersionsResponseOngoingStubbing = when(
+        s3Client.listObjectVersions(
+            ArgumentMatchers.<Consumer<Builder>>any()))
+        .thenReturn(ListObjectVersionsResponse.builder()
+            .versions(
+                ObjectVersion.builder().versionId(SUBMITTED_2_VERSION).build(),
+                ObjectVersion.builder().versionId(SUBMITTED_1_VERSION).build()
+            )
+            .build());
+
+    mockHeadObject();
+    mockGetObject();
+
+    migration.migrateCollections();
+
+    ArgumentCaptor<Document> documentCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).save(documentCaptor.capture(), eq(collectionName));
+
+    Document migrated = documentCaptor.getValue();
+    assertThat("Unexpected migrated form.", migrated, notNullValue());
+
+    Map<String, Object> status = getEmbeddedMap(migrated, List.of("status"));
+
+    Map<String, Object> current = (Map<String, Object>) status.get("current");
+    assertThat("Unexpected current state.", current.get("state"), is(SUBMITTED));
+
+    List<Map<String, Object>> history = (List<Map<String, Object>>) status.get("history");
+    assertThat("Unexpected history size.", history, hasSize(2));
+
+    Map<String, Object> historyItem = history.get(0);
+    assertThat("Unexpected history state.", historyItem.get("state"), is(DRAFT));
+    assertThat("Unexpected history last modified.", historyItem.get("timestamp"),
+        is(SUBMISSION_DATE_2));
+
+    historyItem = history.get(1);
+    assertThat("Unexpected history state.", historyItem.get("state"), is(SUBMITTED));
+    assertThat("Unexpected history last modified.", historyItem.get("timestamp"),
+        is(SUBMISSION_DATE_2));
+
+    verify(s3Client, times(1)).getObject(any(GetObjectRequest.class));
+  }
+
+  @ParameterizedTest
+  @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
+  void shouldFixOutOfOrderTimestamps(Class<?> formClass) {
+    String collectionName = formClass == FormRPartA.class ? PART_A_COLLECTION : PART_B_COLLECTION;
+    when(mongoTemplate.getCollectionName(formClass)).thenReturn(collectionName);
+
+    Instant earlierModified = SUBMISSION_DATE_1.minus(Duration.ofDays(1000));
+
+    Document before = new Document(Map.of(
+        "_id", FORM_ID,
+        "traineeTisId", TRAINEE_ID,
+        "lifecycleState", UNSUBMITTED.toString(),
+        "submissionDate", Date.from(SUBMISSION_DATE_1),
+        "lastModifiedDate", Date.from(earlierModified),
+        "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
+    ));
+    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
+        .thenReturn(List.of(before));
+
+    when(s3Client.listObjectVersions(
+        ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
+        .thenReturn(ListObjectVersionsResponse.builder()
+            .versions(
+                ObjectVersion.builder().versionId(UNSUBMITTED_VERSION).build(),
+                ObjectVersion.builder().versionId(SUBMITTED_1_VERSION).build()
+            )
+            .build());
+
+    when(s3Client.headObject(ArgumentMatchers.<Consumer<HeadObjectRequest.Builder>>any()))
+        .thenReturn(HeadObjectResponse.builder()
+            .versionId(UNSUBMITTED_VERSION)
+            .lastModified(earlierModified)
+            .metadata(Map.of(METADATA_STATE, UNSUBMITTED.toString()))
+            .build())
+        .thenReturn(HeadObjectResponse.builder()
+            .versionId(SUBMITTED_1_VERSION)
+            .lastModified(SUBMITTED_1_MODIFIED)
+            .metadata(Map.of(METADATA_STATE, SUBMITTED.toString()))
+            .build());
+
+    String submittedContent = """
+            {
+              "id": "%s",
+              "lifecycleState": "SUBMITTED",
+              "forename": "Anthony",
+              "surname": "Gilliam",
+              "email": "anthony.gilliam@example.com",
+              "submissionDate": "2026-01-01T00:00:00",
+              "lastModifiedDate": "2026-02-02T00:00:00"
+            }
+        """.formatted(FORM_ID);
+    String unsubmittedContent = """
+            {
+              "id": "%s",
+              "lifecycleState": "UNSUBMITTED",
+              "forename": "Anthony",
+              "surname": "Gilliam",
+              "email": "anthony.gilliam@example.com",
+              "submissionDate": "1970-01-01T00:00:00",
+              "lastModifiedDate": "1970-01-01T00:00:00"
+            }
+        """.formatted(FORM_ID);
+    when(s3Client.getObject(any(GetObjectRequest.class)))
+        .thenReturn(new ResponseInputStream<>(GetObjectResponse.builder().build(),
+            new ByteArrayInputStream(submittedContent.getBytes())))
+        .thenReturn(new ResponseInputStream<>(GetObjectResponse.builder().build(),
+            new ByteArrayInputStream(unsubmittedContent.getBytes())));
+
+    migration.migrateCollections();
+
+    ArgumentCaptor<Document> documentCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).save(documentCaptor.capture(), eq(collectionName));
+
+    Document migrated = documentCaptor.getValue();
+    assertThat("Unexpected migrated form.", migrated, notNullValue());
+
+    Map<String, Object> status = getEmbeddedMap(migrated, List.of("status"));
+
+    Map<String, Object> current = (Map<String, Object>) status.get("current");
+    assertThat("Unexpected current state.", current.get("state"), is(UNSUBMITTED));
+
+    List<Map<String, Object>> history = (List<Map<String, Object>>) status.get("history");
+    assertThat("Unexpected history size.", history, hasSize(3));
+
+    Map<String, Object> historyItem = history.get(0);
+    assertThat("Unexpected history state.", historyItem.get("state"), is(DRAFT));
+    assertThat("Unexpected history last modified.", historyItem.get("timestamp"),
+        is(Instant.parse("2026-01-01T00:00:00Z")));
+
+    historyItem = history.get(1);
+    assertThat("Unexpected history state.", historyItem.get("state"), is(SUBMITTED));
+    assertThat("Unexpected history last modified.", historyItem.get("timestamp"),
+        is(Instant.parse("2026-01-01T00:00:00Z")));
+
+    historyItem = history.get(2);
+    assertThat("Unexpected history state.", historyItem.get("state"), is(UNSUBMITTED));
+    assertThat("Unexpected history last modified.", historyItem.get("timestamp"),
+        is(Instant.parse("2026-01-01T00:00:00Z")));
+  }
+
+  @ParameterizedTest
+  @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
+  void shouldHandleTimelessDatesInS3Versions(Class<?> formClass) {
+    String collectionName = formClass == FormRPartA.class ? PART_A_COLLECTION : PART_B_COLLECTION;
+    when(mongoTemplate.getCollectionName(formClass)).thenReturn(collectionName);
+
+    Document before = new Document(Map.of(
+        "_id", FORM_ID,
+        "traineeTisId", TRAINEE_ID,
+        "lifecycleState", SUBMITTED.toString(),
+        "submissionDate", Date.from(SUBMISSION_DATE_2),
+        "lastModifiedDate", Date.from(SUBMITTED_2_MODIFIED),
+        "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
+    ));
+    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
+        .thenReturn(List.of(before));
+
+    mockListObjectVersions(1);
+    mockHeadObject();
+
+    String submittedContent = """
+            {
+              "id": "%s",
+              "lifecycleState": "SUBMITTED",
+              "forename": "Anthony",
+              "surname": "Gilliam",
+              "email": "anthony.gilliam@example.com",
+              "submissionDate": "2026-01-01",
+              "lastModifiedDate": "2026-02-02"
+            }
+        """.formatted(FORM_ID);
+    when(s3Client.getObject(any(GetObjectRequest.class))).thenReturn(
+        new ResponseInputStream<>(GetObjectResponse.builder().build(),
+            new ByteArrayInputStream(submittedContent.getBytes())));
+
+    migration.migrateCollections();
+
+    ArgumentCaptor<Document> documentCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).save(documentCaptor.capture(), eq(collectionName));
+
+    Document migrated = documentCaptor.getValue();
+    assertThat("Unexpected migrated form.", migrated, notNullValue());
+
+    Map<String, Object> status = getEmbeddedMap(migrated, List.of("status"));
+
+    Map<String, Object> current = (Map<String, Object>) status.get("current");
+    assertThat("Unexpected current state.", current.get("state"), is(SUBMITTED));
+
+    List<Map<String, Object>> history = (List<Map<String, Object>>) status.get("history");
+    assertThat("Unexpected history size.", history, hasSize(2));
+
+    Map<String, Object> historyItem = history.get(0);
+    assertThat("Unexpected history state.", historyItem.get("state"), is(DRAFT));
+    assertThat("Unexpected history last modified.", historyItem.get("timestamp"),
+        is(Instant.parse("2026-01-01T00:00:00Z")));
+
+    historyItem = history.get(1);
+    assertThat("Unexpected history state.", historyItem.get("state"), is(SUBMITTED));
+    assertThat("Unexpected history last modified.", historyItem.get("timestamp"),
+        is(Instant.parse("2026-01-01T00:00:00Z")));
   }
 
   @ParameterizedTest
@@ -1235,78 +1464,15 @@ class ConvertFormrToAuditedTest {
     Document before = new Document(Map.of(
         "_id", FORM_ID,
         "traineeTisId", TRAINEE_ID,
-        "lifecycleState", DELETED.toString(),
-        "submissionDate", Date.from(SUBMISSION_DATE),
+        "lifecycleState", SUBMITTED.toString(),
+        "submissionDate", Date.from(SUBMISSION_DATE_1),
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
     when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
         .thenReturn(List.of(before));
 
-    when(s3Client.listObjectVersions(
-        ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
-        .thenReturn(ListObjectVersionsResponse.builder()
-            .versions(
-                ObjectVersion.builder().versionId(DELETED_VERSION).build(),
-                ObjectVersion.builder().versionId(SUBMITTED_2_VERSION).build(),
-                ObjectVersion.builder().versionId(UNSUBMITTED_VERSION).build(),
-                ObjectVersion.builder().versionId(SUBMITTED_1_VERSION).build()
-            )
-            .build());
-
-    when(s3Client.headObject(ArgumentMatchers.<Consumer<HeadObjectRequest.Builder>>any()))
-        .thenAnswer(inv -> {
-          Consumer<HeadObjectRequest.Builder> builder = inv.getArgument(0);
-          HeadObjectRequest request = HeadObjectRequest.builder().applyMutation(builder).build();
-
-          LifecycleState lifecycleState = switch (request.versionId()) {
-            case DELETED_VERSION -> DELETED;
-            case SUBMITTED_1_VERSION, SUBMITTED_2_VERSION -> SUBMITTED;
-            case UNSUBMITTED_VERSION -> UNSUBMITTED;
-            default -> throw new IllegalStateException("Unexpected value: " + request.versionId());
-          };
-
-          Instant lastModified = switch (request.versionId()) {
-            case DELETED_VERSION -> DELETED_MODIFIED;
-            case SUBMITTED_1_VERSION -> SUBMITTED_1_MODIFIED;
-            case SUBMITTED_2_VERSION -> SUBMITTED_2_MODIFIED;
-            case UNSUBMITTED_VERSION -> UNSUBMITTED_MODIFIED;
-            default -> throw new IllegalStateException("Unexpected value: " + request.versionId());
-          };
-
-          return HeadObjectResponse.builder()
-              .lastModified(lastModified)
-              .metadata(Map.of(METADATA_STATE, lifecycleState.toString()))
-              .build();
-        });
-
-    String s3Content1 = """
-            {
-              "_id": "%s",
-              "lifecycleState": "SUBMITTED",
-              "forename": "Tony",
-              "surname": "Gill",
-              "email": "tony.gill@example.com",
-              "submissionDate": "2024-03-06T16:43:10.413",
-              "lastModifiedDate": "2025-04-07T16:43:10.413"
-            }
-        """.formatted(FORM_ID);
-    String s3Content2 = """
-            {
-              "_id": "%s",
-              "lifecycleState": "SUBMITTED",
-              "forename": "Anthony",
-              "surname": "Gilliam",
-              "email": "anthony.gilliam@example.com",
-              "submissionDate": "2026-05-08T16:43:10.413",
-              "lastModifiedDate": "2027-06-09T16:43:10.413"
-            }
-        """.formatted(FORM_ID);
-    when(s3Client.getObject(any(GetObjectRequest.class)))
-        .thenReturn(new ResponseInputStream<>(GetObjectResponse.builder().build(),
-            new ByteArrayInputStream(s3Content1.getBytes())))
-        .thenReturn(new ResponseInputStream<>(GetObjectResponse.builder().build(),
-            new ByteArrayInputStream(s3Content2.getBytes())));
+    mockS3Endpoints(3);
 
     migration.migrateCollections();
 
@@ -1348,80 +1514,63 @@ class ConvertFormrToAuditedTest {
     Document before = new Document(Map.of(
         "_id", FORM_ID,
         "traineeTisId", TRAINEE_ID,
-        "lifecycleState", DELETED.toString(),
-        "submissionDate", Date.from(SUBMISSION_DATE),
+        "lifecycleState", SUBMITTED.toString(),
+        "submissionDate", Date.from(SUBMISSION_DATE_1),
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
     when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
         .thenReturn(List.of(before));
 
-    when(s3Client.listObjectVersions(
-        ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
-        .thenReturn(ListObjectVersionsResponse.builder()
-            .versions(
-                ObjectVersion.builder().versionId(DELETED_VERSION).build(),
-                ObjectVersion.builder().versionId(SUBMITTED_2_VERSION).build(),
-                ObjectVersion.builder().versionId(UNSUBMITTED_VERSION).build(),
-                ObjectVersion.builder().versionId(SUBMITTED_1_VERSION).build()
-            )
-            .build());
+    mockListObjectVersions(3);
+    mockHeadObject();
 
-    when(s3Client.headObject(ArgumentMatchers.<Consumer<HeadObjectRequest.Builder>>any()))
-        .thenAnswer(inv -> {
-          Consumer<HeadObjectRequest.Builder> builder = inv.getArgument(0);
-          HeadObjectRequest request = HeadObjectRequest.builder().applyMutation(builder).build();
-
-          LifecycleState lifecycleState = switch (request.versionId()) {
-            case DELETED_VERSION -> DELETED;
-            case SUBMITTED_1_VERSION, SUBMITTED_2_VERSION -> SUBMITTED;
-            case UNSUBMITTED_VERSION -> UNSUBMITTED;
-            default -> throw new IllegalStateException("Unexpected value: " + request.versionId());
-          };
-
-          Instant lastModified = switch (request.versionId()) {
-            case DELETED_VERSION -> DELETED_MODIFIED;
-            case SUBMITTED_1_VERSION -> SUBMITTED_1_MODIFIED;
-            case SUBMITTED_2_VERSION -> SUBMITTED_2_MODIFIED;
-            case UNSUBMITTED_VERSION -> UNSUBMITTED_MODIFIED;
-            default -> throw new IllegalStateException("Unexpected value: " + request.versionId());
-          };
-
-          return HeadObjectResponse.builder()
-              .lastModified(lastModified)
-              .metadata(Map.of(METADATA_STATE, lifecycleState.toString()))
-              .build();
-        });
-
-    String s3Content1 = """
+    String submitted1Content = """
             {
-              "_id": "%s",
+              "id": "%s",
               "traineeTisId": "trainee1",
               "lifecycleState": "SUBMITTED",
               "forename": "Tony",
               "surname": "Gill",
               "email": "tony.gill@example.com",
-              "submissionDate": "2024-03-06T16:43:10.413",
-              "lastModifiedDate": "2025-04-07T16:43:10.413"
+              "submissionDate": "%s",
+              "lastModifiedDate": "%s"
             }
-        """.formatted(FORM_ID);
-    String s3Content2 = """
+        """.formatted(FORM_ID, LocalDateTime.ofInstant(SUBMISSION_DATE_1, UTC),
+        LocalDateTime.ofInstant(SUBMITTED_1_MODIFIED, UTC));
+    String unsubmittedContent = """
             {
-              "_id": "%s",
+              "id": "%s",
+              "traineeTisId": "trainee1",
+              "lifecycleState": "UNSUBMITTED",
+              "forename": "Tony",
+              "surname": "Gill",
+              "email": "tony.gill@example.com",
+              "submissionDate": "%s",
+              "lastModifiedDate": "%s"
+            }
+        """.formatted(FORM_ID, LocalDateTime.ofInstant(SUBMISSION_DATE_1, UTC),
+        LocalDateTime.ofInstant(UNSUBMITTED_MODIFIED, UTC));
+    String submitted2Content = """
+            {
+              "id": "%s",
               "traineeTisId": "trainee2",
               "lifecycleState": "SUBMITTED",
               "forename": "Anthony",
               "surname": "Gilliam",
               "email": "anthony.gilliam@example.com",
-              "submissionDate": "2026-05-08T16:43:10.413",
-              "lastModifiedDate": "2027-06-09T16:43:10.413"
+              "submissionDate": "%s",
+              "lastModifiedDate": "%s"
             }
-        """.formatted(FORM_ID);
+        """.formatted(FORM_ID, LocalDateTime.ofInstant(SUBMISSION_DATE_2, UTC),
+        LocalDateTime.ofInstant(SUBMITTED_2_MODIFIED, UTC));
     when(s3Client.getObject(any(GetObjectRequest.class)))
         .thenReturn(new ResponseInputStream<>(GetObjectResponse.builder().build(),
-            new ByteArrayInputStream(s3Content1.getBytes())))
+            new ByteArrayInputStream(submitted1Content.getBytes())))
         .thenReturn(new ResponseInputStream<>(GetObjectResponse.builder().build(),
-            new ByteArrayInputStream(s3Content2.getBytes())));
+            new ByteArrayInputStream(unsubmittedContent.getBytes())))
+        .thenReturn(new ResponseInputStream<>(GetObjectResponse.builder().build(),
+            new ByteArrayInputStream(submitted2Content.getBytes())));
 
     migration.migrateCollections();
 
@@ -1434,19 +1583,19 @@ class ConvertFormrToAuditedTest {
 
     Document migrated1 = migrated.get(0);
     assertThat("Unexpected trainee ID.", migrated1.get("traineeTisId"), is("trainee1"));
-    assertThat("Unexpected snapshot formRef.", migrated1.get("lastModified"),
-        is(Instant.parse("2025-04-07T16:43:10.413Z")));
+    assertThat("Unexpected snapshot modified timestamp.", migrated1.get("lastModified"),
+        is(SUBMISSION_DATE_1));
     Map<String, Object> status1 = getEmbeddedMap(migrated1, List.of("status"));
-    assertThat("Unxpected submission date.", status1.get("submitted"),
-        is(Instant.parse("2024-03-06T16:43:10.413Z")));
+    assertThat("Unexpected submission date.", status1.get("submitted"),
+        is(SUBMISSION_DATE_1));
 
     Document migrated2 = migrated.get(1);
     assertThat("Unexpected trainee ID.", migrated2.get("traineeTisId"), is("trainee2"));
-    assertThat("Unexpected snapshot formRef.", migrated2.get("lastModified"),
-        is(Instant.parse("2027-06-09T16:43:10.413Z")));
+    assertThat("Unexpected snapshot modified timestamp.", migrated2.get("lastModified"),
+        is(SUBMISSION_DATE_2));
     Map<String, Object> status2 = getEmbeddedMap(migrated2, List.of("status"));
-    assertThat("Unxpected submission date.", status2.get("submitted"),
-        is(Instant.parse("2026-05-08T16:43:10.413Z")));
+    assertThat("Unexpected submission date.", status2.get("submitted"),
+        is(SUBMISSION_DATE_2));
   }
 
   @ParameterizedTest
@@ -1462,77 +1611,14 @@ class ConvertFormrToAuditedTest {
     Document before = new Document(Map.of(
         "_id", FORM_ID,
         "traineeTisId", TRAINEE_ID,
-        "lifecycleState", DELETED.toString(),
+        "lifecycleState", SUBMITTED.toString(),
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
     when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
         .thenReturn(List.of(before));
 
-    when(s3Client.listObjectVersions(
-        ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
-        .thenReturn(ListObjectVersionsResponse.builder()
-            .versions(
-                ObjectVersion.builder().versionId(DELETED_VERSION).build(),
-                ObjectVersion.builder().versionId(SUBMITTED_2_VERSION).build(),
-                ObjectVersion.builder().versionId(UNSUBMITTED_VERSION).build(),
-                ObjectVersion.builder().versionId(SUBMITTED_1_VERSION).build()
-            )
-            .build());
-
-    when(s3Client.headObject(ArgumentMatchers.<Consumer<HeadObjectRequest.Builder>>any()))
-        .thenAnswer(inv -> {
-          Consumer<HeadObjectRequest.Builder> builder = inv.getArgument(0);
-          HeadObjectRequest request = HeadObjectRequest.builder().applyMutation(builder).build();
-
-          LifecycleState lifecycleState = switch (request.versionId()) {
-            case DELETED_VERSION -> DELETED;
-            case SUBMITTED_1_VERSION, SUBMITTED_2_VERSION -> SUBMITTED;
-            case UNSUBMITTED_VERSION -> UNSUBMITTED;
-            default -> throw new IllegalStateException("Unexpected value: " + request.versionId());
-          };
-
-          Instant lastModified = switch (request.versionId()) {
-            case DELETED_VERSION -> DELETED_MODIFIED;
-            case SUBMITTED_1_VERSION -> SUBMITTED_1_MODIFIED;
-            case SUBMITTED_2_VERSION -> SUBMITTED_2_MODIFIED;
-            case UNSUBMITTED_VERSION -> UNSUBMITTED_MODIFIED;
-            default -> throw new IllegalStateException("Unexpected value: " + request.versionId());
-          };
-
-          return HeadObjectResponse.builder()
-              .lastModified(lastModified)
-              .metadata(Map.of(METADATA_STATE, lifecycleState.toString()))
-              .build();
-        });
-
-    String s3Content1 = """
-            {
-              "_id": "%s",
-              "lifecycleState": "SUBMITTED",
-              "forename": "Tony",
-              "surname": "Gill",
-              "email": "tony.gill@example.com",
-              "submissionDate": "2024-03-06T16:43:10.413",
-              "lastModifiedDate": "2025-04-07T16:43:10.413"
-            }
-        """.formatted(FORM_ID);
-    String s3Content2 = """
-            {
-              "_id": "%s",
-              "lifecycleState": "SUBMITTED",
-              "forename": "Anthony",
-              "surname": "Gilliam",
-              "email": "anthony.gilliam@example.com",
-              "submissionDate": "2026-05-08T16:43:10.413",
-              "lastModifiedDate": "2027-06-09T16:43:10.413"
-            }
-        """.formatted(FORM_ID);
-    when(s3Client.getObject(any(GetObjectRequest.class)))
-        .thenReturn(new ResponseInputStream<>(GetObjectResponse.builder().build(),
-            new ByteArrayInputStream(s3Content1.getBytes())))
-        .thenReturn(new ResponseInputStream<>(GetObjectResponse.builder().build(),
-            new ByteArrayInputStream(s3Content2.getBytes())));
+    mockS3Endpoints(3);
 
     migration.migrateCollections();
 
@@ -1579,5 +1665,138 @@ class ConvertFormrToAuditedTest {
     }
 
     return current;
+  }
+
+  /**
+   * Mock S3 endpoints for getting and processing version history data. A number of object versions
+   * will be returned based on the given {@code count}. LifecycleState will transition through
+   * SUBMITTED, UNSUBMITTED, SUBMITTED, DELETED, with the first {@code count} versions returned.
+   *
+   * @param count The number of versions to return, must be 1-4
+   */
+  private void mockS3Endpoints(int count) {
+    mockListObjectVersions(count);
+    mockHeadObject();
+    mockGetObject();
+  }
+
+  /**
+   * Mock the ListObjectVersions endpoint with sensible defaults. LifecycleState will transition
+   * through SUBMITTED, UNSUBMITTED, SUBMITTED, DELETED, with the first {@code count} versions
+   * returned.
+   *
+   * @param count The number of versions to return, must be 1-4
+   */
+  private void mockListObjectVersions(int count) {
+    List<ObjectVersion> versions = new ArrayList<>();
+    versions.add(ObjectVersion.builder().versionId(DELETED_VERSION).build());
+    versions.add(ObjectVersion.builder().versionId(SUBMITTED_2_VERSION).build());
+    versions.add(ObjectVersion.builder().versionId(UNSUBMITTED_VERSION).build());
+    versions.add(ObjectVersion.builder().versionId(SUBMITTED_1_VERSION).build());
+
+    when(s3Client.listObjectVersions(
+        ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
+        .thenReturn(ListObjectVersionsResponse.builder()
+            .versions(versions.subList(4 - count, 4))
+            .build());
+  }
+
+  /**
+   * Mock HeadObject API response with defaults based on given version.
+   */
+  private void mockHeadObject() {
+    when(s3Client.headObject(ArgumentMatchers.<Consumer<HeadObjectRequest.Builder>>any()))
+        .thenAnswer(inv -> {
+          Consumer<HeadObjectRequest.Builder> builder = inv.getArgument(0);
+          HeadObjectRequest request = HeadObjectRequest.builder().applyMutation(builder).build();
+          String versionId = request.versionId();
+
+          LifecycleState lifecycleState = switch (versionId) {
+            case DELETED_VERSION -> DELETED;
+            case SUBMITTED_1_VERSION, SUBMITTED_2_VERSION -> SUBMITTED;
+            case UNSUBMITTED_VERSION -> UNSUBMITTED;
+            default -> throw new IllegalStateException("Unexpected value: " + versionId);
+          };
+
+          Instant lastModified = switch (versionId) {
+            case DELETED_VERSION -> DELETED_MODIFIED;
+            case SUBMITTED_1_VERSION -> SUBMITTED_1_MODIFIED;
+            case SUBMITTED_2_VERSION -> SUBMITTED_2_MODIFIED;
+            case UNSUBMITTED_VERSION -> UNSUBMITTED_MODIFIED;
+            default -> throw new IllegalStateException("Unexpected value: " + versionId);
+          };
+
+          return HeadObjectResponse.builder()
+              .versionId(versionId)
+              .lastModified(lastModified)
+              .metadata(Map.of(METADATA_STATE, lifecycleState.toString()))
+              .build();
+        });
+  }
+
+  /**
+   * Mock GetObject API response with defaults based on given version.
+   */
+  private void mockGetObject() {
+    String submitted1Content = """
+            {
+              "id": "%s",
+              "lifecycleState": "SUBMITTED",
+              "forename": "Tony",
+              "surname": "Gill",
+              "email": "tony.gill@example.com",
+              "submissionDate": "%s",
+              "lastModifiedDate": "%s"
+            }
+        """.formatted(FORM_ID, LocalDateTime.ofInstant(SUBMISSION_DATE_1, UTC),
+        LocalDateTime.ofInstant(SUBMITTED_1_MODIFIED, UTC));
+    String unsubmittedContent = """
+            {
+              "id": "%s",
+              "lifecycleState": "UNSUBMITTED",
+              "forename": "Tony",
+              "surname": "Gill",
+              "email": "tony.gill@example.com",
+              "submissionDate": "%s",
+              "lastModifiedDate": "%s"
+            }
+        """.formatted(FORM_ID, LocalDateTime.ofInstant(SUBMISSION_DATE_1, UTC),
+        LocalDateTime.ofInstant(UNSUBMITTED_MODIFIED, UTC));
+    String submitted2Content = """
+            {
+              "id": "%s",
+              "lifecycleState": "SUBMITTED",
+              "forename": "Anthony",
+              "surname": "Gilliam",
+              "email": "anthony.gilliam@example.com",
+              "submissionDate": "%s",
+              "lastModifiedDate": "%s"
+            }
+        """.formatted(FORM_ID, LocalDateTime.ofInstant(SUBMISSION_DATE_2, UTC),
+        LocalDateTime.ofInstant(SUBMITTED_2_MODIFIED, UTC));
+    String deletedContent = """
+            {
+              "id": "%s",
+              "lifecycleState": "DELETED",
+              "submissionDate": "%s",
+              "lastModifiedDate": "%s"
+            }
+        """.formatted(FORM_ID, LocalDateTime.ofInstant(SUBMISSION_DATE_2, UTC),
+        LocalDateTime.ofInstant(DELETED_MODIFIED, UTC));
+    when(s3Client.getObject(any(GetObjectRequest.class)))
+        .thenAnswer(inv -> {
+          GetObjectRequest request = inv.getArgument(0);
+
+          String content = switch (request.versionId()) {
+            case DELETED_VERSION -> deletedContent;
+            case SUBMITTED_1_VERSION -> submitted1Content;
+            case SUBMITTED_2_VERSION -> submitted2Content;
+            case UNSUBMITTED_VERSION -> unsubmittedContent;
+            default -> throw new IllegalStateException("Unexpected value: " + request.versionId());
+          };
+
+          return new ResponseInputStream<>(GetObjectResponse.builder().build(),
+              new ByteArrayInputStream(content.getBytes()));
+        });
   }
 }
