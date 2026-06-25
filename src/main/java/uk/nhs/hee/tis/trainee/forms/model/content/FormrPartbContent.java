@@ -31,6 +31,9 @@ import uk.nhs.hee.tis.trainee.forms.model.CovidDeclaration;
 import uk.nhs.hee.tis.trainee.forms.model.Declaration;
 import uk.nhs.hee.tis.trainee.forms.model.Work;
 
+/**
+ * The content of a FormR Part B.
+ */
 @Data
 @Builder
 public class FormrPartbContent implements FormContent {

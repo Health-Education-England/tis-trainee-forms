@@ -364,13 +364,14 @@ public class ConvertFormrToAudited {
     Map<String, Object> content = new HashMap<>(form);
 
     // Remove non-content fields.
-    String idKey = content.containsKey(FIELD_ID) ? FIELD_ID : "id"; // S3 uses "id".
-    UUID formId = UUID.fromString(content.remove(idKey).toString());
     content.remove(FIELD_CLASS);
-    String traineeId = (String) content.remove(FIELD_TRAINEE_ID);
     content.remove(FIELD_LAST_MODIFIED_DATE);
     content.remove(FIELD_LIFECYCLE_STATE);
     content.remove(FIELD_SUBMISSION_DATE);
+
+    String idKey = content.containsKey(FIELD_ID) ? FIELD_ID : "id"; // S3 uses "id".
+    UUID formId = UUID.fromString(content.remove(idKey).toString());
+    String traineeId = (String) content.remove(FIELD_TRAINEE_ID);
 
     Document migratedForm = new Document();
     migratedForm.put(FIELD_ID, copyFormId ? formId : UUID.randomUUID());

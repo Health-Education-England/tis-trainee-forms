@@ -67,7 +67,6 @@ import org.junit.jupiter.params.provider.EnumSource.Mode;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
-import org.mockito.stubbing.OngoingStubbing;
 import org.springframework.core.env.Environment;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import software.amazon.awssdk.core.ResponseInputStream;
@@ -1247,9 +1246,8 @@ class ConvertFormrToAuditedTest {
     when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
         .thenReturn(List.of(before));
 
-    OngoingStubbing<ListObjectVersionsResponse> listObjectVersionsResponseOngoingStubbing = when(
-        s3Client.listObjectVersions(
-            ArgumentMatchers.<Consumer<Builder>>any()))
+    when(s3Client.listObjectVersions(
+        ArgumentMatchers.<Consumer<Builder>>any()))
         .thenReturn(ListObjectVersionsResponse.builder()
             .versions(
                 ObjectVersion.builder().versionId(SUBMITTED_2_VERSION).build(),
@@ -1650,7 +1648,7 @@ class ConvertFormrToAuditedTest {
   }
 
   /**
-   * Get an embedded Map<String, Object> from a Document by traversing the specified keys.
+   * Get an embedded {@code Map<String, Object>} from a Document by traversing the specified keys.
    *
    * @param document The document to get an embedded map from.
    * @param keys     A list of keys, each item represents a level of nesting to traverse to get the

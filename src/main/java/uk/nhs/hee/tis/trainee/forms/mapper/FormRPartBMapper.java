@@ -30,6 +30,9 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 
+/**
+ * Mappers between FormR Part B representations.
+ */
 @Mapper(componentModel = SPRING, uses = {CovidDeclarationMapper.class,
     TemporalMapper.class}, injectionStrategy = CONSTRUCTOR)
 public interface FormRPartBMapper {

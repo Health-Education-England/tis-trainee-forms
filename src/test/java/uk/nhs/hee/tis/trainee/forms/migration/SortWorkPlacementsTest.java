@@ -29,6 +29,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.util.AssertionErrors.assertNull;
 
 import java.time.LocalDate;
+import java.time.Month;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -53,9 +54,9 @@ import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 @ExtendWith(MockitoExtension.class)
 class SortWorkPlacementsTest {
 
-  private static final LocalDate OLDEST_WORK = LocalDate.of(2000, 1, 1);
-  private static final LocalDate MIDDLE_WORK = LocalDate.of(2010, 10, 10);
-  private static final LocalDate NEWEST_WORK = LocalDate.of(2020, 2, 5);
+  private static final LocalDate OLDEST_WORK = LocalDate.of(2000, Month.JANUARY, 1);
+  private static final LocalDate MIDDLE_WORK = LocalDate.of(2010, Month.OCTOBER, 10);
+  private static final LocalDate NEWEST_WORK = LocalDate.of(2020, Month.FEBRUARY, 5);
 
   private Work workOldest;
   private Work workMiddle;
@@ -69,11 +70,9 @@ class SortWorkPlacementsTest {
   @Mock
   private FormRPartBService service;
 
-  private FormRPartBMapper mapper;
-
   @BeforeEach
   void setUp() {
-    mapper = new FormRPartBMapperImpl(new TemporalMapper(ZoneId.of("Etc/UTC")));
+    FormRPartBMapper mapper = new FormRPartBMapperImpl(new TemporalMapper(ZoneId.of("Etc/UTC")));
     migration = new SortWorkPlacements(template, service, mapper);
 
     workOldest = new Work();

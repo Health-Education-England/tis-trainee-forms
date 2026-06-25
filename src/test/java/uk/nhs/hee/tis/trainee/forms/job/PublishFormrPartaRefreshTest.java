@@ -39,6 +39,7 @@ import static org.mockito.Mockito.when;
 import com.google.common.base.Objects;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Month;
 import java.time.ZoneId;
 import java.util.Optional;
 import java.util.Set;
@@ -91,7 +92,7 @@ class PublishFormrPartaRefreshTest {
     when(repository.streamByLifecycleStateInAndLastModifiedDateGreaterThanEqual(any(),
         any())).thenReturn(Stream.of());
 
-    job.execute(Optional.of(LocalDate.of(2025, 1, 1)));
+    job.execute(Optional.of(LocalDate.of(2025, Month.JANUARY, 1)));
 
     verifyNoInteractions(service);
   }
@@ -114,7 +115,7 @@ class PublishFormrPartaRefreshTest {
   @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = {"APPROVED", "DRAFT",
       "REJECTED", "WITHDRAWN"})
   void shouldNotPublishDraftFormrPartasWithCutoffDate(LifecycleState state) {
-    LocalDate since = LocalDate.of(2025, 1, 1);
+    LocalDate since = LocalDate.of(2025, Month.JANUARY, 1);
     ArgumentCaptor<Set<LifecycleState>> statesCaptor = ArgumentCaptor.captor();
     when(repository.streamByLifecycleStateInAndLastModifiedDateGreaterThanEqual(
         statesCaptor.capture(), any())).thenReturn(Stream.of());
@@ -128,7 +129,7 @@ class PublishFormrPartaRefreshTest {
 
   @Test
   void shouldUseCutoffDateWhenProvided() {
-    LocalDate since = LocalDate.of(2025, 6, 15);
+    LocalDate since = LocalDate.of(2025, Month.JUNE, 15);
     ArgumentCaptor<Instant> cutoffCaptor = ArgumentCaptor.captor();
     when(repository.streamByLifecycleStateInAndLastModifiedDateGreaterThanEqual(any(),
         cutoffCaptor.capture())).thenReturn(Stream.of());
@@ -168,7 +169,7 @@ class PublishFormrPartaRefreshTest {
     when(repository.streamByLifecycleStateInAndLastModifiedDateGreaterThanEqual(any(),
         any())).thenReturn(Stream.of(form1));
 
-    int publishCount = job.execute(Optional.of(LocalDate.of(2025, 1, 1)));
+    int publishCount = job.execute(Optional.of(LocalDate.of(2025, Month.JANUARY, 1)));
 
     assertThat("Unexpected published Form-R count.", publishCount, is(1));
     verify(service).publishUpdateNotification(argThat(hasId(id1)), eq(PUBLISH_TOPIC));

@@ -45,7 +45,8 @@ public interface FormRPartBRepository extends MongoRepository<FormRPartB, UUID> 
 
   @Query(
       value = "{ 'traineeTisId': ?0, 'status.current.state': ?1 }",
-      fields = "{'traineeTisId':1, id:1, 'content.programmeMembershipId':1, 'status.submitted':1, 'status.current.state':1}"
+      fields = "{'traineeTisId':1, id:1, 'content.programmeMembershipId':1, 'status.submitted':1,"
+          + "'status.current.state':1}"
   )
   List<FormRPartB> findByTraineeTisIdAndLifecycleState(String traineeTisId,
       LifecycleState lifecycleState);

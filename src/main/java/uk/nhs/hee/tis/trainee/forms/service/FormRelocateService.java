@@ -52,19 +52,20 @@ public class FormRelocateService {
   /**
    * Constructor for Form Relocate service.
    *
-   * @param formRPartARepository  spring data repository (Form R Part A)
-   * @param formRPartBRepository  spring data repository (Form R Part B)
-   * @param ltftService           LTFT service
+   * @param formRPartARepository spring data repository (Form R Part A)
+   * @param formRPartBRepository spring data repository (Form R Part B)
+   * @param ltftService          LTFT service
    */
-  public FormRelocateService(FormRPartARepository formRPartARepository, FormRPartBRepository formRPartBRepository, LtftService ltftService) {
+  public FormRelocateService(FormRPartARepository formRPartARepository,
+      FormRPartBRepository formRPartBRepository, LtftService ltftService) {
     this.formRPartARepository = formRPartARepository;
     this.formRPartBRepository = formRPartBRepository;
     this.ltftService = ltftService;
   }
 
   /**
-   * Move all FormR and LTFT forms from source trainee to target trainee.
-   * Errors are logged but do not stop the process.
+   * Move all FormR and LTFT forms from source trainee to target trainee. Errors are logged but do
+   * not stop the process.
    *
    * @param sourceTraineeTisId The TIS ID of the source trainee.
    * @param targetTraineeTisId The TIS ID of the target trainee.
@@ -119,8 +120,7 @@ public class FormRelocateService {
     if (optionalForm.isEmpty()) {
       log.error("Cannot find form with ID " + formId + " from DB.");
       throw new ApplicationException("Cannot find form with ID " + formId + " from DB.");
-    }
-    else {
+    } else {
       AbstractForm form = optionalForm.get();
       String sourceTrainee = form.getTraineeTisId();
 
@@ -131,11 +131,11 @@ public class FormRelocateService {
       }
 
       try {
-        performRelocate(form, sourceTrainee, targetTrainee);
+        performRelocate(form, targetTrainee);
       } catch (Exception e) {
         log.error("Fail to relocate form to target trainee: " + e + ". Rolling back...");
         try {
-          performRelocate(form, targetTrainee, sourceTrainee);
+          performRelocate(form, sourceTrainee);
         } catch (Exception ex) {
           log.error("Fail to roll back: " + ex);
         }
@@ -164,9 +164,7 @@ public class FormRelocateService {
     }
   }
 
-  private void performRelocate(AbstractForm abstractForm,
-                               String fromTraineeId,
-                               String toTraineeId) {
+  private void performRelocate(AbstractForm abstractForm, String toTraineeId) {
     abstractForm.setTraineeTisId(toTraineeId);
     updateTargetTraineeInDb(abstractForm, toTraineeId);
   }

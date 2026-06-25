@@ -30,6 +30,7 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMIT
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Month;
 import java.time.ZoneId;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,7 +64,7 @@ class FormRPartAMapperTest {
     entity.setId(id);
     entity.setTraineeTisId("12345");
 
-    LocalDate startDate = LocalDate.of(2022, 1, 15);
+    LocalDate startDate = LocalDate.of(2022, Month.JANUARY, 15);
     UUID programmeMembershipId = UUID.randomUUID();
     entity.setContent(FormrPartaContent.builder()
         .startDate(startDate)

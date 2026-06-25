@@ -27,6 +27,9 @@ import org.mapstruct.Mapper;
 import uk.nhs.hee.tis.trainee.forms.dto.CovidDeclarationDto;
 import uk.nhs.hee.tis.trainee.forms.model.CovidDeclaration;
 
+/**
+ * Mappers between Covid Declaration representations.
+ */
 @Mapper(componentModel = SPRING)
 public interface CovidDeclarationMapper {
 

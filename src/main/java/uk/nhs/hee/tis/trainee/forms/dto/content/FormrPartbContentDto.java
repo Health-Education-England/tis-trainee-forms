@@ -41,6 +41,9 @@ import uk.nhs.hee.tis.trainee.forms.dto.CovidDeclarationDto;
 import uk.nhs.hee.tis.trainee.forms.dto.DeclarationDto;
 import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
 
+/**
+ * A DTO for the content of a FormR Part B.
+ */
 @Data
 @NotEmptyIfAnotherFieldHasValueValidation(
     fieldName = "haveCurrentUnresolvedDeclarations",

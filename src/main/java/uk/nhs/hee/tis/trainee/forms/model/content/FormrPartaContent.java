@@ -27,6 +27,9 @@ import java.util.UUID;
 import lombok.Builder;
 import lombok.Data;
 
+/**
+ * The content of a FormR Part A.
+ */
 @Data
 @Builder
 public class FormrPartaContent implements FormContent {

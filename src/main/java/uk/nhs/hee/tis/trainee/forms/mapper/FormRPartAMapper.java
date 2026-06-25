@@ -31,6 +31,9 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 
+/**
+ * Mappers between FormR Part A representations.
+ */
 @Mapper(componentModel = SPRING, uses = TemporalMapper.class, injectionStrategy = CONSTRUCTOR)
 public interface FormRPartAMapper {
 

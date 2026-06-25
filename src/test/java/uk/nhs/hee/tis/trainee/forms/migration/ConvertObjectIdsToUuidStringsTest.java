@@ -148,7 +148,7 @@ class ConvertObjectIdsToUuidStringsTest {
     Document document2 = new Document();
     document2.put(ID_FIELD, "not-uuid-2");
 
-    when(template.findAll(eq(Document.class), eq(PART_A_COLLECTION_NAME))).thenReturn(
+    when(template.findAll(Document.class, PART_A_COLLECTION_NAME)).thenReturn(
         List.of(document1, document2));
     when(template.remove(any(), eq(FormRPartA.class))).thenReturn(DeleteResult.acknowledged(1));
 
@@ -174,7 +174,7 @@ class ConvertObjectIdsToUuidStringsTest {
     Document document2 = new Document();
     document2.put(ID_FIELD, "not-uuid-2");
 
-    when(template.findAll(eq(Document.class), eq(PART_B_COLLECTION_NAME))).thenReturn(
+    when(template.findAll(Document.class, PART_B_COLLECTION_NAME)).thenReturn(
         List.of(document1, document2));
     when(template.remove(any(), eq(FormRPartB.class))).thenReturn(DeleteResult.acknowledged(1));
 
@@ -200,7 +200,7 @@ class ConvertObjectIdsToUuidStringsTest {
     Document document2 = new Document();
     document2.put(ID_FIELD, "not-uuid-2");
 
-    when(template.findAll(eq(Document.class), eq(PART_A_COLLECTION_NAME))).thenReturn(
+    when(template.findAll(Document.class, PART_A_COLLECTION_NAME)).thenReturn(
         List.of(document1, document2));
 
     ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
@@ -278,7 +278,7 @@ class ConvertObjectIdsToUuidStringsTest {
     document2.put(ID_FIELD, "not-uuid-2");
     document2.put(TRAINEE_ID_FIELD, "trainee2");
 
-    when(template.findAll(eq(Document.class), eq(PART_A_COLLECTION_NAME))).thenReturn(
+    when(template.findAll(Document.class, PART_A_COLLECTION_NAME)).thenReturn(
         List.of(document1, document2));
 
     ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);

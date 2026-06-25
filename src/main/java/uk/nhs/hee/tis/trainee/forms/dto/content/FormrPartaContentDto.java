@@ -38,6 +38,9 @@ import uk.nhs.hee.tis.trainee.forms.annotations.MaxDateValidation;
 import uk.nhs.hee.tis.trainee.forms.annotations.MinDateValidation;
 import uk.nhs.hee.tis.trainee.forms.annotations.NotEmptyIfAnotherFieldHasValueValidation;
 
+/**
+ * A DTO for the content of a FormR Part A.
+ */
 @Data
 @NotEmptyIfAnotherFieldHasValueValidation(
     fieldName = "declarationType",
