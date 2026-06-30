@@ -31,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROVED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.service.ReviewStageService.TERMINAL_STAGE_LABEL;
 
 import java.util.HashMap;
 import java.util.List;
@@ -51,7 +52,6 @@ import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.ReviewStageStatus;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ProgrammeMembership;
-import static uk.nhs.hee.tis.trainee.forms.service.ReviewStageService.TERMINAL_STAGE_LABEL;
 
 class ReviewStageServiceTest {
 

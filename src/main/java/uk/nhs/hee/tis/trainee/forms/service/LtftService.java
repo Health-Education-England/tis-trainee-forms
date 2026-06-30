@@ -864,14 +864,18 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   /**
    * Validate that the form's current review stage permits a transition to the target state.
    *
+   * <p>This method is only called after {@link #validateLifecycleTransition}, which guarantees
+   * that {@code form.getStatus()} and {@code form.getStatus().current()} are non-null (a null
+   * current state would have caused {@code canTransitionTo} to return false and thrown before
+   * reaching this point).
+   *
    * @param form        The form being updated.
    * @param targetState The intended target lifecycle state.
    * @throws MethodArgumentNotValidException If the review stage does not allow this transition.
    */
   private void validateReviewStageTransition(LtftForm form, LifecycleState targetState)
       throws MethodArgumentNotValidException {
-    if (form.getStatus() != null && form.getStatus().current() != null
-        && form.getStatus().current().state() == SUBMITTED
+    if (form.getStatus().current().state() == SUBMITTED
         && !reviewStageService.canTransitionToLifecycleState(form, targetState)) {
       log.warn("Form {} cannot transition from review stage {} to {}.",
           form.getId(), form.getStatus().current().reviewStage(), targetState);
