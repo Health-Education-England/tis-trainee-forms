@@ -439,7 +439,8 @@ class LtftServiceIntegrationTest {
     assertThat("Unexpected stages.", result.get().stages(), contains(
         "Programme/Education Team Triage",
         "Programme Manager Review",
-        "Associate Dean Approval"));
+        "Associate Dean Approval",
+        "Review complete"));
     assertThat("Unexpected current stage.", result.get().currentStage(), nullValue());
   }
 
@@ -487,12 +488,33 @@ class LtftServiceIntegrationTest {
   }
 
   @Test
-  void shouldThrowExceptionWhenAtFinalReviewStageForAdvanceReviewStage() {
+  void shouldAdvanceToTerminalStageWhenAtFinalConfiguredStage()
+      throws MethodArgumentNotValidException {
     adminIdentity.setGroups(Set.of(DBC_ONE_STAGE));
+    adminIdentity.setName("Ad Min");
+    adminIdentity.setEmail("ad.min@test.com");
 
-    // KSS has only one stage (index 0 = final).
+    // KSS has only one stage (index 0 = final configured stage).
     LtftForm form = savedSubmittedFormWithReviewStage(
         DBC_ONE_STAGE, 0, "Completeness checks");
+
+    Optional<LtftFormDto> result = service.advanceReviewStage(form.getId(), null);
+
+    assertThat("Unexpected result presence.", result.isPresent(), is(true));
+    StatusInfoDto current = result.get().status().current();
+    assertThat("Unexpected state.", current.state(), is(LifecycleState.SUBMITTED));
+    assertThat("Unexpected review stage index.", current.reviewStage().index(), is(1));
+    assertThat("Unexpected review stage label.", current.reviewStage().label(),
+        is("Review complete"));
+  }
+
+  @Test
+  void shouldThrowExceptionWhenAlreadyAtTerminalStageForAdvanceReviewStage() {
+    adminIdentity.setGroups(Set.of(DBC_ONE_STAGE));
+
+    // KSS single stage: terminal stage is at index 1.
+    LtftForm form = savedSubmittedFormWithReviewStage(
+        DBC_ONE_STAGE, 1, "Review complete");
 
     assertThrows(MethodArgumentNotValidException.class,
         () -> service.advanceReviewStage(form.getId(), null));
@@ -617,11 +639,11 @@ class LtftServiceIntegrationTest {
   }
 
   @Test
-  void shouldAllowApprovalWhenAtFinalReviewStage() throws MethodArgumentNotValidException {
+  void shouldAllowApprovalWhenAtTerminalReviewStage() throws MethodArgumentNotValidException {
     adminIdentity.setGroups(Set.of(DBC_ONE_STAGE));
 
-    // KSS single stage: index 0 = final.
-    LtftForm form = savedSubmittedFormWithReviewStage(DBC_ONE_STAGE, 0, "Completeness checks");
+    // KSS single stage: terminal stage is at index 1 (= stages.size()).
+    LtftForm form = savedSubmittedFormWithReviewStage(DBC_ONE_STAGE, 1, "Review complete");
 
     Optional<LtftFormDto> result = service.updateStatusAsAdmin(
         form.getId(), LifecycleState.APPROVED, null);
@@ -629,6 +651,17 @@ class LtftServiceIntegrationTest {
     assertThat("Unexpected result presence.", result.isPresent(), is(true));
     assertThat("Unexpected state.", result.get().status().current().state(),
         is(LifecycleState.APPROVED));
+  }
+
+  @Test
+  void shouldThrowWhenApprovingFormAtFinalConfiguredStageBeforeTerminal() {
+    adminIdentity.setGroups(Set.of(DBC_ONE_STAGE));
+
+    // KSS single stage: at configured stage 0, not yet at terminal.
+    LtftForm form = savedSubmittedFormWithReviewStage(DBC_ONE_STAGE, 0, "Completeness checks");
+
+    assertThrows(MethodArgumentNotValidException.class,
+        () -> service.updateStatusAsAdmin(form.getId(), LifecycleState.APPROVED, null));
   }
 
   @ParameterizedTest
@@ -670,8 +703,8 @@ class LtftServiceIntegrationTest {
       throws MethodArgumentNotValidException {
     adminIdentity.setGroups(Set.of(DBC_ONE_STAGE));
 
-    // Single-stage workflow: at final stage, can approve.
-    LtftForm form = savedSubmittedFormWithReviewStage(DBC_ONE_STAGE, 0, "Completeness checks");
+    // Single-stage workflow: at terminal stage (index 1), can approve.
+    LtftForm form = savedSubmittedFormWithReviewStage(DBC_ONE_STAGE, 1, "Review complete");
 
     Optional<LtftFormDto> result = service.updateStatusAsAdmin(
         form.getId(), LifecycleState.APPROVED, null);

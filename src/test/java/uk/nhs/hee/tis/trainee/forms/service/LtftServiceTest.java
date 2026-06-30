@@ -2264,14 +2264,14 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldThrowExceptionAdvancingReviewStageWhenAtFinalStage() {
+  void shouldThrowExceptionAdvancingReviewStageWhenAtTerminalStage() {
     // Form is SUBMITTED with a non-null reviewStage — resolveAdvance returning empty
-    // means the form is genuinely at the final stage.
+    // means the form is already at the terminal stage (no further advancement possible).
     LtftForm form = new LtftForm();
     form.setStatus(Status.builder()
         .current(StatusInfo.builder()
             .state(SUBMITTED)
-            .reviewStage(new ReviewStageStatus(2, "Dean Approval"))
+            .reviewStage(new ReviewStageStatus(3, "Review complete"))
             .build())
         .build());
 

@@ -59,6 +59,13 @@ import uk.nhs.hee.tis.trainee.forms.model.ReviewStageStatus;
 @Service
 public class ReviewStageService {
 
+  /**
+   * The label for the implicit terminal review stage that is appended after all configured stages.
+   * This stage allows admins to record a reason for completing the final review before
+   * transitioning the form to APPROVED, REJECTED, or WITHDRAWN.
+   */
+  static final String TERMINAL_STAGE_LABEL = "Review complete";
+
   private final ReviewWorkflowProperties reviewWorkflowProperties;
 
   ReviewStageService(ReviewWorkflowProperties reviewWorkflowProperties) {
@@ -70,7 +77,8 @@ public class ReviewStageService {
    *
    * <p>The {@code stages} list contains only enabled stages, with one exception: if the form is
    * currently SUBMITTED and its active review stage is disabled (e.g. the stage was disabled after
-   * the form entered it), that stage is also included at its correct position.
+   * the form entered it), that stage is also included at its correct position. When at least one
+   * configured stage is enabled, an implicit terminal "Review complete" stage is appended.
    *
    * <p>The {@code currentStage} field is the zero-based index of the form's current review stage
    * within the returned {@code stages} list, or {@code null} if the form is not SUBMITTED or has
@@ -102,6 +110,15 @@ public class ReviewStageService {
         }
         visibleLabels.add(stage.label());
       }
+    }
+
+    // Append the implicit terminal stage if any configured stages are enabled.
+    boolean anyEnabled = allStages.stream().anyMatch(StateStage::enabled);
+    if (anyEnabled) {
+      if (currentAbsoluteIndex != null && currentAbsoluteIndex == allStages.size()) {
+        currentVisiblePosition = visibleLabels.size();
+      }
+      visibleLabels.add(TERMINAL_STAGE_LABEL);
     }
 
     return new ReviewWorkflowDto(visibleLabels, currentVisiblePosition);
@@ -150,20 +167,25 @@ public class ReviewStageService {
    * Resolve the next {@link ReviewStageStatus} when an admin advances the review of a form.
    *
    * <p>Disabled stages are skipped: the next <em>enabled</em> stage after the current index is
-   * returned. If no enabled stage exists after the current index, {@link Optional#empty()} is
-   * returned to indicate that no further advancement is possible (the form is at the effective
-   * final stage). Transitioning to APPROVED must be performed separately via the normal
-   * status-update path.
+   * returned. If no enabled stage exists after the current index (i.e. the form is at the
+   * effective final configured stage), the implicit terminal "Review complete" stage is returned,
+   * allowing the admin to record a reason before transitioning to a terminal lifecycle state.
+   *
+   * <p>If the form is already at the terminal stage, {@link Optional#empty()} is returned to
+   * indicate that no further advancement is possible. Transitioning to APPROVED must be performed
+   * separately via the normal status-update path.
    *
    * @param form The form whose review is being advanced.
-   * @return The next enabled review stage, or empty if the form is at the effective final stage.
+   * @return The next review stage (including the implicit terminal stage), or empty if the form
+   *     is already at the terminal stage.
    */
   public Optional<ReviewStageStatus> resolveAdvance(LtftForm form) {
     String dbc = getDesignatedBodyCode(form);
     List<StateStage> stages = getConfiguredStages(dbc);
 
-    if (stages.isEmpty()) {
-      log.debug("No review workflow for DBC '{}'; no stages to advance through.", dbc);
+    boolean anyEnabled = stages.stream().anyMatch(StateStage::enabled);
+    if (!anyEnabled) {
+      log.debug("All review stages disabled for DBC '{}'; no stages to advance through.", dbc);
       return Optional.empty();
     }
 
@@ -175,9 +197,12 @@ public class ReviewStageService {
     }
 
     int currentIndex = current.index();
-    if (currentIndex < 0 || currentIndex >= stages.size()) {
-      log.warn("Form {} has invalid review stage index {}; cannot advance.", form.getId(),
-          currentIndex);
+
+    // Already at the terminal stage — no further advancement is possible.
+    // Note, not stages.size() - 1, as the terminal stage is not part of the configured stages list.
+    if (currentIndex == stages.size()) {
+      log.debug("Form {} is already at the terminal review stage; no advancement possible.",
+          form.getId());
       return Optional.empty();
     }
 
@@ -185,12 +210,13 @@ public class ReviewStageService {
     if (next.isPresent()) {
       log.debug("Advancing form {} from review stage index {} to {} ('{}').",
           form.getId(), currentIndex, next.get().index(), next.get().label());
-    } else {
-      log.debug(
-          "Form {} is at the effective final review stage (index {}); no advancement possible.",
-          form.getId(), currentIndex);
+      return next;
     }
-    return next;
+
+    // At the effective final configured stage — advance to the implicit terminal stage.
+    log.debug("Advancing form {} from final configured stage (index {}) to terminal stage.",
+        form.getId(), currentIndex);
+    return Optional.of(new ReviewStageStatus(stages.size(), TERMINAL_STAGE_LABEL));
   }
 
 
@@ -199,8 +225,8 @@ public class ReviewStageService {
    * lifecycle state.
    *
    * <p>UNSUBMITTED is always permitted from any review stage. All other lifecycle states
-   * (APPROVED, REJECTED, WITHDRAWN) require the form to be at the <em>effective</em> final stage,
-   * defined as the stage after which no further <em>enabled</em> stages exist.
+   * (APPROVED, REJECTED, WITHDRAWN) require the form to be at the implicit terminal stage,
+   * i.e. past all configured stages.
    *
    * <p>If no workflow is configured for the form's DBC, or all configured stages are disabled,
    * the transition is always permitted.
@@ -235,17 +261,15 @@ public class ReviewStageService {
       return true;
     }
 
-    // At the effective final stage when no enabled stages exist after the current index.
-    boolean hasNextEnabledStage =
-        nextEnabledStageAfter(stages, currentReviewStage.index()).isPresent();
-    if (hasNextEnabledStage) {
+    // Terminal transitions (APPROVED, REJECTED, WITHDRAWN) are only permitted from the implicit
+    // terminal stage, i.e. after all configured review stages have been completed.
+    boolean atTerminalStage = currentReviewStage.index() >= stages.size();
+    if (!atTerminalStage) {
       log.warn("Form {} is at review stage index {} but attempted to transition to {}; "
-              + "further enabled stages remain.",
+              + "the form must be advanced to the terminal stage first.",
           form.getId(), currentReviewStage.index(), targetState);
-      return false;
     }
-
-    return true;
+    return atTerminalStage;
   }
 
   /**
@@ -306,4 +330,3 @@ public class ReviewStageService {
     return form.getContent().programmeMembership().designatedBodyCode();
   }
 }
-

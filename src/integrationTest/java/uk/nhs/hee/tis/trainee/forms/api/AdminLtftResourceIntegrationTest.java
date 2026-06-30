@@ -1832,10 +1832,11 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.stages").isArray())
-        .andExpect(jsonPath("$.stages", hasSize(3)))
+        .andExpect(jsonPath("$.stages", hasSize(4)))
         .andExpect(jsonPath("$.stages[0]", is("Programme/Education Team Triage")))
         .andExpect(jsonPath("$.stages[1]", is("Programme Manager Review")))
         .andExpect(jsonPath("$.stages[2]", is("Associate Dean Approval")))
+        .andExpect(jsonPath("$.stages[3]", is("Review complete")))
         .andExpect(jsonPath("$.currentStage", nullValue()));
   }
 
@@ -1851,10 +1852,11 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.stages").isArray())
-        .andExpect(jsonPath("$.stages", hasSize(3)))
+        .andExpect(jsonPath("$.stages", hasSize(4)))
         .andExpect(jsonPath("$.stages[0]", is("Programme/Education Team Triage")))
         .andExpect(jsonPath("$.stages[1]", is("Programme Manager Review")))
         .andExpect(jsonPath("$.stages[2]", is("Associate Dean Approval")))
+        .andExpect(jsonPath("$.stages[3]", is("Review complete")))
         .andExpect(jsonPath("$.currentStage", is(1)));
   }
 
@@ -1882,9 +1884,9 @@ class AdminLtftResourceIntegrationTest {
 
   @Test
   void shouldReturnBadRequestWhenAdvancingReviewStageAndAtFinalStage() throws Exception {
-    // DBC_ONE_STAGE has one stage: index 0 is the final stage
+    // DBC_ONE_STAGE has one stage (index 0), so final stage is index 1.
     LtftForm form = template.insert(
-        createSubmittedFormWithReviewStage(DBC_ONE_STAGE, 0, "Completeness checks"));
+        createSubmittedFormWithReviewStage(DBC_ONE_STAGE, 1, "Review complete"));
 
     mockMvc.perform(put("/api/admin/ltft/{id}/review-stage/advance", form.getId())
             .with(TestJwtUtil.createAdminToken(List.of(DBC_ONE_STAGE), REQUIRED_ROLES)))

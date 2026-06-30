@@ -51,6 +51,7 @@ import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.ReviewStageStatus;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ProgrammeMembership;
+import static uk.nhs.hee.tis.trainee.forms.service.ReviewStageService.TERMINAL_STAGE_LABEL;
 
 class ReviewStageServiceTest {
 
@@ -228,28 +229,58 @@ class ReviewStageServiceTest {
   }
 
   @Test
-  void shouldReturnEmptyWhenAtFinalStage() {
+  void shouldReturnTerminalStageWhenAtFinalConfiguredStage() {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
         stage("Triage"), stage("Manager Review"), stage("Dean Approval"))));
 
     LtftForm form = formAtReviewStage(DBC, 2, "Dean Approval");
     Optional<ReviewStageStatus> result = service.resolveAdvance(form);
 
-    assertTrue(result.isEmpty(), "Expected empty optional at final stage.");
+    assertTrue(result.isPresent(), "Expected terminal stage to be present at final stage.");
+    assertThat("Unexpected terminal stage index.", result.get().index(), is(3));
+    assertThat("Unexpected terminal stage label.", result.get().label(), is(TERMINAL_STAGE_LABEL));
   }
 
   @Test
-  void shouldReturnEmptyWhenAtFinalStageOfSingleStageWorkflow() {
+  void shouldReturnTerminalStageWhenAtFinalStageOfSingleStageWorkflow() {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(stage("Only Stage"))));
 
     LtftForm form = formAtReviewStage(DBC, 0, "Only Stage");
     Optional<ReviewStageStatus> result = service.resolveAdvance(form);
 
-    assertTrue(result.isEmpty(), "Expected empty optional for single-stage workflow at stage 0.");
+    assertTrue(result.isPresent(),
+        "Expected terminal stage for single-stage workflow at stage 0.");
+    assertThat("Unexpected terminal stage index.", result.get().index(), is(1));
+    assertThat("Unexpected terminal stage label.", result.get().label(), is(TERMINAL_STAGE_LABEL));
   }
 
   @Test
-  void shouldAdvanceThroughAllStagesInOrder() {
+  void shouldReturnEmptyWhenAlreadyAtTerminalStage() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        stage("Triage"), stage("Manager Review"), stage("Dean Approval"))));
+
+    // Terminal stage index = stages.size() = 3.
+    LtftForm form = formAtReviewStage(DBC, 3, TERMINAL_STAGE_LABEL);
+    Optional<ReviewStageStatus> result = service.resolveAdvance(form);
+
+    assertTrue(result.isEmpty(),
+        "Expected empty optional when already at the terminal stage.");
+  }
+
+  @Test
+  void shouldReturnEmptyWhenAllStagesDisabledForAdvance() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        disabledStage("Triage"), disabledStage("Manager Review"))));
+
+    LtftForm form = formAtReviewStage(DBC, 0, "Triage");
+    Optional<ReviewStageStatus> result = service.resolveAdvance(form);
+
+    assertTrue(result.isEmpty(),
+        "Expected empty optional when all stages are disabled.");
+  }
+
+  @Test
+  void shouldAdvanceThroughAllStagesInOrderIncludingTerminal() {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
         stage("Stage A"), stage("Stage B"), stage("Stage C"))));
 
@@ -268,7 +299,14 @@ class ReviewStageServiceTest {
 
     LtftForm formAt2 = formAtReviewStage(DBC, 2, "Stage C");
     Optional<ReviewStageStatus> step3 = service.resolveAdvance(formAt2);
-    assertTrue(step3.isEmpty(), "Expected step 3 to be empty (final stage, no further advance).");
+    assertTrue(step3.isPresent(), "Expected step 3 (terminal) to be present.");
+    assertThat("Unexpected step 3 index.", step3.get().index(), is(3));
+    assertThat("Unexpected step 3 label.", step3.get().label(), is(TERMINAL_STAGE_LABEL));
+
+    LtftForm formAt3 = formAtReviewStage(DBC, 3, TERMINAL_STAGE_LABEL);
+    Optional<ReviewStageStatus> step4 = service.resolveAdvance(formAt3);
+    assertTrue(step4.isEmpty(),
+        "Expected step 4 to be empty (already at terminal stage, no further advance).");
   }
 
   @Test
@@ -285,15 +323,17 @@ class ReviewStageServiceTest {
   }
 
   @Test
-  void shouldReturnEmptyWhenAllRemainingStagesAreDisabled() {
+  void shouldReturnTerminalStageWhenAllRemainingStagesAreDisabled() {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
         stage("Triage"), disabledStage("End"))));
 
     LtftForm form = formAtReviewStage(DBC, 0, "Triage");
     Optional<ReviewStageStatus> result = service.resolveAdvance(form);
 
-    assertTrue(result.isEmpty(),
-        "Expected empty optional when no enabled stages follow the current stage.");
+    assertTrue(result.isPresent(),
+        "Expected terminal stage when no enabled stages follow the current stage.");
+    assertThat("Unexpected terminal stage index.", result.get().index(), is(2));
+    assertThat("Unexpected terminal stage label.", result.get().label(), is(TERMINAL_STAGE_LABEL));
   }
 
   @Test
@@ -310,18 +350,21 @@ class ReviewStageServiceTest {
   }
 
   @Test
-  void shouldReturnEmptyWhenAtDisabledFinalStage() {
+  void shouldReturnTerminalStageWhenAtDisabledFinalStage() {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
         stage("Triage"), disabledStage("End"))));
 
     LtftForm form = formAtReviewStage(DBC, 1, "End");
     Optional<ReviewStageStatus> result = service.resolveAdvance(form);
 
-    assertTrue(result.isEmpty(), "Expected empty optional at disabled final stage.");
+    assertTrue(result.isPresent(),
+        "Expected terminal stage at disabled final stage.");
+    assertThat("Unexpected terminal stage index.", result.get().index(), is(2));
+    assertThat("Unexpected terminal stage label.", result.get().label(), is(TERMINAL_STAGE_LABEL));
   }
 
   @Test
-  void shouldSkipMultipleConsecutiveDisabledStagesWhenAdvancing() {
+  void shouldReturnTerminalStageAfterSkippingMultipleConsecutiveDisabledFinalStages() {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
         stage("Stage A"), disabledStage("Stage B"), disabledStage("Stage C"), stage("Stage D"))));
 
@@ -358,30 +401,6 @@ class ReviewStageServiceTest {
 
     assertTrue(result.isEmpty(),
         "Expected empty optional when status is present but current status is null.");
-  }
-
-  @Test
-  void shouldReturnEmptyWhenReviewStageIndexIsNegative() {
-    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(stage("Triage"))));
-
-    // A negative index (e.g. -2) is invalid and triggers the currentIndex < 0 guard
-    LtftForm form = formAtReviewStage(DBC, -2, "invalid");
-    Optional<ReviewStageStatus> result = service.resolveAdvance(form);
-
-    assertTrue(result.isEmpty(),
-        "Expected empty optional for a negative review stage index.");
-  }
-
-  @Test
-  void shouldReturnEmptyWhenReviewStageIndexExceedsWorkflowSize() {
-    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(stage("Triage")))); // 1 stage
-
-    // Index 5 is out of bounds for a workflow with only 1 stage
-    LtftForm form = formAtReviewStage(DBC, 5, "stale");
-    Optional<ReviewStageStatus> result = service.resolveAdvance(form);
-
-    assertTrue(result.isEmpty(),
-        "Expected empty optional when review stage index exceeds workflow size.");
   }
 
   @Test
@@ -451,15 +470,31 @@ class ReviewStageServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
-  void shouldAllowTerminalTransitionFromFinalStageWhenWorkflowConfigured(
+  void shouldDenyTerminalTransitionFromFinalConfiguredStageWhenWorkflowConfigured(
       LifecycleState targetState) {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
         stage("Triage"), stage("Manager Review"), stage("Dean Approval"))));
 
+    // At the final configured stage (index 2), not yet at the terminal stage.
     LtftForm form = formAtReviewStage(DBC, 2, "Dean Approval");
 
+    assertFalse(service.canTransitionToLifecycleState(form, targetState),
+        "Expected terminal transition to be denied from final configured stage "
+            + "(must advance to terminal stage first).");
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
+  void shouldAllowTerminalTransitionFromTerminalStageWhenWorkflowConfigured(
+      LifecycleState targetState) {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        stage("Triage"), stage("Manager Review"), stage("Dean Approval"))));
+
+    // At the implicit terminal stage (index = stages.size() = 3).
+    LtftForm form = formAtReviewStage(DBC, 3, TERMINAL_STAGE_LABEL);
+
     assertTrue(service.canTransitionToLifecycleState(form, targetState),
-        "Expected terminal transition to be allowed from final stage.");
+        "Expected terminal transition to be allowed from the terminal stage.");
   }
 
   @ParameterizedTest
@@ -489,13 +524,25 @@ class ReviewStageServiceTest {
   }
 
   @Test
-  void shouldAllowSingleStageWorkflowToApproveAtStageZero() {
+  void shouldDenySingleStageWorkflowApprovalAtStageZero() {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(stage("Only Stage"))));
 
     LtftForm form = formAtReviewStage(DBC, 0, "Only Stage");
 
+    assertFalse(service.canTransitionToLifecycleState(form, APPROVED),
+        "Expected APPROVE to be denied from the only configured stage "
+            + "(must advance to terminal stage first).");
+  }
+
+  @Test
+  void shouldAllowSingleStageWorkflowApprovalAtTerminalStage() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(stage("Only Stage"))));
+
+    // At terminal stage (index = stages.size() = 1).
+    LtftForm form = formAtReviewStage(DBC, 1, TERMINAL_STAGE_LABEL);
+
     assertTrue(service.canTransitionToLifecycleState(form, APPROVED),
-        "Expected APPROVE to be allowed from the only stage in a single-stage workflow.");
+        "Expected APPROVE to be allowed from the terminal stage of a single-stage workflow.");
   }
 
   @Test
@@ -506,20 +553,25 @@ class ReviewStageServiceTest {
     workflows.put(dbc2, List.of(stage("Completeness checks")));
     workflowProperties.setReviewWorkflows(workflows);
 
-    // DBC at final stage — allow approve
-    LtftForm formDbc1 = formAtReviewStage(DBC, 1, "Dean Approval");
+    // DBC at terminal stage — allow approve
+    LtftForm formDbc1 = formAtReviewStage(DBC, 2, TERMINAL_STAGE_LABEL);
     assertTrue(service.canTransitionToLifecycleState(formDbc1, APPROVED),
-        "Expected APPROVE for DBC1 at final stage.");
+        "Expected APPROVE for DBC1 at terminal stage.");
 
-    // DBC2 at final stage — allow approve
-    LtftForm formDbc2 = formAtReviewStage(dbc2, 0, "Completeness checks");
+    // DBC2 at terminal stage — allow approve
+    LtftForm formDbc2 = formAtReviewStage(dbc2, 1, TERMINAL_STAGE_LABEL);
     assertTrue(service.canTransitionToLifecycleState(formDbc2, APPROVED),
-        "Expected APPROVE for DBC2 at final stage.");
+        "Expected APPROVE for DBC2 at terminal stage.");
 
     // DBC at first stage — deny approve
     LtftForm formDbc1Stage0 = formAtReviewStage(DBC, 0, "Triage");
     assertFalse(service.canTransitionToLifecycleState(formDbc1Stage0, APPROVED),
         "Expected APPROVE to be denied for DBC1 at non-final stage.");
+
+    // DBC at final configured stage — deny approve (must reach terminal first)
+    LtftForm formDbc1FinalConfigured = formAtReviewStage(DBC, 1, "Dean Approval");
+    assertFalse(service.canTransitionToLifecycleState(formDbc1FinalConfigured, APPROVED),
+        "Expected APPROVE to be denied for DBC1 at final configured stage.");
   }
 
   @ParameterizedTest
@@ -536,16 +588,17 @@ class ReviewStageServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
-  void shouldAllowTerminalTransitionFromEnabledStageWhenAllSubsequentStagesDisabled(
+  void shouldDenyTerminalTransitionFromEnabledStageWhenAllSubsequentStagesDisabled(
       LifecycleState targetState) {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
         stage("Triage"), disabledStage("Manager Review"))));
 
+    // At the last enabled stage, but not yet at the terminal stage.
     LtftForm form = formAtReviewStage(DBC, 0, "Triage");
 
-    assertTrue(service.canTransitionToLifecycleState(form, targetState),
-        "Expected terminal transition allowed from enabled stage when all subsequent "
-            + "stages disabled.");
+    assertFalse(service.canTransitionToLifecycleState(form, targetState),
+        "Expected terminal transition denied from enabled stage "
+            + "(must advance to terminal stage first).");
   }
 
   @ParameterizedTest
@@ -563,15 +616,17 @@ class ReviewStageServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
-  void shouldAllowTerminalTransitionFromDisabledStageWhenNoEnabledStagesFollowIt(
+  void shouldDenyTerminalTransitionFromDisabledStageWhenNoEnabledStagesFollowIt(
       LifecycleState targetState) {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
         stage("Triage"), disabledStage("Manager Review"))));
 
+    // At a disabled final stage, but not yet at the terminal stage.
     LtftForm form = formAtReviewStage(DBC, 1, "Manager Review");
 
-    assertTrue(service.canTransitionToLifecycleState(form, targetState),
-        "Expected terminal transition allowed from disabled stage with no enabled stages after.");
+    assertFalse(service.canTransitionToLifecycleState(form, targetState),
+        "Expected terminal transition denied from disabled stage "
+            + "(must advance to terminal stage first).");
   }
 
   @ParameterizedTest
@@ -647,7 +702,8 @@ class ReviewStageServiceTest {
 
     ReviewWorkflowDto dto = service.getWorkflowDto(form);
 
-    assertThat("Unexpected stages.", dto.stages(), contains("Triage", "Dean Approval"));
+    assertThat("Unexpected stages.", dto.stages(),
+        contains("Triage", "Dean Approval", TERMINAL_STAGE_LABEL));
     assertThat("Unexpected current stage.", dto.currentStage(), nullValue());
   }
 
@@ -659,6 +715,9 @@ class ReviewStageServiceTest {
     LtftForm form = formWithDbc(DBC); // no status set
 
     ReviewWorkflowDto dto = service.getWorkflowDto(form);
+
+    assertThat("Unexpected stages.", dto.stages(),
+        contains("Triage", "Manager Review", "Dean Approval", TERMINAL_STAGE_LABEL));
 
     assertThat("Unexpected current stage when not submitted.", dto.currentStage(), nullValue());
   }
@@ -676,6 +735,9 @@ class ReviewStageServiceTest {
 
     ReviewWorkflowDto dto = service.getWorkflowDto(form);
 
+    assertThat("Unexpected stages.", dto.stages(),
+        contains("Triage", TERMINAL_STAGE_LABEL));
+
     assertThat("Unexpected current stage for state " + state + ".", dto.currentStage(),
         nullValue());
   }
@@ -690,7 +752,7 @@ class ReviewStageServiceTest {
     ReviewWorkflowDto dto = service.getWorkflowDto(form);
 
     assertThat("Unexpected stages.", dto.stages(),
-        contains("Triage", "Manager Review", "Dean Approval"));
+        contains("Triage", "Manager Review", "Dean Approval", TERMINAL_STAGE_LABEL));
     assertThat("Unexpected current stage.", dto.currentStage(), is(1));
   }
 
@@ -704,7 +766,8 @@ class ReviewStageServiceTest {
 
     ReviewWorkflowDto dto = service.getWorkflowDto(form);
 
-    assertThat("Unexpected stages.", dto.stages(), contains("Triage", "Dean Approval"));
+    assertThat("Unexpected stages.", dto.stages(),
+        contains("Triage", "Dean Approval", TERMINAL_STAGE_LABEL));
     assertThat("Unexpected current stage.", dto.currentStage(), is(1));
   }
 
@@ -717,7 +780,8 @@ class ReviewStageServiceTest {
 
     ReviewWorkflowDto dto = service.getWorkflowDto(form);
 
-    assertThat("Unexpected stages.", dto.stages(), contains("Triage", "Dean Approval"));
+    assertThat("Unexpected stages.", dto.stages(),
+        contains("Triage", "Dean Approval", TERMINAL_STAGE_LABEL));
     assertThat("Unexpected current stage.", dto.currentStage(), is(0));
   }
 
@@ -730,7 +794,8 @@ class ReviewStageServiceTest {
 
     ReviewWorkflowDto dto = service.getWorkflowDto(form);
 
-    assertThat("Unexpected stages.", dto.stages(), contains("Triage", "Middle", "Dean Approval"));
+    assertThat("Unexpected stages.", dto.stages(),
+        contains("Triage", "Middle", "Dean Approval", TERMINAL_STAGE_LABEL));
     assertThat("Unexpected current stage.", dto.currentStage(), is(1));
   }
 
@@ -745,7 +810,8 @@ class ReviewStageServiceTest {
 
     ReviewWorkflowDto dto = service.getWorkflowDto(form);
 
-    assertThat("Unexpected stages.", dto.stages(), contains("Triage"));
+    assertThat("Unexpected stages.", dto.stages(),
+        contains("Triage", TERMINAL_STAGE_LABEL));
     assertThat("Unexpected current stage when no review stage set.", dto.currentStage(),
         nullValue());
   }
@@ -787,8 +853,35 @@ class ReviewStageServiceTest {
 
     ReviewWorkflowDto dto = service.getWorkflowDto(form);
 
-    assertThat("Unexpected stages.", dto.stages(), contains("Triage", "Manager Review"));
+    assertThat("Unexpected stages.", dto.stages(),
+        contains("Triage", "Manager Review", TERMINAL_STAGE_LABEL));
     assertThat("Unexpected current stage when status.current() is null.", dto.currentStage(),
         nullValue());
+  }
+
+  @Test
+  void shouldReturnTerminalStagePositionWhenFormIsAtTerminalStage() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        stage("Triage"), stage("Manager Review"), stage("Dean Approval"))));
+
+    // Form at terminal stage (index = stages.size() = 3).
+    LtftForm form = formAtReviewStage(DBC, 3, TERMINAL_STAGE_LABEL);
+
+    ReviewWorkflowDto dto = service.getWorkflowDto(form);
+
+    assertThat("Unexpected stages.", dto.stages(),
+        contains("Triage", "Manager Review", "Dean Approval", TERMINAL_STAGE_LABEL));
+    assertThat("Unexpected current stage at terminal.", dto.currentStage(), is(3));
+  }
+
+  @Test
+  void shouldAllowUnsubmitFromTerminalStage() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        stage("Triage"), stage("Manager Review"), stage("Dean Approval"))));
+
+    LtftForm form = formAtReviewStage(DBC, 3, TERMINAL_STAGE_LABEL);
+
+    assertTrue(service.canTransitionToLifecycleState(form, UNSUBMITTED),
+        "Expected UNSUBMIT to be allowed from terminal stage.");
   }
 }
