@@ -531,4 +531,57 @@ class AdminLtftResourceTest {
 
     verify(service).getReviewWorkflow(id);
   }
+
+  @Test
+  void shouldThrowExceptionWhenAdvanceReviewStageNotValid()
+      throws MethodArgumentNotValidException {
+    UUID id = UUID.randomUUID();
+    when(service.advanceReviewStage(id, null)).thenThrow(
+        MethodArgumentNotValidException.class);
+
+    assertThrows(MethodArgumentNotValidException.class,
+        () -> controller.advanceReviewStage(id, null));
+  }
+
+  @Test
+  void shouldReturnNotFoundWhenAdvanceReviewStageFormNotFound()
+      throws MethodArgumentNotValidException {
+    UUID id = UUID.randomUUID();
+    when(service.advanceReviewStage(id, null)).thenReturn(Optional.empty());
+
+    ResponseEntity<LtftFormDto> response = controller.advanceReviewStage(id, null);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(NOT_FOUND));
+    assertThat("Unexpected response body.", response.getBody(), nullValue());
+  }
+
+  @Test
+  void shouldReturnAdvancedFormWhenReviewStageAdvanced() throws MethodArgumentNotValidException {
+    UUID id = UUID.randomUUID();
+    LtftFormDto dto = LtftFormDto.builder().id(id).build();
+    when(service.advanceReviewStage(id, null)).thenReturn(Optional.of(dto));
+
+    ResponseEntity<LtftFormDto> response = controller.advanceReviewStage(id, null);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), sameInstance(dto));
+  }
+
+  @Test
+  void shouldPassDetailToServiceWhenAdvancingReviewStage()
+      throws MethodArgumentNotValidException {
+    UUID id = UUID.randomUUID();
+    LftfStatusInfoDetailDto detail = LftfStatusInfoDetailDto.builder()
+        .reason("Triage complete")
+        .message("Moving to next stage.")
+        .build();
+    LtftFormDto dto = LtftFormDto.builder().id(id).build();
+    when(service.advanceReviewStage(id, detail)).thenReturn(Optional.of(dto));
+
+    ResponseEntity<LtftFormDto> response = controller.advanceReviewStage(id, detail);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), sameInstance(dto));
+    verify(service).advanceReviewStage(id, detail);
+  }
 }

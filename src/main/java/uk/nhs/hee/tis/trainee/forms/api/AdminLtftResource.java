@@ -235,6 +235,22 @@ public class AdminLtftResource {
   }
 
   /**
+   * Advance the review stage of the form with the given ID.
+   *
+   * @param id     The ID of the form to advance.
+   * @param detail Optional detail to record alongside the stage change.
+   * @return The updated form, or 404 if not found / 400 if advancement is not permitted.
+   * @throws MethodArgumentNotValidException When the form is not SUBMITTED or is at the final
+   *                                         review stage.
+   */
+  @PutMapping("/{id}/review-stage/advance")
+  ResponseEntity<LtftFormDto> advanceReviewStage(@PathVariable UUID id,
+      @RequestBody(required = false) LftfStatusInfoDetailDto detail)
+      throws MethodArgumentNotValidException {
+    return ResponseEntity.of(service.advanceReviewStage(id, detail));
+  }
+
+  /**
    * Approve the form with the given ID, must be associated with the user's local office.
    *
    * @param id The ID of the form to approve.
