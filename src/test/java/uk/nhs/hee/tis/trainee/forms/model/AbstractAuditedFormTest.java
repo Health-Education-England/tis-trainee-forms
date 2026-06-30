@@ -429,6 +429,219 @@ class AbstractAuditedFormTest {
 
   }
 
+  @Test
+  void shouldSetReviewStageWhenCallingSetLifecycleStateWithReviewStage() {
+    ReviewStageStatus reviewStage = new ReviewStageStatus(0, "Triage");
+    form.setLifecycleState(SUBMITTED, null, null, 0, reviewStage);
+
+    assertThat("Unexpected review stage.", form.getStatus().current().reviewStage(),
+        is(reviewStage));
+  }
+
+  @Test
+  void shouldSetNullReviewStageWhenCallingSetLifecycleStateWithNullReviewStage() {
+    form.setLifecycleState(SUBMITTED, null, null, 0, null);
+
+    assertThat("Unexpected review stage.", form.getStatus().current().reviewStage(), nullValue());
+  }
+
+  @Test
+  void shouldSetNullReviewStageWhenCallingSetLifecycleStateWithoutReviewStage() {
+    form.setLifecycleState(SUBMITTED, null, null, 0);
+
+    assertThat("Unexpected review stage.", form.getStatus().current().reviewStage(), nullValue());
+  }
+
+  @Test
+  void shouldAddReviewStageToHistoryWhenSettingLifecycleState() {
+    ReviewStageStatus stage0 = new ReviewStageStatus(0, "Triage");
+    ReviewStageStatus stage1 = new ReviewStageStatus(1, "Manager Review");
+
+    form.setLifecycleState(SUBMITTED, null, null, 0, stage0);
+    form.setLifecycleState(SUBMITTED, null, null, 0, stage1);
+
+    assertThat("Unexpected history review stage 0.",
+        form.getStatus().history().get(0).reviewStage(), is(stage0));
+    assertThat("Unexpected history review stage 1.",
+        form.getStatus().history().get(1).reviewStage(), is(stage1));
+  }
+
+  @Test
+  void shouldSetReviewStage() {
+    form.setLifecycleState(SUBMITTED);
+    ReviewStageStatus reviewStage = new ReviewStageStatus(0, "Triage");
+
+    form.setReviewStage(reviewStage);
+
+    assertThat("Unexpected review stage.", form.getStatus().current().reviewStage(),
+        is(reviewStage));
+  }
+
+  @Test
+  void shouldSetNullReviewStage() {
+    form.setLifecycleState(SUBMITTED, null, null, 0, new ReviewStageStatus(0, "Triage"));
+
+    form.setReviewStage(null);
+
+    assertThat("Unexpected review stage.", form.getStatus().current().reviewStage(), nullValue());
+  }
+
+  @Test
+  void shouldUpdateReviewStage() {
+    form.setLifecycleState(SUBMITTED, null, null, 0, new ReviewStageStatus(0, "Triage"));
+    ReviewStageStatus nextStage = new ReviewStageStatus(1, "Manager Review");
+
+    form.setReviewStage(nextStage);
+
+    assertThat("Unexpected review stage.", form.getStatus().current().reviewStage(), is(nextStage));
+  }
+
+  @Test
+  void shouldRetainLifecycleStateWhenSettingReviewStage() {
+    form.setLifecycleState(SUBMITTED);
+
+    form.setReviewStage(new ReviewStageStatus(0, "Triage"));
+
+    assertThat("Unexpected lifecycle state.", form.getLifecycleState(), is(SUBMITTED));
+  }
+
+  @Test
+  void shouldRetainDetailWhenSettingReviewStage() {
+    StatusDetail detail = StatusDetail.builder().reason("a reason").message("a message").build();
+    form.setLifecycleState(SUBMITTED, detail, null, 0);
+
+    form.setReviewStage(new ReviewStageStatus(0, "Triage"));
+
+    assertThat("Unexpected detail.", form.getStatus().current().detail(), is(detail));
+  }
+
+  @Test
+  void shouldRetainRevisionWhenSettingReviewStage() {
+    form.setLifecycleState(SUBMITTED, null, null, 3);
+
+    form.setReviewStage(new ReviewStageStatus(0, "Triage"));
+
+    assertThat("Unexpected revision.", form.getStatus().current().revision(), is(3));
+  }
+
+  @Test
+  void shouldRetainAssignedAdminWhenSettingReviewStage() {
+    Person admin = Person.builder()
+        .name("Ad Min")
+        .email("ad.min@example.com")
+        .role("ADMIN")
+        .build();
+    form.setStatus(Status.builder()
+        .current(StatusInfo.builder().state(SUBMITTED).assignedAdmin(admin).build())
+        .history(List.of())
+        .build());
+
+    form.setReviewStage(new ReviewStageStatus(0, "Triage"));
+
+    assertThat("Unexpected assigned admin.", form.getStatus().current().assignedAdmin(),
+        is(admin));
+  }
+
+  @Test
+  void shouldAddReviewStageChangeToHistory() {
+    form.setLifecycleState(SUBMITTED);
+    ReviewStageStatus stage0 = new ReviewStageStatus(0, "Triage");
+    ReviewStageStatus stage1 = new ReviewStageStatus(1, "Manager Review");
+
+    form.setReviewStage(stage0);
+    form.setReviewStage(stage1);
+
+    List<StatusInfo> history = form.getStatus().history();
+    assertThat("Unexpected history count.", history, hasSize(3));
+    assertThat("Unexpected review stage in history entry 1.", history.get(1).reviewStage(),
+        is(stage0));
+    assertThat("Unexpected review stage in history entry 2.", history.get(2).reviewStage(),
+        is(stage1));
+  }
+
+  @Test
+  void shouldNotAffectSubmittedTimestampWhenSettingReviewStage() {
+    Instant submittedTime = Instant.parse("2026-01-01T10:00:00Z");
+    form.setStatus(Status.builder()
+        .current(StatusInfo.builder().state(SUBMITTED).build())
+        .submitted(submittedTime)
+        .history(List.of())
+        .build());
+
+    form.setReviewStage(new ReviewStageStatus(0, "Triage"));
+
+    assertThat("Unexpected submitted timestamp.", form.getStatus().submitted(), is(submittedTime));
+  }
+
+  @Test
+  void shouldSetReviewStageWhenStatusIsNull() {
+    form.setStatus(null);
+    ReviewStageStatus reviewStage = new ReviewStageStatus(0, "Triage");
+
+    form.setReviewStage(reviewStage);
+
+    assertThat("Unexpected review stage.", form.getStatus().current().reviewStage(),
+        is(reviewStage));
+  }
+
+  @Test
+  void shouldSetReviewStageWhenCurrentStatusIsMissing() {
+    form.setStatus(Status.builder().build());
+    ReviewStageStatus reviewStage = new ReviewStageStatus(0, "Triage");
+
+    form.setReviewStage(reviewStage);
+
+    assertThat("Unexpected review stage.", form.getStatus().current().reviewStage(),
+        is(reviewStage));
+  }
+
+  @Test
+  void shouldSetProvidedDetailWhenCallingSetReviewStageWithDetailAndModifiedBy() {
+    form.setLifecycleState(SUBMITTED);
+    StatusDetail newDetail = StatusDetail.builder().reason("Triage done").message("notes").build();
+    Person modifiedBy = Person.builder().name("Ad Min").email("ad@test.com").role("ADMIN").build();
+
+    form.setReviewStage(new ReviewStageStatus(1, "Manager Review"), newDetail, modifiedBy);
+
+    assertThat("Unexpected detail.", form.getStatus().current().detail(), is(newDetail));
+  }
+
+  @Test
+  void shouldSetNullDetailWhenCallingSetReviewStageWithNullDetail() {
+    StatusDetail existingDetail = StatusDetail.builder().reason("existing").build();
+    form.setLifecycleState(SUBMITTED, existingDetail, null, 0);
+
+    form.setReviewStage(new ReviewStageStatus(1, "Manager Review"), null, null);
+
+    assertThat("Unexpected detail after null.", form.getStatus().current().detail(), nullValue());
+  }
+
+  @Test
+  void shouldSetProvidedModifiedByWhenCallingSetReviewStageWithModifiedBy() {
+    form.setLifecycleState(SUBMITTED);
+    Person modifiedBy = Person.builder().name("Ad Min").email("ad@test.com").role("ADMIN").build();
+
+    form.setReviewStage(new ReviewStageStatus(1, "Manager Review"), null, modifiedBy);
+
+    assertThat("Unexpected modifiedBy.", form.getStatus().current().modifiedBy(), is(modifiedBy));
+  }
+
+  @Test
+  void shouldNotAffectSubmittedTimestampWhenCallingSetReviewStageWithDetailAndModifiedBy() {
+    Instant submittedTime = Instant.parse("2026-01-01T10:00:00Z");
+    form.setStatus(Status.builder()
+        .current(StatusInfo.builder().state(SUBMITTED).build())
+        .submitted(submittedTime)
+        .history(List.of())
+        .build());
+    Person modifiedBy = Person.builder().name("Ad Min").email("ad@test.com").role("ADMIN").build();
+
+    form.setReviewStage(new ReviewStageStatus(1, "Manager Review"),
+        StatusDetail.builder().reason("done").build(), modifiedBy);
+
+    assertThat("Unexpected submitted timestamp.", form.getStatus().submitted(), is(submittedTime));
+  }
+
   /**
    * A stub for testing the behaviour of the AbstractForm event listener.
    */

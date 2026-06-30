@@ -69,6 +69,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
+import uk.nhs.hee.tis.trainee.forms.dto.ReviewWorkflowDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
@@ -80,7 +81,6 @@ import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
-
 /**
  * A service for managing LTFT forms.
  */
@@ -103,13 +103,13 @@ public class LtftService {
   private final Validator validator;
 
   private final EventBroadcastService eventBroadcastService;
+  private final LtftSubmissionHistoryService ltftSubmissionHistoryService;
+  private final ReviewStageService reviewStageService;
 
   @Getter
   private final String ltftAssignmentUpdateTopic;
   private final String ltftStatusUpdateTopic;
   private final String ltftContentUpdateTopic;
-
-  private final LtftSubmissionHistoryService ltftSubmissionHistoryService;
 
   /**
    * Instantiate the LTFT form service.
@@ -126,6 +126,7 @@ public class LtftService {
    * @param ltftStatusUpdateTopic        The SNS topic for LTFT status updates.
    * @param ltftContentUpdateTopic       The SNS topic for LTFT content updates.
    * @param ltftSubmissionHistoryService The service for LTFT submission history.
+   * @param reviewStageService           The service for managing review stage transitions.
    */
   public LtftService(AdminIdentity adminIdentity, TraineeIdentity traineeIdentity,
       LtftFormRepository ltftFormRepository, MongoTemplate mongoTemplate, ObjectMapper objectMapper,
@@ -133,7 +134,8 @@ public class LtftService {
       @Value("${application.aws.sns.ltft-assignment-updated}") String ltftAssignmentUpdateTopic,
       @Value("${application.aws.sns.ltft-status-updated}") String ltftStatusUpdateTopic,
       @Value("${application.aws.sns.ltft-content-updated}") String ltftContentUpdateTopic,
-      LtftSubmissionHistoryService ltftSubmissionHistoryService) {
+      LtftSubmissionHistoryService ltftSubmissionHistoryService,
+      ReviewStageService reviewStageService) {
     this.adminIdentity = adminIdentity;
     this.traineeIdentity = traineeIdentity;
     this.ltftFormRepository = ltftFormRepository;
@@ -146,6 +148,31 @@ public class LtftService {
     this.ltftContentUpdateTopic = ltftContentUpdateTopic;
     this.ltftSubmissionHistoryService = ltftSubmissionHistoryService;
     this.eventBroadcastService = eventBroadcastService;
+    this.reviewStageService = reviewStageService;
+  }
+
+  /**
+   * Get the review workflow state for an LTFT form associated with the calling admin's local
+   * office.
+   *
+   * @param formId The ID of the form.
+   * @return The workflow DTO, or empty if no form was found for the admin's DBCs.
+   */
+  public Optional<ReviewWorkflowDto> getReviewWorkflow(UUID formId) {
+    log.info("Getting review workflow for LTFT form {} as admin [{}]", formId,
+        adminIdentity.getEmail());
+    Set<String> dbcs = adminIdentity.getGroups();
+    Optional<LtftForm> optForm =
+        ltftFormRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(formId,
+            dbcs);
+
+    if (optForm.isEmpty()) {
+      log.warn("Could not get review workflow for form {} since no form exists for DBCs [{}]",
+          formId, dbcs);
+      return Optional.empty();
+    }
+
+    return Optional.of(reviewStageService.getWorkflowDto(optForm.get()));
   }
 
   /**

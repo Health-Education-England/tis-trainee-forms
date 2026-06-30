@@ -64,6 +64,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
+import uk.nhs.hee.tis.trainee.forms.dto.ReviewWorkflowDto;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
@@ -220,6 +221,17 @@ public class AdminLtftResource {
   ResponseEntity<LtftFormDto> assignAdmin(@PathVariable UUID id, @RequestBody PersonDto admin) {
     Optional<LtftFormDto> form = service.assignAdmin(id, admin);
     return ResponseEntity.of(form);
+  }
+
+  /**
+   * Get the review workflow state for the form with the given ID.
+   *
+   * @param id The ID of the form.
+   * @return The review workflow DTO, or 404 if the form was not found for the admin's local office.
+   */
+  @GetMapping("/{id}/review-workflow")
+  ResponseEntity<ReviewWorkflowDto> getReviewWorkflow(@PathVariable UUID id) {
+    return ResponseEntity.of(service.getReviewWorkflow(id));
   }
 
   /**

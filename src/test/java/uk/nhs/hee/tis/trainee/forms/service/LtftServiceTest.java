@@ -118,6 +118,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.RedactedPersonDto;
+import uk.nhs.hee.tis.trainee.forms.dto.ReviewWorkflowDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
@@ -169,6 +170,7 @@ class LtftServiceTest {
   private Validator validator;
   private EventBroadcastService eventBroadcastService;
   private LtftSubmissionHistoryService ltftSubmissionHistoryService;
+  private ReviewStageService reviewStageService;
 
   @BeforeEach
   void setUp() {
@@ -194,6 +196,7 @@ class LtftServiceTest {
     mongoTemplate = mock(MongoTemplate.class);
     eventBroadcastService = mock(EventBroadcastService.class);
     ltftSubmissionHistoryService = mock(LtftSubmissionHistoryService.class);
+    reviewStageService = mock(ReviewStageService.class);
 
     jsonMapper = (JsonMapper) new JsonMapper().registerModule(new JavaTimeModule());
     temporalMapper = mock(TemporalMapper.class);
@@ -202,7 +205,8 @@ class LtftServiceTest {
     validator = mock(Validator.class);
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, jsonMapper,
         mapper, validator, eventBroadcastService, LTFT_ASSIGNMENT_UPDATE_TOPIC,
-        LTFT_STATUS_UPDATE_TOPIC, LTFT_STATUS_CONTENT_TOPIC, ltftSubmissionHistoryService);
+        LTFT_STATUS_UPDATE_TOPIC, LTFT_STATUS_CONTENT_TOPIC, ltftSubmissionHistoryService,
+        reviewStageService);
   }
 
   @Test
@@ -2300,7 +2304,8 @@ class LtftServiceTest {
 
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, jsonMapper,
         mapper, validator, eventBroadcastService, LTFT_ASSIGNMENT_UPDATE_TOPIC,
-        LTFT_STATUS_UPDATE_TOPIC, LTFT_STATUS_CONTENT_TOPIC, ltftSubmissionHistoryService);
+        LTFT_STATUS_UPDATE_TOPIC, LTFT_STATUS_CONTENT_TOPIC, ltftSubmissionHistoryService,
+        reviewStageService);
 
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
@@ -2337,7 +2342,8 @@ class LtftServiceTest {
 
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, jsonMapper,
         mapper, validator, eventBroadcastService, LTFT_ASSIGNMENT_UPDATE_TOPIC,
-        LTFT_STATUS_UPDATE_TOPIC, LTFT_STATUS_CONTENT_TOPIC, ltftSubmissionHistoryService);
+        LTFT_STATUS_UPDATE_TOPIC, LTFT_STATUS_CONTENT_TOPIC, ltftSubmissionHistoryService,
+        reviewStageService);
 
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
@@ -2373,7 +2379,8 @@ class LtftServiceTest {
 
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, jsonMapper,
         mapper, validator, eventBroadcastService, LTFT_ASSIGNMENT_UPDATE_TOPIC,
-        LTFT_STATUS_UPDATE_TOPIC, LTFT_STATUS_CONTENT_TOPIC, ltftSubmissionHistoryService);
+        LTFT_STATUS_UPDATE_TOPIC, LTFT_STATUS_CONTENT_TOPIC, ltftSubmissionHistoryService,
+        reviewStageService);
 
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
@@ -3884,5 +3891,38 @@ class LtftServiceTest {
         Arguments.of(UNSUBMITTED, SUBMITTED),
         Arguments.of(UNSUBMITTED, WITHDRAWN)
     );
+  }  @Test
+  void shouldLookUpFormByIdWhenGettingReviewWorkflow() {
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.empty());
+    service.getReviewWorkflow(ID);
+    verify(repository).findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        eq(ID), any());
+  }
+  @Test
+  void shouldLookUpFormByAdminDbcsWhenGettingReviewWorkflow() {
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.empty());
+    service.getReviewWorkflow(ID);
+    verify(repository).findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        any(), eq(Set.of(ADMIN_GROUP)));
+  }
+  @Test
+  void shouldReturnEmptyWhenFormNotFoundForReviewWorkflow() {
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.empty());
+    Optional<ReviewWorkflowDto> result = service.getReviewWorkflow(ID);
+    assertThat("Unexpected result presence.", result.isPresent(), is(false));
+  }
+  @Test
+  void shouldReturnWorkflowDtoFromServiceWhenFormFound() {
+    LtftForm form = new LtftForm();
+    ReviewWorkflowDto expectedDto = new ReviewWorkflowDto(List.of("Triage", "Dean Approval"), 0);
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+    when(reviewStageService.getWorkflowDto(form)).thenReturn(expectedDto);
+    Optional<ReviewWorkflowDto> result = service.getReviewWorkflow(ID);
+    assertThat("Unexpected result presence.", result.isPresent(), is(true));
+    assertThat("Unexpected workflow dto.", result.get(), is(expectedDto));
   }
 }
