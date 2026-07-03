@@ -33,6 +33,7 @@ import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
+import uk.nhs.hee.tis.trainee.forms.dto.content.FormrPartbContentDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
@@ -131,10 +132,11 @@ public class FormRPartBValidator {
         });
       }
       //temporary check:
-      LocalDate currRevalDate = formRPartBDto.getContent().getCurrRevalDate();
-      if (currRevalDate != null && currRevalDate.isBefore(LocalDate.now())) {
+      FormrPartbContentDto content = formRPartBDto.getContent();
+      if (content != null && content.getCurrRevalDate() != null && content.getCurrRevalDate()
+          .isBefore(LocalDate.now())) {
         log.warn("Current revalidation date {} is not in the future in FormRPartB {}",
-            currRevalDate, formRPartBDto.getId());
+            content.getCurrRevalDate(), formRPartBDto.getId());
       }
     }
     return fieldErrors;

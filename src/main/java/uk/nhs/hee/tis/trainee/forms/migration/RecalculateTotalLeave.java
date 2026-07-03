@@ -62,12 +62,12 @@ public class RecalculateTotalLeave {
   public void migrate() {
     var criteria = new Criteria().andOperator(
         Criteria.where(TOTAL_LEAVE).is(0).orOperator(
-            Criteria.where("sicknessAbsence").ne(0),
-            Criteria.where("parentalLeave").ne(0),
-            Criteria.where("careerBreaks").ne(0),
-            Criteria.where("paidLeave").ne(0),
-            Criteria.where("unauthorisedLeave").ne(0),
-            Criteria.where("otherLeave").ne(0)
+            Criteria.where("content.sicknessAbsence").ne(0),
+            Criteria.where("content.parentalLeave").ne(0),
+            Criteria.where("content.careerBreaks").ne(0),
+            Criteria.where("content.paidLeave").ne(0),
+            Criteria.where("content.unauthorisedLeave").ne(0),
+            Criteria.where("content.otherLeave").ne(0)
         )
     );
     var query = Query.query(criteria);

@@ -148,7 +148,7 @@ public abstract class AbstractAuditedFormService<F extends AbstractAuditedForm<?
    * @param form The form to generate the reference for.
    */
   private void generateFormReference(F form) {
-    if (form.getFormRef() == null && form.getStatus().current().state() == SUBMITTED) {
+    if (form.getFormRef() == null && form.getLifecycleState() == SUBMITTED) {
       String traineeId = form.getTraineeTisId();
       long count = repository.countSubmittedByTraineeId(traineeId);
       String formRef = "%s_%s_%03d".formatted(form.getFormReferencePrefix(), traineeId, count + 1);

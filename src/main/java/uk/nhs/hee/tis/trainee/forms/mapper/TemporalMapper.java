@@ -68,7 +68,7 @@ public class TemporalMapper {
   }
 
   /**
-   * Convert a {@link LocalDate} to an {@link Instant}.
+   * Convert a {@link LocalDateTime} to an {@link Instant}.
    *
    * @param localDateTime The LocalDate to convert.
    * @return The Instant, based on the application's timezone.
