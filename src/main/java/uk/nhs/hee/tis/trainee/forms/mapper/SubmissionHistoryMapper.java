@@ -17,18 +17,31 @@
  * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
  * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
  */
 
-package uk.nhs.hee.tis.trainee.forms.repository;
+package uk.nhs.hee.tis.trainee.forms.mapper;
 
-import org.springframework.stereotype.Repository;
-import uk.nhs.hee.tis.trainee.forms.model.FormrPartaSubmissionHistory;
+import org.mapstruct.Mapping;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm;
+import uk.nhs.hee.tis.trainee.forms.model.FormSubmissionHistory;
 
 /**
- * A repository for LTFT submission history items.
+ * A mapper for converting forms to submission history items.
+ *
+ * @param <F> the form type.
+ * @param <H> the submission history type.
  */
-@Repository
-public interface FormrPartaSubmissionHistoryRepository extends
-    BaseSubmissionHistoryRepository<FormrPartaSubmissionHistory> {
+public interface SubmissionHistoryMapper<F extends AbstractAuditedForm<?>, H extends FormSubmissionHistory> {
 
+  /**
+   * Maps a form to a submission history item.
+   *
+   * @param form The form to map.
+   * @return The submission history item.
+   */
+  @Mapping(target = "id", ignore = true)
+  @Mapping(target = "created", ignore = true)
+  @Mapping(target = "lastModified", ignore = true)
+  H toSubmissionHistory(F form);
 }

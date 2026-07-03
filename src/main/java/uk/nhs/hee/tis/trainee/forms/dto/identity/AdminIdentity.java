@@ -41,6 +41,7 @@ public class AdminIdentity extends UserIdentity {
    *
    * @return Whether the admin identity is considered complete.
    */
+  @Override
   public boolean isComplete() {
     return getEmail() != null && getName() != null && groups != null && !groups.isEmpty();
   }

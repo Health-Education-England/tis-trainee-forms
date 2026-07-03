@@ -28,6 +28,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -69,7 +70,8 @@ public class AdminFormRPartAResource {
       """)
   // TODO: review permission requirements.
   @PutMapping("/{formId}/unsubmit")
-  public ResponseEntity<FormRPartADto> unsubmitFormRPartA(@PathVariable UUID formId) {
+  public ResponseEntity<FormRPartADto> unsubmitFormRPartA(@PathVariable UUID formId)
+      throws MethodArgumentNotValidException {
     log.info("Admin request to unsubmit FormRPartA with id {}", formId);
     Optional<FormRPartADto> unsubmitted = service.unsubmitFormRPartAById(formId);
     return ResponseEntity.of(unsubmitted);
@@ -116,7 +118,8 @@ public class AdminFormRPartAResource {
    */
   @PreAuthorize("hasRole('TSS_Support_Admin')")
   @DeleteMapping("/{formId}")
-  public ResponseEntity<FormRPartADto> deleteById(@PathVariable UUID formId) {
+  public ResponseEntity<FormRPartADto> deleteById(@PathVariable UUID formId)
+      throws MethodArgumentNotValidException {
     log.info("Admin request to delete FormRPartA with id {}", formId);
     Optional<FormRPartADto> deleted = service.partialDeleteFormRPartAById(formId);
     return ResponseEntity.of(deleted);

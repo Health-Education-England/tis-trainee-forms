@@ -63,7 +63,8 @@ import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
  */
 @Getter
 @Mapper(componentModel = SPRING, uses = TemporalMapper.class, injectionStrategy = CONSTRUCTOR)
-public abstract class LtftMapper {
+public abstract class LtftMapper implements FormMapper<LtftForm, LtftFormDto>,
+    SubmissionHistoryMapper<LtftForm, LtftSubmissionHistory> {
 
   private static final int NOTICE_PERIOD_DAYS = 112; // 16 weeks.
 
@@ -154,17 +155,6 @@ public abstract class LtftMapper {
   @Mapping(target = "tpdEmailStatus", source = "content.tpdEmailValidity")
   @Mapping(target = "shortNotice", source = "entity", qualifiedByName = "isShortNotice")
   public abstract LtftFormDto toDto(LtftForm entity);
-
-  /**
-   * Convert a {@link LtftForm} to a {@link LtftSubmissionHistory} entity.
-   *
-   * @param entity The form to convert.
-   * @return The equivalent submission history.
-   */
-  @Mapping(target = "id", ignore = true)
-  @Mapping(target = "created", ignore = true)
-  @Mapping(target = "lastModified", ignore = true)
-  public abstract LtftSubmissionHistory toSubmissionHistory(LtftForm entity);
 
   /**
    * Convert a {@link LtftFormDto} DTO to a {@link LtftForm}.

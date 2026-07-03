@@ -27,14 +27,13 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
-import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 
 @Repository
-public interface FormRPartARepository extends MongoRepository<FormRPartA, UUID> {
+public interface FormRPartARepository extends BaseAuditedFormRepository<FormRPartA> {
 
   @Query("{ 'traineeTisId': ?0, 'status.current.state': { $nin: ['DELETED', 'DRAFT'] } }")
   List<FormRPartA> findNotDraftNorDeletedByTraineeTisId(String traineeTisId);

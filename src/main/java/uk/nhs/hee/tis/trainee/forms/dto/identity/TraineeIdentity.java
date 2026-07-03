@@ -37,6 +37,16 @@ public class TraineeIdentity extends UserIdentity {
   private String traineeId;
   private FeaturesDto features;
 
+  /**
+   * Whether the trainee identity is considered complete based on the populated fields.
+   *
+   * @return Whether the trainee identity is considered complete.
+   */
+  @Override
+  public boolean isComplete() {
+    return traineeId != null;
+  }
+
   @Override
   public String getRole() {
     return ROLE;

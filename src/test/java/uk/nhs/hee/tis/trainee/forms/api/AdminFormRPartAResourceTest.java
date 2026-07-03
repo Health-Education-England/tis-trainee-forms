@@ -23,6 +23,7 @@
 package uk.nhs.hee.tis.trainee.forms.api;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.sameInstance;
@@ -39,6 +40,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
@@ -58,7 +60,8 @@ class AdminFormRPartAResourceTest {
   }
 
   @Test
-  void shouldReturnNotFoundWhenUnsubmittingAndFormNotFound() {
+  void shouldReturnNotFoundWhenUnsubmittingAndFormNotFound()
+      throws MethodArgumentNotValidException {
     when(service.unsubmitFormRPartAById(FORM_ID)).thenReturn(Optional.empty());
 
     ResponseEntity<FormRPartADto> response = controller.unsubmitFormRPartA(FORM_ID);
@@ -68,7 +71,8 @@ class AdminFormRPartAResourceTest {
   }
 
   @Test
-  void shouldReturnUnsubmittedFormWhenUnsubmittingAndFormFound() {
+  void shouldReturnUnsubmittedFormWhenUnsubmittingAndFormFound()
+      throws MethodArgumentNotValidException {
     FormRPartADto dto = new FormRPartADto();
     dto.setId(FORM_ID.toString());
 
@@ -81,7 +85,7 @@ class AdminFormRPartAResourceTest {
   }
 
   @Test
-  void shouldReturnNotFoundWhenDeletingAndFormNotFound() {
+  void shouldReturnNotFoundWhenDeletingAndFormNotFound() throws MethodArgumentNotValidException {
     when(service.partialDeleteFormRPartAById(FORM_ID)).thenReturn(Optional.empty());
 
     ResponseEntity<FormRPartADto> response = controller.deleteById(FORM_ID);
@@ -91,7 +95,8 @@ class AdminFormRPartAResourceTest {
   }
 
   @Test
-  void shouldReturnPartiallyDeletedFormWhenDeletingAndFormFound() {
+  void shouldReturnPartiallyDeletedFormWhenDeletingAndFormFound()
+      throws MethodArgumentNotValidException {
     FormRPartADto dto = new FormRPartADto();
     dto.setId(FORM_ID.toString());
 
@@ -122,7 +127,7 @@ class AdminFormRPartAResourceTest {
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), sameInstance(forms));
-    assertThat("Unexpected number of forms.", response.getBody().size(), is(2));
+    assertThat("Unexpected number of forms.", response.getBody(), hasSize(2));
   }
 
   @Test
@@ -136,7 +141,7 @@ class AdminFormRPartAResourceTest {
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), sameInstance(emptyList));
-    assertThat("Unexpected number of forms.", response.getBody().size(), is(0));
+    assertThat("Unexpected number of forms.", response.getBody(), hasSize(0));
   }
 
   @Test

@@ -19,16 +19,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package uk.nhs.hee.tis.trainee.forms.repository;
+package uk.nhs.hee.tis.trainee.forms.service;
 
-import org.springframework.stereotype.Repository;
-import uk.nhs.hee.tis.trainee.forms.model.FormrPartaSubmissionHistory;
+import com.amazonaws.xray.spring.aop.XRayEnabled;
+import org.springframework.stereotype.Service;
+import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
+import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
+import uk.nhs.hee.tis.trainee.forms.model.FormrPartbSubmissionHistory;
+import uk.nhs.hee.tis.trainee.forms.repository.FormrPartbSubmissionHistoryRepository;
 
 /**
- * A repository for LTFT submission history items.
+ * A service for managing FormR Part B submission history.
  */
-@Repository
-public interface FormrPartaSubmissionHistoryRepository extends
-    BaseSubmissionHistoryRepository<FormrPartaSubmissionHistory> {
+@Service
+@XRayEnabled
+public class FormrPartbSubmissionHistoryService extends
+    AbstractSubmissionHistoryService<FormRPartB, FormrPartbSubmissionHistory> {
 
+  /**
+   * Constructor for FormrPartbSubmissionHistoryService.
+   *
+   * @param historyRepository The repository for Form-R Part B submission history.
+   * @param mapper            The mapper for converting form and form submission history items.
+   */
+  public FormrPartbSubmissionHistoryService(
+      FormrPartbSubmissionHistoryRepository historyRepository, FormRPartBMapper mapper) {
+    super(historyRepository, mapper);
+  }
 }

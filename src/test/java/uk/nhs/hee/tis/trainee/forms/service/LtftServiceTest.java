@@ -168,7 +168,7 @@ class LtftServiceTest {
   private TemporalMapper temporalMapper;
   private Validator validator;
   private EventBroadcastService eventBroadcastService;
-  private LtftSubmissionHistoryService ltftSubmissionHistoryService;
+  private SubmissionHistoryService<LtftForm> ltftSubmissionHistoryService;
 
   @BeforeEach
   void setUp() {
@@ -190,16 +190,16 @@ class LtftServiceTest {
             .build())
         .build());
 
-    repository = mock(LtftFormRepository.class);
-    mongoTemplate = mock(MongoTemplate.class);
-    eventBroadcastService = mock(EventBroadcastService.class);
-    ltftSubmissionHistoryService = mock(LtftSubmissionHistoryService.class);
+    repository = mock();
+    mongoTemplate = mock();
+    eventBroadcastService = mock();
+    ltftSubmissionHistoryService = mock();
 
     jsonMapper = (JsonMapper) new JsonMapper().registerModule(new JavaTimeModule());
-    temporalMapper = mock(TemporalMapper.class);
+    temporalMapper = mock();
     mapper = new LtftMapperImpl(new TemporalMapper(ZoneId.of("Etc/UTC")));
     mapper.setTemporalMapper(temporalMapper);
-    validator = mock(Validator.class);
+    validator = mock();
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, jsonMapper,
         mapper, validator, eventBroadcastService, LTFT_ASSIGNMENT_UPDATE_TOPIC,
         LTFT_STATUS_UPDATE_TOPIC, LTFT_STATUS_CONTENT_TOPIC, ltftSubmissionHistoryService);
@@ -3371,7 +3371,7 @@ class LtftServiceTest {
       100 | _101
       1000 | _1001
       """)
-  void shouldPopulateFormRefWhenSubmittingForm(int previousFormCount, String refSuffix) {
+  void shouldPopulateFormRefWhenSubmittingForm(long previousFormCount, String refSuffix) {
     LtftForm form = new LtftForm();
     form.setId(ID);
     form.setTraineeTisId(TRAINEE_ID);
@@ -3379,7 +3379,7 @@ class LtftServiceTest {
     form.setContent(LtftContent.builder().name("test").build());
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
-    when(repository.countByTraineeTisIdAndStatus_SubmittedIsNotNull(TRAINEE_ID))
+    when(repository.countSubmittedByTraineeId(TRAINEE_ID))
         .thenReturn(previousFormCount);
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -3832,7 +3832,7 @@ class LtftServiceTest {
           .map(LtftForm::getId).toList())));
     });
 
-    verify(ltftSubmissionHistoryService).moveLtftSubmissions(fromTraineeId, toTraineeId);
+    verify(ltftSubmissionHistoryService).moveHistory(fromTraineeId, toTraineeId);
   }
 
   @Test

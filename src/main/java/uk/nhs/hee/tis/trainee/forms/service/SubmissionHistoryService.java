@@ -17,18 +17,35 @@
  * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
  * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
  */
 
-package uk.nhs.hee.tis.trainee.forms.repository;
+package uk.nhs.hee.tis.trainee.forms.service;
 
-import org.springframework.stereotype.Repository;
-import uk.nhs.hee.tis.trainee.forms.model.FormrPartaSubmissionHistory;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm;
+import uk.nhs.hee.tis.trainee.forms.model.content.FormContent;
 
 /**
- * A repository for LTFT submission history items.
+ * A service interface for managing submission history of forms.
+ *
+ * @param <F> The type of form content.
  */
-@Repository
-public interface FormrPartaSubmissionHistoryRepository extends
-    BaseSubmissionHistoryRepository<FormrPartaSubmissionHistory> {
+public interface SubmissionHistoryService<F extends AbstractAuditedForm<? extends FormContent>> {
 
+  /**
+   * Take a snapshot of the form and save it to the repository.
+   *
+   * @param form The form to be saved.
+   */
+  void takeSnapshot(F form);
+
+  /**
+   * Move all form submissions from one trainee to another. Assumes that fromTraineeId and
+   * toTraineeId are valid.
+   *
+   * @param fromTraineeId The trainee ID to move forms from.
+   * @param toTraineeId   The trainee ID to move forms to.
+   * @return The number of form submissions moved.
+   */
+  int moveHistory(String fromTraineeId, String toTraineeId);
 }

@@ -91,8 +91,8 @@ class RecalculateTotalLeaveTest {
         .flatMap(doc -> doc.keySet().stream())
         .collect(Collectors.toSet());
     assertThat("Unexpected OR filter fields.", orFields,
-        hasItems("sicknessAbsence", "parentalLeave", "careerBreaks", "paidLeave",
-            "unauthorisedLeave", "otherLeave"));
+        hasItems("content.sicknessAbsence", "content.parentalLeave", "content.careerBreaks",
+            "content.paidLeave", "content.unauthorisedLeave", "content.otherLeave"));
   }
 
   @Test

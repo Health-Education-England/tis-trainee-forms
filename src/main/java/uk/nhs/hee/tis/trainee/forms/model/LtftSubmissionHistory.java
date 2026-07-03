@@ -36,10 +36,16 @@ import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
 @CompoundIndex(def = "{'formRef': 1, 'revision': 1}", unique = true)
-public class LtftSubmissionHistory extends AbstractAuditedForm<LtftContent> {
+public class LtftSubmissionHistory extends AbstractAuditedForm<LtftContent> implements
+    FormSubmissionHistory {
 
   @Override
   public String getFormType() {
     return "ltftSubmissionHistory";
+  }
+
+  @Override
+  public String getFormReferencePrefix() {
+    return null;
   }
 }

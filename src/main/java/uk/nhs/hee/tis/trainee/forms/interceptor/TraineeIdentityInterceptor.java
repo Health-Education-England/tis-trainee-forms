@@ -76,7 +76,7 @@ public class TraineeIdentityInterceptor implements HandlerInterceptor {
       }
     }
 
-    if (traineeIdentity.getTraineeId() == null) {
+    if (!traineeIdentity.isComplete()) {
       response.setStatus(HttpStatus.FORBIDDEN.value());
       return false;
     }

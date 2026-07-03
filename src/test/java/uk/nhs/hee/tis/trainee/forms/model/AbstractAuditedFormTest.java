@@ -438,5 +438,10 @@ class AbstractAuditedFormTest {
     public String getFormType() {
       return "test-auditedform";
     }
+
+    @Override
+    public String getFormReferencePrefix() {
+      return null;
+    }
   }
 }

@@ -22,9 +22,6 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import com.amazonaws.xray.spring.aop.XRayEnabled;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
@@ -34,14 +31,10 @@ import uk.nhs.hee.tis.trainee.forms.repository.LtftSubmissionHistoryRepository;
 /**
  * A service for managing LTFT submission history.
  */
-@Slf4j
 @Service
 @XRayEnabled
-public class LtftSubmissionHistoryService {
-
-  private final LtftSubmissionHistoryRepository ltftHistoryRepository;
-
-  private final LtftMapper mapper;
+public class LtftSubmissionHistoryService extends
+    AbstractSubmissionHistoryService<LtftForm, LtftSubmissionHistory> {
 
   /**
    * Constructor for LtftSubmissionHistoryService.
@@ -51,43 +44,6 @@ public class LtftSubmissionHistoryService {
    */
   public LtftSubmissionHistoryService(
       LtftSubmissionHistoryRepository ltftHistoryRepository, LtftMapper mapper) {
-    this.ltftHistoryRepository = ltftHistoryRepository;
-    this.mapper = mapper;
-  }
-
-  /**
-   * Take a snapshot of the submitted LTFT form and save it to the repository.
-   *
-   * @param ltftForm The LTFT form to be saved.
-   */
-  public void takeSnapshot(LtftForm ltftForm) {
-    log.info("Taking snapshot of submitted form {}", ltftForm.getId());
-    LtftSubmissionHistory submissionHistory = mapper.toSubmissionHistory(ltftForm);
-    ltftHistoryRepository.save(submissionHistory);
-  }
-
-  /**
-   * Move all LTFT submissions from one trainee to another. Assumes that fromTraineeId and
-   * toTraineeId are valid.
-   *
-   * @param fromTraineeId The trainee ID to move LTFTs from.
-   * @param toTraineeId   The trainee ID to move LTFTs to.
-   * @return The number of LTFT submissions moved.
-   */
-  public Integer moveLtftSubmissions(String fromTraineeId, String toTraineeId) {
-    AtomicReference<Integer> movedCount = new AtomicReference<>(0);
-    List<LtftSubmissionHistory> submissions
-        = ltftHistoryRepository.findByTraineeTisId(fromTraineeId);
-
-    submissions.forEach(form -> {
-      log.debug("Moving LTFT submission [{}] from trainee [{}] to trainee [{}]",
-          form.getId(), fromTraineeId, toTraineeId);
-      form.setTraineeTisId(toTraineeId);
-      ltftHistoryRepository.save(form); //lastModifiedDate will be overwritten here
-      movedCount.getAndSet(movedCount.get() + 1);
-    });
-    log.info("Moved {} LTFT submissions from trainee [{}] to trainee [{}]",
-        movedCount.get(), fromTraineeId, toTraineeId);
-    return movedCount.get();
+    super(ltftHistoryRepository, mapper);
   }
 }

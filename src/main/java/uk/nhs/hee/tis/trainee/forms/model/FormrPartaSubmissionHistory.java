@@ -37,10 +37,16 @@ import uk.nhs.hee.tis.trainee.forms.model.content.FormrPartaContent;
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
 @CompoundIndex(def = "{'formRef': 1, 'revision': 1}", unique = true)
-public class FormrPartaSubmissionHistory extends AbstractAuditedForm<FormrPartaContent> {
+public class FormrPartaSubmissionHistory extends AbstractAuditedForm<FormrPartaContent> implements
+    FormSubmissionHistory {
 
   @Override
   public String getFormType() {
     return "formrPartaSubmissionHistory";
+  }
+
+  @Override
+  public String getFormReferencePrefix() {
+    return null;
   }
 }

@@ -32,6 +32,7 @@ import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
+import uk.nhs.hee.tis.trainee.forms.dto.content.FormrPartaContentDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
@@ -113,8 +114,9 @@ public class FormRPartAValidator {
 
     if (lifecycleState.equals(LifecycleState.SUBMITTED)) {
       //temporary - should be replaced by annotation
-      String wte = formRPartADto.getContent().getWholeTimeEquivalent();
-      if (wte == null || wte.isEmpty()) {
+      FormrPartaContentDto content = formRPartADto.getContent();
+      if (content == null || content.getWholeTimeEquivalent() == null
+          || content.getWholeTimeEquivalent().isEmpty()) {
         fieldErrors.add(new FieldError(FORMR_PARTA_DTO_NAME, "wholeTimeEquivalent",
             "wholeTimeEquivalent is missing or empty"));
       }

@@ -71,5 +71,10 @@ class AbstractFormMongoEventListenerTest {
     public String getFormType() {
       return "test-form";
     }
+
+    @Override
+    public String getFormReferencePrefix() {
+      return null;
+    }
   }
 }
