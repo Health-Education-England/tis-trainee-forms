@@ -34,7 +34,7 @@ public abstract class AbstractForm {
   @Id
   private UUID id;
   @Indexed
-  @Field(value = "traineeTisId")
+  @Field(value = "traineeTisId", order = 0)
   private String traineeTisId;
 
   @JsonIgnore

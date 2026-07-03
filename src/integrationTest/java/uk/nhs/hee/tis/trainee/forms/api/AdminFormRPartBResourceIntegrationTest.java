@@ -213,11 +213,10 @@ class AdminFormRPartBResourceIntegrationTest {
     FormRPartB form = new FormRPartB();
     form.setId(FORM_ID);
     form.setTraineeTisId(TRAINEE_ID);
-    form.setStatus(Status.builder().submitted(Instant.now()).build());
+    form.setLifecycleState(SUBMITTED);
     template.insert(form);
 
-    when(snsClient.publish(any(PublishRequest.class)))
-        .thenReturn(any());
+    when(snsClient.publish(any(PublishRequest.class))).thenReturn(mock());
 
     mockMvc.perform(request(method, uriTemplate, FORM_ID)
             .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of(role))))
@@ -324,6 +323,13 @@ class AdminFormRPartBResourceIntegrationTest {
         .build());
     template.insert(submittedForm);
 
+    // TODO: timestamp comparison fails due to Jackson trimming trailing 0s during serialization.
+    //  May not be an issue once DTO is migrated to Instant.
+    String expectedSubmissionDate = submissionDate.truncatedTo(ChronoUnit.MILLIS).toString();
+    expectedSubmissionDate =
+        expectedSubmissionDate.endsWith("0") ? expectedSubmissionDate.substring(0,
+            expectedSubmissionDate.length() - 1) : expectedSubmissionDate;
+
     mockMvc.perform(get("/api/admin/formr-partb")
             .param("traineeId", TRAINEE_ID)
             .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of("HEE Admin"))))
@@ -338,10 +344,7 @@ class AdminFormRPartBResourceIntegrationTest {
         .andExpect(jsonPath("$[0].programmeStartDate").doesNotExist())
         .andExpect(jsonPath("$[0].programmeMembershipId")
             .value(programmeMembershipId.toString()))
-        // TODO: this can fail due to Jackson trimming trailing 0s during serialization.
-        //  May not be an issue once DTO is migrated to Instant.
-        .andExpect(jsonPath("$[0].submissionDate")
-            .value(submissionDate.truncatedTo(ChronoUnit.MILLIS).toString()))
+        .andExpect(jsonPath("$[0].submissionDate").value(expectedSubmissionDate))
         .andExpect(jsonPath("$[0].formType").value("formr-partb"));
   }
 }

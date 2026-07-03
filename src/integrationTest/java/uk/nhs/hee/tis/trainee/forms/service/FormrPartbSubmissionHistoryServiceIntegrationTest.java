@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2025 Crown Copyright (Health Education England)
+ * Copyright 2026 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -45,13 +45,13 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
-import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
-import uk.nhs.hee.tis.trainee.forms.model.LtftSubmissionHistory;
+import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
+import uk.nhs.hee.tis.trainee.forms.model.FormrPartbSubmissionHistory;
 
 @SpringBootTest
 @ActiveProfiles("test")
 @Testcontainers
-class LtftSubmissionHistoryServiceIntegrationTest {
+class FormrPartbSubmissionHistoryServiceIntegrationTest {
 
   private static final String TRAINEE_ID = "47165";
 
@@ -61,7 +61,7 @@ class LtftSubmissionHistoryServiceIntegrationTest {
       DockerImageNames.MONGO);
 
   @Autowired
-  private SubmissionHistoryService<LtftForm> service;
+  private SubmissionHistoryService<FormRPartB> service;
 
   @Autowired
   private MongoTemplate template;
@@ -74,20 +74,20 @@ class LtftSubmissionHistoryServiceIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    template.remove(new Query(), LtftSubmissionHistory.class);
+    template.remove(new Query(), FormrPartbSubmissionHistory.class);
   }
 
   @Test
-  void shouldSaveLtftSubmissionHistory() {
-    LtftForm form = new LtftForm();
+  void shouldSaveFormrPartbSubmissionHistory() {
+    FormRPartB form = new FormRPartB();
     form.setId(UUID.randomUUID());
     form.setRevision(1);
-    form.setFormRef("LTFT-12345");
+    form.setFormRef("formr_partb_12345_001");
     form.setTraineeTisId(TRAINEE_ID);
 
     service.takeSnapshot(form);
 
-    var savedSubmissionHistory = template.findOne(new Query(), LtftSubmissionHistory.class);
+    var savedSubmissionHistory = template.findOne(new Query(), FormrPartbSubmissionHistory.class);
 
     assert savedSubmissionHistory != null;
 
@@ -107,15 +107,15 @@ class LtftSubmissionHistoryServiceIntegrationTest {
   }
 
   @Test
-  void shouldMoveLtftSubmissionsWhenSubmissionsExist() {
+  void shouldMoveSubmissionsWhenSubmissionsExist() {
     String fromTraineeId = "oldTrainee";
     String toTraineeId = "newTrainee";
-    LtftForm form1 = new LtftForm();
+    FormRPartB form1 = new FormRPartB();
     form1.setId(UUID.randomUUID());
     form1.setTraineeTisId(fromTraineeId);
     form1.setFormRef("form 1");
     form1.setRevision(1);
-    LtftForm form2 = new LtftForm();
+    FormRPartB form2 = new FormRPartB();
     form2.setId(UUID.randomUUID());
     form2.setTraineeTisId(fromTraineeId);
     form2.setFormRef("form 2");
@@ -126,25 +126,25 @@ class LtftSubmissionHistoryServiceIntegrationTest {
 
     Integer movedCount = service.moveHistory(fromTraineeId, toTraineeId);
 
-    List<LtftSubmissionHistory> traineeSubmissions
-        = template.findAll(LtftSubmissionHistory.class);
+    List<FormrPartbSubmissionHistory> traineeSubmissions
+        = template.findAll(FormrPartbSubmissionHistory.class);
 
     assertThat("Unexpected number of submissions.", traineeSubmissions.size(), is(2));
-    for (LtftSubmissionHistory submission : traineeSubmissions) {
+    for (FormrPartbSubmissionHistory submission : traineeSubmissions) {
       assertThat("Submission not moved.", submission.getTraineeTisId(), is(toTraineeId));
     }
     assertThat("Unexpected number of moved submissions.", movedCount, is(2));
   }
 
   @Test
-  void shouldHandleMoveLtftSubmissionsWhenNoSubmissionsExist() {
+  void shouldHandleMoveSubmissionsWhenNoSubmissionsExist() {
     String fromTraineeId = "oldTrainee";
     String toTraineeId = "newTrainee";
 
     Integer movedCount = service.moveHistory(fromTraineeId, toTraineeId);
 
-    List<LtftSubmissionHistory> traineeSubmissions
-        = template.findAll(LtftSubmissionHistory.class);
+    List<FormrPartbSubmissionHistory> traineeSubmissions
+        = template.findAll(FormrPartbSubmissionHistory.class);
 
     assertThat("Unexpected number of submissions.", traineeSubmissions.size(), is(0));
     assertThat("Unexpected number of moved submissions.", movedCount, is(0));
@@ -154,7 +154,7 @@ class LtftSubmissionHistoryServiceIntegrationTest {
   void willUpdateLastModifiedDateWhenMoving() {
     String fromTraineeId = "oldTrainee";
     String toTraineeId = "newTrainee";
-    LtftForm form1 = new LtftForm();
+    FormRPartB form1 = new FormRPartB();
     form1.setId(UUID.randomUUID());
     form1.setTraineeTisId(fromTraineeId);
     form1.setFormRef("form 1");
@@ -166,10 +166,11 @@ class LtftSubmissionHistoryServiceIntegrationTest {
 
     service.moveHistory(fromTraineeId, toTraineeId);
 
-    List<LtftSubmissionHistory> traineeSubmissions = template.findAll(LtftSubmissionHistory.class);
+    List<FormrPartbSubmissionHistory> traineeSubmissions = template.findAll(
+        FormrPartbSubmissionHistory.class);
 
     assertThat("Unexpected number of submissions.", traineeSubmissions.size(), is(1));
-    for (LtftSubmissionHistory submission : traineeSubmissions) {
+    for (FormrPartbSubmissionHistory submission : traineeSubmissions) {
       assertThat("Submission last modified has changed.", submission.getLastModified(),
           greaterThan(lastModified));
     }

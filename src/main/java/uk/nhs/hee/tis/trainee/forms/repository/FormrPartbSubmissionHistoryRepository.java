@@ -21,9 +21,6 @@
 
 package uk.nhs.hee.tis.trainee.forms.repository;
 
-import java.util.List;
-import java.util.UUID;
-import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 import uk.nhs.hee.tis.trainee.forms.model.FormrPartbSubmissionHistory;
 
@@ -32,13 +29,6 @@ import uk.nhs.hee.tis.trainee.forms.model.FormrPartbSubmissionHistory;
  */
 @Repository
 public interface FormrPartbSubmissionHistoryRepository extends
-    MongoRepository<FormrPartbSubmissionHistory, UUID> {
+    BaseSubmissionHistoryRepository<FormrPartbSubmissionHistory> {
 
-  /**
-   * Find all Form-R Part B submissions belonging to the given trainee.
-   *
-   * @param traineeId The ID of the trainee.
-   * @return A list of found Form-R Part B submissions.
-   */
-  List<FormrPartbSubmissionHistory> findByTraineeTisId(String traineeId);
 }

@@ -21,9 +21,6 @@
 
 package uk.nhs.hee.tis.trainee.forms.repository;
 
-import java.util.List;
-import java.util.UUID;
-import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 import uk.nhs.hee.tis.trainee.forms.model.LtftSubmissionHistory;
 
@@ -31,14 +28,7 @@ import uk.nhs.hee.tis.trainee.forms.model.LtftSubmissionHistory;
  * A repository for LTFT submission history items.
  */
 @Repository
-public interface LtftSubmissionHistoryRepository
-    extends MongoRepository<LtftSubmissionHistory, UUID> {
+public interface LtftSubmissionHistoryRepository extends
+    BaseSubmissionHistoryRepository<LtftSubmissionHistory> {
 
-  /**
-   * Find all LTFT submissions belonging to the given trainee.
-   *
-   * @param traineeId The ID of the trainee.
-   * @return A list of found LTFT submissions.
-   */
-  List<LtftSubmissionHistory> findByTraineeTisId(String traineeId);
 }

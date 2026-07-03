@@ -28,7 +28,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
-import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
@@ -37,7 +36,7 @@ import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
  * A repository for LTFT forms.
  */
 @Repository
-public interface LtftFormRepository extends MongoRepository<LtftForm, UUID> {
+public interface LtftFormRepository extends BaseAuditedFormRepository<LtftForm> {
 
   /**
    * Count the number of non-draft LTFT forms belonging to the given trainee.
@@ -91,7 +90,7 @@ public interface LtftFormRepository extends MongoRepository<LtftForm, UUID> {
    * @return The found LTFT form, empty if not found.
    */
   Optional<LtftForm>
-      findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+  findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
       UUID id, Set<LifecycleState> states, Set<String> dbcs);
 
   /**

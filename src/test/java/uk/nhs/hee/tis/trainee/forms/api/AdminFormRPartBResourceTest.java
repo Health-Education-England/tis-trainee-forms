@@ -39,6 +39,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
@@ -58,7 +59,8 @@ class AdminFormRPartBResourceTest {
   }
 
   @Test
-  void shouldReturnNotFoundWhenUnsubmittingAndFormNotFound() {
+  void shouldReturnNotFoundWhenUnsubmittingAndFormNotFound()
+      throws MethodArgumentNotValidException {
     when(service.unsubmitFormRPartBById(FORM_ID)).thenReturn(Optional.empty());
 
     ResponseEntity<FormRPartBDto> response = controller.unsubmitFormRPartB(FORM_ID);
@@ -68,7 +70,8 @@ class AdminFormRPartBResourceTest {
   }
 
   @Test
-  void shouldReturnUnsubmittedFormWhenUnsubmittingAndFormFound() {
+  void shouldReturnUnsubmittedFormWhenUnsubmittingAndFormFound()
+      throws MethodArgumentNotValidException {
     FormRPartBDto dto = new FormRPartBDto();
     dto.setId(FORM_ID.toString());
 
@@ -81,7 +84,7 @@ class AdminFormRPartBResourceTest {
   }
 
   @Test
-  void shouldReturnNotFoundWhenDeletingAndFormNotFound() {
+  void shouldReturnNotFoundWhenDeletingAndFormNotFound() throws MethodArgumentNotValidException {
     when(service.partialDeleteFormRPartBById(FORM_ID)).thenReturn(Optional.empty());
 
     ResponseEntity<FormRPartBDto> response = controller.deleteById(FORM_ID);
@@ -91,7 +94,8 @@ class AdminFormRPartBResourceTest {
   }
 
   @Test
-  void shouldReturnPartiallyDeletedFormWhenDeletingAndFormFound() {
+  void shouldReturnPartiallyDeletedFormWhenDeletingAndFormFound()
+      throws MethodArgumentNotValidException {
     FormRPartBDto dto = new FormRPartBDto();
     dto.setId(FORM_ID.toString());
 

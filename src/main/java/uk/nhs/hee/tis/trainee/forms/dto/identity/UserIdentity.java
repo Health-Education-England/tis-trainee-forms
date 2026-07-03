@@ -38,4 +38,11 @@ public abstract class UserIdentity {
    * @return The role of the user.
    */
   public abstract String getRole();
+
+  /**
+   * Whether the identity attributes are complete, indicated a valid user.
+   *
+   * @return True if the identity attributes are complete, false otherwise.
+   */
+  public abstract boolean isComplete();
 }

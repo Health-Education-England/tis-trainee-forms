@@ -270,6 +270,11 @@ class LifecycleStateTest {
     public String getFormType() {
       return "test-formr";
     }
+
+    @Override
+    public String getFormReferencePrefix() {
+      return null;
+    }
   }
 
   /**

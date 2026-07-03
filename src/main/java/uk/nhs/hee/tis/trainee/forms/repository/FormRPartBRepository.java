@@ -26,14 +26,13 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
-import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 
 @Repository
-public interface FormRPartBRepository extends MongoRepository<FormRPartB, UUID> {
+public interface FormRPartBRepository extends BaseAuditedFormRepository<FormRPartB> {
 
   Optional<FormRPartB> findByIdAndTraineeTisId(UUID id, String traineeTisId);
 

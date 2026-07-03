@@ -32,6 +32,7 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.annotation.Transient;
 import org.springframework.data.domain.Persistable;
 import org.springframework.data.mongodb.core.index.Indexed;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -63,6 +64,10 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
 
   @LastModifiedDate
   private Instant lastModified;
+
+  @JsonIgnore
+  @Transient
+  public abstract String getFormReferencePrefix();
 
   /**
    * Get the current (most recent) lifecycle state.

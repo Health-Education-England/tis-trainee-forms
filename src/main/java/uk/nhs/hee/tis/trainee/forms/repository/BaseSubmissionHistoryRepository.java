@@ -17,18 +17,31 @@
  * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
  * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
  */
 
 package uk.nhs.hee.tis.trainee.forms.repository;
 
-import org.springframework.stereotype.Repository;
-import uk.nhs.hee.tis.trainee.forms.model.FormrPartaSubmissionHistory;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.repository.NoRepositoryBean;
+import uk.nhs.hee.tis.trainee.forms.model.FormSubmissionHistory;
 
 /**
- * A repository for LTFT submission history items.
+ * A base repository interface for managing form submission history entities.
+ *
+ * @param <T> The type of form submission history entity.
  */
-@Repository
-public interface FormrPartaSubmissionHistoryRepository extends
-    BaseSubmissionHistoryRepository<FormrPartaSubmissionHistory> {
+@NoRepositoryBean
+public interface BaseSubmissionHistoryRepository<T extends FormSubmissionHistory> extends
+    MongoRepository<T, UUID> {
 
+  /**
+   * Find all form submissions belonging to the given trainee.
+   *
+   * @param traineeId The ID of the trainee.
+   * @return A list of found form submissions.
+   */
+  List<T> findByTraineeTisId(String traineeId);
 }

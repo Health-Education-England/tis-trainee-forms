@@ -35,14 +35,19 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
-import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
+import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
+import uk.nhs.hee.tis.trainee.forms.dto.identity.UserIdentity;
+import uk.nhs.hee.tis.trainee.forms.dto.identity.UserIdentityResolver;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapper;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
@@ -52,7 +57,7 @@ import uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService.FormrFileEvent
 @Service
 @Transactional
 @XRayEnabled
-public class FormRPartAService {
+public class FormRPartAService extends AbstractAuditedFormService<FormRPartA> {
 
   public static final String FORM_TYPE = "formr-a";
 
@@ -62,7 +67,7 @@ public class FormRPartAService {
 
   private final ObjectMapper objectMapper;
 
-  private final TraineeIdentity traineeIdentity;
+  private final UserIdentityResolver identityResolver;
 
   private final EventBroadcastService eventBroadcastService;
 
@@ -74,20 +79,23 @@ public class FormRPartAService {
    * @param repository             Spring data repository.
    * @param mapper                 Maps between the form entity and DTO.
    * @param objectMapper           The object mapper.
-   * @param traineeIdentity        The trainee identity.
+   * @param identityResolver       A resolver for the identity of the user making the request.
    * @param eventBroadcastService  The event broadcast service.
    * @param formRPartAUpdatedTopic The SNS topic for FormR PartA updated events.
    */
   public FormRPartAService(FormRPartARepository repository, FormRPartAMapper mapper,
-      ObjectMapper objectMapper, TraineeIdentity traineeIdentity,
+      ObjectMapper objectMapper, UserIdentityResolver identityResolver,
       EventBroadcastService eventBroadcastService,
+      SubmissionHistoryService<FormRPartA> historyService,
       @Value("${application.aws.sns.formr-updated}") String formRPartAUpdatedTopic) {
+    super(repository, historyService);
+
     this.eventBroadcastService = eventBroadcastService;
     this.formRPartAUpdatedTopic = formRPartAUpdatedTopic;
     this.repository = repository;
     this.mapper = mapper;
     this.objectMapper = objectMapper;
-    this.traineeIdentity = traineeIdentity;
+    this.identityResolver = identityResolver;
   }
 
   /**
@@ -116,31 +124,18 @@ public class FormRPartAService {
     if (existingForm == null
         || formRPartADto.getLifecycleState() != existingForm.getLifecycleState()) {
       LifecycleState newLifecycleState = formRPartADto.getLifecycleState();
-      Person modifiedBy;
-      int revision;
 
-      if (newLifecycleState == DRAFT || newLifecycleState == SUBMITTED) {
-        modifiedBy = Person.builder()
-            .name(traineeIdentity.getName())
-            .email(traineeIdentity.getEmail())
-            .role(traineeIdentity.getRole())
-            .build();
-        revision = formRPartA.getRevision();
-      } else {
-        // TODO: used admin identity if we need to handle admin transitions here.
-        modifiedBy = Person.builder()
-            .name("Unknown Admin")
-            .email("no-reply@tis.nhs.uk")
-            .role("ADMIN")
-            .build();
-        revision = newLifecycleState == UNSUBMITTED ? formRPartA.getRevision() + 1
-            : formRPartA.getRevision();
+      try {
+        UserIdentity userIdentity = identityResolver.getUserIdentity();
+        formRPartA = updateStatus(formRPartA, newLifecycleState, userIdentity, null);
+      } catch (MethodArgumentNotValidException e) {
+        // TODO: allow exception to bubble up to provide appropriate API responses.
+        throw new IllegalArgumentException(e);
       }
-
-      formRPartA.setLifecycleState(newLifecycleState, null, modifiedBy, revision);
+    } else {
+      formRPartA = repository.save(formRPartA);
     }
 
-    formRPartA = repository.save(formRPartA);
     FormRPartADto formDto = mapper.toDto(formRPartA);
     if (formRPartA.getLifecycleState() == SUBMITTED) {
       publishFormRUpdateEvent(formDto);
@@ -148,13 +143,33 @@ public class FormRPartAService {
     return formDto;
   }
 
+  @Override
+  protected FormRPartA updateStatus(FormRPartA form, LifecycleState targetState,
+      UserIdentity identity, @Nullable StatusDetail detail) throws MethodArgumentNotValidException {
+    // Temporary solution for creation of FormRs at DRAFT or SUBMITTED.
+    if (form.getLifecycleState() == null && (targetState == DRAFT || targetState == SUBMITTED)) {
+      Person modifiedBy = Person.builder()
+          .name(identity.getName())
+          .email(identity.getEmail())
+          .role(identity.getRole())
+          .build();
+      form.setLifecycleState(DRAFT, null, modifiedBy, 0);
+
+      if (targetState == DRAFT) {
+        return repository.save(form);
+      }
+    }
+
+    return super.updateStatus(form, targetState, identity, detail);
+  }
+
   /**
    * get FormRPartAs for logged-in trainee.
    */
   public List<FormRPartSimpleDto> getFormRPartAs() {
-    String traineeTisId = traineeIdentity.getTraineeId();
-    log.info("Request to get FormRPartA list by trainee profileId : {}", traineeTisId);
-    List<FormRPartA> formRPartAList = repository.findByTraineeTisId(traineeTisId);
+    String traineeId = identityResolver.requireTraineeIdentity().getTraineeId();
+    log.info("Request to get FormRPartA list by trainee profileId : {}", traineeId);
+    List<FormRPartA> formRPartAList = repository.findByTraineeTisId(traineeId);
     return mapper.toSimpleDtos(formRPartAList);
   }
 
@@ -178,9 +193,9 @@ public class FormRPartAService {
   public FormRPartADto getFormRPartAById(String id) {
     log.info("Request to get FormRPartA by id : {}", id);
 
-    String traineeTisId = traineeIdentity.getTraineeId();
+    String traineeId = identityResolver.requireTraineeIdentity().getTraineeId();
     Optional<FormRPartA> optionalDbForm = repository.findByIdAndTraineeTisId(UUID.fromString(id),
-        traineeTisId);
+        traineeId);
 
     return mapper.toDto(optionalDbForm.orElse(null));
   }
@@ -206,9 +221,9 @@ public class FormRPartAService {
    */
   public boolean deleteFormRPartAById(String id) {
     log.info("Request to delete FormRPartA by id : {}", id);
-    String traineeTisId = traineeIdentity.getTraineeId();
+    String traineeId = identityResolver.requireTraineeIdentity().getTraineeId();
     Optional<FormRPartA> optionalForm = repository.findByIdAndTraineeTisId(UUID.fromString(id),
-        traineeTisId);
+        traineeId);
 
     if (optionalForm.isEmpty()) {
       log.info("FormRPartA {} did not exist.", id);
@@ -236,12 +251,18 @@ public class FormRPartAService {
    * @param id The ID of the target form.
    * @return The partially deleted form, or empty if the form was not found.
    */
-  public Optional<FormRPartADto> partialDeleteFormRPartAById(UUID id) {
+  public Optional<FormRPartADto> partialDeleteFormRPartAById(UUID id)
+      throws MethodArgumentNotValidException {
     log.info("Request to partial delete FormRPartA with id : {}", id);
 
-    return repository.findById(id)
-        .map(this::partialDelete)
-        .map(mapper::toDto);
+    Optional<FormRPartA> found = repository.findById(id);
+
+    if (found.isPresent()) {
+      FormRPartA form = partialDelete(found.get());
+      return Optional.of(mapper.toDto(form));
+    }
+
+    return Optional.empty();
   }
 
   /**
@@ -250,11 +271,10 @@ public class FormRPartAService {
    * @param form The form to partially delete.
    * @return The partially deleted form.
    */
-  private FormRPartA partialDelete(FormRPartA form) {
+  private FormRPartA partialDelete(FormRPartA form) throws MethodArgumentNotValidException {
     form.setContent(null);
-    form.setLifecycleState(DELETED);
-
-    repository.save(form);
+    AdminIdentity adminIdentity = identityResolver.requireAdminIdentity();
+    form = updateStatus(form, DELETED, adminIdentity, null);
     publishFormRUpdateEvent(mapper.toDto(form));
     log.info("Partial delete successfully for trainee {} with form Id {} (FormRPartA)",
         form.getTraineeTisId(), form.getId());
@@ -268,19 +288,35 @@ public class FormRPartAService {
    * @param id The ID of the target form.
    * @return The unsubmitted form, or empty if the form was not found.
    */
-  public Optional<FormRPartADto> unsubmitFormRPartAById(UUID id) {
+  public Optional<FormRPartADto> unsubmitFormRPartAById(UUID id)
+      throws MethodArgumentNotValidException {
     log.info("Request to unsubmit FormRPartA with id : {}", id);
 
-    return repository.findById(id)
-        .map(form -> {
-          form.setLifecycleState(UNSUBMITTED);
-          FormRPartA formRPartA = repository.save(form);
-          publishFormRUpdateEvent(mapper.toDto(form));
-          log.info("Unsubmitted successfully for trainee {} with form Id {} (FormRPartA)",
-              form.getTraineeTisId(), form.getId());
-          return formRPartA;
-        })
-        .map(mapper::toDto);
+    Optional<FormRPartA> found = repository.findById(id);
+    if (found.isPresent()) {
+      AdminIdentity adminIdentity = identityResolver.requireAdminIdentity();
+      // TODO: update reason when provided by admin.
+      StatusDetail statusDetail = StatusDetail.builder().reason("Requires correction").build();
+      FormRPartA form = updateStatus(found.get(), UNSUBMITTED, adminIdentity, statusDetail);
+      FormRPartADto dto = mapper.toDto(form);
+
+      publishFormRUpdateEvent(dto);
+      log.info("Unsubmitted successfully for trainee {} with form Id {} (FormRPartA)",
+          form.getTraineeTisId(), form.getId());
+      return Optional.of(dto);
+    }
+
+    return Optional.empty();
+  }
+
+  /**
+   * Publish Form-R status update notification.
+   *
+   * @param form The updated LTFT form.
+   */
+  @Override
+  public void publishStatusUpdateNotification(FormRPartA form) {
+    // TODO: do nothing until Form-R events are standardised.
   }
 
   /**

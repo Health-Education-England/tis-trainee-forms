@@ -33,7 +33,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.fge.jsonpatch.JsonPatch;
 import com.github.fge.jsonpatch.JsonPatchException;
-import jakarta.annotation.Nullable;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
@@ -48,7 +47,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.MethodParameter;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -58,8 +56,6 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Service;
-import org.springframework.validation.BeanPropertyBindingResult;
-import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto.FormFeatures.LtftFeatures;
 import uk.nhs.hee.tis.trainee.forms.dto.FormPatchDto;
@@ -73,7 +69,6 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
-import uk.nhs.hee.tis.trainee.forms.dto.identity.UserIdentity;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
@@ -87,7 +82,7 @@ import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 @Slf4j
 @Service
 @XRayEnabled
-public class LtftService {
+public class LtftService extends AbstractAuditedFormService<LtftForm> {
 
   protected static final String FORM_ATTRIBUTE_FORM_STATUS = "status.current.state";
   protected static final String FORM_ATTRIBUTE_TPD_STATUS = "content.discussions.tpdStatus";
@@ -109,7 +104,7 @@ public class LtftService {
   private final String ltftStatusUpdateTopic;
   private final String ltftContentUpdateTopic;
 
-  private final LtftSubmissionHistoryService ltftSubmissionHistoryService;
+  private final SubmissionHistoryService<LtftForm> ltftSubmissionHistoryService;
 
   /**
    * Instantiate the LTFT form service.
@@ -133,7 +128,9 @@ public class LtftService {
       @Value("${application.aws.sns.ltft-assignment-updated}") String ltftAssignmentUpdateTopic,
       @Value("${application.aws.sns.ltft-status-updated}") String ltftStatusUpdateTopic,
       @Value("${application.aws.sns.ltft-content-updated}") String ltftContentUpdateTopic,
-      LtftSubmissionHistoryService ltftSubmissionHistoryService) {
+      SubmissionHistoryService<LtftForm> ltftSubmissionHistoryService) {
+    super(ltftFormRepository, ltftSubmissionHistoryService);
+
     this.adminIdentity = adminIdentity;
     this.traineeIdentity = traineeIdentity;
     this.ltftFormRepository = ltftFormRepository;
@@ -418,7 +415,7 @@ public class LtftService {
    *
    * @param formId The id of the LTFT form to delete.
    * @return Optional empty if the form was not found, true if the form was deleted, or false if it
-   *     was not in a permitted state to delete.
+   * was not in a permitted state to delete.
    */
   public Optional<Boolean> deleteLtftForm(UUID formId) {
     String traineeId = traineeIdentity.getTraineeId();
@@ -458,7 +455,7 @@ public class LtftService {
    * @param formId The id of the LTFT form to unsubmit.
    * @param detail The status detail for the unsubmission.
    * @return The DTO of the unsubmitted form, or empty if form not found or could not be
-   *     unsubmitted.
+   * unsubmitted.
    */
   public Optional<LtftFormDto> unsubmitLtftForm(UUID formId, LftfStatusInfoDetailDto detail) {
     return changeLtftFormState(formId, detail, UNSUBMITTED);
@@ -482,7 +479,7 @@ public class LtftService {
    * @param detail      The status detail for the change.
    * @param targetState The state to change to.
    * @return The DTO of the form after the state change, or empty if form not found or could not be
-   *     changed to the target state.
+   * changed to the target state.
    */
   protected Optional<LtftFormDto> changeLtftFormState(UUID formId, LftfStatusInfoDetailDto detail,
       LifecycleState targetState) {
@@ -499,7 +496,8 @@ public class LtftService {
     LtftForm form = formOptional.get();
 
     try {
-      LtftForm updatedForm = updateStatus(form, targetState, traineeIdentity, detail);
+      StatusDetail detailEntity = mapper.toStatusDetail(detail);
+      LtftForm updatedForm = updateStatus(form, targetState, traineeIdentity, detailEntity);
       return Optional.of(mapper.toDto(updatedForm));
     } catch (MethodArgumentNotValidException e) {
       return Optional.empty();
@@ -512,7 +510,7 @@ public class LtftService {
    * @param formId The ID of the LTFT application.
    * @param admin  The admin to assign to the application.
    * @return The updated LTFT, empty if the form did not exist or did not belong to the admin's
-   *     local office.
+   * local office.
    */
   public Optional<LtftFormDto> assignAdmin(UUID formId, PersonDto admin) {
     log.info("Assigning admin {} to LTFT form {}", admin.email(), formId);
@@ -600,7 +598,7 @@ public class LtftService {
    * @param state  The new state.
    * @param detail A detailed reason for the change, may be null.
    * @return The updated LTFT application, empty if the form did not exist or did not belong to the
-   *     admin's local office.
+   * admin's local office.
    * @throws MethodArgumentNotValidException If the state transition is not allowed.
    */
   public Optional<LtftFormDto> updateStatusAsAdmin(UUID formId, LifecycleState state,
@@ -614,97 +612,14 @@ public class LtftService {
             dbcs);
 
     if (form.isPresent()) {
-      LtftForm updatedForm = updateStatus(form.get(), state, adminIdentity, detail);
+      StatusDetail detailEntity = mapper.toStatusDetail(detail);
+      LtftForm updatedForm = updateStatus(form.get(), state, adminIdentity, detailEntity);
       return Optional.of(mapper.toDto(updatedForm));
     } else {
       log.warn("Could not update form {} since no form exists with this ID for DBCs [{}]",
           formId, dbcs);
       return Optional.empty();
     }
-  }
-
-  /**
-   * Update the status of the LTFT, the current status and history will both be updated.
-   *
-   * @param form        The form to update the status of.
-   * @param targetState The state to change to.
-   * @param identity    Who is performing the status change.
-   * @param detail      A detailed reason for the change, may be null.
-   * @return The updated LTFT application.
-   * @throws MethodArgumentNotValidException If the state transition is not allowed.
-   */
-  private LtftForm updateStatus(LtftForm form, LifecycleState targetState,
-      UserIdentity identity, @Nullable LftfStatusInfoDetailDto detail)
-      throws MethodArgumentNotValidException {
-
-    if (!LifecycleState.canTransitionTo(form, targetState)) {
-      log.warn(
-          "Could not update form {}, invalid lifecycle transition from {} to {} for form type '{}'",
-          form.getId(), form.getStatus().current().state(), targetState, form.getFormType());
-
-      BeanPropertyBindingResult result = new BeanPropertyBindingResult(form, "form");
-      result.addError(new FieldError("LtftForm", FORM_ATTRIBUTE_FORM_STATUS,
-          "can not be transitioned to %s".formatted(targetState)));
-
-      try {
-        MethodParameter parameter = new MethodParameter(this.getClass()
-            .getDeclaredMethod("updateStatus", LtftForm.class, LifecycleState.class,
-                UserIdentity.class, LftfStatusInfoDetailDto.class), 1);
-        throw new MethodArgumentNotValidException(parameter, result);
-      } catch (NoSuchMethodException e) {
-        throw new IllegalStateException("Unabled to reflect updateStatus method.", e);
-      }
-    }
-
-    if (targetState.isRequiresDetails() && (detail == null || detail.reason() == null)) {
-      log.warn("Form {} requires a reason to change to state [{}]", form.getId(), targetState);
-
-      BeanPropertyBindingResult result = new BeanPropertyBindingResult(detail, "detail");
-      String field = detail == null ? "detail" : "detail.reason";
-      result.addError(new FieldError("StatusInfo", field,
-          "must not be null when transitioning to %s".formatted(targetState)));
-
-      try {
-        MethodParameter parameter = new MethodParameter(this.getClass()
-            .getDeclaredMethod("updateStatus", LtftForm.class, LifecycleState.class,
-                UserIdentity.class, LftfStatusInfoDetailDto.class), 3);
-        throw new MethodArgumentNotValidException(parameter, result);
-      } catch (NoSuchMethodException e) {
-        throw new IllegalStateException("Unabled to reflect updateStatus method.", e);
-      }
-    }
-
-    if (targetState.isIncrementsRevision()) {
-      form.setRevision(form.getRevision() + 1);
-    }
-
-    StatusDetail detailEntity = mapper.toStatusDetail(detail);
-
-    Person modifiedBy = Person.builder()
-        .name(identity.getName())
-        .email(identity.getEmail())
-        .role(identity.getRole())
-        .build();
-    form.setLifecycleState(targetState, detailEntity, modifiedBy, form.getRevision());
-
-    // Generate a form reference when submitting for the first time.
-    if (form.getFormRef() == null && targetState == SUBMITTED) {
-      String traineeId = form.getTraineeTisId();
-      int previousFormCount = ltftFormRepository
-          .countByTraineeTisIdAndStatus_SubmittedIsNotNull(traineeId);
-      String formRef = "ltft_%s_%03d".formatted(form.getTraineeTisId(), previousFormCount + 1);
-      log.info("Assigning form reference {} to LTFT {}", formRef, form.getId());
-      form.setFormRef(formRef);
-    }
-
-    LtftForm savedForm = ltftFormRepository.save(form);
-    if (targetState == SUBMITTED) {
-      ltftSubmissionHistoryService.takeSnapshot(savedForm);
-    }
-
-    publishUpdateNotification(savedForm, FORM_ATTRIBUTE_FORM_STATUS, ltftStatusUpdateTopic);
-
-    return savedForm;
   }
 
   /**
@@ -784,6 +699,16 @@ public class LtftService {
   }
 
   /**
+   * Publish LTFT status update notification.
+   *
+   * @param form The updated LTFT form.
+   */
+  @Override
+  public void publishStatusUpdateNotification(LtftForm form) {
+    publishUpdateNotification(form, FORM_ATTRIBUTE_FORM_STATUS, ltftStatusUpdateTopic);
+  }
+
+  /**
    * Publish LTFT update notification.
    *
    * @param form             The updated LTFT form.
@@ -832,7 +757,7 @@ public class LtftService {
     });
 
     Integer movedHistory
-        = ltftSubmissionHistoryService.moveLtftSubmissions(fromTraineeId, toTraineeId);
+        = ltftSubmissionHistoryService.moveHistory(fromTraineeId, toTraineeId);
     log.info("Moved {} LTFT forms and {} submission histories from trainee [{}] to trainee [{}]",
         movedForms.get(), movedHistory, fromTraineeId, toTraineeId);
     return Map.of(

@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.api;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
@@ -48,7 +49,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -246,11 +246,10 @@ class AdminFormRPartAResourceIntegrationTest {
     FormRPartA form = new FormRPartA();
     form.setId(FORM_ID);
     form.setTraineeTisId(TRAINEE_ID);
-    form.setStatus(Status.builder().submitted(Instant.now()).build());
+    form.setLifecycleState(SUBMITTED);
     template.insert(form);
 
-    Mockito.when(snsClient.publish(any(PublishRequest.class)))
-        .thenReturn(any());
+    when(snsClient.publish(any(PublishRequest.class))).thenReturn(mock());
 
     mockMvc.perform(request(method, uriTemplate, FORM_ID)
             .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of(role))))
@@ -305,6 +304,13 @@ class AdminFormRPartAResourceIntegrationTest {
         .build());
     template.insert(submittedForm);
 
+    // TODO: timestamp comparison fails due to Jackson trimming trailing 0s during serialization.
+    //  May not be an issue once DTO is migrated to Instant.
+    String expectedSubmissionDate = submissionDate.truncatedTo(ChronoUnit.MILLIS).toString();
+    expectedSubmissionDate =
+        expectedSubmissionDate.endsWith("0") ? expectedSubmissionDate.substring(0,
+            expectedSubmissionDate.length() - 1) : expectedSubmissionDate;
+
     mockMvc.perform(get("/api/admin/formr-parta")
             .param("traineeId", TRAINEE_ID)
             .with(TestJwtUtil.createAdminToken(List.of(DBC_1), List.of("HEE Admin"))))
@@ -319,10 +325,7 @@ class AdminFormRPartAResourceIntegrationTest {
         .andExpect(jsonPath("$[0].programmeStartDate").value(startDate.toString()))
         .andExpect(jsonPath("$[0].programmeMembershipId")
             .value(programmeMembershipId.toString()))
-        // TODO: this can fail due to Jackson trimming trailing 0s during serialization.
-        //  May not be an issue once DTO is migrated to Instant.
-        .andExpect(jsonPath("$[0].submissionDate")
-            .value(submissionDate.truncatedTo(ChronoUnit.MILLIS).toString()))
+        .andExpect(jsonPath("$[0].submissionDate").value(expectedSubmissionDate))
         .andExpect(jsonPath("$[0].formType").value("formr-parta"));
   }
 }

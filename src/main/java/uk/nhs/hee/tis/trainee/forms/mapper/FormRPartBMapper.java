@@ -29,13 +29,15 @@ import org.mapstruct.Mapping;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
+import uk.nhs.hee.tis.trainee.forms.model.FormrPartbSubmissionHistory;
 
 /**
  * Mappers between FormR Part B representations.
  */
 @Mapper(componentModel = SPRING, uses = {CovidDeclarationMapper.class,
     TemporalMapper.class}, injectionStrategy = CONSTRUCTOR)
-public interface FormRPartBMapper {
+public interface FormRPartBMapper extends FormMapper<FormRPartB, FormRPartBDto>,
+    SubmissionHistoryMapper<FormRPartB, FormrPartbSubmissionHistory> {
 
   @Mapping(target = "id", source = "id")
   @Mapping(target = "traineeTisId", source = "traineeTisId")

@@ -36,4 +36,9 @@ public class FormRPartB extends AbstractFormR<FormrPartbContent> {
   public String getFormType() {
     return "formr-b";
   }
+
+  @Override
+  public String getFormReferencePrefix() {
+    return "formr_partb";
+  }
 }

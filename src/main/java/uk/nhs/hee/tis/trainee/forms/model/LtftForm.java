@@ -40,4 +40,9 @@ public class LtftForm extends AbstractAuditedForm<LtftContent> {
   public String getFormType() {
     return "ltft";
   }
+
+  @Override
+  public String getFormReferencePrefix() {
+    return "ltft";
+  }
 }

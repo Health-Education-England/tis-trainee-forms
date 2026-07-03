@@ -17,18 +17,33 @@
  * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
  * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
  */
 
 package uk.nhs.hee.tis.trainee.forms.repository;
 
-import org.springframework.stereotype.Repository;
-import uk.nhs.hee.tis.trainee.forms.model.FormrPartaSubmissionHistory;
+import java.util.UUID;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
+import org.springframework.data.repository.NoRepositoryBean;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm;
+import uk.nhs.hee.tis.trainee.forms.model.content.FormContent;
 
 /**
- * A repository for LTFT submission history items.
+ * A base repository interface for audited forms, providing common methods for managing form data in
+ * a MongoDB database.
+ *
+ * @param <T> The type of audited form.
  */
-@Repository
-public interface FormrPartaSubmissionHistoryRepository extends
-    BaseSubmissionHistoryRepository<FormrPartaSubmissionHistory> {
+@NoRepositoryBean
+public interface BaseAuditedFormRepository<T extends AbstractAuditedForm<? extends FormContent>> extends
+    MongoRepository<T, UUID> {
 
+  @Query(value = """
+      {
+          'traineeTisId': ?0,
+          'status.submitted': { $ne: null }
+      }
+      """, count = true)
+  long countSubmittedByTraineeId(String traineeId);
 }

@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright 2025 Crown Copyright (Health Education England)
+ * Copyright 2026 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -24,41 +24,42 @@ package uk.nhs.hee.tis.trainee.forms.service;
 import static org.mockito.Mockito.mock;
 
 import java.time.ZoneId;
-import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
-import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapperImpl;
+import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapper;
+import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.mapper.TemporalMapper;
-import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
-import uk.nhs.hee.tis.trainee.forms.model.LtftSubmissionHistory;
+import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
+import uk.nhs.hee.tis.trainee.forms.model.FormrPartaSubmissionHistory;
 import uk.nhs.hee.tis.trainee.forms.repository.BaseSubmissionHistoryRepository;
-import uk.nhs.hee.tis.trainee.forms.repository.LtftSubmissionHistoryRepository;
+import uk.nhs.hee.tis.trainee.forms.repository.FormrPartaSubmissionHistoryRepository;
 
 /**
  * This test class extends the abstract contract test class
  * {@link AbstractSubmissionHistoryServiceContractTest} to test the
- * {@link LtftSubmissionHistoryService}.
+ * {@link FormrPartaSubmissionHistoryService}.
  */
-class LtftSubmissionHistoryServiceTest extends
-    AbstractSubmissionHistoryServiceContractTest<LtftForm, LtftSubmissionHistory> {
+class FormrPartaSubmissionHistoryServiceTest extends
+    AbstractSubmissionHistoryServiceContractTest<FormRPartA, FormrPartaSubmissionHistory> {
 
   @Override
-  LtftSubmissionHistoryRepository createRepositoryMock() {
+  FormrPartaSubmissionHistoryRepository createRepositoryMock() {
     return mock();
   }
 
   @Override
-  SubmissionHistoryService<LtftForm> getService(
-      BaseSubmissionHistoryRepository<LtftSubmissionHistory> repository) {
-    LtftMapper mapper = new LtftMapperImpl(new TemporalMapper(ZoneId.of("Etc/UTC")));
-    return new LtftSubmissionHistoryService((LtftSubmissionHistoryRepository) repository, mapper);
+  SubmissionHistoryService<FormRPartA> getService(
+      BaseSubmissionHistoryRepository<FormrPartaSubmissionHistory> repository) {
+    FormRPartAMapper mapper = new FormRPartAMapperImpl(new TemporalMapper(ZoneId.of("Etc/UTC")));
+    return new FormrPartaSubmissionHistoryService(
+        (FormrPartaSubmissionHistoryRepository) repository, mapper);
   }
 
   @Override
-  LtftForm getNewForm() {
-    return new LtftForm();
+  FormRPartA getNewForm() {
+    return new FormRPartA();
   }
 
   @Override
-  LtftSubmissionHistory getNewHistory() {
-    return new LtftSubmissionHistory();
+  FormrPartaSubmissionHistory getNewHistory() {
+    return new FormrPartaSubmissionHistory();
   }
 }

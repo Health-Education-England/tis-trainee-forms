@@ -17,18 +17,14 @@
  * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
  * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
  */
 
-package uk.nhs.hee.tis.trainee.forms.repository;
-
-import org.springframework.stereotype.Repository;
-import uk.nhs.hee.tis.trainee.forms.model.FormrPartaSubmissionHistory;
+package uk.nhs.hee.tis.trainee.forms.model;
 
 /**
- * A repository for LTFT submission history items.
+ * An interface representing the history of form submissions.
  */
-@Repository
-public interface FormrPartaSubmissionHistoryRepository extends
-    BaseSubmissionHistoryRepository<FormrPartaSubmissionHistory> {
+public interface FormSubmissionHistory {
 
 }

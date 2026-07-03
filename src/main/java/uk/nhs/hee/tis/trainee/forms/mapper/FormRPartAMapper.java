@@ -30,12 +30,14 @@ import org.mapstruct.Mapping;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
+import uk.nhs.hee.tis.trainee.forms.model.FormrPartaSubmissionHistory;
 
 /**
  * Mappers between FormR Part A representations.
  */
 @Mapper(componentModel = SPRING, uses = TemporalMapper.class, injectionStrategy = CONSTRUCTOR)
-public interface FormRPartAMapper {
+public interface FormRPartAMapper extends FormMapper<FormRPartA, FormRPartADto>,
+    SubmissionHistoryMapper<FormRPartA, FormrPartaSubmissionHistory> {
 
   @Mapping(target = "id", source = "id")
   @Mapping(target = "traineeTisId", source = "traineeTisId")

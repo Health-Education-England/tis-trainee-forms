@@ -20,6 +20,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.service;
 
+import static java.time.ZoneOffset.UTC;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
@@ -43,12 +44,14 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBM
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,13 +64,16 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.BeanUtils;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.DeclarationDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
 import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
 import uk.nhs.hee.tis.trainee.forms.dto.content.FormrPartbContentDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
+import uk.nhs.hee.tis.trainee.forms.dto.identity.UserIdentityResolver;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.mapper.TemporalMapper;
@@ -131,6 +137,9 @@ class FormRPartBServiceTest {
   @Mock
   private EventBroadcastService eventBroadcastService;
 
+  @Mock
+  private SubmissionHistoryService<FormRPartB> historyService;
+
   private ObjectMapper objectMapper;
 
   private TraineeIdentity traineeIdentity;
@@ -150,13 +159,20 @@ class FormRPartBServiceTest {
 
   @BeforeEach
   void setUp() {
+    AdminIdentity adminIdentity = new AdminIdentity();
+    adminIdentity.setName("Admin User");
+    adminIdentity.setEmail("admin.user@example.com");
+    adminIdentity.setGroups(Set.of("group1"));
     traineeIdentity = new TraineeIdentity();
     traineeIdentity.setTraineeId(DEFAULT_TRAINEE_TIS_ID);
+    UserIdentityResolver identityResolver = new UserIdentityResolver(adminIdentity,
+        traineeIdentity);
+
     mapper = new FormRPartBMapperImpl(new TemporalMapper(ZoneId.of("Etc/UTC")));
     objectMapper = new ObjectMapper().findAndRegisterModules();
 
-    service = new FormRPartBService(repositoryMock, mapper, objectMapper, traineeIdentity,
-        eventBroadcastService, FORM_R_PART_B_UPDATED_TOPIC);
+    service = new FormRPartBService(repositoryMock, mapper, objectMapper, identityResolver,
+        eventBroadcastService, historyService, FORM_R_PART_B_UPDATED_TOPIC);
     initData();
   }
 
@@ -202,11 +218,7 @@ class FormRPartBServiceTest {
         .haveCurrentUnresolvedDeclarations(DEFAULT_HAVE_CURRENT_UNRESOLVED_DECLARATIONS)
         .havePreviousUnresolvedDeclarations(DEFAULT_HAVE_PREVIOUS_UNRESOLVED_DECLARATIONS)
         .build());
-    newEntity.setStatus(Status.builder()
-        .current(StatusInfo.builder()
-            .state(DRAFT)
-            .build())
-        .build());
+    newEntity.setLifecycleState(DRAFT);
     return newEntity;
   }
 
@@ -281,6 +293,24 @@ class FormRPartBServiceTest {
   }
 
   @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = {"DRAFT", "SUBMITTED"})
+  void shouldThrowExceptionWhenCreatingFormNotInInitialState(LifecycleState state) {
+    FormRPartBDto dto = new FormRPartBDto();
+    dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    dto.setLifecycleState(state);
+    dto.setSubmissionDate(LocalDateTime.ofInstant(DEFAULT_SUBMISSION_DATE, UTC));
+
+    FormrPartbContentDto content = new FormrPartbContentDto();
+    content.setForename(DEFAULT_FORENAME);
+    content.setSurname(DEFAULT_SURNAME);
+    dto.setContent(content);
+
+    assertThrows(IllegalArgumentException.class, () -> service.save(dto));
+
+    verify(repositoryMock, never()).save(any());
+  }
+
+  @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = {"DRAFT", "UNSUBMITTED"})
   void shouldThrowExceptionWhenUpdatingNonModifiableForm(LifecycleState state) {
     UUID id = UUID.randomUUID();
@@ -296,7 +326,90 @@ class FormRPartBServiceTest {
     when(repositoryMock.findById(id)).thenReturn(Optional.of(entity));
 
     assertThrows(IllegalArgumentException.class, () -> service.save(dto));
+
     verify(repositoryMock, never()).save(any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
+  void shouldThrowExceptionWhenUpdatingToUnsupportedStatus(LifecycleState state) {
+    entity.setLifecycleState(SUBMITTED);
+    when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
+
+    FormRPartBDto dto = new FormRPartBDto();
+    dto.setId(DEFAULT_ID_STRING);
+    dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    dto.setLifecycleState(state);
+    dto.setSubmissionDate(LocalDateTime.ofInstant(DEFAULT_SUBMISSION_DATE, UTC));
+
+    FormrPartbContentDto content = new FormrPartbContentDto();
+    content.setForename(DEFAULT_FORENAME);
+    content.setSurname(DEFAULT_SURNAME);
+    dto.setContent(content);
+
+    assertThrows(IllegalArgumentException.class, () -> service.save(dto));
+
+    verify(repositoryMock, never()).save(any());
+  }
+
+  @Test
+  void shouldSaveNewFormWhenDraft() {
+    FormRPartBDto dto = new FormRPartBDto();
+    dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    dto.setLifecycleState(DRAFT);
+    dto.setSubmissionDate(LocalDateTime.ofInstant(DEFAULT_SUBMISSION_DATE, UTC));
+
+    FormrPartbContentDto content = new FormrPartbContentDto();
+    content.setForename(DEFAULT_FORENAME);
+    content.setSurname(DEFAULT_SURNAME);
+    dto.setContent(content);
+
+    when(repositoryMock.save(any())).thenAnswer(inv -> {
+      FormRPartB form = inv.getArgument(0);
+      form.setId(DEFAULT_ID);
+      return form;
+    });
+
+    FormRPartBDto savedDto = service.save(dto);
+    assertThat("Unexpected form ID.", savedDto.getId(), is(DEFAULT_ID_STRING));
+    assertThat("Unexpected trainee ID.", savedDto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected forename.", savedDto.getContent().getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", savedDto.getContent().getSurname(), is(DEFAULT_SURNAME));
+
+    assertThat("Unexpected submission date.", savedDto.getSubmissionDate(), nullValue());
+    assertThat("Unexpected lifecycle state.", savedDto.getLifecycleState(), is(DRAFT));
+
+    verify(repositoryMock).save(any());
+  }
+
+  @Test
+  void shouldSaveNewFormWhenSubmitted() {
+    FormRPartBDto dto = new FormRPartBDto();
+    dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    dto.setLifecycleState(SUBMITTED);
+    dto.setSubmissionDate(LocalDateTime.ofInstant(DEFAULT_SUBMISSION_DATE, UTC));
+
+    FormrPartbContentDto content = new FormrPartbContentDto();
+    content.setForename(DEFAULT_FORENAME);
+    content.setSurname(DEFAULT_SURNAME);
+    dto.setContent(content);
+
+    when(repositoryMock.save(any())).thenAnswer(inv -> {
+      FormRPartB form = inv.getArgument(0);
+      form.setId(DEFAULT_ID);
+      return form;
+    });
+
+    FormRPartBDto savedDto = service.save(dto);
+    assertThat("Unexpected form ID.", savedDto.getId(), is(DEFAULT_ID_STRING));
+    assertThat("Unexpected trainee ID.", savedDto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected forename.", savedDto.getContent().getForename(), is(DEFAULT_FORENAME));
+    assertThat("Unexpected surname.", savedDto.getContent().getSurname(), is(DEFAULT_SURNAME));
+
+    assertThat("Unexpected submission date.", savedDto.getSubmissionDate(), not(nullValue()));
+    assertThat("Unexpected lifecycle state.", savedDto.getLifecycleState(), is(SUBMITTED));
+
+    verify(repositoryMock).save(any());
   }
 
   @ParameterizedTest
@@ -304,13 +417,10 @@ class FormRPartBServiceTest {
   void shouldSaveFormWhenUpdatingModifiableForm(LifecycleState state) {
     UUID id = UUID.randomUUID();
     entity.setId(id);
-    entity.setStatus(Status.builder()
-        .current(StatusInfo.builder().state(state).build())
-        .submitted(DEFAULT_SUBMISSION_DATE)
-        .build());
+    entity.setLifecycleState(state);
 
     FormRPartBDto dto = mapper.toDto(entity);
-    dto.setLifecycleState(DRAFT);
+    dto.setLifecycleState(state);
 
     when(repositoryMock.findById(id)).thenReturn(Optional.of(entity));
     when(repositoryMock.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -321,21 +431,12 @@ class FormRPartBServiceTest {
 
   @Test
   void shouldSaveSubmittedFormRPartB() {
-    entity.setId(null);
-    entity.setStatus(Status.builder()
-        .current(StatusInfo.builder().state(SUBMITTED).build())
-        .submitted(DEFAULT_SUBMISSION_DATE)
-        .build());
+    when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
+
     FormRPartBDto dto = mapper.toDto(entity);
+    dto.setLifecycleState(SUBMITTED);
 
-    when(repositoryMock.save(any())).thenAnswer(invocation -> {
-      FormRPartB invEntity = invocation.getArgument(0);
-
-      FormRPartB savedEntity = new FormRPartB();
-      BeanUtils.copyProperties(invEntity, savedEntity);
-      savedEntity.setId(DEFAULT_ID);
-      return savedEntity;
-    });
+    when(repositoryMock.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     FormRPartBDto savedDto = service.save(dto);
     assertThat("Unexpected form ID.", savedDto.getId(), is(DEFAULT_ID_STRING));
@@ -373,11 +474,47 @@ class FormRPartBServiceTest {
   }
 
   @Test
+  void shouldSetFormRefWhenSubmittedFormRPartB() {
+    when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
+
+    FormRPartBDto dto = mapper.toDto(entity);
+    dto.setLifecycleState(SUBMITTED);
+
+    when(repositoryMock.countSubmittedByTraineeId(DEFAULT_TRAINEE_TIS_ID)).thenReturn(4L);
+    when(repositoryMock.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    service.save(dto);
+
+    ArgumentCaptor<FormRPartB> formCaptor = ArgumentCaptor.captor();
+    verify(repositoryMock).save(formCaptor.capture());
+
+    FormRPartB savedEntity = formCaptor.getValue();
+    assertThat("Unexpected form reference.", savedEntity.getFormRef(),
+        is("formr_partb_" + DEFAULT_TRAINEE_TIS_ID + "_005"));
+  }
+
+  @Test
+  void shouldSnapshotWhenSubmittingFormRPartB() {
+    entity.setRevision(3);
+    when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
+
+    FormRPartBDto dto = mapper.toDto(entity);
+    dto.setLifecycleState(SUBMITTED);
+
+    when(repositoryMock.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    service.save(dto);
+
+    ArgumentCaptor<FormRPartB> formCaptor = ArgumentCaptor.captor();
+    verify(repositoryMock).save(formCaptor.capture());
+
+    FormRPartB savedEntity = formCaptor.getValue();
+    verify(historyService).takeSnapshot(savedEntity);
+  }
+
+  @Test
   void shouldThrowExceptionWhenFormRPartBNotSaved() {
-    entity.setStatus(Status.builder()
-        .current(StatusInfo.builder().state(SUBMITTED).build())
-        .submitted(DEFAULT_SUBMISSION_DATE)
-        .build());
+    when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
     when(repositoryMock.save(any())).thenThrow(ApplicationException.class);
 
     FormRPartBDto dto = mapper.toDto(entity);
@@ -465,18 +602,22 @@ class FormRPartBServiceTest {
   }
 
   @Test
-  void shouldPartialDeleteFormRPartBById() {
+  void shouldPartialDeleteFormRPartBById() throws MethodArgumentNotValidException {
+    entity.setLifecycleState(SUBMITTED);
     when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
+    when(repositoryMock.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     Optional<FormRPartBDto> resultDto = service.partialDeleteFormRPartBById(DEFAULT_ID);
 
     assertThat("Unexpected DTO presence.", resultDto.isPresent(), is(true));
 
-    FormRPartB expectedForm = new FormRPartB();
-    expectedForm.setId(DEFAULT_ID);
-    expectedForm.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    expectedForm.setLifecycleState(DELETED);
-    assertThat("Unexpected DTO.", resultDto.get(), is(mapper.toDto(expectedForm)));
+    FormRPartBDto dto = resultDto.get();
+    assertThat("Unexpected ID.", dto.getId(), is(DEFAULT_ID_STRING));
+    assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
+    assertThat("Unexpected content.", dto.getContent(), nullValue());
+    assertThat("Unexpected submission date.", dto.getSubmissionDate(),
+        is(entity.getStatus().submitted().atZone(UTC).toLocalDateTime()));
+    assertThat("Unexpected lifecycle state.", dto.getLifecycleState(), is(DELETED));
 
     verify(repositoryMock).save(any());
     verify(eventBroadcastService).publishFormRPartBEvent(any(), any(), any());
@@ -484,8 +625,10 @@ class FormRPartBServiceTest {
   }
 
   @Test
-  void shouldPublishEventWhenPartialDeletingFormRPartB() {
+  void shouldPublishEventWhenPartialDeletingFormRPartB() throws MethodArgumentNotValidException {
+    entity.setLifecycleState(SUBMITTED);
     when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
+    when(repositoryMock.save(any())).then(invocation -> invocation.getArgument(0));
 
     service.partialDeleteFormRPartBById(DEFAULT_ID);
 
@@ -517,7 +660,7 @@ class FormRPartBServiceTest {
   }
 
   @Test
-  void shouldNotPartialDeleteWhenFormRPartBNotFoundInDb() {
+  void shouldNotPartialDeleteWhenFormRPartBNotFoundInDb() throws MethodArgumentNotValidException {
     when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.empty());
 
     service.partialDeleteFormRPartBById(DEFAULT_ID);
@@ -528,12 +671,10 @@ class FormRPartBServiceTest {
 
   @Test
   void shouldPublishEventWhenSavingSubmittedFormRPartB() {
-    entity.setId(null);
-    entity.setStatus(Status.builder()
-        .current(StatusInfo.builder().state(SUBMITTED).build())
-        .submitted(DEFAULT_SUBMISSION_DATE)
-        .build());
+    when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
+
     FormRPartBDto dto = mapper.toDto(entity);
+    dto.setLifecycleState(SUBMITTED);
 
     when(repositoryMock.save(any())).thenAnswer(invocation -> {
       FormRPartB toSave = invocation.getArgument(0);
@@ -576,10 +717,11 @@ class FormRPartBServiceTest {
   }
 
   @ParameterizedTest(name = "Should not publish event when saving form with {0} state.")
-  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = {"SUBMITTED"})
+  @EnumSource(value = LifecycleState.class, names = {"DRAFT", "UNSUBMITTED"})
   void shouldNotPublishEventWhenSavingNonSubmittedFormRPartB(LifecycleState state) {
-    entity.setId(null);
+    when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
     entity.setLifecycleState(state);
+
     FormRPartBDto dto = mapper.toDto(entity);
 
     when(repositoryMock.save(any())).thenAnswer(invocation -> {
@@ -596,10 +738,10 @@ class FormRPartBServiceTest {
   }
 
   @Test
-  void shouldUnsubmitFormRPartBById() {
+  void shouldUnsubmitFormRPartBById() throws MethodArgumentNotValidException {
+    entity.setLifecycleState(SUBMITTED);
     when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
-    entity.setLifecycleState(UNSUBMITTED);
-    when(repositoryMock.save(entity)).thenReturn(entity);
+    when(repositoryMock.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     Optional<FormRPartBDto> resultDtoOptional = service.unsubmitFormRPartBById(DEFAULT_ID);
 
@@ -619,13 +761,27 @@ class FormRPartBServiceTest {
   }
 
   @Test
-  void shouldPublishEventWhenUnsubmittingFormRPartB() {
+  void shouldIncrementRevisionWhenUnsubmittingFormRPartB() throws MethodArgumentNotValidException {
+    entity.setLifecycleState(SUBMITTED);
+    entity.setRevision(4);
+    when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
+    when(repositoryMock.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    service.unsubmitFormRPartBById(DEFAULT_ID);
+
+    ArgumentCaptor<FormRPartB> formCaptor = ArgumentCaptor.captor();
+    verify(repositoryMock).save(formCaptor.capture());
+
+    FormRPartB savedForm = formCaptor.getValue();
+    assertThat("Unexpected revision.", savedForm.getRevision(), is(5));
+  }
+
+  @Test
+  void shouldPublishEventWhenUnsubmittingFormRPartB() throws MethodArgumentNotValidException {
     entity.setId(DEFAULT_ID);
     entity.setLifecycleState(SUBMITTED);
-
     when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.of(entity));
-    entity.setLifecycleState(UNSUBMITTED);
-    when(repositoryMock.save(entity)).thenReturn(entity);
+    when(repositoryMock.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     service.unsubmitFormRPartBById(DEFAULT_ID);
 
@@ -661,7 +817,7 @@ class FormRPartBServiceTest {
   }
 
   @Test
-  void shouldNotUnsubmitWhenFormRPartBNotFoundInDb() {
+  void shouldNotUnsubmitWhenFormRPartBNotFoundInDb() throws MethodArgumentNotValidException {
     when(repositoryMock.findById(DEFAULT_ID)).thenReturn(Optional.empty());
 
     service.unsubmitFormRPartBById(DEFAULT_ID);
