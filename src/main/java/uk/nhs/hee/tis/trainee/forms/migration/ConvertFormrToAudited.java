@@ -110,7 +110,7 @@ public class ConvertFormrToAudited {
 
   private final String bucket;
 
-  private int lastLoggedPercent = 0;
+  private int lastLoggedPercent;
 
   /**
    * Constructor for ConvertFormrToAudited.
@@ -150,6 +150,7 @@ public class ConvertFormrToAudited {
 
     int successCount = 0;
     int failureCount = 0;
+    lastLoggedPercent = 0;
 
     for (Document form : forms) {
       String traineeId = form.getString(FIELD_TRAINEE_ID);
