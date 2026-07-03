@@ -36,6 +36,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -74,9 +75,10 @@ import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
+import uk.nhs.hee.tis.trainee.forms.dto.content.FormrPartbContentDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
-import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartBRepositoryImpl;
+import uk.nhs.hee.tis.trainee.forms.model.content.FormrPartbContent;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
 @SpringBootTest
@@ -104,9 +106,6 @@ class FormRPartBResourceIntegrationTest {
 
   @MockitoBean
   SnsTemplate snsTemplate;
-
-  @MockitoBean
-  S3FormRPartBRepositoryImpl s3FormRPartBRepository;
 
   @MockitoBean
   SnsClient snsClient;
@@ -187,9 +186,14 @@ class FormRPartBResourceIntegrationTest {
 
   @Test
   void shouldCreateFormRPartB() throws Exception {
-    FormRPartBDto formToSave = buildMinimalFormRPartBDto(LifecycleState.DRAFT);
-
-    String formToSaveJson = mapper.writeValueAsString(formToSave);
+    String formToSaveJson = """
+        {
+          "traineeTisId": "%s",
+          "forename": "%s",
+          "surname": "%s",
+          "lifecycleState": "%s"
+        }
+        """.formatted(TRAINEE_ID, FORENAME, SURNAME, DRAFT);
 
     Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/formr-partb")
@@ -225,8 +229,10 @@ class FormRPartBResourceIntegrationTest {
   void shouldGetFormRPartBById() throws Exception {
     FormRPartB form = new FormRPartB();
     form.setTraineeTisId(TRAINEE_ID);
-    form.setForename(FORENAME);
-    form.setSurname(SURNAME);
+    form.setContent(FormrPartbContent.builder()
+        .forename(FORENAME)
+        .surname(SURNAME)
+        .build());
     form.setLifecycleState(LifecycleState.DRAFT);
     FormRPartB savedForm = template.save(form);
 
@@ -246,15 +252,19 @@ class FormRPartBResourceIntegrationTest {
   void shouldGetAllFormRPartBsForTrainee() throws Exception {
     FormRPartB form1 = new FormRPartB();
     form1.setTraineeTisId(TRAINEE_ID);
-    form1.setForename(FORENAME);
-    form1.setSurname(SURNAME);
+    form1.setContent(FormrPartbContent.builder()
+        .forename(FORENAME)
+        .surname(SURNAME)
+        .build());
     form1.setLifecycleState(LifecycleState.DRAFT);
     template.save(form1);
 
     FormRPartB form2 = new FormRPartB();
     form2.setTraineeTisId(TRAINEE_ID);
-    form2.setForename("Jane");
-    form2.setSurname("Smith");
+    form2.setContent(FormrPartbContent.builder()
+        .forename("Jane")
+        .surname("Smith")
+        .build());
     form2.setLifecycleState(LifecycleState.SUBMITTED);
     template.save(form2);
 
@@ -270,17 +280,22 @@ class FormRPartBResourceIntegrationTest {
   void shouldUpdateFormRPartB() throws Exception {
     FormRPartB form = new FormRPartB();
     form.setTraineeTisId(TRAINEE_ID);
-    form.setForename(FORENAME);
-    form.setSurname(SURNAME);
+    form.setContent(FormrPartbContent.builder()
+        .forename(FORENAME)
+        .surname(SURNAME)
+        .build());
     form.setLifecycleState(LifecycleState.DRAFT);
-    FormRPartB savedForm = template.save(form);
+    FormRPartB savedForm = template.insert(form);
 
-    FormRPartBDto formToUpdate = buildMinimalFormRPartBDto(LifecycleState.DRAFT);
-    formToUpdate.setId(savedForm.getId().toString());
-    formToUpdate.setForename("Jane");
-    formToUpdate.setSurname("Smith");
-
-    String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
+    String formToUpdateJson = """
+        {
+          "id": "%s",
+          "traineeTisId": "%s",
+          "forename": "Jane",
+          "surname": "Smith",
+          "lifecycleState": "%s"
+        }
+        """.formatted(savedForm.getId(), TRAINEE_ID, DRAFT);
 
     Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(put("/api/formr-partb")
@@ -420,9 +435,13 @@ class FormRPartBResourceIntegrationTest {
   private FormRPartBDto buildMinimalFormRPartBDto(LifecycleState lifecycleState) {
     FormRPartBDto dto = new FormRPartBDto();
     dto.setTraineeTisId(TRAINEE_ID);
-    dto.setForename(FORENAME);
-    dto.setSurname(SURNAME);
     dto.setLifecycleState(lifecycleState);
+
+    FormrPartbContentDto content = new FormrPartbContentDto();
+    content.setForename(FORENAME);
+    content.setSurname(SURNAME);
+    dto.setContent(content);
+
     return dto;
   }
 
@@ -435,13 +454,16 @@ class FormRPartBResourceIntegrationTest {
   private FormRPartBDto buildCompleteFormRPartBDto(LifecycleState lifecycleState) {
     FormRPartBDto dto = new FormRPartBDto();
     dto.setTraineeTisId(TRAINEE_ID);
-    dto.setForename(FORENAME);
-    dto.setSurname(SURNAME);
-    dto.setGmcNumber(GMC_NUMBER);
-    dto.setEmail(EMAIL);
-    dto.setLocalOfficeName("London Local Office");
-    dto.setCurrRevalDate(LocalDate.now().plusYears(1));
-    dto.setProgrammeSpecialty("General Practice");
+    dto.setLifecycleState(lifecycleState);
+
+    FormrPartbContentDto content = new FormrPartbContentDto();
+    content.setForename(FORENAME);
+    content.setSurname(SURNAME);
+    content.setGmcNumber(GMC_NUMBER);
+    content.setEmail(EMAIL);
+    content.setLocalOfficeName("London Local Office");
+    content.setCurrRevalDate(LocalDate.now().plusYears(1));
+    content.setProgrammeSpecialty("General Practice");
 
     // Work
     List<WorkDto> work = new ArrayList<>();
@@ -453,31 +475,31 @@ class FormRPartBResourceIntegrationTest {
     workDto.setSite("Site Name");
     workDto.setSiteLocation("Site Location");
     work.add(workDto);
-    dto.setWork(work);
+    content.setWork(work);
 
     // Leave
-    dto.setSicknessAbsence(0);
-    dto.setParentalLeave(0);
-    dto.setCareerBreaks(0);
-    dto.setPaidLeave(0);
-    dto.setUnauthorisedLeave(0);
-    dto.setOtherLeave(0);
-    dto.setTotalLeave(0);
+    content.setSicknessAbsence(0);
+    content.setParentalLeave(0);
+    content.setCareerBreaks(0);
+    content.setPaidLeave(0);
+    content.setUnauthorisedLeave(0);
+    content.setOtherLeave(0);
+    content.setTotalLeave(0);
 
     // Declarations
-    dto.setIsHonest(true);
-    dto.setIsHealthy(true);
-    dto.setIsWarned(false);
-    dto.setIsComplying(true);
-    dto.setHavePreviousDeclarations(false);
-    dto.setPreviousDeclarations(new ArrayList<>());
-    dto.setHavePreviousUnresolvedDeclarations(false);
-    dto.setHaveCurrentDeclarations(false);
-    dto.setCurrentDeclarations(new ArrayList<>());
-    dto.setHaveCurrentUnresolvedDeclarations(false);
-    dto.setHaveCovidDeclarations(false);
+    content.setIsHonest(true);
+    content.setIsHealthy(true);
+    content.setIsWarned(false);
+    content.setIsComplying(true);
+    content.setHavePreviousDeclarations(false);
+    content.setPreviousDeclarations(new ArrayList<>());
+    content.setHavePreviousUnresolvedDeclarations(false);
+    content.setHaveCurrentDeclarations(false);
+    content.setCurrentDeclarations(new ArrayList<>());
+    content.setHaveCurrentUnresolvedDeclarations(false);
+    content.setHaveCovidDeclarations(false);
+    dto.setContent(content);
 
-    dto.setLifecycleState(lifecycleState);
     return dto;
   }
 }

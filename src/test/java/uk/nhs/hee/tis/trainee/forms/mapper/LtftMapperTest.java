@@ -30,6 +30,7 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.INV
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Month;
 import java.time.ZoneId;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,9 +53,7 @@ class LtftMapperTest {
 
   @BeforeEach
   void setUp() {
-    TemporalMapperImpl temporalMapper = new TemporalMapperImpl();
-    temporalMapper.zoneId = ZoneId.of("Etc/UTC");
-
+    TemporalMapper temporalMapper = new TemporalMapper(ZoneId.of("Etc/UTC"));
     mapper = new LtftMapperImpl(temporalMapper);
 
     // The temporal mapper must also be injected in to the abstract LTFT mapper.
@@ -291,7 +290,7 @@ class LtftMapperTest {
 
   @Test
   void shouldMapAltStartDateToAdminSummaryDto() {
-    LocalDate altStartDate = LocalDate.of(2026, 6, 1);
+    LocalDate altStartDate = LocalDate.of(2026, Month.JUNE, 1);
 
     LtftForm entity = new LtftForm();
     entity.setStatus(Status.builder()

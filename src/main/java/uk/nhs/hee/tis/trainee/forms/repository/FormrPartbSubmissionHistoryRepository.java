@@ -1,6 +1,7 @@
 /*
  * The MIT License (MIT)
- * Copyright 2020 Crown Copyright (Health Education England)
+ *
+ * Copyright 2026 Crown Copyright (Health Education England)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
  * associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -20,43 +21,24 @@
 
 package uk.nhs.hee.tis.trainee.forms.repository;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
-import software.amazon.awssdk.services.s3.S3Client;
-import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
+import uk.nhs.hee.tis.trainee.forms.model.FormrPartbSubmissionHistory;
 
 /**
- * A cloud repository for Form-R Part B.
- *
- * @deprecated Form-R Part B uploads are for backwards compatibility only.
+ * A repository for LTFT submission history items.
  */
-@Slf4j
 @Repository
-@Deprecated(since = "0.62.0")
-public class S3FormRPartBRepositoryImpl extends AbstractCloudRepository<FormRPartB> {
+public interface FormrPartbSubmissionHistoryRepository extends
+    MongoRepository<FormrPartbSubmissionHistory, UUID> {
 
   /**
-   * Instantiate an object repository.
+   * Find all Form-R Part B submissions belonging to the given trainee.
    *
-   * @param s3Client     client for S3 service
-   * @param objectMapper mapper handles Json (de)serialisation
-   * @param bucketName   the bucket that this repository provides persistence with
+   * @param traineeId The ID of the trainee.
+   * @return A list of found Form-R Part B submissions.
    */
-  public S3FormRPartBRepositoryImpl(S3Client s3Client,
-      ObjectMapper objectMapper, @Value("${application.file-store.bucket}") String bucketName) {
-    super(s3Client, objectMapper, bucketName);
-  }
-
-  @Override
-  protected String getObjectKeyTemplate() {
-    return "%s/forms/formr-b/%s.json";
-  }
-
-  @Override
-  protected String getObjectPrefixTemplate() {
-    return "%s/forms/formr-b";
-  }
-
+  List<FormrPartbSubmissionHistory> findByTraineeTisId(String traineeId);
 }

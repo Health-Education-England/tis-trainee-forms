@@ -21,6 +21,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.api;
 
+import static java.time.ZoneOffset.UTC;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
@@ -36,9 +37,9 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMIT
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
 import io.awspring.cloud.sns.core.SnsTemplate;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -48,7 +49,9 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -66,7 +69,6 @@ import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
-import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartARepositoryImpl;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
 @SpringBootTest
@@ -95,9 +97,6 @@ class JobResourceIntegrationTest {
   private SnsClient snsClient;
 
   @MockitoBean
-  private S3FormRPartARepositoryImpl s3FormRPartARepository;
-
-  @MockitoBean
   private PdfService pdfService;
 
   @AfterEach
@@ -122,11 +121,11 @@ class JobResourceIntegrationTest {
 
   @Test
   void shouldPublishAllEligibleFormRPartAsWhenNoSinceDateProvided() throws Exception {
-    insertFormRPartA(UUID.randomUUID(), SUBMITTED, LocalDateTime.now().minusDays(10));
-    insertFormRPartA(UUID.randomUUID(), UNSUBMITTED, LocalDateTime.now().minusDays(5));
-    insertFormRPartA(UUID.randomUUID(), DELETED, LocalDateTime.now().minusDays(3));
+    insertFormRPartA(UUID.randomUUID(), SUBMITTED, Instant.now().minus(Duration.ofDays((10))));
+    insertFormRPartA(UUID.randomUUID(), UNSUBMITTED, Instant.now().minus(Duration.ofDays((5))));
+    insertFormRPartA(UUID.randomUUID(), DELETED, Instant.now().minus(Duration.ofDays((3))));
     // DRAFT should not be published
-    insertFormRPartA(UUID.randomUUID(), DRAFT, LocalDateTime.now());
+    insertFormRPartA(UUID.randomUUID(), DRAFT, Instant.now());
 
     MvcResult result = mockMvc.perform(post("/api/job/formr-parta/publish-refresh"))
         .andExpect(status().isOk())
@@ -141,13 +140,13 @@ class JobResourceIntegrationTest {
     LocalDate since = LocalDate.now().minusDays(7);
 
     // Modified after cutoff — should be published
-    insertFormRPartA(UUID.randomUUID(), SUBMITTED, LocalDateTime.now().minusDays(3));
+    insertFormRPartA(UUID.randomUUID(), SUBMITTED, Instant.now().minus(Duration.ofDays((3))));
     // Modified on the cutoff boundary — should be published
-    insertFormRPartA(UUID.randomUUID(), UNSUBMITTED, since.atStartOfDay());
+    insertFormRPartA(UUID.randomUUID(), UNSUBMITTED, since.atStartOfDay().toInstant(UTC));
     // Modified before cutoff — should NOT be published
-    insertFormRPartA(UUID.randomUUID(), SUBMITTED, LocalDateTime.now().minusDays(14));
+    insertFormRPartA(UUID.randomUUID(), SUBMITTED, Instant.now().minus(Duration.ofDays((14))));
     // DRAFT should never be published regardless of date
-    insertFormRPartA(UUID.randomUUID(), DRAFT, LocalDateTime.now());
+    insertFormRPartA(UUID.randomUUID(), DRAFT, Instant.now());
 
     MvcResult result = mockMvc.perform(post("/api/job/formr-parta/publish-refresh")
             .param("since", since.toString()))
@@ -160,7 +159,7 @@ class JobResourceIntegrationTest {
 
   @Test
   void shouldPublishFormRPartAAndIncludeFormTypeMessageAttribute() throws Exception {
-    insertFormRPartA(UUID.randomUUID(), SUBMITTED, LocalDateTime.now());
+    insertFormRPartA(UUID.randomUUID(), SUBMITTED, Instant.now());
 
     mockMvc.perform(post("/api/job/formr-parta/publish-refresh"))
         .andExpect(status().isOk());
@@ -188,11 +187,11 @@ class JobResourceIntegrationTest {
 
   @Test
   void shouldPublishAllEligibleFormRPartBsWhenNoSinceDateProvided() throws Exception {
-    insertFormRPartB(UUID.randomUUID(), SUBMITTED, LocalDateTime.now().minusDays(10));
-    insertFormRPartB(UUID.randomUUID(), UNSUBMITTED, LocalDateTime.now().minusDays(5));
-    insertFormRPartB(UUID.randomUUID(), DELETED, LocalDateTime.now().minusDays(3));
+    insertFormRPartB(UUID.randomUUID(), SUBMITTED, Instant.now().minus(Duration.ofDays((10))));
+    insertFormRPartB(UUID.randomUUID(), UNSUBMITTED, Instant.now().minus(Duration.ofDays((5))));
+    insertFormRPartB(UUID.randomUUID(), DELETED, Instant.now().minus(Duration.ofDays((3))));
     // DRAFT should not be published
-    insertFormRPartB(UUID.randomUUID(), DRAFT, LocalDateTime.now());
+    insertFormRPartB(UUID.randomUUID(), DRAFT, Instant.now());
 
     MvcResult result = mockMvc.perform(post("/api/job/formr-partb/publish-refresh"))
         .andExpect(status().isOk())
@@ -207,13 +206,13 @@ class JobResourceIntegrationTest {
     LocalDate since = LocalDate.now().minusDays(7);
 
     // Modified after cutoff — should be published
-    insertFormRPartB(UUID.randomUUID(), SUBMITTED, LocalDateTime.now().minusDays(3));
+    insertFormRPartB(UUID.randomUUID(), SUBMITTED, Instant.now().minus(Duration.ofDays((3))));
     // Modified on the cutoff boundary — should be published
-    insertFormRPartB(UUID.randomUUID(), UNSUBMITTED, since.atStartOfDay());
+    insertFormRPartB(UUID.randomUUID(), UNSUBMITTED, since.atStartOfDay().toInstant(UTC));
     // Modified before cutoff — should NOT be published
-    insertFormRPartB(UUID.randomUUID(), SUBMITTED, LocalDateTime.now().minusDays(14));
+    insertFormRPartB(UUID.randomUUID(), SUBMITTED, Instant.now().minus(Duration.ofDays((14))));
     // DRAFT should never be published regardless of date
-    insertFormRPartB(UUID.randomUUID(), DRAFT, LocalDateTime.now());
+    insertFormRPartB(UUID.randomUUID(), DRAFT, Instant.now());
 
     MvcResult result = mockMvc.perform(post("/api/job/formr-partb/publish-refresh")
             .param("since", since.toString()))
@@ -226,7 +225,7 @@ class JobResourceIntegrationTest {
 
   @Test
   void shouldPublishFormRPartBAndIncludeFormTypeMessageAttribute() throws Exception {
-    insertFormRPartB(UUID.randomUUID(), SUBMITTED, LocalDateTime.now());
+    insertFormRPartB(UUID.randomUUID(), SUBMITTED, Instant.now());
 
     mockMvc.perform(post("/api/job/formr-partb/publish-refresh"))
         .andExpect(status().isOk());
@@ -271,7 +270,7 @@ class JobResourceIntegrationTest {
   @Test
   void shouldPublishOnlyLtftsModifiedOnOrAfterSinceDate() throws Exception {
     LocalDate since = LocalDate.now().minusDays(7);
-    Instant cutoff = since.atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
+    Instant cutoff = since.atStartOfDay(UTC).toInstant();
 
     // Modified after cutoff — should be published
     insertLtftForm(UUID.randomUUID(), SUBMITTED, Instant.now().minusSeconds(259200));
@@ -295,28 +294,50 @@ class JobResourceIntegrationTest {
   // Helpers
   // -------------------------------------------------------------------------
 
-  private void insertFormRPartA(UUID id, LifecycleState state, LocalDateTime lastModifiedDate) {
+  private void insertFormRPartA(UUID id, LifecycleState state, Instant lastModifiedDate) {
     FormRPartA form = new FormRPartA();
     form.setId(id);
     form.setTraineeTisId(TRAINEE_ID);
-    form.setLifecycleState(state);
-    form.setLastModifiedDate(lastModifiedDate);
+
+    Instant submitted = null;
     if (state == SUBMITTED || state == UNSUBMITTED || state == DELETED) {
-      form.setSubmissionDate(lastModifiedDate != null ? lastModifiedDate : LocalDateTime.now());
+      submitted = lastModifiedDate != null ? lastModifiedDate : Instant.now();
     }
+
+    form.setStatus(Status.builder()
+        .submitted(submitted)
+        .build());
+    form.setLifecycleState(state);
     template.insert(form);
+
+    // Overwrite the lastModified date set automatically by auditing.
+    template.update(FormRPartA.class)
+        .matching(Query.query(Criteria.where("_id").is(form.getId())))
+        .apply(new Update().set("lastModified", lastModifiedDate))
+        .first();
   }
 
-  private void insertFormRPartB(UUID id, LifecycleState state, LocalDateTime lastModifiedDate) {
+  private void insertFormRPartB(UUID id, LifecycleState state, Instant lastModifiedDate) {
     FormRPartB form = new FormRPartB();
     form.setId(id);
     form.setTraineeTisId(TRAINEE_ID);
-    form.setLifecycleState(state);
-    form.setLastModifiedDate(lastModifiedDate);
+
+    Instant submitted = null;
     if (state == SUBMITTED || state == UNSUBMITTED || state == DELETED) {
-      form.setSubmissionDate(lastModifiedDate != null ? lastModifiedDate : LocalDateTime.now());
+      submitted = lastModifiedDate != null ? lastModifiedDate : Instant.now();
     }
-    template.insert(form);
+
+    form.setStatus(Status.builder()
+        .submitted(submitted)
+        .build());
+    form.setLifecycleState(state);
+    form = template.insert(form);
+
+    // Overwrite the lastModified date set automatically by auditing.
+    template.update(FormRPartB.class)
+        .matching(Query.query(Criteria.where("_id").is(form.getId())))
+        .apply(new Update().set("lastModified", lastModifiedDate))
+        .first();
   }
 
   private void insertLtftForm(UUID id, LifecycleState state, Instant lastModified) {

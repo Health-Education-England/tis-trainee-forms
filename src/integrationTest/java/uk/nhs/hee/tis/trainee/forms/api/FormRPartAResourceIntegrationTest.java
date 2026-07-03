@@ -36,12 +36,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.sns.core.SnsTemplate;
 import java.net.URI;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -72,9 +73,8 @@ import software.amazon.awssdk.services.sns.model.PublishRequest;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
-import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
-import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartARepositoryImpl;
+import uk.nhs.hee.tis.trainee.forms.model.content.FormrPartaContent;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
 @SpringBootTest
@@ -104,9 +104,6 @@ class FormRPartAResourceIntegrationTest {
 
   @Autowired
   private MongoTemplate template;
-
-  @MockitoBean
-  S3FormRPartARepositoryImpl s3FormRPartARepository;
 
   @MockitoBean
   SnsClient snsClient;
@@ -167,9 +164,11 @@ class FormRPartAResourceIntegrationTest {
     FormRPartA form = new FormRPartA();
     form.setId(ID);
     form.setTraineeTisId(TRAINEE_ID);
-    form.setForename(FORENAME);
-    form.setSurname(SURNAME);
-    form.setLifecycleState(LifecycleState.DRAFT);
+    form.setContent(FormrPartaContent.builder()
+        .forename(FORENAME)
+        .surname(SURNAME)
+        .build());
+    form.setLifecycleState(DRAFT);
     template.save(form);
 
     Jwt token = TestJwtUtil.createTokenForTrainee("another trainee");
@@ -201,13 +200,14 @@ class FormRPartAResourceIntegrationTest {
 
   @Test
   void shouldCreateFormRPartA() throws Exception {
-    FormRPartADto formToSave = new FormRPartADto();
-    formToSave.setTraineeTisId(TRAINEE_ID);
-    formToSave.setForename(FORENAME);
-    formToSave.setSurname(SURNAME);
-    formToSave.setLifecycleState(LifecycleState.DRAFT);
-
-    String formToSaveJson = mapper.writeValueAsString(formToSave);
+    String formToSaveJson = """
+        {
+          "traineeTisId": "%s",
+          "forename": "%s",
+          "surname": "%s",
+          "lifecycleState": "%s"
+        }
+        """.formatted(TRAINEE_ID, FORENAME, SURNAME, DRAFT);
 
     Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/formr-parta")
@@ -227,19 +227,21 @@ class FormRPartAResourceIntegrationTest {
 
   @Test
   void shouldReturnBadRequestWhenCreatingFormRPartAWithId() throws Exception {
-    FormRPartADto formToSave = new FormRPartADto();
-    formToSave.setId(ID.toString());
-    formToSave.setTraineeTisId(TRAINEE_ID);
-    formToSave.setForename(FORENAME);
-    formToSave.setSurname(SURNAME);
-    formToSave.setLifecycleState(LifecycleState.DRAFT);
-    String formToSaveJson = mapper.writeValueAsString(formToSave);
+    String formJson = """
+        {
+          "id": "%s",
+          "traineeTisId": "%s",
+          "forename": "%s",
+          "surname": "%s",
+          "lifecycleState": "%s"
+        }
+        """.formatted(ID, TRAINEE_ID, FORENAME, SURNAME, DRAFT);
 
     Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/formr-parta")
             .with(jwt().jwt(token))
             .contentType(MediaType.APPLICATION_JSON)
-            .content(formToSaveJson))
+            .content(formJson))
         .andExpect(status().isBadRequest());
   }
 
@@ -247,9 +249,11 @@ class FormRPartAResourceIntegrationTest {
   void shouldGetFormRPartAById() throws Exception {
     FormRPartA form = new FormRPartA();
     form.setTraineeTisId(TRAINEE_ID);
-    form.setForename(FORENAME);
-    form.setSurname(SURNAME);
-    form.setLifecycleState(LifecycleState.DRAFT);
+    form.setContent(FormrPartaContent.builder()
+        .forename(FORENAME)
+        .surname(SURNAME)
+        .build());
+    form.setLifecycleState(DRAFT);
     FormRPartA savedForm = template.save(form);
 
     Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
@@ -268,16 +272,20 @@ class FormRPartAResourceIntegrationTest {
   void shouldGetAllFormRPartAsForTrainee() throws Exception {
     FormRPartA form1 = new FormRPartA();
     form1.setTraineeTisId(TRAINEE_ID);
-    form1.setForename(FORENAME);
-    form1.setSurname(SURNAME);
-    form1.setLifecycleState(LifecycleState.DRAFT);
+    form1.setContent(FormrPartaContent.builder()
+        .forename(FORENAME)
+        .surname(SURNAME)
+        .build());
+    form1.setLifecycleState(DRAFT);
     template.save(form1);
 
     FormRPartA form2 = new FormRPartA();
     form2.setTraineeTisId(TRAINEE_ID);
-    form2.setForename("Jane");
-    form2.setSurname("Smith");
-    form2.setLifecycleState(LifecycleState.SUBMITTED);
+    form2.setContent(FormrPartaContent.builder()
+        .forename("Jane")
+        .surname("Smith")
+        .build());
+    form2.setLifecycleState(SUBMITTED);
     template.save(form2);
 
     Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
@@ -292,19 +300,22 @@ class FormRPartAResourceIntegrationTest {
   void shouldUpdateFormRPartA() throws Exception {
     FormRPartA form = new FormRPartA();
     form.setTraineeTisId(TRAINEE_ID);
-    form.setForename(FORENAME);
-    form.setSurname(SURNAME);
-    form.setLifecycleState(LifecycleState.DRAFT);
-    FormRPartA savedForm = template.save(form);
+    form.setContent(FormrPartaContent.builder()
+        .forename(FORENAME)
+        .surname(SURNAME)
+        .build());
+    form.setLifecycleState(DRAFT);
+    FormRPartA savedForm = template.insert(form);
 
-    FormRPartADto formToUpdate = new FormRPartADto();
-    formToUpdate.setId(savedForm.getId().toString());
-    formToUpdate.setTraineeTisId(TRAINEE_ID);
-    formToUpdate.setForename("Jane");
-    formToUpdate.setSurname("Smith");
-    formToUpdate.setLifecycleState(LifecycleState.DRAFT);
-
-    String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
+    String formToUpdateJson = """
+        {
+          "id": "%s",
+          "traineeTisId": "%s",
+          "forename": "Jane",
+          "surname": "Smith",
+          "lifecycleState": "%s"
+        }
+        """.formatted(savedForm.getId(), TRAINEE_ID, DRAFT);
 
     Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(put("/api/formr-parta")
@@ -341,7 +352,7 @@ class FormRPartAResourceIntegrationTest {
   void shouldDeleteDraftFormRPartA() throws Exception {
     FormRPartA form = new FormRPartA();
     form.setTraineeTisId(TRAINEE_ID);
-    form.setLifecycleState(LifecycleState.DRAFT);
+    form.setLifecycleState(DRAFT);
     FormRPartA savedForm = template.save(form);
 
     Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
@@ -365,7 +376,7 @@ class FormRPartAResourceIntegrationTest {
   void shouldReturnBadRequestWhenDeletingSubmittedFormRPartA() throws Exception {
     FormRPartA form = new FormRPartA();
     form.setTraineeTisId(TRAINEE_ID);
-    form.setLifecycleState(LifecycleState.SUBMITTED);
+    form.setLifecycleState(SUBMITTED);
     FormRPartA savedForm = template.save(form);
 
     Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
@@ -376,34 +387,35 @@ class FormRPartAResourceIntegrationTest {
 
   @Test
   void shouldPublishEventWhenSubmittingFormRPartA() throws Exception {
-    FormRPartADto formToSave = new FormRPartADto();
-    formToSave.setTraineeTisId(TRAINEE_ID);
-    formToSave.setForename(FORENAME);
-    formToSave.setSurname(SURNAME);
-    formToSave.setWholeTimeEquivalent("1.0");
-    formToSave.setGmcNumber("1234567");
-    formToSave.setEmail("john.doe@example.com");
-    formToSave.setTelephoneNumber("07700900000");
-    formToSave.setMobileNumber("07700900001");
-    formToSave.setDateOfBirth(LocalDate.parse("1990-01-01"));
-    formToSave.setGender("Male");
-    formToSave.setImmigrationStatus("British");
-    formToSave.setQualification("MBBS");
-    formToSave.setCollege("Royal College of Physicians");
-    formToSave.setDateAttained(LocalDate.parse("2015-06-01"));
-    formToSave.setMedicalSchool("University of London");
-    formToSave.setAddress1("10 High Street");
-    formToSave.setAddress2("Apartment 1");
-    formToSave.setPostCode("SW1A 1AA");
-    formToSave.setLocalOfficeName("London Local Office");
-    formToSave.setProgrammeSpecialty("General Practice");
-    formToSave.setProgrammeMembershipType("Internal");
-    formToSave.setDeclarationType("Voluntary");
-    formToSave.setStartDate(LocalDate.parse("2020-08-01"));
-    formToSave.setTrainingGrade("ST1");
-    formToSave.setLifecycleState(LifecycleState.SUBMITTED);
-
-    String formToSaveJson = mapper.writeValueAsString(formToSave);
+    String formToSaveJson = """
+        {
+          "traineeTisId": "%s",
+          "forename": "%s",
+          "surname": "%s",
+          "wholeTimeEquivalent": "1.0",
+          "gmcNumber": "1234567",
+          "email": "john.doe@example.com",
+          "telephoneNumber": "07700900000",
+          "mobileNumber": "07700900001",
+          "dateOfBirth": "1990-01-01",
+          "gender": "Male",
+          "immigrationStatus": "British",
+          "qualification": "MBBS",
+          "college": "Royal College of Physicians",
+          "dateAttained": "2015-06-01",
+          "medicalSchool": "University of London",
+          "address1": "10 High Street",
+          "address2": "Apartment 1",
+          "postCode": "SW1A 1AA",
+          "localOfficeName": "London Local Office",
+          "programmeSpecialty": "General Practice",
+          "programmeMembershipType": "Internal",
+          "declarationType": "Voluntary",
+          "startDate": "2020-08-01",
+          "trainingGrade": "ST1",
+          "lifecycleState": "%s"
+        }
+        """.formatted(TRAINEE_ID, FORENAME, SURNAME, SUBMITTED);
 
     Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/formr-parta")
@@ -445,13 +457,14 @@ class FormRPartAResourceIntegrationTest {
 
   @Test
   void shouldNotPublishEventWhenSavingDraftFormRPartA() throws Exception {
-    FormRPartADto formToSave = new FormRPartADto();
-    formToSave.setTraineeTisId(TRAINEE_ID);
-    formToSave.setForename(FORENAME);
-    formToSave.setSurname(SURNAME);
-    formToSave.setLifecycleState(LifecycleState.DRAFT);
-
-    String formToSaveJson = mapper.writeValueAsString(formToSave);
+    String formToSaveJson = """
+        {
+          "traineeTisId": "%s",
+          "forename": "%s",
+          "surname": "%s",
+          "lifecycleState": "%s"
+        }
+        """.formatted(TRAINEE_ID, FORENAME, SURNAME, DRAFT);
 
     Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
     mockMvc.perform(post("/api/formr-parta")

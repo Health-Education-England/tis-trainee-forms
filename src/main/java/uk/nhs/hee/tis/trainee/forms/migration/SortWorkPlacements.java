@@ -41,6 +41,7 @@ import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 @Slf4j
 @ChangeUnit(id = "sortWorkPlacements", order = "4")
 public class SortWorkPlacements {
+
   private final MongoTemplate mongoTemplate;
   private final FormRPartBService formService;
   private final FormRPartBMapper formMapper;
@@ -49,7 +50,7 @@ public class SortWorkPlacements {
    * Sort the work placements on Form R Part Bs by descending endDate.
    */
   public SortWorkPlacements(MongoTemplate mongoTemplate, FormRPartBService formService,
-                            FormRPartBMapper formMapper) {
+      FormRPartBMapper formMapper) {
     this.mongoTemplate = mongoTemplate;
     this.formService = formService;
     this.formMapper = formMapper;
@@ -64,9 +65,9 @@ public class SortWorkPlacements {
         Comparator.nullsFirst(Comparator.reverseOrder()));
 
     for (FormRPartB formRPartB : mongoTemplate.findAll(FormRPartB.class)) {
-      List<Work> originalList = new ArrayList<>(formRPartB.getWork());
-      formRPartB.getWork().sort(compareEndDates);
-      if (!formRPartB.getWork().equals(originalList)) {
+      List<Work> originalList = new ArrayList<>(formRPartB.getContent().getWork());
+      formRPartB.getContent().getWork().sort(compareEndDates);
+      if (!formRPartB.getContent().getWork().equals(originalList)) {
         FormRPartBDto updatedFormDto = formMapper.toDto(formRPartB);
         formService.save(updatedFormDto);
         log.info("Updated work placement ordering for form id [{}] for trainee [{}]",

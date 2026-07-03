@@ -22,6 +22,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.job;
 
+import static java.time.ZoneOffset.UTC;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DELETED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
@@ -87,8 +88,9 @@ public class PublishFormrPartaRefresh extends AbstractPublishRefresh<FormRPartA>
     Set<LifecycleState> states = Set.of(DELETED, SUBMITTED, UNSUBMITTED);
     // Listing allowed (non-DRAFT) states avoids any accidental inclusions of future states.
     if (cutoffDate.isPresent()) {
+      // Use UTC since we're dealing with modification timestamps, which are stored in UTC.
       return repository.streamByLifecycleStateInAndLastModifiedDateGreaterThanEqual(
-          states, cutoffDate.get().atStartOfDay());
+          states, cutoffDate.get().atStartOfDay().toInstant(UTC));
     }
     return repository.streamByLifecycleStateIn(states);
   }

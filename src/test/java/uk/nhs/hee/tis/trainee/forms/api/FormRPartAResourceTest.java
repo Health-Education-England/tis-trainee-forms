@@ -81,6 +81,7 @@ import uk.nhs.hee.tis.trainee.forms.config.MongoConfiguration;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartAPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
+import uk.nhs.hee.tis.trainee.forms.dto.content.FormrPartaContentDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
@@ -141,9 +142,12 @@ class FormRPartAResourceTest {
     dto = new FormRPartADto();
     dto.setId(DEFAULT_ID);
     dto.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
-    dto.setForename(DEFAULT_FORENAME);
-    dto.setSurname(DEFAULT_SURNAME);
     dto.setLifecycleState(DEFAULT_LIFECYCLESTATE);
+
+    FormrPartaContentDto content = new FormrPartaContentDto();
+    content.setForename(DEFAULT_FORENAME);
+    content.setSurname(DEFAULT_SURNAME);
+    dto.setContent(content);
 
     simpleDto = new FormRPartSimpleDto();
     simpleDto.setId(DEFAULT_ID);

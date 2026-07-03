@@ -21,12 +21,14 @@
 
 package uk.nhs.hee.tis.trainee.forms.service;
 
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DELETED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
+
 import com.amazonaws.xray.spring.aop.XRayEnabled;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.Instant;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -42,8 +44,8 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
+import uk.nhs.hee.tis.trainee.forms.model.Person;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
-import uk.nhs.hee.tis.trainee.forms.repository.S3FormRPartBRepositoryImpl;
 import uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService.FormrFileEventDto;
 
 @Slf4j
@@ -54,21 +56,9 @@ public class FormRPartBService {
 
   public static final String FORM_TYPE = "formr-b";
 
-  private static final String ATTRIBUTE_NAME_LIFE_CYCLE_STATE = "lifecycleState";
-
-  private static final Set<String> FIXED_FIELDS = Set.of(
-      "id",
-      "traineeTisId",
-      ATTRIBUTE_NAME_LIFE_CYCLE_STATE,
-      "submissionDate",
-      "lastModifiedDate"
-  );
-
   private final FormRPartBMapper formRPartBMapper;
 
   private final FormRPartBRepository formRPartBRepository;
-
-  private final S3FormRPartBRepositoryImpl s3ObjectRepository;
 
   private final ObjectMapper objectMapper;
 
@@ -78,14 +68,10 @@ public class FormRPartBService {
 
   private final String formRPartBUpdatedTopic;
 
-  @Value("${application.file-store.always-store}")
-  private boolean alwaysStoreFiles;
-
   /**
    * Constructor for a FormR PartB service.
    *
    * @param formRPartBRepository   spring data repository
-   * @param s3ObjectRepository     S3 Repository for forms
    * @param formRPartBMapper       maps between the form entity and dto
    * @param objectMapper           The object mapper.
    * @param traineeIdentity        The trainee identity.
@@ -93,14 +79,11 @@ public class FormRPartBService {
    * @param formRPartBUpdatedTopic The SNS topic for FormR PartB updated events.
    */
   public FormRPartBService(FormRPartBRepository formRPartBRepository,
-      S3FormRPartBRepositoryImpl s3ObjectRepository,
-      FormRPartBMapper formRPartBMapper,
-      ObjectMapper objectMapper, TraineeIdentity traineeIdentity,
+      FormRPartBMapper formRPartBMapper, ObjectMapper objectMapper, TraineeIdentity traineeIdentity,
       EventBroadcastService eventBroadcastService,
       @Value("${application.aws.sns.formr-updated}") String formRPartBUpdatedTopic) {
     this.formRPartBRepository = formRPartBRepository;
     this.formRPartBMapper = formRPartBMapper;
-    this.s3ObjectRepository = s3ObjectRepository;
     this.objectMapper = objectMapper;
     this.traineeIdentity = traineeIdentity;
     this.eventBroadcastService = eventBroadcastService;
@@ -112,29 +95,55 @@ public class FormRPartBService {
    */
   public FormRPartBDto save(FormRPartBDto formRPartBDto) {
     log.info("Request to save FormRPartB : {}", formRPartBDto);
-    Set<LifecycleState> modifiableStates = Set.of(LifecycleState.DRAFT, LifecycleState.UNSUBMITTED);
+    FormRPartB existingForm = null;
+    Set<LifecycleState> modifiableStates = Set.of(DRAFT, UNSUBMITTED);
 
     if (formRPartBDto.getId() != null) {
-      formRPartBRepository.findById(UUID.fromString(formRPartBDto.getId()))
-          .ifPresent(existingForm -> {
-            if (!modifiableStates.contains(existingForm.getLifecycleState())) {
-              String message = String.format(
-                  "Form %s is in lifecycle state %s and cannot be modified.",
-                  existingForm.getId(), existingForm.getLifecycleState());
-              throw new IllegalArgumentException(message);
-            }
-          });
+      Optional<FormRPartB> foundForm = formRPartBRepository.findById(
+          UUID.fromString(formRPartBDto.getId()));
+
+      if (foundForm.isPresent()) {
+        existingForm = foundForm.get();
+        if (!modifiableStates.contains(existingForm.getLifecycleState())) {
+          String message = String.format("Form %s is in lifecycle state %s and cannot be modified.",
+              existingForm.getId(), existingForm.getLifecycleState());
+          throw new IllegalArgumentException(message);
+        }
+      }
     }
 
-    FormRPartB formRPartB = formRPartBMapper.toEntity(formRPartBDto);
-    if (alwaysStoreFiles || formRPartB.getLifecycleState() == LifecycleState.SUBMITTED) {
-      s3ObjectRepository.save(formRPartB);
+    FormRPartB formRPartB = formRPartBMapper.toEntity(formRPartBDto, existingForm);
+
+    if (existingForm == null
+        || formRPartBDto.getLifecycleState() != existingForm.getLifecycleState()) {
+      LifecycleState newLifecycleState = formRPartBDto.getLifecycleState();
+      Person modifiedBy;
+      int revision;
+
+      if (newLifecycleState == DRAFT || newLifecycleState == SUBMITTED) {
+        modifiedBy = Person.builder()
+            .name(traineeIdentity.getName())
+            .email(traineeIdentity.getEmail())
+            .role(traineeIdentity.getRole())
+            .build();
+        revision = formRPartB.getRevision();
+      } else {
+        // TODO: used admin identity if we need to handle admin transitions here.
+        modifiedBy = Person.builder()
+            .name("Unknown Admin")
+            .email("no-reply@tis.nhs.uk")
+            .role("ADMIN")
+            .build();
+        revision = newLifecycleState == UNSUBMITTED ? formRPartB.getRevision() + 1
+            : formRPartB.getRevision();
+      }
+
+      formRPartB.setLifecycleState(newLifecycleState, null, modifiedBy, revision);
     }
 
-    // Forms stored in cloud are still stored to Mongo for backwards compatibility.
     formRPartB = formRPartBRepository.save(formRPartB);
     FormRPartBDto formDto = formRPartBMapper.toDto(formRPartB);
-    if (formRPartB.getLifecycleState() == LifecycleState.SUBMITTED) {
+    if (formRPartB.getLifecycleState() == SUBMITTED) {
       publishFormRUpdateEvent(formDto);
     }
     return formDto;
@@ -211,7 +220,7 @@ public class FormRPartBService {
     FormRPartB form = optionalForm.get();
     LifecycleState state = form.getLifecycleState();
 
-    if (!state.equals(LifecycleState.DRAFT)) {
+    if (!state.equals(DRAFT)) {
       String message = String.format("Unable to delete forms with lifecycle state %s.", state);
       log.warn(message);
       throw new IllegalArgumentException(message);
@@ -234,7 +243,6 @@ public class FormRPartBService {
 
     return formRPartBRepository.findById(id)
         .map(this::partialDelete)
-        .map(s3ObjectRepository::save) // TODO: remove S3 update when fully migrated.
         .map(formRPartBMapper::toDto);
   }
 
@@ -245,18 +253,8 @@ public class FormRPartBService {
    * @return The partially deleted form.
    */
   private FormRPartB partialDelete(FormRPartB form) {
-    JsonNode jsonForm = objectMapper.valueToTree(form);
-
-    for (Iterator<String> fieldIterator = jsonForm.fieldNames(); fieldIterator.hasNext(); ) {
-      String fieldName = fieldIterator.next();
-
-      if (!FIXED_FIELDS.contains(fieldName)) {
-        fieldIterator.remove();
-      }
-    }
-    ((ObjectNode) jsonForm).put(ATTRIBUTE_NAME_LIFE_CYCLE_STATE,
-        LifecycleState.DELETED.name());
-    form = objectMapper.convertValue(jsonForm, FormRPartB.class);
+    form.setContent(null);
+    form.setLifecycleState(DELETED);
 
     formRPartBRepository.save(form);
     publishFormRUpdateEvent(formRPartBMapper.toDto(form));
@@ -277,14 +275,13 @@ public class FormRPartBService {
 
     return formRPartBRepository.findById(id)
         .map(form -> {
-          form.setLifecycleState(LifecycleState.UNSUBMITTED);
+          form.setLifecycleState(UNSUBMITTED);
           FormRPartB formRPartB = formRPartBRepository.save(form);
           publishFormRUpdateEvent(formRPartBMapper.toDto(form));
           log.info("Unsubmitted successfully for trainee {} with form Id {} (FormRPartB)",
               form.getTraineeTisId(), form.getId());
           return formRPartB;
         })
-        .map(s3ObjectRepository::save) // TODO: remove S3 update when fully migrated.
         .map(formRPartBMapper::toDto);
   }
 

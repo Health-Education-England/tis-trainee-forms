@@ -1,7 +1,6 @@
 application:
   environment: ${ENVIRONMENT:local}
   file-store:
-    always-store: ${APPLICATION_FILESTORE_ALWAYSSTORE:false}
     bucket: ${APPLICATION_FILESTORE_BUCKET:}
   aws:
     sns:

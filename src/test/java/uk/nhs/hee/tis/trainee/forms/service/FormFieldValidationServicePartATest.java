@@ -37,6 +37,7 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import software.amazon.awssdk.services.s3.S3Client;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
+import uk.nhs.hee.tis.trainee.forms.dto.content.FormrPartaContentDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 @ContextConfiguration(classes = ValidationAutoConfiguration.class)
@@ -69,7 +70,7 @@ class FormFieldValidationServicePartATest {
   @ValueSource(strings = {STRING_120_CHARS})
   void whenForenameIsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
-    input.setForename(str);
+    input.getContent().setForename(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -79,7 +80,7 @@ class FormFieldValidationServicePartATest {
   @ValueSource(strings = {STRING_120_CHARS})
   void whenSurnameIsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
-    input.setSurname(str);
+    input.getContent().setSurname(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -87,7 +88,7 @@ class FormFieldValidationServicePartATest {
   @Test
   void whenGmcNumberIsNullThenThrowsNoException() {
     FormRPartADto input = validForm();
-    input.setGmcNumber(null);
+    input.getContent().setGmcNumber(null);
 
     service.validateFormRPartA(input);
 
@@ -98,7 +99,7 @@ class FormFieldValidationServicePartATest {
   @ValueSource(strings = {STRING_21_CHARS})
   void whenGmcNumberIsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
-    input.setGmcNumber(str);
+    input.getContent().setGmcNumber(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -107,7 +108,7 @@ class FormFieldValidationServicePartATest {
   @ValueSource(strings = {STRING_21_CHARS})
   void whenGdcNumberIsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
-    input.setGdcNumber(str);
+    input.getContent().setGdcNumber(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -116,7 +117,8 @@ class FormFieldValidationServicePartATest {
   @ValueSource(strings = {STRING_21_CHARS})
   void whenPublicHealthNumberIsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
-    input.setPublicHealthNumber(str);
+
+    input.getContent().setPublicHealthNumber(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -126,7 +128,7 @@ class FormFieldValidationServicePartATest {
   @ValueSource(strings = {STRING_120_CHARS})
   void whenLocalOfficeNameIsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
-    input.setForename(str);
+    input.getContent().setForename(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -136,7 +138,7 @@ class FormFieldValidationServicePartATest {
   @ValueSource(strings = {STRING_120_CHARS})
   void whenGenderIsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
-    input.setGender(str);
+    input.getContent().setGender(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -144,7 +146,7 @@ class FormFieldValidationServicePartATest {
   @Test
   void whenDateOfBirthIsTooRecentThenThrowsException() {
     FormRPartADto input = validForm();
-    input.setDateOfBirth(LocalDate.now());
+    input.getContent().setDateOfBirth(LocalDate.now());
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -152,7 +154,7 @@ class FormFieldValidationServicePartATest {
   @Test
   void whenDateOfBirthIsTooOldThenThrowsException() {
     FormRPartADto input = validForm();
-    input.setDateOfBirth(LocalDate.MIN);
+    input.getContent().setDateOfBirth(LocalDate.MIN);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -160,7 +162,7 @@ class FormFieldValidationServicePartATest {
   @Test
   void whenDateOfBirthIsNullThenThrowsException() {
     FormRPartADto input = validForm();
-    input.setDateOfBirth(null);
+    input.getContent().setDateOfBirth(null);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -170,7 +172,7 @@ class FormFieldValidationServicePartATest {
   @ValueSource(strings = {STRING_240_CHARS})
   void whenImmigrationStatusIsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
-    input.setImmigrationStatus(str);
+    input.getContent().setImmigrationStatus(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -180,7 +182,7 @@ class FormFieldValidationServicePartATest {
   @ValueSource(strings = {STRING_120_CHARS})
   void whenQualificationIsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
-    input.setQualification(str);
+    input.getContent().setQualification(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -188,7 +190,7 @@ class FormFieldValidationServicePartATest {
   @Test
   void whenDateAttainedIsFutureThenThrowsException() {
     FormRPartADto input = validForm();
-    input.setDateAttained(LocalDate.MAX);
+    input.getContent().setDateAttained(LocalDate.MAX);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -196,7 +198,7 @@ class FormFieldValidationServicePartATest {
   @Test
   void whenDateAttainedIsTooOldThenThrowsException() {
     FormRPartADto input = validForm();
-    input.setDateAttained(LocalDate.MIN);
+    input.getContent().setDateAttained(LocalDate.MIN);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -206,7 +208,7 @@ class FormFieldValidationServicePartATest {
   @ValueSource(strings = {STRING_120_CHARS})
   void whenMedicalSchoolIsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
-    input.setMedicalSchool(str);
+    input.getContent().setMedicalSchool(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -216,7 +218,7 @@ class FormFieldValidationServicePartATest {
   @ValueSource(strings = {STRING_120_CHARS})
   void whenAddress1IsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
-    input.setAddress1(str);
+    input.getContent().setAddress1(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -226,7 +228,7 @@ class FormFieldValidationServicePartATest {
   @ValueSource(strings = {STRING_120_CHARS})
   void whenAddress2IsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
-    input.setAddress2(str);
+    input.getContent().setAddress2(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -236,7 +238,7 @@ class FormFieldValidationServicePartATest {
   @ValueSource(strings = {STRING_21_CHARS})
   void whenPostCodeIsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
-    input.setPostCode(str);
+    input.getContent().setPostCode(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -246,7 +248,7 @@ class FormFieldValidationServicePartATest {
   @ValueSource(strings = {STRING_9_CHARS, STRING_21_CHARS})
   void whenTelephoneNumberIsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
-    input.setTelephoneNumber(str);
+    input.getContent().setTelephoneNumber(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -256,7 +258,7 @@ class FormFieldValidationServicePartATest {
   @ValueSource(strings = {STRING_9_CHARS, STRING_21_CHARS})
   void whenMobileNumberIsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
-    input.setMobileNumber(str);
+    input.getContent().setMobileNumber(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -266,7 +268,8 @@ class FormFieldValidationServicePartATest {
   @ValueSource(strings = {STRING_9_CHARS, STRING_21_CHARS})
   void whenEmailIsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
-    input.setEmail(str); //email validation is left quite loose, there is no attempt to test RFC5322
+    input.getContent()
+        .setEmail(str); //email validation is left quite loose, there is no attempt to test RFC5322
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -275,7 +278,7 @@ class FormFieldValidationServicePartATest {
   @NullSource
   void whenDeclarationTypeIsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
-    input.setDeclarationType(str);
+    input.getContent().setDeclarationType(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -285,7 +288,7 @@ class FormFieldValidationServicePartATest {
   @ValueSource(strings = {STRING_120_CHARS})
   void whenProgrammeSpecialtyIsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
-    input.setProgrammeSpecialty(str);
+    input.getContent().setProgrammeSpecialty(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -295,8 +298,9 @@ class FormFieldValidationServicePartATest {
   @ValueSource(strings = {STRING_120_CHARS})
   void whenCctSpecialty1IsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
-    input.setDeclarationType("I have been appointed to a programme leading to award of CCT");
-    input.setCctSpecialty1(str);
+    input.getContent()
+        .setDeclarationType("I have been appointed to a programme leading to award of CCT");
+    input.getContent().setCctSpecialty1(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -305,8 +309,8 @@ class FormFieldValidationServicePartATest {
   @NullAndEmptySource
   void whenCctSpecialty1IsNotConstrainedThenDoesNotThrowException(String str) {
     FormRPartADto input = validForm();
-    input.setDeclarationType("another declaration type");
-    input.setCctSpecialty1(str);
+    input.getContent().setDeclarationType("another declaration type");
+    input.getContent().setCctSpecialty1(str);
 
     service.validateFormRPartA(input);
 
@@ -318,7 +322,7 @@ class FormFieldValidationServicePartATest {
   @ValueSource(strings = {STRING_120_CHARS})
   void whenCollegeIsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
-    input.setCollege(str);
+    input.getContent().setCollege(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -326,7 +330,7 @@ class FormFieldValidationServicePartATest {
   @Test
   void whenCompletionDateIsPastThenThrowsException() {
     FormRPartADto input = validForm();
-    input.setCompletionDate(LocalDate.MIN);
+    input.getContent().setCompletionDate(LocalDate.MIN);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -334,7 +338,7 @@ class FormFieldValidationServicePartATest {
   @Test
   void whenCompletionDateIsTooBigThenThrowsException() {
     FormRPartADto input = validForm();
-    input.setCompletionDate(LocalDate.MAX);
+    input.getContent().setCompletionDate(LocalDate.MAX);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -342,7 +346,7 @@ class FormFieldValidationServicePartATest {
   @Test
   void whenCompletionDateIsNullThenDoesNotThrowException() {
     FormRPartADto input = validForm();
-    input.setCompletionDate(null);
+    input.getContent().setCompletionDate(null);
 
     service.validateFormRPartA(input);
 
@@ -354,7 +358,7 @@ class FormFieldValidationServicePartATest {
   @ValueSource(strings = {STRING_120_CHARS})
   void whenTrainingGradeIsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
-    input.setTrainingGrade(str);
+    input.getContent().setTrainingGrade(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -362,7 +366,7 @@ class FormFieldValidationServicePartATest {
   @Test
   void whenStartDateIsTooOldThenThrowsException() {
     FormRPartADto input = validForm();
-    input.setStartDate(LocalDate.MIN);
+    input.getContent().setStartDate(LocalDate.MIN);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -370,7 +374,7 @@ class FormFieldValidationServicePartATest {
   @Test
   void whenStartDateIsTooBigThenThrowsException() {
     FormRPartADto input = validForm();
-    input.setStartDate(LocalDate.MAX);
+    input.getContent().setStartDate(LocalDate.MAX);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -380,7 +384,7 @@ class FormFieldValidationServicePartATest {
   @ValueSource(strings = {STRING_120_CHARS})
   void whenProgrammeMembershipTypeIsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
-    input.setProgrammeMembershipType(str);
+    input.getContent().setProgrammeMembershipType(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -390,7 +394,7 @@ class FormFieldValidationServicePartATest {
   @ValueSource(strings = {"1.1", "-1", "0.005", "1e0", "a", "0.99999999999", "1.00000000001"})
   void whenWholeTimeEquivalentIsInvalidThenThrowsException(String str) {
     FormRPartADto input = validForm();
-    input.setWholeTimeEquivalent(str);
+    input.getContent().setWholeTimeEquivalent(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartA(input));
   }
@@ -402,40 +406,42 @@ class FormFieldValidationServicePartATest {
    */
   FormRPartADto validForm() {
     FormRPartADto input = new FormRPartADto();
-
     input.setId("a3586ddb-adea-4709-9806-18e5bd200a69");
-    input.setForename("David");
-    input.setSurname("Short");
-    input.setGmcNumber("8999999");
-    input.setLocalOfficeName("South London");
-    input.setDateOfBirth(LocalDate.now().minusYears(20L));
-    input.setGender("Male");
-    input.setImmigrationStatus("British National Overseas");
-    input.setQualification("Degree");
-    input.setDateAttained(LocalDate.now().minusYears(5L));
-    input.setMedicalSchool("Sheffield University");
-    input.setAddress1("3rd Floor");
-    input.setAddress2("3 Piccadilly Place");
-    input.setAddress3("Manchester");
-    input.setPostCode("M1 3BN");
-    input.setTelephoneNumber("0161 625 7379");
-    input.setMobileNumber("+445326346346");
-    input.setEmail("potato@potato.com");
-    input.setDeclarationType("I have been appointed to a programme leading to award of CCT");
-    input.setIsLeadingToCct(null);
-    input.setProgrammeSpecialty("Geriatric Medicine");
-    input.setCctSpecialty1("GP Returner");
-    input.setCctSpecialty2("GP Returner");
-    input.setCollege("Faculty of Intensive Care Medicine");
-    input.setCompletionDate(LocalDate.now().plusYears(5));
-    input.setTrainingGrade("Core Training Year 3");
-    input.setStartDate(LocalDate.now());
-    input.setProgrammeMembershipType("Military");
-    input.setWholeTimeEquivalent("1");
     input.setSubmissionDate(LocalDateTime.now());
     input.setLastModifiedDate(LocalDateTime.now());
-    input.setOtherImmigrationStatus("");
     input.setLifecycleState(LifecycleState.SUBMITTED);
+
+    FormrPartaContentDto content = new FormrPartaContentDto();
+    content.setForename("David");
+    content.setSurname("Short");
+    content.setGmcNumber("8999999");
+    content.setLocalOfficeName("South London");
+    content.setDateOfBirth(LocalDate.now().minusYears(20L));
+    content.setGender("Male");
+    content.setImmigrationStatus("British National Overseas");
+    content.setQualification("Degree");
+    content.setDateAttained(LocalDate.now().minusYears(5L));
+    content.setMedicalSchool("Sheffield University");
+    content.setAddress1("3rd Floor");
+    content.setAddress2("3 Piccadilly Place");
+    content.setAddress3("Manchester");
+    content.setPostCode("M1 3BN");
+    content.setTelephoneNumber("0161 625 7379");
+    content.setMobileNumber("+445326346346");
+    content.setEmail("potato@potato.com");
+    content.setDeclarationType("I have been appointed to a programme leading to award of CCT");
+    content.setIsLeadingToCct(null);
+    content.setProgrammeSpecialty("Geriatric Medicine");
+    content.setCctSpecialty1("GP Returner");
+    content.setCctSpecialty2("GP Returner");
+    content.setCollege("Faculty of Intensive Care Medicine");
+    content.setCompletionDate(LocalDate.now().plusYears(5));
+    content.setTrainingGrade("Core Training Year 3");
+    content.setStartDate(LocalDate.now());
+    content.setProgrammeMembershipType("Military");
+    content.setWholeTimeEquivalent("1");
+    content.setOtherImmigrationStatus("");
+    input.setContent(content);
 
     return input;
   }

@@ -20,60 +20,17 @@
 
 package uk.nhs.hee.tis.trainee.forms.model;
 
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import org.springframework.data.mongodb.core.mapping.Document;
+import uk.nhs.hee.tis.trainee.forms.model.content.FormrPartbContent;
 
 @Document(collection = "FormRPartB")
 @Data
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
-public class FormRPartB extends AbstractFormR {
-
-  private Boolean isArcp;
-
-  private String forename;
-  private String surname;
-  private String gmcNumber;
-  private String gdcNumber;
-  private String publicHealthNumber;
-  private String email;
-  private String localOfficeName;
-  private String prevRevalBody;
-  private String prevRevalBodyOther;
-  private LocalDate currRevalDate;
-  private LocalDate prevRevalDate;
-  private String programmeSpecialty;
-  private String dualSpecialty;
-  private List<Work> work = new ArrayList<>();
-  private Integer sicknessAbsence;
-  private Integer parentalLeave;
-  private Integer careerBreaks;
-  private Integer paidLeave;
-  private Integer unauthorisedLeave;
-  private Integer otherLeave;
-  private Integer totalLeave;
-  private Boolean isHonest;
-  private Boolean isHealthy;
-  private Boolean isWarned;
-  private Boolean isComplying;
-  private String healthStatement;
-  private Boolean havePreviousDeclarations;
-  private List<Declaration> previousDeclarations = new ArrayList<>();
-  private String previousDeclarationSummary;
-  private Boolean haveCurrentDeclarations;
-  private List<Declaration> currentDeclarations = new ArrayList<>();
-  private String currentDeclarationSummary;
-  private String compliments;
-  private Boolean haveCovidDeclarations;
-  private CovidDeclaration covidDeclaration;
-  private Boolean haveCurrentUnresolvedDeclarations;
-  private Boolean havePreviousUnresolvedDeclarations;
+public class FormRPartB extends AbstractFormR<FormrPartbContent> {
 
   @Override
   public String getFormType() {

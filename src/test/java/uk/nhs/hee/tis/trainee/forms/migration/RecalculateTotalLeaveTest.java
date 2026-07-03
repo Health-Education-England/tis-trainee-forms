@@ -31,6 +31,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -41,11 +42,11 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.test.util.ReflectionTestUtils;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
-import uk.nhs.hee.tis.trainee.forms.mapper.CovidDeclarationMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartBMapperImpl;
+import uk.nhs.hee.tis.trainee.forms.mapper.TemporalMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
+import uk.nhs.hee.tis.trainee.forms.model.content.FormrPartbContent;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 
 class RecalculateTotalLeaveTest {
@@ -60,9 +61,8 @@ class RecalculateTotalLeaveTest {
     template = mock(MongoTemplate.class);
     service = mock(FormRPartBService.class);
 
-    FormRPartBMapperImpl mapper = new FormRPartBMapperImpl();
-    ReflectionTestUtils.setField(mapper, "covidDeclarationMapper",
-        new CovidDeclarationMapperImpl());
+    FormRPartBMapperImpl mapper = new FormRPartBMapperImpl(
+        new TemporalMapper(ZoneId.of("Etc/UTC")));
     migration = new RecalculateTotalLeave(template, service, mapper);
   }
 
@@ -79,7 +79,7 @@ class RecalculateTotalLeaveTest {
     List<Document> andList = queryObject.get("$and", List.class);
     assertThat("Unexpected number of AND conditions.", andList.size(), is(1));
 
-    Document andObject = (Document) andList.get(0);
+    Document andObject = andList.get(0);
     int totalLeave = andObject.getInteger("totalLeave");
     assertThat("Unexpected total leave in filter.", totalLeave, is(0));
 
@@ -98,12 +98,14 @@ class RecalculateTotalLeaveTest {
   @Test
   void shouldSumAllLeaveFields() {
     FormRPartB form = new FormRPartB();
-    form.setSicknessAbsence(1);
-    form.setParentalLeave(10);
-    form.setCareerBreaks(100);
-    form.setPaidLeave(1000);
-    form.setUnauthorisedLeave(10000);
-    form.setOtherLeave(100000);
+    form.setContent(FormrPartbContent.builder()
+        .sicknessAbsence(1)
+        .parentalLeave(10)
+        .careerBreaks(100)
+        .paidLeave(1000)
+        .unauthorisedLeave(10000)
+        .otherLeave(100000)
+        .build());
     when(template.find(any(), eq(FormRPartB.class))).thenReturn(Collections.singletonList(form));
 
     migration.migrate();
@@ -112,7 +114,7 @@ class RecalculateTotalLeaveTest {
     verify(service).save(formCaptor.capture());
 
     FormRPartBDto updatedForm = formCaptor.getValue();
-    assertThat("Unexpected total leave.", form.getTotalLeave(), is(111111));
+    assertThat("Unexpected total leave.", updatedForm.getContent().getTotalLeave(), is(111111));
   }
 
   @Test

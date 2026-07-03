@@ -56,6 +56,7 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
+import uk.nhs.hee.tis.trainee.forms.dto.content.FormrPartbContentDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartBRepository;
@@ -88,6 +89,7 @@ class FormRPartBValidatorTest {
     formRPartBDto = new FormRPartBDto();
     formRPartBDto.setId(DEFAULT_ID.toString());
     formRPartBDto.setLifecycleState(DEFAULT_LIFECYCLESTATE);
+    formRPartBDto.setContent(new FormrPartbContentDto());
 
     formRPartBRepositoryMock = mock(FormRPartBRepository.class);
     formFieldValidationServiceMock = mock(FormFieldValidationService.class);
@@ -228,7 +230,7 @@ class FormRPartBValidatorTest {
       mode = Mode.EXCLUDE)
   void shouldNotReturnFieldErrorWhenNotSubmittedForm(LifecycleState state) {
     formRPartBDto.setLifecycleState(state);
-    formRPartBDto.setSurname(null);
+    formRPartBDto.getContent().setSurname(null);
     List<FieldError> fieldErrors = validator.checkSubmittedFormContent(formRPartBDto);
     assertThat("Should not return an error", fieldErrors.size(), is(0));
   }
@@ -289,7 +291,7 @@ class FormRPartBValidatorTest {
   @ExtendWith(OutputCaptureExtension.class)
   @Test
   void validationCurrentRevalDateWarningIsLogged(CapturedOutput output) {
-    formRPartBDto.setCurrRevalDate(LocalDate.MIN);
+    formRPartBDto.getContent().setCurrRevalDate(LocalDate.MIN);
     formRPartBDto.setLifecycleState(LifecycleState.SUBMITTED);
 
     validator.checkSubmittedFormContent(formRPartBDto);
@@ -301,7 +303,7 @@ class FormRPartBValidatorTest {
   @ExtendWith(OutputCaptureExtension.class)
   @Test
   void validationCurrentRevalDateIsFutureIsNotLogged(CapturedOutput output) {
-    formRPartBDto.setCurrRevalDate(LocalDate.MAX);
+    formRPartBDto.getContent().setCurrRevalDate(LocalDate.MAX);
     formRPartBDto.setLifecycleState(LifecycleState.SUBMITTED);
 
     validator.checkSubmittedFormContent(formRPartBDto);
@@ -312,7 +314,7 @@ class FormRPartBValidatorTest {
 
   private ConstraintViolation<FormRPartBDto> createDummyConstraintViolation(String message,
       String dottedPath, String invalidValue) {
-    ConstraintViolation<FormRPartBDto> cv = new ConstraintViolation<>() {
+    return new ConstraintViolation<>() {
       @Override
       public String getMessage() {
         return message;
@@ -368,6 +370,5 @@ class FormRPartBValidatorTest {
         return null;
       }
     };
-    return cv;
   }
 }

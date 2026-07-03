@@ -55,6 +55,7 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
+import uk.nhs.hee.tis.trainee.forms.dto.content.FormrPartaContentDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
@@ -86,6 +87,7 @@ class FormRPartAValidatorTest {
     formRPartADto = new FormRPartADto();
     formRPartADto.setId(DEFAULT_ID.toString());
     formRPartADto.setLifecycleState(DEFAULT_LIFECYCLESTATE);
+    formRPartADto.setContent(new FormrPartaContentDto());
 
     formRPartARepositoryMock = mock(FormRPartARepository.class);
     formFieldValidationServiceMock = mock(FormFieldValidationService.class);
@@ -223,7 +225,7 @@ class FormRPartAValidatorTest {
   @NullAndEmptySource
   void shouldReturnFieldErrorWhenSubmittedFormWteMissingOrNull(String value) {
     formRPartADto.setLifecycleState(LifecycleState.SUBMITTED);
-    formRPartADto.setWholeTimeEquivalent(value);
+    formRPartADto.getContent().setWholeTimeEquivalent(value);
     List<FieldError> fieldErrors = validator.checkSubmittedFormContent(formRPartADto);
     assertThat("Should return an error", fieldErrors.size(), is(1));
   }
@@ -231,7 +233,7 @@ class FormRPartAValidatorTest {
   @Test
   void shouldNotReturnFieldErrorWhenSubmittedFormWteValid() {
     formRPartADto.setLifecycleState(LifecycleState.SUBMITTED);
-    formRPartADto.setWholeTimeEquivalent("0.99");
+    formRPartADto.getContent().setWholeTimeEquivalent("0.99");
     List<FieldError> fieldErrors = validator.checkSubmittedFormContent(formRPartADto);
     assertThat("Should not return an error", fieldErrors.size(), is(0));
   }
@@ -243,7 +245,7 @@ class FormRPartAValidatorTest {
       mode = Mode.EXCLUDE)
   void shouldNotReturnFieldErrorWhenNotSubmittedForm(LifecycleState state) {
     formRPartADto.setLifecycleState(state);
-    formRPartADto.setWholeTimeEquivalent(null);
+    formRPartADto.getContent().setWholeTimeEquivalent(null);
     List<FieldError> fieldErrors = validator.checkSubmittedFormContent(formRPartADto);
     assertThat("Should not return an error", fieldErrors.size(), is(0));
   }
@@ -257,7 +259,7 @@ class FormRPartAValidatorTest {
     ConstraintViolation<FormRPartADto> cv
         = createDummyConstraintViolation(violationMessage, dottedPath, invalidValue);
 
-    formRPartADto.setWholeTimeEquivalent("0.99");
+    formRPartADto.getContent().setWholeTimeEquivalent("0.99");
     ConstraintViolationException e
         = new ConstraintViolationException("violation message", Set.of(cv));
     doThrow(e).when(formFieldValidationServiceMock).validateFormRPartA(any());
@@ -284,7 +286,7 @@ class FormRPartAValidatorTest {
     ConstraintViolation<FormRPartADto> cv
         = createDummyConstraintViolation(violationMessage, dottedPath, invalidValue);
 
-    formRPartADto.setWholeTimeEquivalent("0.99");
+    formRPartADto.getContent().setWholeTimeEquivalent("0.99");
     ConstraintViolationException e
         = new ConstraintViolationException("violation message", Set.of(cv));
     doThrow(e).when(formFieldValidationServiceMock).validateFormRPartA(any());
@@ -304,7 +306,7 @@ class FormRPartAValidatorTest {
 
   private ConstraintViolation<FormRPartADto> createDummyConstraintViolation(String message,
       String dottedPath, String invalidValue) {
-    ConstraintViolation<FormRPartADto> cv = new ConstraintViolation<>() {
+    return new ConstraintViolation<>() {
       @Override
       public String getMessage() {
         return message;
@@ -360,6 +362,5 @@ class FormRPartAValidatorTest {
         return null;
       }
     };
-    return cv;
   }
 }

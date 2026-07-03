@@ -22,7 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.repository;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.hasItems;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.springframework.data.domain.Sort.Direction.ASC;
@@ -85,14 +85,17 @@ class FormRPartARepositoryIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      _id_         | _id
-      traineeTisId | traineeTisId
+      _id_                 | _id
+      traineeTisId         | traineeTisId
+      formRef              | formRef
+      status.current.state | status.current.state
+      status.history.state | status.history.state
       """)
   void shouldCreateSingleFieldIndexes(String indexName, String fieldName) {
     IndexOperations indexOperations = template.indexOps(FormRPartA.class);
     List<IndexInfo> indexes = indexOperations.getIndexInfo();
 
-    assertThat("Unexpected index count.", indexes, hasSize(2));
+    assertThat("Unexpected index count.", indexes, hasSize(5));
 
     IndexInfo index = indexes.stream()
         .filter(i -> i.getName().equals(indexName))
@@ -141,8 +144,8 @@ class FormRPartARepositoryIntegrationTest {
     List<String> fieldNames = new ArrayList<>();
     jsonDocument.fieldNames().forEachRemaining(fieldNames::add);
 
-    assertThat("Unexpected field count.", fieldNames, hasSize(2));
-    assertThat("Unexpected fields.", fieldNames, hasItems("_id", "_class"));
+    assertThat("Unexpected fields.", fieldNames,
+        containsInAnyOrder("_id", "revision", "created", "lastModified", "_class"));
   }
 
   @ParameterizedTest

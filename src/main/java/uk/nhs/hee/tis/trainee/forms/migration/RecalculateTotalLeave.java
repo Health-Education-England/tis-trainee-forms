@@ -79,13 +79,13 @@ public class RecalculateTotalLeave {
       log.info("Updating total leave for form ID {}", zeroLeaveForm.getId());
 
       int totalLeave = 0;
-      totalLeave += zeroLeaveForm.getSicknessAbsence();
-      totalLeave += zeroLeaveForm.getParentalLeave();
-      totalLeave += zeroLeaveForm.getCareerBreaks();
-      totalLeave += zeroLeaveForm.getPaidLeave();
-      totalLeave += zeroLeaveForm.getUnauthorisedLeave();
-      totalLeave += zeroLeaveForm.getOtherLeave();
-      zeroLeaveForm.setTotalLeave(totalLeave);
+      totalLeave += zeroLeaveForm.getContent().getSicknessAbsence();
+      totalLeave += zeroLeaveForm.getContent().getParentalLeave();
+      totalLeave += zeroLeaveForm.getContent().getCareerBreaks();
+      totalLeave += zeroLeaveForm.getContent().getPaidLeave();
+      totalLeave += zeroLeaveForm.getContent().getUnauthorisedLeave();
+      totalLeave += zeroLeaveForm.getContent().getOtherLeave();
+      zeroLeaveForm.getContent().setTotalLeave(totalLeave);
 
       FormRPartBDto zeroLeaveFormDto = formMapper.toDto(zeroLeaveForm);
       formService.save(zeroLeaveFormDto);

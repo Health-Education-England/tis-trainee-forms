@@ -22,6 +22,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.job;
 
+import static java.time.ZoneOffset.UTC;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
@@ -36,8 +37,10 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.google.common.base.Objects;
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Month;
+import java.time.ZoneId;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -52,6 +55,7 @@ import org.mockito.ArgumentMatcher;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapperImpl;
+import uk.nhs.hee.tis.trainee.forms.mapper.TemporalMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.repository.FormRPartARepository;
 import uk.nhs.hee.tis.trainee.forms.service.FormRPartAService;
@@ -69,7 +73,8 @@ class PublishFormrPartaRefreshTest {
   void setUp() {
     repository = mock(FormRPartARepository.class);
     service = mock(FormRPartAService.class);
-    job = new PublishFormrPartaRefresh(repository, service, new FormRPartAMapperImpl(),
+    job = new PublishFormrPartaRefresh(repository, service,
+        new FormRPartAMapperImpl(new TemporalMapper(ZoneId.of("Etc/UTC"))),
         PUBLISH_TOPIC);
   }
 
@@ -87,7 +92,7 @@ class PublishFormrPartaRefreshTest {
     when(repository.streamByLifecycleStateInAndLastModifiedDateGreaterThanEqual(any(),
         any())).thenReturn(Stream.of());
 
-    job.execute(Optional.of(LocalDate.of(2025, 1, 1)));
+    job.execute(Optional.of(LocalDate.of(2025, Month.JANUARY, 1)));
 
     verifyNoInteractions(service);
   }
@@ -110,7 +115,7 @@ class PublishFormrPartaRefreshTest {
   @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = {"APPROVED", "DRAFT",
       "REJECTED", "WITHDRAWN"})
   void shouldNotPublishDraftFormrPartasWithCutoffDate(LifecycleState state) {
-    LocalDate since = LocalDate.of(2025, 1, 1);
+    LocalDate since = LocalDate.of(2025, Month.JANUARY, 1);
     ArgumentCaptor<Set<LifecycleState>> statesCaptor = ArgumentCaptor.captor();
     when(repository.streamByLifecycleStateInAndLastModifiedDateGreaterThanEqual(
         statesCaptor.capture(), any())).thenReturn(Stream.of());
@@ -124,15 +129,15 @@ class PublishFormrPartaRefreshTest {
 
   @Test
   void shouldUseCutoffDateWhenProvided() {
-    LocalDate since = LocalDate.of(2025, 6, 15);
-    ArgumentCaptor<LocalDateTime> cutoffCaptor = ArgumentCaptor.captor();
+    LocalDate since = LocalDate.of(2025, Month.JUNE, 15);
+    ArgumentCaptor<Instant> cutoffCaptor = ArgumentCaptor.captor();
     when(repository.streamByLifecycleStateInAndLastModifiedDateGreaterThanEqual(any(),
         cutoffCaptor.capture())).thenReturn(Stream.of());
 
     job.execute(Optional.of(since));
 
     assertThat("Unexpected cutoff date.", cutoffCaptor.getValue(),
-        is(since.atStartOfDay()));
+        is(since.atStartOfDay().toInstant(UTC)));
   }
 
   @Test
@@ -164,7 +169,7 @@ class PublishFormrPartaRefreshTest {
     when(repository.streamByLifecycleStateInAndLastModifiedDateGreaterThanEqual(any(),
         any())).thenReturn(Stream.of(form1));
 
-    int publishCount = job.execute(Optional.of(LocalDate.of(2025, 1, 1)));
+    int publishCount = job.execute(Optional.of(LocalDate.of(2025, Month.JANUARY, 1)));
 
     assertThat("Unexpected published Form-R count.", publishCount, is(1));
     verify(service).publishUpdateNotification(argThat(hasId(id1)), eq(PUBLISH_TOPIC));

@@ -68,6 +68,8 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
+import uk.nhs.hee.tis.trainee.forms.dto.content.FormrPartaContentDto;
+import uk.nhs.hee.tis.trainee.forms.dto.content.FormrPartbContentDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 @SpringBootTest
@@ -391,10 +393,14 @@ class PdfServiceIntegrationTest {
 
   @Test
   void shouldMatchEmptyFormRPartAPdfWhenDtoHasEmptyRegistrationNumberStrings() throws IOException {
+    FormrPartaContentDto content = new FormrPartaContentDto();
+    content.setGmcNumber("");
+    content.setGdcNumber("");
+    content.setPublicHealthNumber("");
+
     FormRPartADto dto = new FormRPartADto();
-    dto.setGmcNumber("");
-    dto.setGdcNumber("");
-    dto.setPublicHealthNumber("");
+    dto.setContent(content);
+
     byte[] pdf = service.generatePdf(dto);
 
     int problems = compareGeneratedPdf("formr-parta-empty", pdf);
@@ -406,40 +412,44 @@ class PdfServiceIntegrationTest {
     FormRPartADto dto = new FormRPartADto();
     dto.setId("form-id-12345");
     dto.setTraineeTisId("47165");
-    dto.setProgrammeMembershipId(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"));
-    dto.setIsArcp(true);
-    dto.setProgrammeName("some programme name");
-    dto.setForename("Anthony");
-    dto.setSurname("Gilliam");
-    dto.setGmcNumber("1234567");
-    dto.setGdcNumber("D123456");
-    dto.setPublicHealthNumber("PH123456");
-    dto.setLocalOfficeName("London");
-    dto.setDateOfBirth(LocalDate.of(1980, 4, 5));
-    dto.setGender("gender");
-    dto.setImmigrationStatus("immigration status");
-    dto.setQualification("qualification");
-    dto.setDateAttained(LocalDate.of(2004, 6, 7));
-    dto.setMedicalSchool("medical school");
-    dto.setAddress1("address line 1");
-    dto.setAddress2("address line 2");
-    dto.setAddress3("address line 3");
-    dto.setAddress4("address line 4");
-    dto.setPostCode("AB12 3CD");
-    dto.setTelephoneNumber("+441200900000");
-    dto.setMobileNumber("+447700900000");
-    dto.setEmail("test@testy.com");
-    dto.setDeclarationType("I have been appointed to a programme leading to award of CCT");
-    dto.setIsLeadingToCct(true);
-    dto.setProgrammeSpecialty("programme specialty");
-    dto.setCctSpecialty1("cct specialty 1");
-    dto.setCctSpecialty2("cct specialty 2");
-    dto.setCollege("college");
-    dto.setCompletionDate(LocalDate.of(2024, 8, 9));
-    dto.setTrainingGrade("training grade");
-    dto.setStartDate(LocalDate.of(2021, 9, 10));
-    dto.setProgrammeMembershipType("Substantive");
-    dto.setWholeTimeEquivalent("0.5");
+
+    FormrPartaContentDto content = new FormrPartaContentDto();
+    content.setProgrammeMembershipId(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"));
+    content.setIsArcp(true);
+    content.setProgrammeName("some programme name");
+    content.setForename("Anthony");
+    content.setSurname("Gilliam");
+    content.setGmcNumber("1234567");
+    content.setGdcNumber("D123456");
+    content.setPublicHealthNumber("PH123456");
+    content.setLocalOfficeName("London");
+    content.setDateOfBirth(LocalDate.of(1980, 4, 5));
+    content.setGender("gender");
+    content.setImmigrationStatus("immigration status");
+    content.setQualification("qualification");
+    content.setDateAttained(LocalDate.of(2004, 6, 7));
+    content.setMedicalSchool("medical school");
+    content.setAddress1("address line 1");
+    content.setAddress2("address line 2");
+    content.setAddress3("address line 3");
+    content.setAddress4("address line 4");
+    content.setPostCode("AB12 3CD");
+    content.setTelephoneNumber("+441200900000");
+    content.setMobileNumber("+447700900000");
+    content.setEmail("test@testy.com");
+    content.setDeclarationType("I have been appointed to a programme leading to award of CCT");
+    content.setIsLeadingToCct(true);
+    content.setProgrammeSpecialty("programme specialty");
+    content.setCctSpecialty1("cct specialty 1");
+    content.setCctSpecialty2("cct specialty 2");
+    content.setCollege("college");
+    content.setCompletionDate(LocalDate.of(2024, 8, 9));
+    content.setTrainingGrade("training grade");
+    content.setStartDate(LocalDate.of(2021, 9, 10));
+    content.setProgrammeMembershipType("Substantive");
+    content.setWholeTimeEquivalent("0.5");
+    content.setOtherImmigrationStatus("other immigration status");
+    dto.setContent(content);
 
     LocalDateTime submissionDate = LocalDate.of(2014, 10, 11).atTime(12, 13);
     ZoneOffset submissionOffset = ZonedDateTime.of(submissionDate, ZoneId.systemDefault())
@@ -449,8 +459,6 @@ class PdfServiceIntegrationTest {
     ZoneOffset lastModifiedOffset = ZonedDateTime.of(lastModifiedDate, ZoneId.systemDefault())
         .getOffset();
     dto.setLastModifiedDate(lastModifiedDate.plusSeconds(lastModifiedOffset.getTotalSeconds()));
-
-    dto.setOtherImmigrationStatus("other immigration status");
     dto.setLifecycleState(LifecycleState.SUBMITTED);
 
     byte[] pdf = service.generatePdf(dto);
@@ -471,9 +479,11 @@ class PdfServiceIntegrationTest {
   @Test
   void shouldMatchEmptyFormRPartBPdfWhenDtoHasEmptyRegistrationNumberStrings() throws IOException {
     FormRPartBDto dto = new FormRPartBDto();
-    dto.setGmcNumber("");
-    dto.setGdcNumber("");
-    dto.setPublicHealthNumber("");
+    FormrPartbContentDto content = new FormrPartbContentDto();
+    content.setGmcNumber("");
+    content.setGdcNumber("");
+    content.setPublicHealthNumber("");
+    dto.setContent(content);
     byte[] pdf = service.generatePdf(dto);
 
     int problems = compareGeneratedPdf("formr-partb-empty", pdf);
@@ -485,22 +495,25 @@ class PdfServiceIntegrationTest {
     FormRPartBDto dto = new FormRPartBDto();
     dto.setId("form-id-12345");
     dto.setTraineeTisId("47165");
-    dto.setProgrammeMembershipId(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"));
-    dto.setIsArcp(true);
-    dto.setProgrammeName("some programme name");
-    dto.setForename("Anthony");
-    dto.setSurname("Gilliam");
-    dto.setGmcNumber("1234567");
-    dto.setGdcNumber("D123456");
-    dto.setPublicHealthNumber("PH123456");
-    dto.setEmail("test@testy.com");
-    dto.setLocalOfficeName("London");
-    dto.setPrevRevalBody("prev reval body");
-    dto.setPrevRevalBodyOther("prev reval body other");
-    dto.setCurrRevalDate(LocalDate.of(2024, 4, 5));
-    dto.setPrevRevalDate(LocalDate.of(2021, 3, 4));
-    dto.setProgrammeSpecialty("programme specialty");
-    dto.setDualSpecialty("dual specialty");
+
+    FormrPartbContentDto content = new FormrPartbContentDto();
+    dto.setContent(content);
+    content.setProgrammeMembershipId(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"));
+    content.setIsArcp(true);
+    content.setProgrammeName("some programme name");
+    content.setForename("Anthony");
+    content.setSurname("Gilliam");
+    content.setGmcNumber("1234567");
+    content.setGdcNumber("D123456");
+    content.setPublicHealthNumber("PH123456");
+    content.setEmail("test@testy.com");
+    content.setLocalOfficeName("London");
+    content.setPrevRevalBody("prev reval body");
+    content.setPrevRevalBodyOther("prev reval body other");
+    content.setCurrRevalDate(LocalDate.of(2024, 4, 5));
+    content.setPrevRevalDate(LocalDate.of(2021, 3, 4));
+    content.setProgrammeSpecialty("programme specialty");
+    content.setDualSpecialty("dual specialty");
 
     WorkDto work1 = new WorkDto();
     work1.setTypeOfWork("type of work 1");
@@ -527,23 +540,23 @@ class PdfServiceIntegrationTest {
     work3.setSiteLocation(
         "(until 28/02/2011 Brent House Surgery) Cranleigh Gardens Bridgwater Somerset");
     work3.setSiteKnownAs("Cranleigh Gardens Medical Centre (L85025)");
-    dto.setWork(List.of(work1, work2, work3));
+    content.setWork(List.of(work1, work2, work3));
 
-    dto.setSicknessAbsence(10);
-    dto.setParentalLeave(0);
-    dto.setCareerBreaks(5);
-    dto.setPaidLeave(8);
-    dto.setUnauthorisedLeave(1);
-    dto.setOtherLeave(1);
-    dto.setTotalLeave(25);
+    content.setSicknessAbsence(10);
+    content.setParentalLeave(0);
+    content.setCareerBreaks(5);
+    content.setPaidLeave(8);
+    content.setUnauthorisedLeave(1);
+    content.setOtherLeave(1);
+    content.setTotalLeave(25);
 
-    dto.setIsHonest(true);
-    dto.setIsHealthy(false);
-    dto.setIsWarned(true);
-    dto.setIsComplying(true);
-    dto.setHealthStatement("health statement");
+    content.setIsHonest(true);
+    content.setIsHealthy(false);
+    content.setIsWarned(true);
+    content.setIsComplying(true);
+    content.setHealthStatement("health statement");
 
-    dto.setHavePreviousDeclarations(true);
+    content.setHavePreviousDeclarations(true);
     DeclarationDto prevDeclaration1 = new DeclarationDto();
     prevDeclaration1.setDeclarationType("declaration type 1");
     prevDeclaration1.setDateOfEntry(LocalDate.of(2020, 1, 2));
@@ -554,13 +567,13 @@ class PdfServiceIntegrationTest {
     prevDeclaration1.setDateOfEntry(LocalDate.of(2022, 2, 14));
     prevDeclaration1.setTitle("title 2");
     prevDeclaration1.setLocationOfEntry("location 2");
-    dto.setPreviousDeclarations(List.of(prevDeclaration1, prevDeclaration2));
+    content.setPreviousDeclarations(List.of(prevDeclaration1, prevDeclaration2));
 
-    dto.setHavePreviousUnresolvedDeclarations(true);
-    dto.setPreviousDeclarationSummary("Previous declaration summary which could be a fairly long " +
+    content.setHavePreviousUnresolvedDeclarations(true);
+    content.setPreviousDeclarationSummary("Previous declaration summary which could be a fairly long " +
         "piece of text to cover the various points that need to be made.");
 
-    dto.setHaveCurrentDeclarations(true);
+    content.setHaveCurrentDeclarations(true);
     DeclarationDto curDeclaration1 = new DeclarationDto();
     curDeclaration1.setDeclarationType("declaration type 11");
     curDeclaration1.setDateOfEntry(LocalDate.of(2024, 1, 2));
@@ -571,15 +584,15 @@ class PdfServiceIntegrationTest {
     curDeclaration1.setDateOfEntry(LocalDate.of(2025, 2, 14));
     curDeclaration1.setTitle("title 22");
     curDeclaration1.setLocationOfEntry("location 22");
-    dto.setCurrentDeclarations(List.of(curDeclaration1, curDeclaration2));
+    content.setCurrentDeclarations(List.of(curDeclaration1, curDeclaration2));
 
-    dto.setHaveCurrentUnresolvedDeclarations(true);
-    dto.setCurrentDeclarationSummary("Current declaration summary which could be a fairly long " +
+    content.setHaveCurrentUnresolvedDeclarations(true);
+    content.setCurrentDeclarationSummary("Current declaration summary which could be a fairly long " +
         "piece of text to cover the various points that need to be made, such as this one is.");
 
-    dto.setCompliments("some compliments text");
+    content.setCompliments("some compliments text");
 
-    dto.setHaveCovidDeclarations(true);
+    content.setHaveCovidDeclarations(true);
     CovidDeclarationDto covid = new CovidDeclarationDto();
     covid.setSelfRateForCovid("Self rate for covid");
     covid.setReasonOfSelfRate("Reason for self rate");
@@ -592,7 +605,7 @@ class PdfServiceIntegrationTest {
     covid.setHowPlacementAdjusted("How placement adjusted");
     covid.setEducationSupervisorName("Ed Super");
     covid.setEducationSupervisorEmail("super@ed.com");
-    dto.setCovidDeclarationDto(covid);
+    content.setCovidDeclarationDto(covid);
 
     LocalDateTime submissionDate = LocalDate.of(2014, 10, 11).atTime(12, 13);
     ZoneOffset submissionOffset = ZonedDateTime.of(submissionDate, ZoneId.systemDefault())

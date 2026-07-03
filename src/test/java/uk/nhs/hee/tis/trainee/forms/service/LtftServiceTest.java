@@ -69,6 +69,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -125,7 +126,6 @@ import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.mapper.TemporalMapper;
-import uk.nhs.hee.tis.trainee.forms.mapper.TemporalMapperImpl;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
@@ -197,7 +197,7 @@ class LtftServiceTest {
 
     jsonMapper = (JsonMapper) new JsonMapper().registerModule(new JavaTimeModule());
     temporalMapper = mock(TemporalMapper.class);
-    mapper = new LtftMapperImpl(new TemporalMapperImpl());
+    mapper = new LtftMapperImpl(new TemporalMapper(ZoneId.of("Etc/UTC")));
     mapper.setTemporalMapper(temporalMapper);
     validator = mock(Validator.class);
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, jsonMapper,

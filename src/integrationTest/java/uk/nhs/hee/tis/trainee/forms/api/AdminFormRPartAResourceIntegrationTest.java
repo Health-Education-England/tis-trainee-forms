@@ -34,8 +34,11 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMIT
 
 import io.awspring.cloud.sns.core.SnsTemplate;
 import java.net.URI;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
@@ -47,6 +50,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -66,7 +70,9 @@ import software.amazon.awssdk.services.sns.model.PublishRequest;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
+import uk.nhs.hee.tis.trainee.forms.model.content.FormrPartaContent;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -89,6 +95,9 @@ class AdminFormRPartAResourceIntegrationTest {
 
   @Autowired
   private MongoTemplate template;
+
+  @Value("${application.timezone}")
+  private ZoneId timezone;
 
   @MockitoBean
   private SnsTemplate snsTemplate;
@@ -198,8 +207,8 @@ class AdminFormRPartAResourceIntegrationTest {
     FormRPartA form = new FormRPartA();
     form.setId(FORM_ID);
     form.setTraineeTisId(TRAINEE_ID);
+    form.setStatus(Status.builder().submitted(Instant.now()).build());
     form.setLifecycleState(excludedState);
-    form.setSubmissionDate(LocalDateTime.now());
     template.insert(form);
 
     mockMvc.perform(get("/api/admin/formr-parta/{formId}", FORM_ID)
@@ -214,8 +223,8 @@ class AdminFormRPartAResourceIntegrationTest {
     FormRPartA form = new FormRPartA();
     form.setId(FORM_ID);
     form.setTraineeTisId(TRAINEE_ID);
+    form.setStatus(Status.builder().submitted(Instant.now()).build());
     form.setLifecycleState(includedState);
-    form.setSubmissionDate(LocalDateTime.now());
     template.insert(form);
 
     mockMvc.perform(get("/api/admin/formr-parta/{formId}", FORM_ID)
@@ -237,7 +246,7 @@ class AdminFormRPartAResourceIntegrationTest {
     FormRPartA form = new FormRPartA();
     form.setId(FORM_ID);
     form.setTraineeTisId(TRAINEE_ID);
-    form.setSubmissionDate(LocalDateTime.now());
+    form.setStatus(Status.builder().submitted(Instant.now()).build());
     template.insert(form);
 
     Mockito.when(snsClient.publish(any(PublishRequest.class)))
@@ -255,16 +264,16 @@ class AdminFormRPartAResourceIntegrationTest {
     submittedForm.setId(UUID.randomUUID());
     submittedForm.setTraineeTisId(TRAINEE_ID);
     submittedForm.setLifecycleState(SUBMITTED);
-    submittedForm.setSubmissionDate(LocalDateTime.now());
     template.insert(submittedForm);
 
     FormRPartA excludedForm = new FormRPartA();
     excludedForm.setId(UUID.randomUUID());
     excludedForm.setTraineeTisId(TRAINEE_ID);
+    excludedForm.setStatus(Status.builder().submitted(excludedState == DELETED
+            ? Instant.now().minus(Duration.ofDays(5))
+            : null)
+        .build());
     excludedForm.setLifecycleState(excludedState);
-    excludedForm.setSubmissionDate(excludedState == DELETED
-        ? LocalDateTime.now().minusDays(5)
-        : null);
     template.insert(excludedForm);
 
     mockMvc.perform(get("/api/admin/formr-parta")
@@ -283,14 +292,17 @@ class AdminFormRPartAResourceIntegrationTest {
     submittedForm.setId(UUID.randomUUID());
     submittedForm.setTraineeTisId(TRAINEE_ID);
     submittedForm.setLifecycleState(SUBMITTED);
-    LocalDateTime submissionDate = LocalDateTime.now();
-    submittedForm.setSubmissionDate(submissionDate);
-    submittedForm.setIsArcp(true);
-    submittedForm.setProgrammeSpecialty("Cardiology");
+    LocalDateTime submissionDate = LocalDateTime.ofInstant(submittedForm.getStatus().submitted(),
+        timezone);
+
     LocalDate startDate = LocalDate.of(2020, 1, 15);
-    submittedForm.setStartDate(startDate);
     UUID programmeMembershipId = UUID.randomUUID();
-    submittedForm.setProgrammeMembershipId(programmeMembershipId);
+    submittedForm.setContent(FormrPartaContent.builder()
+        .isArcp(true)
+        .programmeSpecialty("Cardiology")
+        .startDate(startDate)
+        .programmeMembershipId(programmeMembershipId)
+        .build());
     template.insert(submittedForm);
 
     mockMvc.perform(get("/api/admin/formr-parta")
@@ -307,6 +319,8 @@ class AdminFormRPartAResourceIntegrationTest {
         .andExpect(jsonPath("$[0].programmeStartDate").value(startDate.toString()))
         .andExpect(jsonPath("$[0].programmeMembershipId")
             .value(programmeMembershipId.toString()))
+        // TODO: this can fail due to Jackson trimming trailing 0s during serialization.
+        //  May not be an issue once DTO is migrated to Instant.
         .andExpect(jsonPath("$[0].submissionDate")
             .value(submissionDate.truncatedTo(ChronoUnit.MILLIS).toString()))
         .andExpect(jsonPath("$[0].formType").value("formr-parta"));

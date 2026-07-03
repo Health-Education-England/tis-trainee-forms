@@ -42,6 +42,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.CovidDeclarationDto;
 import uk.nhs.hee.tis.trainee.forms.dto.DeclarationDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
+import uk.nhs.hee.tis.trainee.forms.dto.content.FormrPartbContentDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 @ContextConfiguration(classes = ValidationAutoConfiguration.class)
@@ -75,7 +76,7 @@ class FormFieldValidationServicePartBTest {
   @ValueSource(strings = {STRING_128_CHARS})
   void whenForenameIsInvalidThenThrowsException(String str) {
     FormRPartBDto input = validForm();
-    input.setForename(str);
+    input.getContent().setForename(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -85,7 +86,7 @@ class FormFieldValidationServicePartBTest {
   @ValueSource(strings = {STRING_128_CHARS})
   void whenSurnameIsInvalidThenThrowsException(String str) {
     FormRPartBDto input = validForm();
-    input.setSurname(str);
+    input.getContent().setSurname(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -93,7 +94,7 @@ class FormFieldValidationServicePartBTest {
   @Test
   void whenGmcNumberIsNullThenThrowsNoException() {
     FormRPartBDto input = validForm();
-    input.setGmcNumber(null);
+    input.getContent().setGmcNumber(null);
 
     service.validateFormRPartB(input);
 
@@ -104,7 +105,7 @@ class FormFieldValidationServicePartBTest {
   @ValueSource(strings = {STRING_21_CHARS})
   void whenGmcNumberIsInvalidThenThrowsException(String str) {
     FormRPartBDto input = validForm();
-    input.setGmcNumber(str);
+    input.getContent().setGmcNumber(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -113,7 +114,7 @@ class FormFieldValidationServicePartBTest {
   @ValueSource(strings = {STRING_21_CHARS})
   void whenGdcNumberIsInvalidThenThrowsException(String str) {
     FormRPartBDto input = validForm();
-    input.setGdcNumber(str);
+    input.getContent().setGdcNumber(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -122,7 +123,7 @@ class FormFieldValidationServicePartBTest {
   @ValueSource(strings = {STRING_21_CHARS})
   void whenPublicHealthNumberIsInvalidThenThrowsException(String str) {
     FormRPartBDto input = validForm();
-    input.setPublicHealthNumber(str);
+    input.getContent().setPublicHealthNumber(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -132,7 +133,8 @@ class FormFieldValidationServicePartBTest {
   @ValueSource(strings = {STRING_256_CHARS})
   void whenEmailIsInvalidThenThrowsException(String str) {
     FormRPartBDto input = validForm();
-    input.setEmail(str); //email validation is left quite loose, there is no attempt to test RFC5322
+    input.getContent()
+        .setEmail(str); //email validation is left quite loose, there is no attempt to test RFC5322
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -142,7 +144,7 @@ class FormFieldValidationServicePartBTest {
   @ValueSource(strings = {STRING_128_CHARS})
   void whenLocalOfficeNameIsInvalidThenThrowsException(String str) {
     FormRPartBDto input = validForm();
-    input.setForename(str);
+    input.getContent().setForename(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -150,7 +152,7 @@ class FormFieldValidationServicePartBTest {
   @Test
   void whenCurrRevalDateIsNullThenDoesNotThrowException() {
     FormRPartBDto input = validForm();
-    input.setCurrRevalDate(null);
+    input.getContent().setCurrRevalDate(null);
 
     service.validateFormRPartB(input);
 
@@ -160,7 +162,7 @@ class FormFieldValidationServicePartBTest {
   @Test
   void whenCurrRevalDateIsPastThenDoesNotThrowException() {
     FormRPartBDto input = validForm();
-    input.setCurrRevalDate(LocalDate.MIN);
+    input.getContent().setCurrRevalDate(LocalDate.MIN);
 
     service.validateFormRPartB(input);
 
@@ -170,7 +172,7 @@ class FormFieldValidationServicePartBTest {
   @Test
   void whenCurrRevalDateIsTooBigThenDoesNotThrowException() {
     FormRPartBDto input = validForm();
-    input.setCurrRevalDate(LocalDate.MAX);
+    input.getContent().setCurrRevalDate(LocalDate.MAX);
 
     service.validateFormRPartB(input);
 
@@ -180,7 +182,7 @@ class FormFieldValidationServicePartBTest {
   @Test
   void whenPrevRevalDateIsFutureThenThrowsException() {
     FormRPartBDto input = validForm();
-    input.setPrevRevalDate(LocalDate.MAX);
+    input.getContent().setPrevRevalDate(LocalDate.MAX);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -190,7 +192,7 @@ class FormFieldValidationServicePartBTest {
   @ValueSource(strings = {STRING_128_CHARS})
   void whenProgrammeSpecialtyIsInvalidThenThrowsException(String str) {
     FormRPartBDto input = validForm();
-    input.setForename(str);
+    input.getContent().setForename(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -199,10 +201,10 @@ class FormFieldValidationServicePartBTest {
   void whenNoWorkItemsThenThrowsException() {
     FormRPartBDto input = validForm();
 
-    input.setWork(null);
+    input.getContent().setWork(null);
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
 
-    input.setWork(new ArrayList<>());
+    input.getContent().setWork(new ArrayList<>());
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
 
@@ -211,7 +213,7 @@ class FormFieldValidationServicePartBTest {
   @ValueSource(ints = {INT_NEGATIVE, INT_5_DIGITS})
   void whenSicknessAbsenceIsInvalidThenThrowsException(Integer val) {
     FormRPartBDto input = validForm();
-    input.setSicknessAbsence(val);
+    input.getContent().setSicknessAbsence(val);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -221,7 +223,7 @@ class FormFieldValidationServicePartBTest {
   @ValueSource(ints = {INT_NEGATIVE, INT_5_DIGITS})
   void whenParentalLeaveIsInvalidThenThrowsException(Integer val) {
     FormRPartBDto input = validForm();
-    input.setParentalLeave(val);
+    input.getContent().setParentalLeave(val);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -231,7 +233,7 @@ class FormFieldValidationServicePartBTest {
   @ValueSource(ints = {INT_NEGATIVE, INT_5_DIGITS})
   void whenCareerBreaksIsInvalidThenThrowsException(Integer val) {
     FormRPartBDto input = validForm();
-    input.setCareerBreaks(val);
+    input.getContent().setCareerBreaks(val);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -241,7 +243,7 @@ class FormFieldValidationServicePartBTest {
   @ValueSource(ints = {INT_NEGATIVE, INT_5_DIGITS})
   void whenPaidLeaveIsInvalidThenThrowsException(Integer val) {
     FormRPartBDto input = validForm();
-    input.setPaidLeave(val);
+    input.getContent().setPaidLeave(val);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -251,7 +253,7 @@ class FormFieldValidationServicePartBTest {
   @ValueSource(ints = {INT_NEGATIVE, INT_5_DIGITS})
   void whenUnauthorisedLeaveIsInvalidThenThrowsException(Integer val) {
     FormRPartBDto input = validForm();
-    input.setUnauthorisedLeave(val);
+    input.getContent().setUnauthorisedLeave(val);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -261,7 +263,7 @@ class FormFieldValidationServicePartBTest {
   @ValueSource(ints = {INT_NEGATIVE, INT_5_DIGITS})
   void whenOtherLeaveIsInvalidThenThrowsException(Integer val) {
     FormRPartBDto input = validForm();
-    input.setOtherLeave(val);
+    input.getContent().setOtherLeave(val);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -271,7 +273,7 @@ class FormFieldValidationServicePartBTest {
   @ValueSource(ints = {INT_NEGATIVE, INT_5_DIGITS})
   void whenTotalLeaveIsInvalidThenThrowsException(Integer val) {
     FormRPartBDto input = validForm();
-    input.setTotalLeave(val);
+    input.getContent().setTotalLeave(val);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -281,7 +283,7 @@ class FormFieldValidationServicePartBTest {
   @ValueSource(booleans = {false})
   void whenIsHonestIsInvalidThenThrowsException(Boolean val) {
     FormRPartBDto input = validForm();
-    input.setIsHonest(val);
+    input.getContent().setIsHonest(val);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -291,7 +293,7 @@ class FormFieldValidationServicePartBTest {
   @ValueSource(booleans = {false})
   void whenIsHealthyIsInvalidThenThrowsException(Boolean val) {
     FormRPartBDto input = validForm();
-    input.setIsHealthy(val);
+    input.getContent().setIsHealthy(val);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -299,7 +301,7 @@ class FormFieldValidationServicePartBTest {
   @Test
   void whenIsWarnedIsInvalidThenThrowsException() {
     FormRPartBDto input = validForm();
-    input.setIsWarned(null);
+    input.getContent().setIsWarned(null);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -309,8 +311,8 @@ class FormFieldValidationServicePartBTest {
   @ValueSource(booleans = {false})
   void whenIsComplyingIsInvalidThenThrowsException(Boolean val) {
     FormRPartBDto input = validForm();
-    input.setIsWarned(true);
-    input.setIsComplying(val);
+    input.getContent().setIsWarned(true);
+    input.getContent().setIsComplying(val);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -318,8 +320,8 @@ class FormFieldValidationServicePartBTest {
   @Test
   void whenIsComplyingIsNotRequiredThenDoesNotThrowException() {
     FormRPartBDto input = validForm();
-    input.setIsWarned(false);
-    input.setIsComplying(null);
+    input.getContent().setIsWarned(false);
+    input.getContent().setIsComplying(null);
 
     service.validateFormRPartB(input);
 
@@ -329,7 +331,7 @@ class FormFieldValidationServicePartBTest {
   @Test
   void whenHavePreviousDeclarationsIsInvalidThenThrowsException() {
     FormRPartBDto input = validForm();
-    input.setHavePreviousDeclarations(null);
+    input.getContent().setHavePreviousDeclarations(null);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -337,7 +339,7 @@ class FormFieldValidationServicePartBTest {
   @Test
   void whenHavePreviousUnresolvedDeclarationsIsInvalidThenThrowsException() {
     FormRPartBDto input = validForm();
-    input.setHavePreviousUnresolvedDeclarations(null);
+    input.getContent().setHavePreviousUnresolvedDeclarations(null);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -345,7 +347,7 @@ class FormFieldValidationServicePartBTest {
   @Test
   void whenHaveCurrentDeclarationsIsInvalidThenThrowsException() {
     FormRPartBDto input = validForm();
-    input.setHaveCurrentDeclarations(null);
+    input.getContent().setHaveCurrentDeclarations(null);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -353,7 +355,7 @@ class FormFieldValidationServicePartBTest {
   @Test
   void whenHaveCurrentUnresolvedDeclarationsIsInvalidThenThrowsException() {
     FormRPartBDto input = validForm();
-    input.setHaveCurrentUnresolvedDeclarations(null);
+    input.getContent().setHaveCurrentUnresolvedDeclarations(null);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -361,24 +363,24 @@ class FormFieldValidationServicePartBTest {
   @Test
   void whenPreviousDeclarationsIsInvalidThenThrowsException() {
     FormRPartBDto input = validForm();
-    input.setHavePreviousDeclarations(true);
+    input.getContent().setHavePreviousDeclarations(true);
 
-    input.setPreviousDeclarations(null);
+    input.getContent().setPreviousDeclarations(null);
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
 
-    input.setPreviousDeclarations(new ArrayList<>());
+    input.getContent().setPreviousDeclarations(new ArrayList<>());
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
 
   @Test
   void whenCurrentDeclarationsIsInvalidThenThrowsException() {
     FormRPartBDto input = validForm();
-    input.setHaveCurrentDeclarations(true);
+    input.getContent().setHaveCurrentDeclarations(true);
 
-    input.setCurrentDeclarations(null);
+    input.getContent().setCurrentDeclarations(null);
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
 
-    input.setCurrentDeclarations(new ArrayList<>());
+    input.getContent().setCurrentDeclarations(new ArrayList<>());
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
 
@@ -386,8 +388,8 @@ class FormFieldValidationServicePartBTest {
   @NullAndEmptySource
   void whenPreviousDeclarationSummaryIsInvalidThenThrowsException(String str) {
     FormRPartBDto input = validForm();
-    input.setHavePreviousUnresolvedDeclarations(true);
-    input.setPreviousDeclarationSummary(str);
+    input.getContent().setHavePreviousUnresolvedDeclarations(true);
+    input.getContent().setPreviousDeclarationSummary(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -396,8 +398,8 @@ class FormFieldValidationServicePartBTest {
   @NullAndEmptySource
   void whenCurrentDeclarationSummaryIsInvalidThenThrowsException(String str) {
     FormRPartBDto input = validForm();
-    input.setHaveCurrentUnresolvedDeclarations(true);
-    input.setCurrentDeclarationSummary(str);
+    input.getContent().setHaveCurrentUnresolvedDeclarations(true);
+    input.getContent().setCurrentDeclarationSummary(str);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -405,8 +407,8 @@ class FormFieldValidationServicePartBTest {
   @Test
   void whenCovidDeclarationsIsInvalidThenThrowsException() {
     FormRPartBDto input = validForm();
-    input.setHaveCovidDeclarations(true);
-    input.setCovidDeclarationDto(null);
+    input.getContent().setHaveCovidDeclarations(true);
+    input.getContent().setCovidDeclarationDto(null);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -419,7 +421,7 @@ class FormFieldValidationServicePartBTest {
   void whenWorkTypeOfWorkIsInvalidThenThrowsException(String str) {
     FormRPartBDto input = validForm();
 
-    List<WorkDto> dtos = input.getWork();
+    List<WorkDto> dtos = input.getContent().getWork();
     WorkDto workDto = dtos.get(0);
     workDto.setTypeOfWork(str);
 
@@ -432,7 +434,7 @@ class FormFieldValidationServicePartBTest {
   void whenWorkTrainingPostIsInvalidThenThrowsException(String str) {
     FormRPartBDto input = validForm();
 
-    List<WorkDto> dtos = input.getWork();
+    List<WorkDto> dtos = input.getContent().getWork();
     WorkDto workDto = dtos.get(0);
     workDto.setTrainingPost(str);
 
@@ -445,7 +447,7 @@ class FormFieldValidationServicePartBTest {
   void whenWorkSiteIsInvalidThenThrowsException(String str) {
     FormRPartBDto input = validForm();
 
-    List<WorkDto> dtos = input.getWork();
+    List<WorkDto> dtos = input.getContent().getWork();
     WorkDto workDto = dtos.get(0);
     workDto.setSite(str);
 
@@ -458,7 +460,7 @@ class FormFieldValidationServicePartBTest {
   void whenWorkSiteLocationIsInvalidThenThrowsException(String str) {
     FormRPartBDto input = validForm();
 
-    List<WorkDto> dtos = input.getWork();
+    List<WorkDto> dtos = input.getContent().getWork();
     WorkDto workDto = dtos.get(0);
     workDto.setSiteLocation(str);
 
@@ -470,7 +472,7 @@ class FormFieldValidationServicePartBTest {
   void whenWorkSiteKnownAsIsInvalidThenThrowsException(String str) {
     FormRPartBDto input = validForm();
 
-    List<WorkDto> dtos = input.getWork();
+    List<WorkDto> dtos = input.getContent().getWork();
     WorkDto workDto = dtos.get(0);
     workDto.setSiteKnownAs(str);
 
@@ -481,7 +483,7 @@ class FormFieldValidationServicePartBTest {
   void whenWorkStartDateIsInvalidThenThrowsException() {
     FormRPartBDto input = validForm();
 
-    List<WorkDto> dtos = input.getWork();
+    List<WorkDto> dtos = input.getContent().getWork();
     WorkDto workDto = dtos.get(0);
 
     workDto.setStartDate(LocalDate.MIN);
@@ -498,7 +500,7 @@ class FormFieldValidationServicePartBTest {
   void whenWorkEndDateIsInvalidThenThrowsException() {
     FormRPartBDto input = validForm();
 
-    List<WorkDto> dtos = input.getWork();
+    List<WorkDto> dtos = input.getContent().getWork();
     WorkDto workDto = dtos.get(0);
     workDto.setStartDate(LocalDate.MIN);
 
@@ -516,7 +518,7 @@ class FormFieldValidationServicePartBTest {
   void whenWorkEndDateIsBeforeStartDateOrNullThenThrowsException() {
     FormRPartBDto input = validForm();
 
-    List<WorkDto> dtos = input.getWork();
+    List<WorkDto> dtos = input.getContent().getWork();
     WorkDto workDto = dtos.get(0);
     workDto.setStartDate(LocalDate.now());
     workDto.setEndDate(LocalDate.now().minusYears(1));
@@ -531,11 +533,11 @@ class FormFieldValidationServicePartBTest {
   @ValueSource(strings = {STRING_128_CHARS})
   void whenDeclarationTypeIsInvalidThenThrowsException(String str) {
     FormRPartBDto input = validForm();
-    input.setHaveCurrentUnresolvedDeclarations(true);
+    input.getContent().setHaveCurrentUnresolvedDeclarations(true);
 
     DeclarationDto declarationDto = validDeclaration();
     declarationDto.setDeclarationType(str);
-    input.setCurrentDeclarations(List.of(declarationDto));
+    input.getContent().setCurrentDeclarations(List.of(declarationDto));
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -545,11 +547,11 @@ class FormFieldValidationServicePartBTest {
   @ValueSource(strings = {STRING_128_CHARS})
   void whenDeclarationTitleIsInvalidThenThrowsException(String str) {
     FormRPartBDto input = validForm();
-    input.setHaveCurrentUnresolvedDeclarations(true);
+    input.getContent().setHaveCurrentUnresolvedDeclarations(true);
 
     DeclarationDto declarationDto = validDeclaration();
     declarationDto.setTitle(str);
-    input.setCurrentDeclarations(List.of(declarationDto));
+    input.getContent().setCurrentDeclarations(List.of(declarationDto));
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -559,11 +561,11 @@ class FormFieldValidationServicePartBTest {
   @ValueSource(strings = {STRING_128_CHARS})
   void whenDeclarationLocationIsInvalidThenThrowsException(String str) {
     FormRPartBDto input = validForm();
-    input.setHaveCurrentUnresolvedDeclarations(true);
+    input.getContent().setHaveCurrentUnresolvedDeclarations(true);
 
     DeclarationDto declarationDto = validDeclaration();
     declarationDto.setLocationOfEntry(str);
-    input.setCurrentDeclarations(List.of(declarationDto));
+    input.getContent().setCurrentDeclarations(List.of(declarationDto));
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -571,10 +573,10 @@ class FormFieldValidationServicePartBTest {
   @Test
   void whenDeclarationDateOfEntryIsInvalidThenThrowsException() {
     FormRPartBDto input = validForm();
-    input.setHaveCurrentUnresolvedDeclarations(true);
+    input.getContent().setHaveCurrentUnresolvedDeclarations(true);
 
     DeclarationDto declarationDto = validDeclaration();
-    input.setCurrentDeclarations(List.of(declarationDto));
+    input.getContent().setCurrentDeclarations(List.of(declarationDto));
 
     declarationDto.setDateOfEntry(LocalDate.MAX);
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
@@ -590,10 +592,10 @@ class FormFieldValidationServicePartBTest {
   @ValueSource(strings = {STRING_128_CHARS})
   void whenCovidDeclarationReasonOfSelfRateIsMissingThenThrowsException(String str) {
     FormRPartBDto input = validForm();
-    input.setHaveCovidDeclarations(true);
+    input.getContent().setHaveCovidDeclarations(true);
     CovidDeclarationDto covidDeclarationDto = validCovidDeclaration();
     covidDeclarationDto.setSelfRateForCovid(str);
-    input.setCovidDeclarationDto(covidDeclarationDto);
+    input.getContent().setCovidDeclarationDto(covidDeclarationDto);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -601,10 +603,10 @@ class FormFieldValidationServicePartBTest {
   @Test
   void whenCovidDeclarationOtherInformationForPanelIsInvalidThenThrowsException() {
     FormRPartBDto input = validForm();
-    input.setHaveCovidDeclarations(true);
+    input.getContent().setHaveCovidDeclarations(true);
     CovidDeclarationDto covidDeclarationDto = validCovidDeclaration();
     covidDeclarationDto.setOtherInformationForPanel("x".repeat(1001));
-    input.setCovidDeclarationDto(covidDeclarationDto);
+    input.getContent().setCovidDeclarationDto(covidDeclarationDto);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -612,10 +614,10 @@ class FormFieldValidationServicePartBTest {
   @Test
   void whenCovidDeclarationEducationSupervisorEmailIsInvalidThenThrowsException() {
     FormRPartBDto input = validForm();
-    input.setHaveCovidDeclarations(true);
+    input.getContent().setHaveCovidDeclarations(true);
     CovidDeclarationDto covidDeclarationDto = validCovidDeclaration();
     covidDeclarationDto.setEducationSupervisorEmail(STRING_256_CHARS);
-    input.setCovidDeclarationDto(covidDeclarationDto);
+    input.getContent().setCovidDeclarationDto(covidDeclarationDto);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -624,12 +626,12 @@ class FormFieldValidationServicePartBTest {
   @NullAndEmptySource
   void whenCovidDeclarationChangeCircumstancesIsMissingThenThrowsException(String str) {
     FormRPartBDto input = validForm();
-    input.setHaveCovidDeclarations(true);
+    input.getContent().setHaveCovidDeclarations(true);
     CovidDeclarationDto covidDeclarationDto = validCovidDeclaration();
     covidDeclarationDto.setHaveChangesToPlacement(true);
     covidDeclarationDto.setHowPlacementAdjusted("some valid string");
     covidDeclarationDto.setChangeCircumstances(str);
-    input.setCovidDeclarationDto(covidDeclarationDto);
+    input.getContent().setCovidDeclarationDto(covidDeclarationDto);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -638,13 +640,13 @@ class FormFieldValidationServicePartBTest {
   @NullAndEmptySource
   void whenCovidDeclarationChangeCircumstancesOtherIsMissingThenThrowsException(String str) {
     FormRPartBDto input = validForm();
-    input.setHaveCovidDeclarations(true);
+    input.getContent().setHaveCovidDeclarations(true);
     CovidDeclarationDto covidDeclarationDto = validCovidDeclaration();
     covidDeclarationDto.setHaveChangesToPlacement(true);
     covidDeclarationDto.setHowPlacementAdjusted("some valid string");
     covidDeclarationDto.setChangeCircumstances("Other");
     covidDeclarationDto.setChangeCircumstanceOther(str);
-    input.setCovidDeclarationDto(covidDeclarationDto);
+    input.getContent().setCovidDeclarationDto(covidDeclarationDto);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -653,12 +655,12 @@ class FormFieldValidationServicePartBTest {
   @NullAndEmptySource
   void whenCovidDeclarationHowPlacementAdjustedIsMissingThenThrowsException(String str) {
     FormRPartBDto input = validForm();
-    input.setHaveCovidDeclarations(true);
+    input.getContent().setHaveCovidDeclarations(true);
     CovidDeclarationDto covidDeclarationDto = validCovidDeclaration();
     covidDeclarationDto.setHaveChangesToPlacement(true);
     covidDeclarationDto.setChangeCircumstances("some valid string");
     covidDeclarationDto.setHowPlacementAdjusted(str);
-    input.setCovidDeclarationDto(covidDeclarationDto);
+    input.getContent().setCovidDeclarationDto(covidDeclarationDto);
 
     assertThrows(ValidationException.class, () -> service.validateFormRPartB(input));
   }
@@ -670,41 +672,41 @@ class FormFieldValidationServicePartBTest {
    */
   FormRPartBDto validForm() {
     FormRPartBDto input = new FormRPartBDto();
-
     input.setId("a3586ddb-adea-4709-9806-18e5bd200a69");
-    input.setForename("David");
-    input.setSurname("Short");
-    input.setGmcNumber("8999999");
-    input.setEmail("potato@potato.com");
-    input.setLocalOfficeName("South London");
-    input.setCurrRevalDate(LocalDate.now().plusYears(1L));
-    input.setProgrammeSpecialty("Geriatric Medicine");
-
-    input.setWork(List.of(validWork()));
-
-    input.setSicknessAbsence(1);
-    input.setParentalLeave(0);
-    input.setCareerBreaks(0);
-    input.setPaidLeave(0);
-    input.setUnauthorisedLeave(0);
-    input.setOtherLeave(0);
-    input.setTotalLeave(1);
-
-    input.setIsHonest(true);
-    input.setIsHealthy(true);
-    input.setIsWarned(false);
-    input.setIsComplying(true);
-
-    input.setHavePreviousDeclarations(false);
-    input.setHaveCurrentDeclarations(false);
-    input.setHaveCovidDeclarations(false);
-    input.setHaveCurrentUnresolvedDeclarations(false);
-    input.setHavePreviousUnresolvedDeclarations(false);
-
     input.setSubmissionDate(LocalDateTime.now());
     input.setLastModifiedDate(LocalDateTime.now());
-
     input.setLifecycleState(LifecycleState.SUBMITTED);
+
+    FormrPartbContentDto content = new FormrPartbContentDto();
+    content.setForename("David");
+    content.setSurname("Short");
+    content.setGmcNumber("8999999");
+    content.setEmail("potato@potato.com");
+    content.setLocalOfficeName("South London");
+    content.setCurrRevalDate(LocalDate.now().plusYears(1L));
+    content.setProgrammeSpecialty("Geriatric Medicine");
+
+    content.setWork(List.of(validWork()));
+
+    content.setSicknessAbsence(1);
+    content.setParentalLeave(0);
+    content.setCareerBreaks(0);
+    content.setPaidLeave(0);
+    content.setUnauthorisedLeave(0);
+    content.setOtherLeave(0);
+    content.setTotalLeave(1);
+
+    content.setIsHonest(true);
+    content.setIsHealthy(true);
+    content.setIsWarned(false);
+    content.setIsComplying(true);
+
+    content.setHavePreviousDeclarations(false);
+    content.setHaveCurrentDeclarations(false);
+    content.setHaveCovidDeclarations(false);
+    content.setHaveCurrentUnresolvedDeclarations(false);
+    content.setHavePreviousUnresolvedDeclarations(false);
+    input.setContent(content);
 
     return input;
   }
