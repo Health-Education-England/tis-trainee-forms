@@ -33,6 +33,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.fge.jsonpatch.JsonPatch;
 import com.github.fge.jsonpatch.JsonPatchException;
+import jakarta.annotation.Nullable;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
@@ -47,6 +48,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.MethodParameter;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -73,6 +75,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
+import uk.nhs.hee.tis.trainee.forms.dto.identity.UserIdentity;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
@@ -113,9 +116,8 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   private final String ltftStatusUpdateTopic;
   private final String ltftContentUpdateTopic;
 
-  private final LtftSubmissionHistoryService ltftSubmissionHistoryService;
-  private final ReviewStageService reviewStageService;
   private final SubmissionHistoryService<LtftForm> ltftSubmissionHistoryService;
+  private final ReviewStageService reviewStageService;
 
   /**
    * Instantiate the LTFT form service.
@@ -140,7 +142,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
       @Value("${application.aws.sns.ltft-assignment-updated}") String ltftAssignmentUpdateTopic,
       @Value("${application.aws.sns.ltft-status-updated}") String ltftStatusUpdateTopic,
       @Value("${application.aws.sns.ltft-content-updated}") String ltftContentUpdateTopic,
-      LtftSubmissionHistoryService ltftSubmissionHistoryService,
+      SubmissionHistoryService<LtftForm> ltftSubmissionHistoryService,
       ReviewStageService reviewStageService) {
     super(ltftFormRepository, ltftSubmissionHistoryService);
 
@@ -626,8 +628,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
             dbcs);
 
     if (form.isPresent()) {
-      StatusDetail detailEntity = mapper.toStatusDetail(detail);
-      LtftForm updatedForm = updateStatus(form.get(), state, adminIdentity, detailEntity);
+      LtftForm updatedForm = updateStatus(form.get(), state, adminIdentity, detail);
       return Optional.of(mapper.toDto(updatedForm));
     } else {
       log.warn("Could not update form {} since no form exists with this ID for DBCs [{}]",
