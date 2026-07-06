@@ -3794,8 +3794,8 @@ class LtftServiceTest {
     form.setContent(LtftContent.builder().name("test").build());
 
     when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
-    when(repository.countSubmittedByTraineeId(TRAINEE_ID))
-        .thenReturn(previousFormCount);
+    when(repository.countByTraineeTisIdAndStatus_SubmittedIsNotNull(TRAINEE_ID))
+        .thenReturn((int) previousFormCount);
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     Optional<LtftFormDto> result = service.submitLtftForm(ID, null);

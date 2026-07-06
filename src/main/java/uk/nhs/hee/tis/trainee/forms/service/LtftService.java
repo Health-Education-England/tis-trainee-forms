@@ -512,8 +512,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
     LtftForm form = formOptional.get();
 
     try {
-      StatusDetail detailEntity = mapper.toStatusDetail(detail);
-      LtftForm updatedForm = updateStatus(form, targetState, traineeIdentity, detailEntity);
+      LtftForm updatedForm = updateStatus(form, targetState, traineeIdentity, detail);
       return Optional.of(mapper.toDto(updatedForm));
     } catch (MethodArgumentNotValidException e) {
       return Optional.empty();
