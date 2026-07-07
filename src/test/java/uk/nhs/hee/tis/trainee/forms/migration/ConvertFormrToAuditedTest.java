@@ -35,6 +35,7 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -69,6 +70,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.springframework.core.env.Environment;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
@@ -130,6 +133,9 @@ class ConvertFormrToAuditedTest {
 
     when(mongoTemplate.getCollectionName(any())).thenReturn("");
     when(mongoTemplate.remove(any(), any(String.class))).thenReturn(DeleteResult.acknowledged(0));
+
+    when(mongoTemplate.aggregate(any(Aggregation.class), anyString(), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()));
   }
 
   @ParameterizedTest
@@ -158,8 +164,11 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before1, before2));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(before2), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before2), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before1), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before1), new Document()));
 
     when(s3Client.listObjectVersions(
         ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
@@ -209,8 +218,11 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before1, before2));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(before2), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before2), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before1), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before1), new Document()));
 
     when(s3Client.listObjectVersions(
         ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
@@ -260,8 +272,11 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before1, before2));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(before2), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before2), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before1), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before1), new Document()));
 
     when(s3Client.listObjectVersions(
         ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
@@ -323,8 +338,9 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before1, before2));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(before2), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before1), new Document()));
 
     when(s3Client.listObjectVersions(
         ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
@@ -385,8 +401,9 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before1, before2));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(before2), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before1), new Document()));
 
     when(s3Client.listObjectVersions(
         ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
@@ -396,7 +413,8 @@ class ConvertFormrToAuditedTest {
 
     assertThrows(RuntimeException.class, () -> migration.migrateCollections());
 
-    verify(mongoTemplate, never()).save(any(), eq(collectionName));
+    // Draft should still save.
+    verify(mongoTemplate, times(1)).save(any(), eq(collectionName));
   }
 
   @ParameterizedTest
@@ -417,8 +435,9 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before), new Document()));
 
     mockS3Endpoints(1);
 
@@ -456,8 +475,9 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(before), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()));
 
     migration.migrateCollections();
 
@@ -493,8 +513,9 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(before), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()));
 
     migration.migrateCollections();
 
@@ -527,8 +548,9 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(before), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()));
 
     when(s3Client.listObjectVersions(
         ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
@@ -554,14 +576,26 @@ class ConvertFormrToAuditedTest {
         "surname", "Gilliam",
         "email", "anthony.gilliam@example.com",
         "lifecycleState", state.toString(),
+        "submissionDate", Date.from(SUBMISSION_DATE_2),
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(PART_A_COLLECTION)))
-        .thenReturn(List.of(before));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(PART_A_COLLECTION), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before), new Document()));
 
-    when(mongoTemplate.count(any(), eq(PART_A_COLLECTION)))
-        .thenReturn(2L);
+    when(mongoTemplate.find(any(), eq(Document.class), eq(PART_A_COLLECTION)))
+        .thenReturn(List.of(
+            new Document(Map.of(
+                "_id", UUID.randomUUID(),
+                "submissionDate", Date.from(SUBMISSION_DATE_1)
+            )),
+            new Document(Map.of(
+                "_id", UUID.randomUUID(),
+                "submissionDate", Date.from(SUBMISSION_DATE_1)
+            )),
+            before
+        ));
 
     when(s3Client.listObjectVersions(
         ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
@@ -636,8 +670,15 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(state == UNSUBMITTED ? List.of(before) : List.of(),
+            new Document()))
+        .thenReturn(new AggregationResults<>(state == UNSUBMITTED ? List.of(before) : List.of(),
+            new Document()))
+        .thenReturn(new AggregationResults<>(state != UNSUBMITTED ? List.of(before) : List.of(),
+            new Document()))
+        .thenReturn(new AggregationResults<>(state != UNSUBMITTED ? List.of(before) : List.of(),
+            new Document()));
 
     when(s3Client.listObjectVersions(
         ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
@@ -667,8 +708,9 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(before), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()));
 
     migration.migrateCollections();
 
@@ -695,8 +737,9 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before), new Document()));
 
     mockS3Endpoints(3);
 
@@ -728,8 +771,9 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(before), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()));
 
     migration.migrateCollections();
 
@@ -766,8 +810,9 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(before), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()));
 
     migration.migrateCollections();
 
@@ -797,15 +842,22 @@ class ConvertFormrToAuditedTest {
         "surname", "Gilliam",
         "email", "anthony.gilliam@example.com",
         "lifecycleState", state.toString(),
-        "submissionDate", Date.from(SUBMISSION_DATE_1),
+        "submissionDate", Date.from(SUBMISSION_DATE_2),
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(PART_A_COLLECTION)))
-        .thenReturn(List.of(before));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(PART_A_COLLECTION), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before), new Document()));
 
-    when(mongoTemplate.count(any(), eq(PART_A_COLLECTION)))
-        .thenReturn(2L);
+    when(mongoTemplate.find(any(), eq(Document.class), eq(PART_A_COLLECTION)))
+        .thenReturn(List.of(
+            new Document(Map.of(
+                "_id", UUID.randomUUID(),
+                "submissionDate", Date.from(SUBMISSION_DATE_1)
+            )),
+            before
+        ));
 
     when(s3Client.listObjectVersions(
         ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
@@ -881,8 +933,9 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(before), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()));
 
     migration.migrateCollections();
 
@@ -916,8 +969,11 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(PART_A_COLLECTION)))
-        .thenReturn(List.of(before));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(PART_A_COLLECTION), eq(Document.class)))
+        .thenReturn(
+            new AggregationResults<>(state == DRAFT ? List.of(before) : List.of(), new Document()))
+        .thenReturn(new AggregationResults<>(state == SUBMITTED ? List.of(before) : List.of(),
+            new Document()));
 
     when(s3Client.listObjectVersions(
         ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
@@ -978,8 +1034,9 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(PART_A_COLLECTION)))
-        .thenReturn(List.of(before));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(PART_A_COLLECTION), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before), new Document()));
 
     when(s3Client.listObjectVersions(
         ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
@@ -1062,8 +1119,9 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before), new Document()));
 
     when(s3Client.listObjectVersions(
         ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
@@ -1124,8 +1182,9 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before), new Document()));
 
     mockS3Endpoints(4);
 
@@ -1185,8 +1244,9 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(DELETED_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before), new Document()));
 
     when(s3Client.listObjectVersions(
         ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
@@ -1243,8 +1303,9 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(SUBMITTED_2_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before), new Document()));
 
     when(s3Client.listObjectVersions(
         ArgumentMatchers.<Consumer<Builder>>any()))
@@ -1303,8 +1364,9 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(earlierModified),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(before), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()));
 
     when(s3Client.listObjectVersions(
         ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
@@ -1401,8 +1463,9 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(SUBMITTED_2_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before), new Document()));
 
     mockListObjectVersions(1);
     mockHeadObject();
@@ -1467,6 +1530,10 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before), new Document()));
+
     when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
         .thenReturn(List.of(before));
 
@@ -1517,8 +1584,9 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before), new Document()));
 
     mockListObjectVersions(3);
     mockHeadObject();
@@ -1613,8 +1681,9 @@ class ConvertFormrToAuditedTest {
         "lastModifiedDate", Date.from(LAST_MODIFIED),
         "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
     ));
-    when(mongoTemplate.find(any(), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(before));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before), new Document()));
 
     mockS3Endpoints(3);
 

@@ -36,6 +36,7 @@ import io.mongock.api.annotations.ChangeUnit;
 import io.mongock.api.annotations.Execution;
 import io.mongock.api.annotations.RollbackExecution;
 import java.io.IOException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -55,6 +56,10 @@ import org.bson.Document;
 import org.springframework.core.env.Environment;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.ComparisonOperators;
+import org.springframework.data.mongodb.core.aggregation.ConditionalOperators;
+import org.springframework.data.mongodb.core.aggregation.ConditionalOperators.Switch;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -104,12 +109,15 @@ public class ConvertFormrToAudited {
   private static final String FIELD_LAST_MODIFIED = "lastModified";
 
   private static final String METADATA_LIFECYCLE_STATE = "lifecyclestate";
+  private static final String QUERY_FIELD_LIFECYCLE_PRIORITY = "migrationPriority";
+  private static final String FIELD_STATUS_SUBMITTED = "status.submitted";
 
   private final MongoTemplate mongoTemplate;
   private final S3Client s3Client;
 
   private final String bucket;
 
+  private Instant startTime;
   private int lastLoggedPercent;
 
   /**
@@ -126,36 +134,44 @@ public class ConvertFormrToAudited {
    */
   @Execution
   public void migrateCollections() {
-    migrateFormr(FormRPartA.class, FormrPartaSubmissionHistory.class, "%s/forms/formr-a/%s.json");
-    migrateFormr(FormRPartB.class, FormrPartbSubmissionHistory.class, "%s/forms/formr-b/%s.json");
+    // Migrate in-work states first to unblock any active forms.
+    List<LifecycleState> priorityStates = List.of(DRAFT, UNSUBMITTED);
+    migrateFormr(FormRPartA.class, priorityStates, FormrPartaSubmissionHistory.class,
+        "%s/forms/formr-a/%s.json");
+    migrateFormr(FormRPartB.class, priorityStates, FormrPartbSubmissionHistory.class,
+        "%s/forms/formr-b/%s.json");
+
+    // Migrate the remaining historic forms.
+    List<LifecycleState> remainingStates = List.of(SUBMITTED, DELETED);
+    migrateFormr(FormRPartA.class, remainingStates, FormrPartaSubmissionHistory.class,
+        "%s/forms/formr-a/%s.json");
+    migrateFormr(FormRPartB.class, remainingStates, FormrPartbSubmissionHistory.class,
+        "%s/forms/formr-b/%s.json");
   }
 
   /**
    * Migrate Form-R collection to the audited form structure.
    *
    * @param formClass              The class of the form to migrate.
+   * @param targetStates           The lifecycle states to include in the migration.
    * @param submissionHistoryClass The class of the form's submission history.
    * @param bucketKeyTemplate      The key template to use with this form.
    */
-  private void migrateFormr(Class<?> formClass, Class<?> submissionHistoryClass,
-      String bucketKeyTemplate) {
+  private void migrateFormr(Class<?> formClass, List<LifecycleState> targetStates,
+      Class<?> submissionHistoryClass, String bucketKeyTemplate) {
     String collectionName = mongoTemplate.getCollectionName(formClass);
-
-    // Content will only be present on the new Form-R Part A and Part B documents, so we can use its
-    // presence to identify documents that need to be migrated.
-    Query query = Query.query(Criteria.where(FIELD_CONTENT).exists(false))
-        .with(Sort.by(Sort.Direction.ASC, FIELD_LAST_MODIFIED_DATE));
-    List<Document> forms = mongoTemplate.find(query, Document.class, collectionName);
-    log.info("Found {} forms of type {}", forms.size(), collectionName);
+    List<Document> forms = findForms(collectionName, targetStates);
+    log.info("Found {} forms of type {} in states {}", forms.size(), collectionName,
+        targetStates);
 
     int successCount = 0;
     int failureCount = 0;
     lastLoggedPercent = 0;
+    startTime = Instant.now();
 
     for (Document form : forms) {
-      String traineeId = form.getString(FIELD_TRAINEE_ID);
       LifecycleState lifecycleState = LifecycleState.valueOf(form.getString(FIELD_LIFECYCLE_STATE));
-      String formRef = lifecycleState != DRAFT ? getFormRef(traineeId, formClass) : null;
+      String formRef = lifecycleState != DRAFT ? getFormRef(form, formClass) : null;
 
       // Delete any built submission history so it can be retried without duplication.
       if (formRef != null) {
@@ -168,6 +184,7 @@ public class ConvertFormrToAudited {
         Instant lastModified = getInstantFromLocalDateTime(form.get(FIELD_LAST_MODIFIED_DATE));
         history = List.of(buildStatusInfo(DRAFT.toString(), form, lastModified, 0));
       } else {
+        String traineeId = form.getString(FIELD_TRAINEE_ID);
         UUID formId = UUID.fromString(form.get(FIELD_ID).toString());
         String formKey = bucketKeyTemplate.formatted(traineeId, formId);
         try {
@@ -191,6 +208,58 @@ public class ConvertFormrToAudited {
   }
 
   /**
+   * Find forms to migrate, sorted so that forms which are most likely to be accessed are processed
+   * first. i.e. DRAFT -> UNSUBMITTED -> SUBMITTED -> DELETED, with most recently submitted or
+   * modified forms first.
+   *
+   * @param collectionName The name of the collection to query.
+   * @param targetStates   The lifecycle states to include in the query.
+   * @return The found forms, sorted by migration priority.
+   */
+  private List<Document> findForms(String collectionName, List<LifecycleState> targetStates) {
+    Aggregation aggregation = Aggregation.newAggregation(
+        // Content will only be present on the new Form-R Part A and Part B documents, so we can use its
+        // presence to identify documents that need to be migrated.
+        Aggregation.match(
+            Criteria.where(FIELD_CONTENT).exists(false)
+                .and(FIELD_LIFECYCLE_STATE).in(targetStates)
+        ),
+        Aggregation.addFields()
+            // Lifecycle state priority ensures trainees have access to the most useful forms first.
+            .addField(QUERY_FIELD_LIFECYCLE_PRIORITY)
+            .withValue(
+                ConditionalOperators.switchCases(
+                    Switch.CaseOperator.when(
+                            ComparisonOperators.valueOf(FIELD_LIFECYCLE_STATE)
+                                .equalToValue(DRAFT))
+                        .then(1),
+                    Switch.CaseOperator.when(
+                            ComparisonOperators.valueOf(FIELD_LIFECYCLE_STATE)
+                                .equalToValue(UNSUBMITTED))
+                        .then(2),
+                    Switch.CaseOperator.when(
+                            ComparisonOperators.valueOf(FIELD_LIFECYCLE_STATE)
+                                .equalToValue(SUBMITTED))
+                        .then(3)
+                ).defaultTo(4)
+            )
+            .build(),
+        Aggregation.sort(
+            // Sorted to process in-work forms first, followed by the most recently actioned.
+            Sort.by(
+                Sort.Order.asc(QUERY_FIELD_LIFECYCLE_PRIORITY),
+                Sort.Order.desc(FIELD_SUBMISSION_DATE),
+                Sort.Order.desc(FIELD_LAST_MODIFIED_DATE)
+            )
+        ),
+        Aggregation.project()
+            .andExclude(QUERY_FIELD_LIFECYCLE_PRIORITY)
+    );
+
+    return mongoTemplate.aggregate(aggregation, collectionName, Document.class).getMappedResults();
+  }
+
+  /**
    * Log the progress every 10 percent.
    *
    * @param successCount The number of successfully migrated forms.
@@ -202,8 +271,29 @@ public class ConvertFormrToAudited {
     int percent = processed * 100 / total;
 
     if (percent > lastLoggedPercent) {
-      log.info("Progress: {}% ({}/{}) (success={} failure={})", percent, processed, total,
-          successCount, failureCount);
+      Instant now = Instant.now();
+      long elapsedSeconds = Duration.between(startTime, now).toSeconds();
+
+      Duration remaining = null;
+      if (elapsedSeconds > 0 && processed > 0 && processed < total) {
+        double processedPerSec = (double) processed / elapsedSeconds;
+        long secRemaining = (long) Math.ceil((total - processed) / processedPerSec);
+        remaining = Duration.ofSeconds(secRemaining);
+      }
+
+      if (remaining != null) {
+        String remainingStr = String.format("%02d:%02d:%02d", remaining.toHours(),
+            remaining.toMinutesPart(), remaining.toSecondsPart());
+
+        log.info(
+            "Progress: {}% ({}/{}) (success={} failure={}) (est. remaining={})",
+            percent, processed, total, successCount, failureCount, remainingStr);
+      } else {
+        log.info(
+            "Progress: {}% ({}/{}) (success={} failure={}) (est. remaining=calculating)",
+            percent, processed, total, successCount, failureCount);
+      }
+
       lastLoggedPercent = percent;
     }
   }
@@ -431,21 +521,44 @@ public class ConvertFormrToAudited {
    * Get the next for reference for the trainee, based on how many forms already have a generated
    * form reference.
    *
-   * @param traineeId The trainee ID.
+   * @param form      The form to get the form reference for.
    * @param formClass The class of the form.
    * @return The generated form reference.
    */
-  private String getFormRef(String traineeId, Class<?> formClass) {
-    String formCollectionName = mongoTemplate.getCollectionName(formClass);
-    long existingRefCount = mongoTemplate.count(
-        Query.query(Criteria
-            .where(FIELD_TRAINEE_ID).is(traineeId)
-            .and(FIELD_FORM_REF).exists(true)
-        ), formCollectionName);
-    return "formr_part%s_%s_%03d".formatted(
-        formClass == FormRPartA.class ? "a" : "b",
-        traineeId,
-        existingRefCount + 1);
+  private String getFormRef(Document form, Class<?> formClass) {
+    String collectionName = mongoTemplate.getCollectionName(formClass);
+    String traineeId = form.getString(FIELD_TRAINEE_ID);
+
+    Query query = Query.query(Criteria.where(FIELD_TRAINEE_ID).is(traineeId));
+    query.fields()
+        .include(FIELD_ID, FIELD_SUBMISSION_DATE, FIELD_STATUS_SUBMITTED);
+    List<String> documentIds = mongoTemplate.find(query, Document.class, collectionName).stream()
+        .filter(doc -> doc.containsKey(FIELD_SUBMISSION_DATE) || (doc.containsKey(FIELD_STATUS)
+            && doc.get(FIELD_STATUS, Document.class).containsKey(FIELD_SUBMITTED))) // Remove draft.
+        .sorted(
+            Comparator
+                .comparing(this::getSubmissionInstant)
+                .thenComparing(doc -> doc.get(FIELD_ID).toString())
+        )
+        .map(doc -> doc.get(FIELD_ID).toString())
+        .toList();
+
+    int submittedIndex = documentIds.indexOf(form.get(FIELD_ID).toString());
+    return "formr_part%s_%s_%03d"
+        .formatted(formClass == FormRPartA.class ? "a" : "b", traineeId, submittedIndex + 1);
+  }
+
+  /**
+   * Get the submission instant for a form, will use the submission date if present or the submitted
+   * timestamp from the status if not.
+   *
+   * @param doc The form document to get the submission instant for.
+   * @return The submission instant for the form.
+   */
+  private Instant getSubmissionInstant(Document doc) {
+    return (doc.containsKey(FIELD_SUBMISSION_DATE)
+        ? doc.get(FIELD_SUBMISSION_DATE, Date.class)
+        : doc.getEmbedded(List.of(FIELD_STATUS, FIELD_SUBMITTED), Date.class)).toInstant();
   }
 
   /**
