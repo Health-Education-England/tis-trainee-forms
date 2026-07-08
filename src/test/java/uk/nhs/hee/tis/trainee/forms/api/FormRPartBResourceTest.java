@@ -444,7 +444,7 @@ class FormRPartBResourceTest {
 
   @Test
   void getByIdShouldNotReturnFormWhenFormIsNotTrainees() throws Exception {
-    when(service.getFormRPartBById(DEFAULT_ID)).thenReturn(null);
+    when(service.getFormRPartBById(DEFAULT_ID)).thenReturn(Optional.empty());
 
     mockMvc.perform(get("/api/formr-partb/" + DEFAULT_ID)
             .contentType(TestUtil.APPLICATION_JSON_UTF8)
@@ -454,7 +454,7 @@ class FormRPartBResourceTest {
 
   @Test
   void getByIdShouldReturnFormWhenFormIsTrainees() throws Exception {
-    when(service.getFormRPartBById(DEFAULT_ID)).thenReturn(dto);
+    when(service.getFormRPartBById(DEFAULT_ID)).thenReturn(Optional.of(dto));
 
     mockMvc.perform(get("/api/formr-partb/" + DEFAULT_ID)
             .contentType(TestUtil.APPLICATION_JSON_UTF8)

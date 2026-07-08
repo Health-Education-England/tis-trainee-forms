@@ -412,6 +412,17 @@ class FormRPartAServiceTest {
   }
 
   @Test
+  void shouldReturnEmptyGettingFormRPartAsWhenNoContent() {
+    entity.setContent(null);
+    List<FormRPartA> entities = Collections.singletonList(entity);
+    when(repositoryMock.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID)).thenReturn(entities);
+
+    List<FormRPartSimpleDto> dtos = service.getFormRPartAs();
+
+    assertThat("Unexpected numbers of forms.", dtos.size(), is(0));
+  }
+
+  @Test
   void shouldGetFormRPartAs() {
     List<FormRPartA> entities = Collections.singletonList(entity);
     when(repositoryMock.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID)).thenReturn(entities);
@@ -426,13 +437,29 @@ class FormRPartAServiceTest {
   }
 
   @Test
-  void shouldReturnNullGettingFormRPartAByIdWhenFormNotExists() {
+  void shouldReturnEmptyGettingFormRPartAByIdWhenFormNotExists() {
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.empty());
 
-    FormRPartADto dto = service.getFormRPartAById(DEFAULT_ID_STRING);
+    Optional<FormRPartADto> dto = service.getFormRPartAById(DEFAULT_ID_STRING);
 
-    assertThat("Unexpected form.", dto, nullValue());
+    assertThat("Unexpected form presence.", dto.isPresent(), is(false));
+  }
+
+  @Test
+  void shouldReturnEmptyWhenFormExistsWithNoContent() {
+    FormRPartA form = new FormRPartA();
+    form.setId(DEFAULT_ID);
+    form.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    form.setLifecycleState(UNSUBMITTED);
+    form.setContent(null);
+
+    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
+        .thenReturn(Optional.of(form));
+
+    Optional<FormRPartADto> optionalDto = service.getFormRPartAById(DEFAULT_ID_STRING);
+
+    assertThat("Unexpected form presence.", optionalDto.isPresent(), is(false));
   }
 
   @Test
@@ -441,12 +468,16 @@ class FormRPartAServiceTest {
     form.setId(DEFAULT_ID);
     form.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     form.setLifecycleState(UNSUBMITTED);
+    form.setContent(FormrPartaContent.builder().build());
 
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.of(form));
 
-    FormRPartADto dto = service.getFormRPartAById(DEFAULT_ID_STRING);
+    Optional<FormRPartADto> optionalDto = service.getFormRPartAById(DEFAULT_ID_STRING);
 
+    assertThat("Unexpected form presence.", optionalDto.isPresent(), is(true));
+
+    FormRPartADto dto = optionalDto.get();
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected status.", dto.getLifecycleState(), is(UNSUBMITTED));
@@ -736,8 +767,19 @@ class FormRPartAServiceTest {
   }
 
   @Test
-  void shouldGetFormRPartAsByTraineeId() {
+  void shouldReturnEmptyWhenGettingFormsByTraineeTisIdAndNoContent() {
+    entity.setContent(null);
+    List<FormRPartA> entities = Collections.singletonList(entity);
+    when(repositoryMock.findNotDraftNorDeletedByTraineeTisId(DEFAULT_TRAINEE_TIS_ID)).thenReturn(
+        entities);
 
+    List<FormRPartSimpleDto> dtos = service.getFormRPartAs(DEFAULT_TRAINEE_TIS_ID);
+
+    assertThat("Unexpected numbers of forms.", dtos.size(), is(0));
+  }
+
+  @Test
+  void shouldGetFormRPartAsByTraineeId() {
     List<FormRPartA> entities = Collections.singletonList(entity);
 
     when(repositoryMock.findNotDraftNorDeletedByTraineeTisId(DEFAULT_TRAINEE_TIS_ID))
@@ -753,6 +795,19 @@ class FormRPartAServiceTest {
     assertThat("Unexpected programme name.", dto.getProgrammeName(),
         is(DEFAULT_PROGRAMME_SPECIALTY));
     assertThat("Unexpected isArcp.", dto.getIsArcp(), is(true));
+  }
+
+  @Test
+  void shouldReturnEmptyAdminsFormRPartAByIdWhenNoContent() {
+    entity.setLifecycleState(UNSUBMITTED);
+    entity.setContent(null);
+
+    when(repositoryMock.findByIdAndNotDraftNorDeleted(DEFAULT_ID))
+        .thenReturn(Optional.of(entity));
+
+    Optional<FormRPartADto> optionalDto = service.getAdminsFormRPartAById(DEFAULT_ID_STRING);
+
+    assertThat("Unexpected DTO.", optionalDto.isPresent(), is(false));
   }
 
   @Test

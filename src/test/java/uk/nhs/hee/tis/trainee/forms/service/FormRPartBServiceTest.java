@@ -522,7 +522,18 @@ class FormRPartBServiceTest {
   }
 
   @Test
-  void shouldGetFormRPartBsByTraineeTisId() {
+  void shouldReturnEmptyWhenGettingFormsAndNoContent() {
+    entity.setContent(null);
+    List<FormRPartB> entities = Collections.singletonList(entity);
+    when(repositoryMock.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID)).thenReturn(entities);
+
+    List<FormRPartSimpleDto> dtos = service.getFormRPartBs();
+
+    assertThat("Unexpected numbers of forms.", dtos.size(), is(0));
+  }
+
+  @Test
+  void shouldGetFormRPartBs() {
     List<FormRPartB> entities = Collections.singletonList(entity);
     when(repositoryMock.findByTraineeTisId(DEFAULT_TRAINEE_TIS_ID)).thenReturn(entities);
 
@@ -536,13 +547,29 @@ class FormRPartBServiceTest {
   }
 
   @Test
-  void shouldReturnNullGettingFormRPartBByIdWhenFormNotExists() {
+  void shouldReturnEmptyGettingFormRPartBByIdWhenFormNotExists() {
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.empty());
 
-    FormRPartBDto dto = service.getFormRPartBById(DEFAULT_ID_STRING);
+    Optional<FormRPartBDto> dto = service.getFormRPartBById(DEFAULT_ID_STRING);
 
-    assertThat("Unexpected form.", dto, nullValue());
+    assertThat("Unexpected form presence.", dto.isPresent(), is(false));
+  }
+
+  @Test
+  void shouldReturnEmptyWhenFormExistsWithNoContent() {
+    FormRPartB form = new FormRPartB();
+    form.setId(DEFAULT_ID);
+    form.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
+    form.setLifecycleState(UNSUBMITTED);
+    form.setContent(null);
+
+    when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
+        .thenReturn(Optional.of(form));
+
+    Optional<FormRPartBDto> optionalDto = service.getFormRPartBById(DEFAULT_ID_STRING);
+
+    assertThat("Unexpected form presence.", optionalDto.isPresent(), is(false));
   }
 
   @Test
@@ -551,12 +578,16 @@ class FormRPartBServiceTest {
     form.setId(DEFAULT_ID);
     form.setTraineeTisId(DEFAULT_TRAINEE_TIS_ID);
     form.setLifecycleState(UNSUBMITTED);
+    form.setContent(FormrPartbContent.builder().build());
 
     when(repositoryMock.findByIdAndTraineeTisId(DEFAULT_ID, DEFAULT_TRAINEE_TIS_ID))
         .thenReturn(Optional.of(form));
 
-    FormRPartBDto dto = service.getFormRPartBById(DEFAULT_ID_STRING);
+    Optional<FormRPartBDto> optionalDto = service.getFormRPartBById(DEFAULT_ID_STRING);
 
+    assertThat("Unexpected form presence.", optionalDto.isPresent(), is(true));
+
+    FormRPartBDto dto = optionalDto.get();
     assertThat("Unexpected form ID.", dto.getId(), is(DEFAULT_ID_STRING));
     assertThat("Unexpected trainee ID.", dto.getTraineeTisId(), is(DEFAULT_TRAINEE_TIS_ID));
     assertThat("Unexpected status.", dto.getLifecycleState(), is(UNSUBMITTED));
@@ -827,6 +858,18 @@ class FormRPartBServiceTest {
   }
 
   @Test
+  void shouldReturnEmptyWhenGettingFormsByTraineeTisIdAndNoContent() {
+    entity.setContent(null);
+    List<FormRPartB> entities = Collections.singletonList(entity);
+    when(repositoryMock.findNotDraftNorDeletedByTraineeTisId(DEFAULT_TRAINEE_TIS_ID)).thenReturn(
+        entities);
+
+    List<FormRPartSimpleDto> dtos = service.getFormRPartBs(DEFAULT_TRAINEE_TIS_ID);
+
+    assertThat("Unexpected numbers of forms.", dtos.size(), is(0));
+  }
+
+  @Test
   void shouldGetFormRPartBsByTraineeId() {
 
     List<FormRPartB> entities = Collections.singletonList(entity);
@@ -844,6 +887,19 @@ class FormRPartBServiceTest {
     assertThat("Unexpected programme name.", dto.getProgrammeName(),
         is(DEFAULT_PROGRAMME_SPECIALTY));
     assertThat("Unexpected isArcp.", dto.getIsArcp(), is(true));
+  }
+
+  @Test
+  void shouldGetEmptyAdminsFormRPartBByIdWhenNoContent() {
+    entity.setLifecycleState(UNSUBMITTED);
+    entity.setContent(null);
+
+    when(repositoryMock.findByIdAndNotDraftNorDeleted(DEFAULT_ID))
+        .thenReturn(Optional.of(entity));
+
+    Optional<FormRPartBDto> optionalDto = service.getAdminsFormRPartBById(DEFAULT_ID_STRING);
+
+    assertThat("Unexpected DTO.", optionalDto.isPresent(), is(false));
   }
 
   @Test
