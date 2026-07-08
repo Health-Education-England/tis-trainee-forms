@@ -25,12 +25,16 @@ package uk.nhs.hee.tis.trainee.forms.migration;
 import static java.time.ZoneOffset.UTC;
 import static java.time.temporal.ChronoUnit.MILLIS;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.spy;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.S3;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DELETED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
@@ -46,13 +50,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TimeZone;
 import java.util.UUID;
 import org.bson.Document;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.InOrder;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -107,6 +115,8 @@ class ConvertFormrToAuditedIntegrationTest {
 
   private static final String METADATA_LIFECYCLE_STATE = "lifecyclestate";
 
+  private static TimeZone originalTimeZone;
+
   @Container
   @ServiceConnection
   private static final MongoDBContainer mongoContainer = new MongoDBContainer(
@@ -131,6 +141,9 @@ class ConvertFormrToAuditedIntegrationTest {
 
   @BeforeAll
   static void setUpBeforeAll() throws IOException, InterruptedException {
+    originalTimeZone = TimeZone.getDefault();
+    TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+
     // Create S3 bucket.
     String[] createBucketCmd = {
         "awslocal", "s3api", "create-bucket",
@@ -149,6 +162,11 @@ class ConvertFormrToAuditedIntegrationTest {
     };
     bucketResult = localstack.execInContainer(versionBucketCmd);
     assertThat("S3 bucket versioning failed.", bucketResult.getExitCode(), is(0));
+  }
+
+  @AfterAll
+  static void tearDownAfterAll() {
+    TimeZone.setDefault(originalTimeZone);
   }
 
   @Autowired
@@ -190,6 +208,98 @@ class ConvertFormrToAuditedIntegrationTest {
 
   @ParameterizedTest
   @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
+  void shouldMigrateFormsInPriorityOrder(Class<? extends AbstractFormR<?>> formClass)
+      throws JsonProcessingException {
+    String traineeId = UUID.randomUUID().toString();
+    String collectionName = mongoTemplate.getCollectionName(formClass);
+    LocalDateTime now = LocalDateTime.now();
+
+    UUID draftId1 = UUID.randomUUID();
+    Map<String, Object> draftFields1 = createFormFields(formClass, draftId1, traineeId, DRAFT, null,
+        now.plusDays(10), "draft");
+    mongoTemplate.save(new Document(draftFields1), collectionName);
+
+    UUID draftId2 = UUID.randomUUID();
+    Map<String, Object> draftFields2 = createFormFields(formClass, draftId2, traineeId, DRAFT, null,
+        now.minusDays(10), "draft");
+    mongoTemplate.save(new Document(draftFields2), collectionName);
+
+    UUID submittedId1 = UUID.randomUUID();
+    Map<String, Object> submittedFields1 = createFormFields(formClass, submittedId1, traineeId,
+        SUBMITTED, now.minusDays(10), now, "submitted");
+    mongoTemplate.save(new Document(submittedFields1), collectionName);
+    uploadForm(submittedFields1, formClass);
+
+    UUID submittedId2 = UUID.randomUUID();
+    Map<String, Object> submittedFields2 = createFormFields(formClass, submittedId2, traineeId,
+        SUBMITTED, now.plusDays(10), now, "submitted");
+    mongoTemplate.save(new Document(submittedFields2), collectionName);
+    uploadForm(submittedFields2, formClass);
+
+    UUID unsubmittedId1 = UUID.randomUUID();
+    Map<String, Object> unsubmittedFields1 = createFormFields(formClass, unsubmittedId1, traineeId,
+        SUBMITTED, now.plusDays(10), now, "unsubmitted");
+    uploadForm(unsubmittedFields1, formClass);
+    unsubmittedFields1 = createFormFields(formClass, unsubmittedId1, traineeId, UNSUBMITTED,
+        now.plusDays(10), now, "unsubmitted");
+    mongoTemplate.save(new Document(unsubmittedFields1), collectionName);
+    uploadForm(unsubmittedFields1, formClass);
+
+    UUID unsubmittedId2 = UUID.randomUUID();
+    Map<String, Object> unsubmittedFields2 = createFormFields(formClass, unsubmittedId2, traineeId,
+        SUBMITTED, now.minusDays(10), now, "unsubmitted");
+    uploadForm(unsubmittedFields2, formClass);
+    unsubmittedFields2 = createFormFields(formClass, unsubmittedId2, traineeId, UNSUBMITTED,
+        now.minusDays(10), now, "unsubmitted");
+    mongoTemplate.save(new Document(unsubmittedFields2), collectionName);
+    uploadForm(unsubmittedFields2, formClass);
+
+    UUID deletedId1 = UUID.randomUUID();
+    Map<String, Object> deletedFields1 = createFormFields(formClass, deletedId1, traineeId, DELETED,
+        now.plusDays(10), now, "deleted");
+    mongoTemplate.save(new Document(deletedFields1), collectionName);
+    uploadForm(deletedFields1, formClass);
+
+    UUID deletedId2 = UUID.randomUUID();
+    Map<String, Object> deletedFields2 = createFormFields(formClass, deletedId2, traineeId, DELETED,
+        now.minusDays(10), now, "deleted");
+    mongoTemplate.save(new Document(deletedFields2), collectionName);
+    uploadForm(deletedFields2, formClass);
+
+    mongoTemplate = spy(mongoTemplate);
+    migration = new ConvertFormrToAudited(mongoTemplate, s3Client, env);
+    migration.migrateCollections();
+
+    InOrder inOrder = inOrder(mongoTemplate);
+
+    inOrder.verify(mongoTemplate)
+        .save(Mockito.<Document>argThat(document -> document.get(FIELD_FORM_ID).equals(draftId1)),
+            eq(collectionName));
+    inOrder.verify(mongoTemplate)
+        .save(Mockito.<Document>argThat(document -> document.get(FIELD_FORM_ID).equals(draftId2)),
+            eq(collectionName));
+    inOrder.verify(mongoTemplate).save(
+        Mockito.<Document>argThat(document -> document.get(FIELD_FORM_ID).equals(unsubmittedId1)),
+        eq(collectionName));
+    inOrder.verify(mongoTemplate).save(
+        Mockito.<Document>argThat(document -> document.get(FIELD_FORM_ID).equals(unsubmittedId2)),
+        eq(collectionName));
+    inOrder.verify(mongoTemplate).save(
+        Mockito.<Document>argThat(document -> document.get(FIELD_FORM_ID).equals(submittedId2)),
+        eq(collectionName));
+    inOrder.verify(mongoTemplate).save(
+        Mockito.<Document>argThat(document -> document.get(FIELD_FORM_ID).equals(submittedId1)),
+        eq(collectionName));
+    inOrder.verify(mongoTemplate)
+        .save(Mockito.<Document>argThat(document -> document.get(FIELD_FORM_ID).equals(deletedId1)),
+            eq(collectionName));
+    inOrder.verify(mongoTemplate)
+        .save(Mockito.<Document>argThat(document -> document.get(FIELD_FORM_ID).equals(deletedId2)),
+            eq(collectionName));
+  }
+
+  @ParameterizedTest
+  @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
   void shouldMigrateFormMetadata(Class<? extends AbstractFormR<?>> formClass)
       throws JsonProcessingException {
     UUID formId = UUID.randomUUID();
@@ -225,6 +335,78 @@ class ConvertFormrToAuditedIntegrationTest {
         is(submissionDate.toInstant(UTC).truncatedTo(MILLIS)));
     assertThat("Unexpected last modified.", migratedForm.getLastModified(),
         is(submissionDate.toInstant(UTC).truncatedTo(MILLIS)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
+  void shouldGenerateConsistentFormRefs(Class<? extends AbstractFormR<?>> formClass)
+      throws JsonProcessingException {
+    String traineeId = UUID.randomUUID().toString();
+    String collectionName = mongoTemplate.getCollectionName(formClass);
+    LocalDateTime now = LocalDateTime.now();
+
+    UUID draftId = UUID.randomUUID();
+    Map<String, Object> draftFields = createFormFields(formClass, draftId, traineeId, DRAFT, null,
+        now, "noref");
+    mongoTemplate.save(new Document(draftFields), collectionName);
+
+    UUID firstId = UUID.randomUUID();
+    Map<String, Object> firstFields = createFormFields(formClass, firstId, traineeId, DELETED,
+        now.minusDays(1), now.minusDays(1), "001");
+    mongoTemplate.save(new Document(firstFields), collectionName);
+    uploadForm(firstFields, formClass);
+
+    UUID secondId = UUID.randomUUID();
+    Map<String, Object> secondFields = createFormFields(formClass, secondId, traineeId, SUBMITTED,
+        now, now, "002");
+    mongoTemplate.save(new Document(secondFields), collectionName);
+    uploadForm(secondFields, formClass);
+
+    UUID thirdId = new UUID(0L, 0L);
+    Map<String, Object> thirdFields = createFormFields(formClass, thirdId, traineeId, SUBMITTED,
+        now.plusDays(1), now, "003");
+    mongoTemplate.save(new Document(thirdFields), collectionName);
+    uploadForm(thirdFields, formClass);
+
+    UUID fourthId = new UUID(0L, 1L);
+    Map<String, Object> fourthFields = createFormFields(formClass, fourthId, traineeId, SUBMITTED,
+        now.plusDays(1), now, "004");
+    mongoTemplate.save(new Document(fourthFields), collectionName);
+    uploadForm(fourthFields, formClass);
+
+    UUID fifthId = UUID.randomUUID();
+    Map<String, Object> fifthFields = createFormFields(formClass, fifthId, traineeId, SUBMITTED,
+        now.plusDays(2), now.plusDays(2), "005");
+    uploadForm(fifthFields, formClass);
+    fifthFields = createFormFields(formClass, fifthId, traineeId, UNSUBMITTED, now.plusDays(2),
+        now.plusDays(2), "005");
+    mongoTemplate.save(new Document(fifthFields), collectionName);
+    uploadForm(fifthFields, formClass);
+
+    migration.migrateCollections();
+
+    Map<UUID, String> expectedSuffix = Map.of(
+        firstId, "001",
+        secondId, "002",
+        thirdId, "003",
+        fourthId, "004",
+        fifthId, "005"
+    );
+
+    Optional<? extends AbstractFormR<?>> foundForm = getMigratedForm(draftId, formClass);
+    assertThat("Expected form not found.", foundForm.isPresent(), is(true));
+
+    AbstractFormR<?> migratedForm = foundForm.get();
+    assertThat("Unexpected form ref.", migratedForm.getFormRef(), nullValue());
+
+    for (var entry : expectedSuffix.entrySet()) {
+      foundForm = getMigratedForm(entry.getKey(), formClass);
+      assertThat("Expected form not found.", foundForm.isPresent(), is(true));
+
+      migratedForm = foundForm.get();
+      assertThat("Unexpected form ref suffix.", migratedForm.getFormRef(),
+          endsWith(entry.getValue()));
+    }
   }
 
   @ParameterizedTest
