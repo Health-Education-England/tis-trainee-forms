@@ -209,6 +209,7 @@ class AdminFormRPartAResourceIntegrationTest {
     form.setTraineeTisId(TRAINEE_ID);
     form.setStatus(Status.builder().submitted(Instant.now()).build());
     form.setLifecycleState(excludedState);
+    form.setContent(FormrPartaContent.builder().build());
     template.insert(form);
 
     mockMvc.perform(get("/api/admin/formr-parta/{formId}", FORM_ID)
@@ -225,6 +226,7 @@ class AdminFormRPartAResourceIntegrationTest {
     form.setTraineeTisId(TRAINEE_ID);
     form.setStatus(Status.builder().submitted(Instant.now()).build());
     form.setLifecycleState(includedState);
+    form.setContent(FormrPartaContent.builder().build());
     template.insert(form);
 
     mockMvc.perform(get("/api/admin/formr-parta/{formId}", FORM_ID)
@@ -247,6 +249,7 @@ class AdminFormRPartAResourceIntegrationTest {
     form.setId(FORM_ID);
     form.setTraineeTisId(TRAINEE_ID);
     form.setLifecycleState(SUBMITTED);
+    form.setContent(FormrPartaContent.builder().build());
     template.insert(form);
 
     when(snsClient.publish(any(PublishRequest.class))).thenReturn(mock());
@@ -263,6 +266,7 @@ class AdminFormRPartAResourceIntegrationTest {
     submittedForm.setId(UUID.randomUUID());
     submittedForm.setTraineeTisId(TRAINEE_ID);
     submittedForm.setLifecycleState(SUBMITTED);
+    submittedForm.setContent(FormrPartaContent.builder().build());
     template.insert(submittedForm);
 
     FormRPartA excludedForm = new FormRPartA();
@@ -273,6 +277,7 @@ class AdminFormRPartAResourceIntegrationTest {
             : null)
         .build());
     excludedForm.setLifecycleState(excludedState);
+    excludedForm.setContent(FormrPartaContent.builder().build());
     template.insert(excludedForm);
 
     mockMvc.perform(get("/api/admin/formr-parta")
@@ -291,6 +296,7 @@ class AdminFormRPartAResourceIntegrationTest {
     submittedForm.setId(UUID.randomUUID());
     submittedForm.setTraineeTisId(TRAINEE_ID);
     submittedForm.setLifecycleState(SUBMITTED);
+    submittedForm.setContent(FormrPartaContent.builder().build());
     LocalDateTime submissionDate = LocalDateTime.ofInstant(submittedForm.getStatus().submitted(),
         timezone);
 

@@ -170,7 +170,9 @@ public class FormRPartBService extends AbstractAuditedFormService<FormRPartB> {
   public List<FormRPartSimpleDto> getFormRPartBs() {
     String traineeId = identityResolver.requireTraineeIdentity().getTraineeId();
     log.info("Request to get FormRPartB list by trainee profileId : {}", traineeId);
-    List<FormRPartB> formRPartBList = formRPartBRepository.findByTraineeTisId(traineeId);
+    List<FormRPartB> formRPartBList = formRPartBRepository.findByTraineeTisId(traineeId).stream()
+        .filter(form -> form.getContent() != null)
+        .toList();
     return formRPartBMapper.toSimpleDtos(formRPartBList);
   }
 
@@ -184,7 +186,9 @@ public class FormRPartBService extends AbstractAuditedFormService<FormRPartB> {
     log.info("Request to get FormRPartB list by trainee profileId : {}", traineeId);
 
     List<FormRPartB> formRPartBList = formRPartBRepository
-        .findNotDraftNorDeletedByTraineeTisId(traineeId);
+        .findNotDraftNorDeletedByTraineeTisId(traineeId).stream()
+        .filter(form -> form.getContent() != null)
+        .toList();
 
     return formRPartBMapper.toSimpleDtos(formRPartBList);
   }
@@ -192,14 +196,13 @@ public class FormRPartBService extends AbstractAuditedFormService<FormRPartB> {
   /**
    * get FormRPartB by id.
    */
-  public FormRPartBDto getFormRPartBById(String id) {
+  public Optional<FormRPartBDto> getFormRPartBById(String id) {
     log.info("Request to get FormRPartB by id : {}", id);
 
     String traineeId = identityResolver.requireTraineeIdentity().getTraineeId();
-    Optional<FormRPartB> optionalDbForm = formRPartBRepository.findByIdAndTraineeTisId(
-        UUID.fromString(id), traineeId);
-
-    return formRPartBMapper.toDto(optionalDbForm.orElse(null));
+    return formRPartBRepository.findByIdAndTraineeTisId(UUID.fromString(id), traineeId)
+        .filter(form -> form.getContent() != null)
+        .map(formRPartBMapper::toDto);
   }
 
   /**
@@ -212,6 +215,7 @@ public class FormRPartBService extends AbstractAuditedFormService<FormRPartB> {
     log.info("Request to get FormRPartB by id : {}", id);
 
     return formRPartBRepository.findByIdAndNotDraftNorDeleted(UUID.fromString(id))
+        .filter(form -> form.getContent() != null)
         .map(formRPartBMapper::toDto);
   }
 

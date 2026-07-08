@@ -214,6 +214,7 @@ class AdminFormRPartBResourceIntegrationTest {
     form.setId(FORM_ID);
     form.setTraineeTisId(TRAINEE_ID);
     form.setLifecycleState(SUBMITTED);
+    form.setContent(FormrPartbContent.builder().build());
     template.insert(form);
 
     when(snsClient.publish(any(PublishRequest.class))).thenReturn(mock());
@@ -236,6 +237,7 @@ class AdminFormRPartBResourceIntegrationTest {
     form.setId(FORM_ID);
     form.setTraineeTisId(TRAINEE_ID);
     form.setStatus(Status.builder().submitted(Instant.now()).build());
+    form.setContent(FormrPartbContent.builder().build());
     template.insert(form);
 
     mockMvc.perform(request(method, uriTemplate, FORM_ID)
@@ -250,6 +252,7 @@ class AdminFormRPartBResourceIntegrationTest {
     submittedForm.setId(UUID.randomUUID());
     submittedForm.setTraineeTisId(TRAINEE_ID);
     submittedForm.setLifecycleState(SUBMITTED);
+    submittedForm.setContent(FormrPartbContent.builder().build());
     template.insert(submittedForm);
 
     FormRPartB excludedForm = new FormRPartB();
@@ -260,6 +263,7 @@ class AdminFormRPartBResourceIntegrationTest {
             : null)
         .build());
     excludedForm.setLifecycleState(excludedState);
+    excludedForm.setContent(FormrPartbContent.builder().build());
     template.insert(excludedForm);
 
     mockMvc.perform(get("/api/admin/formr-partb")
@@ -280,12 +284,14 @@ class AdminFormRPartBResourceIntegrationTest {
     includedForm.setTraineeTisId(TRAINEE_ID);
     includedForm.setStatus(Status.builder().submitted(Instant.now()).build());
     includedForm.setLifecycleState(includedState);
+    includedForm.setContent(FormrPartbContent.builder().build());
     template.insert(includedForm);
 
     FormRPartB draftForm = new FormRPartB();
     draftForm.setId(UUID.randomUUID());
     draftForm.setTraineeTisId(TRAINEE_ID);
     draftForm.setLifecycleState(DRAFT);
+    draftForm.setContent(FormrPartbContent.builder().build());
     template.insert(draftForm);
 
     FormRPartB deletedForm = new FormRPartB();
@@ -294,6 +300,7 @@ class AdminFormRPartBResourceIntegrationTest {
     deletedForm.setStatus(
         Status.builder().submitted(Instant.now().minus(Duration.ofDays(2))).build());
     deletedForm.setLifecycleState(DELETED);
+    deletedForm.setContent(FormrPartbContent.builder().build());
     template.insert(deletedForm);
 
     mockMvc.perform(get("/api/admin/formr-partb")
@@ -312,6 +319,7 @@ class AdminFormRPartBResourceIntegrationTest {
     submittedForm.setId(UUID.randomUUID());
     submittedForm.setTraineeTisId(TRAINEE_ID);
     submittedForm.setLifecycleState(SUBMITTED);
+    submittedForm.setContent(FormrPartbContent.builder().build());
     LocalDateTime submissionDate = LocalDateTime.ofInstant(submittedForm.getStatus().submitted(),
         timezone);
 

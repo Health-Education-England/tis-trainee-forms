@@ -162,12 +162,16 @@ public class FormRPartBResource {
   public ResponseEntity<FormRPartBDto> getFormRPartBsById(@PathVariable String id) {
     log.info("FormRPartB by id {}", id);
 
-    FormRPartBDto formRPartBDto = service.getFormRPartBById(id);
-    if (formRPartBDto != null) {
-      log.info("Retrieved FormRPartB id {} for trainee {} programme membership {}", id,
-          formRPartBDto.getTraineeTisId(), formRPartBDto.getContent().getProgrammeMembershipId());
-    }
-    return ResponseEntity.of(Optional.ofNullable(formRPartBDto));
+    Optional<FormRPartBDto> formRPartBDto = service.getFormRPartBById(id);
+
+    formRPartBDto.ifPresent(dto -> {
+      if (dto.getContent() != null) {
+        log.info("Retrieved FormRPartB id {} for trainee {} programme membership {}", id,
+            dto.getTraineeTisId(), dto.getContent().getProgrammeMembershipId());
+      }
+    });
+
+    return ResponseEntity.of(formRPartBDto);
   }
 
   /**
