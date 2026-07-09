@@ -575,13 +575,19 @@ public class ConvertFormrToAudited {
 
     if (lifecycleState == DRAFT || lifecycleState == SUBMITTED) {
       // When constructing DRAFT and SUBMITTED from DELETED forms name and email is not available.
-      String forename = form.containsKey(FIELD_FORENAME) ? form.getString(FIELD_FORENAME) : "";
-      String surname = form.containsKey(FIELD_SURNAME) ? form.getString(FIELD_SURNAME) : "";
-      String fullName = (forename + " " + surname).trim();
+      String forename = form.getString(FIELD_FORENAME);
+      String surname = form.getString(FIELD_SURNAME);
+
+      String fullName = "%s %s".formatted(
+          (forename == null ? "" : forename),
+          (surname == null ? "" : surname)
+      ).trim();
       name = fullName.isBlank() ? "Name Deleted" : fullName;
 
-      email = form.containsKey(FIELD_EMAIL) ? form.get(FIELD_EMAIL).toString()
-          : "no-reply@trainee.tis.nhs.uk";
+      String formEmail = form.getString(FIELD_EMAIL);
+      email = (formEmail == null || formEmail.isBlank())
+          ? "no-reply@trainee.tis.nhs.uk"
+          : formEmail;
       role = "TRAINEE";
     } else {
       name = "Unknown Admin";
