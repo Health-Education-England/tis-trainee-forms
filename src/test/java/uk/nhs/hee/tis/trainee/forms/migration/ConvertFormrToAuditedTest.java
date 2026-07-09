@@ -55,6 +55,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -1108,7 +1109,168 @@ class ConvertFormrToAuditedTest {
 
   @ParameterizedTest
   @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
-  void shouldSetCurrentModifiedByToDummyTraineeWhenVersionsDeleted(Class<?> formClass) {
+  void shouldSetCurrentModifiedByToDummyTraineeWhenVersionsDeletedAndNullFields(Class<?> formClass) {
+    String collectionName = formClass == FormRPartA.class ? PART_A_COLLECTION : PART_B_COLLECTION;
+    when(mongoTemplate.getCollectionName(formClass)).thenReturn(collectionName);
+
+    Map<String, Object> beforeFields = new HashMap<>();
+    beforeFields.put("_id", FORM_ID);
+    beforeFields.put("traineeTisId", TRAINEE_ID);
+    beforeFields.put("forename", null);
+    beforeFields.put("surname", null);
+    beforeFields.put("email", null);
+    beforeFields.put("lifecycleState", DELETED.toString());
+    beforeFields.put("lastModifiedDate", Date.from(LAST_MODIFIED));
+    beforeFields.put("_class", "uk.tis.nhs.trainee.forms.model.MyForm");
+
+    Document before = new Document(beforeFields);
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before), new Document()));
+
+    when(s3Client.listObjectVersions(
+        ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
+        .thenReturn(ListObjectVersionsResponse.builder()
+            .versions(ObjectVersion.builder().versionId(DELETED_VERSION).build())
+            .build());
+
+    mockHeadObject();
+
+    String content = """
+            {
+              "id": "%s",
+              "forename": null,
+              "surname": null,
+              "email": null,
+              "lifecycleState": "DELETED",
+              "submissionDate": "%s",
+              "lastModifiedDate": "%s"
+            }
+        """.formatted(FORM_ID, LocalDateTime.ofInstant(SUBMISSION_DATE_2, UTC),
+        LocalDateTime.ofInstant(DELETED_MODIFIED, UTC));
+    when(s3Client.getObject(any(GetObjectRequest.class)))
+        .thenReturn(new ResponseInputStream<>(GetObjectResponse.builder().build(),
+            new ByteArrayInputStream(content.getBytes())));
+
+    migration.migrateCollections();
+
+    ArgumentCaptor<Document> documentCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).save(documentCaptor.capture(), eq(collectionName));
+
+    Document migrated = documentCaptor.getValue();
+    assertThat("Unexpected migrated form.", migrated, notNullValue());
+
+    Map<String, Object> status = getEmbeddedMap(migrated, List.of("status"));
+    List<Map<String, Object>> history = (List<Map<String, Object>>) status.get("history");
+    assertThat("Unexpected history size.", history, hasSize(3));
+
+    Map<String, Object> modifiedBy = (Map<String, Object>) history.get(0).get("modifiedBy");
+    assertThat("Unexpected modifiedBy keys.", modifiedBy.keySet(),
+        containsInAnyOrder("name", "email", "role"));
+    assertThat("Unexpected modifiedBy name.", modifiedBy.get("name"), is("Name Deleted"));
+    assertThat("Unexpected modifiedBy email.", modifiedBy.get("email"),
+        is("no-reply@trainee.tis.nhs.uk"));
+    assertThat("Unexpected modifiedBy role.", modifiedBy.get("role"), is("TRAINEE"));
+
+    modifiedBy = (Map<String, Object>) history.get(1).get("modifiedBy");
+    assertThat("Unexpected modifiedBy keys.", modifiedBy.keySet(),
+        containsInAnyOrder("name", "email", "role"));
+    assertThat("Unexpected modifiedBy name.", modifiedBy.get("name"), is("Name Deleted"));
+    assertThat("Unexpected modifiedBy email.", modifiedBy.get("email"),
+        is("no-reply@trainee.tis.nhs.uk"));
+    assertThat("Unexpected modifiedBy role.", modifiedBy.get("role"), is("TRAINEE"));
+
+    modifiedBy = (Map<String, Object>) history.get(2).get("modifiedBy");
+    assertThat("Unexpected modifiedBy keys.", modifiedBy.keySet(),
+        containsInAnyOrder("name", "email", "role"));
+    assertThat("Unexpected modifiedBy name.", modifiedBy.get("name"), is("Unknown Admin"));
+    assertThat("Unexpected modifiedBy email.", modifiedBy.get("email"), is("no-reply@tis.nhs.uk"));
+    assertThat("Unexpected modifiedBy role.", modifiedBy.get("role"), is("ADMIN"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
+  void shouldSetCurrentModifiedByToDummyTraineeWhenVersionsDeletedAndEmptyFields(Class<?> formClass) {
+    String collectionName = formClass == FormRPartA.class ? PART_A_COLLECTION : PART_B_COLLECTION;
+    when(mongoTemplate.getCollectionName(formClass)).thenReturn(collectionName);
+
+    Document before = new Document(Map.of(
+        "_id", FORM_ID,
+        "traineeTisId", TRAINEE_ID,
+        "forename", "",
+        "surname", "",
+        "email", "",
+        "lifecycleState", DELETED.toString(),
+        "lastModifiedDate", Date.from(LAST_MODIFIED),
+        "_class", "uk.tis.nhs.trainee.forms.model.MyForm"
+    ));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(collectionName), eq(Document.class)))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()))
+        .thenReturn(new AggregationResults<>(List.of(before), new Document()));
+
+    when(s3Client.listObjectVersions(
+        ArgumentMatchers.<Consumer<ListObjectVersionsRequest.Builder>>any()))
+        .thenReturn(ListObjectVersionsResponse.builder()
+            .versions(ObjectVersion.builder().versionId(DELETED_VERSION).build())
+            .build());
+
+    mockHeadObject();
+
+    String content = """
+            {
+              "id": "%s",
+              "forename": "",
+              "surname": "",
+              "email": "",
+              "lifecycleState": "DELETED",
+              "submissionDate": "%s",
+              "lastModifiedDate": "%s"
+            }
+        """.formatted(FORM_ID, LocalDateTime.ofInstant(SUBMISSION_DATE_2, UTC),
+        LocalDateTime.ofInstant(DELETED_MODIFIED, UTC));
+    when(s3Client.getObject(any(GetObjectRequest.class)))
+        .thenReturn(new ResponseInputStream<>(GetObjectResponse.builder().build(),
+            new ByteArrayInputStream(content.getBytes())));
+
+    migration.migrateCollections();
+
+    ArgumentCaptor<Document> documentCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).save(documentCaptor.capture(), eq(collectionName));
+
+    Document migrated = documentCaptor.getValue();
+    assertThat("Unexpected migrated form.", migrated, notNullValue());
+
+    Map<String, Object> status = getEmbeddedMap(migrated, List.of("status"));
+    List<Map<String, Object>> history = (List<Map<String, Object>>) status.get("history");
+    assertThat("Unexpected history size.", history, hasSize(3));
+
+    Map<String, Object> modifiedBy = (Map<String, Object>) history.get(0).get("modifiedBy");
+    assertThat("Unexpected modifiedBy keys.", modifiedBy.keySet(),
+        containsInAnyOrder("name", "email", "role"));
+    assertThat("Unexpected modifiedBy name.", modifiedBy.get("name"), is("Name Deleted"));
+    assertThat("Unexpected modifiedBy email.", modifiedBy.get("email"),
+        is("no-reply@trainee.tis.nhs.uk"));
+    assertThat("Unexpected modifiedBy role.", modifiedBy.get("role"), is("TRAINEE"));
+
+    modifiedBy = (Map<String, Object>) history.get(1).get("modifiedBy");
+    assertThat("Unexpected modifiedBy keys.", modifiedBy.keySet(),
+        containsInAnyOrder("name", "email", "role"));
+    assertThat("Unexpected modifiedBy name.", modifiedBy.get("name"), is("Name Deleted"));
+    assertThat("Unexpected modifiedBy email.", modifiedBy.get("email"),
+        is("no-reply@trainee.tis.nhs.uk"));
+    assertThat("Unexpected modifiedBy role.", modifiedBy.get("role"), is("TRAINEE"));
+
+    modifiedBy = (Map<String, Object>) history.get(2).get("modifiedBy");
+    assertThat("Unexpected modifiedBy keys.", modifiedBy.keySet(),
+        containsInAnyOrder("name", "email", "role"));
+    assertThat("Unexpected modifiedBy name.", modifiedBy.get("name"), is("Unknown Admin"));
+    assertThat("Unexpected modifiedBy email.", modifiedBy.get("email"), is("no-reply@tis.nhs.uk"));
+    assertThat("Unexpected modifiedBy role.", modifiedBy.get("role"), is("ADMIN"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
+  void shouldSetCurrentModifiedByToDummyTraineeWhenVersionsDeletedAndMissingFields(Class<?> formClass) {
     String collectionName = formClass == FormRPartA.class ? PART_A_COLLECTION : PART_B_COLLECTION;
     when(mongoTemplate.getCollectionName(formClass)).thenReturn(collectionName);
 
@@ -1130,7 +1292,19 @@ class ConvertFormrToAuditedTest {
             .build());
 
     mockHeadObject();
-    mockGetObject();
+
+    String content = """
+            {
+              "id": "%s",
+              "lifecycleState": "DELETED",
+              "submissionDate": "%s",
+              "lastModifiedDate": "%s"
+            }
+        """.formatted(FORM_ID, LocalDateTime.ofInstant(SUBMISSION_DATE_2, UTC),
+        LocalDateTime.ofInstant(DELETED_MODIFIED, UTC));
+    when(s3Client.getObject(any(GetObjectRequest.class)))
+        .thenReturn(new ResponseInputStream<>(GetObjectResponse.builder().build(),
+            new ByteArrayInputStream(content.getBytes())));
 
     migration.migrateCollections();
 
