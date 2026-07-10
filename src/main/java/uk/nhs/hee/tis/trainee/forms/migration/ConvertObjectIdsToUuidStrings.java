@@ -48,7 +48,7 @@ import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
  * Convert existing ObjectID based form IDs to UUID strings.
  */
 @Slf4j
-@ChangeUnit(id = "convertObjectIdsToUuidStrings", order = "5")
+@ChangeUnit(id = "convertObjectIdsToUuidStrings", order = "005")
 public class ConvertObjectIdsToUuidStrings {
 
   private static final String ID_FIELD = "_id";

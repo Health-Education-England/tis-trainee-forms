@@ -1219,24 +1219,4 @@ class ConvertFormrToAuditedIntegrationTest {
         RequestBody.fromBytes(objectMapper.writeValueAsBytes(formFields))
     );
   }
-
-  /**
-   * Assert that the given modifiedBy user matches the expected values.
-   *
-   * @param lifecycleState The lifecycle state of the form.
-   * @param modifiedBy     The modifiedBy user to check.
-   * @param suffix         The suffix used to generate the expected values.
-   */
-  private void assertModifiedBy(LifecycleState lifecycleState, Person modifiedBy, String suffix) {
-    if (lifecycleState == DRAFT || lifecycleState == SUBMITTED) {
-      assertThat("Unexpected modifiedBy name.", modifiedBy.name(),
-          is("Forename_" + suffix + " Surname_" + suffix));
-      assertThat("Unexpected modifiedBy email.", modifiedBy.email(), is("email_" + suffix));
-      assertThat("Unexpected modifiedBy role.", modifiedBy.role(), is("TRAINEE"));
-    } else {
-      assertThat("Unexpected modifiedBy name.", modifiedBy.name(), is("Unknown Admin"));
-      assertThat("Unexpected modifiedBy email.", modifiedBy.email(), is("no-reply@tis.nhs.uk"));
-      assertThat("Unexpected modifiedBy role.", modifiedBy.role(), is("ADMIN"));
-    }
-  }
 }

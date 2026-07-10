@@ -44,7 +44,7 @@ import uk.nhs.hee.tis.trainee.forms.service.LtftService;
  * Repair submission dates for LTFT forms where admin assignment has incorrectly overwritten them.
  */
 @Slf4j
-@ChangeUnit(id = "fixLtftSubmissionDates", order = "8")
+@ChangeUnit(id = "fixLtftSubmissionDates", order = "008")
 public class FixLtftSubmissionDates {
 
   private final MongoTemplate mongoTemplate;

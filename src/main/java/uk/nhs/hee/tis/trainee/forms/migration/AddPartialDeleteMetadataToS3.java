@@ -45,7 +45,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.DeleteType;
  * Add partial delete related metadata to existing forms on S3.
  */
 @Slf4j
-@ChangeUnit(id = "AddPartialDeleteMetadataToS3", order = "7")
+@ChangeUnit(id = "AddPartialDeleteMetadataToS3", order = "007")
 public class AddPartialDeleteMetadataToS3 {
 
   private final S3Client s3Client;

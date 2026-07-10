@@ -38,7 +38,7 @@ import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
  * Delete all forms created during the non-ARCP pilot.
  */
 @Slf4j
-@ChangeUnit(id = "deletePilotForms", order = "1")
+@ChangeUnit(id = "deletePilotForms", order = "001")
 public class DeletePilotForms {
 
   private final MongoTemplate mongoTemplate;

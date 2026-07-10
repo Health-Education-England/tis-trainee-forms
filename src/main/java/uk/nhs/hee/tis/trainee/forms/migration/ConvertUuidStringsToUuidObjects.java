@@ -40,7 +40,7 @@ import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
  * Convert existing UUID string based form IDs to UUID objects.
  */
 @Slf4j
-@ChangeUnit(id = "ConvertUuidStringsToUuidObjects", order = "6")
+@ChangeUnit(id = "ConvertUuidStringsToUuidObjects", order = "006")
 public class ConvertUuidStringsToUuidObjects {
 
   private static final String ID_FIELD = "_id";
