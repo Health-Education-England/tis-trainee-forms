@@ -39,7 +39,7 @@ import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
  * Sort the work placements on Form R Part Bs by descending endDate.
  */
 @Slf4j
-@ChangeUnit(id = "sortWorkPlacements", order = "4")
+@ChangeUnit(id = "sortWorkPlacements", order = "004")
 public class SortWorkPlacements {
 
   private final MongoTemplate mongoTemplate;

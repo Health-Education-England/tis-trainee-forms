@@ -80,7 +80,7 @@ import uk.nhs.hee.tis.trainee.forms.model.FormrPartbSubmissionHistory;
  * database.
  */
 @Slf4j
-@ChangeUnit(id = "convertFormrToAudited", order = "9")
+@ChangeUnit(id = "convertFormrToAudited", order = "009")
 public class ConvertFormrToAudited {
 
   private static final String FIELD_ID = "_id";

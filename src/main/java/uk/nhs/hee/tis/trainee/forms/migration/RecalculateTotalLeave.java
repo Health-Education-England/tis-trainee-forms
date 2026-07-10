@@ -39,7 +39,7 @@ import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
  * populated correctly.
  */
 @Slf4j
-@ChangeUnit(id = "recalculateTotalLeave", order = "2")
+@ChangeUnit(id = "recalculateTotalLeave", order = "002")
 public class RecalculateTotalLeave {
 
   private static final String TOTAL_LEAVE = "totalLeave";

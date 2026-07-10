@@ -36,7 +36,7 @@ import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
  * This form was submitted to validate that there was no problem with the user's account/data.
  */
 @Slf4j
-@ChangeUnit(id = "deleteTestForm", order = "3")
+@ChangeUnit(id = "deleteTestForm", order = "003")
 public class DeleteTestForm {
 
   private final MongoTemplate mongoTemplate;
