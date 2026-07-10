@@ -1109,7 +1109,8 @@ class ConvertFormrToAuditedTest {
 
   @ParameterizedTest
   @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
-  void shouldSetCurrentModifiedByToDummyTraineeWhenVersionsDeletedAndNullFields(Class<?> formClass) {
+  void shouldSetCurrentModifiedByToDummyTraineeWhenVersionsDeletedAndNullFields(
+      Class<?> formClass) {
     String collectionName = formClass == FormRPartA.class ? PART_A_COLLECTION : PART_B_COLLECTION;
     when(mongoTemplate.getCollectionName(formClass)).thenReturn(collectionName);
 
@@ -1190,7 +1191,8 @@ class ConvertFormrToAuditedTest {
 
   @ParameterizedTest
   @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
-  void shouldSetCurrentModifiedByToDummyTraineeWhenVersionsDeletedAndEmptyFields(Class<?> formClass) {
+  void shouldSetCurrentModifiedByToDummyTraineeWhenVersionsDeletedAndEmptyFields(
+      Class<?> formClass) {
     String collectionName = formClass == FormRPartA.class ? PART_A_COLLECTION : PART_B_COLLECTION;
     when(mongoTemplate.getCollectionName(formClass)).thenReturn(collectionName);
 
@@ -1270,7 +1272,8 @@ class ConvertFormrToAuditedTest {
 
   @ParameterizedTest
   @ValueSource(classes = {FormRPartA.class, FormRPartB.class})
-  void shouldSetCurrentModifiedByToDummyTraineeWhenVersionsDeletedAndMissingFields(Class<?> formClass) {
+  void shouldSetCurrentModifiedByToDummyTraineeWhenVersionsDeletedAndMissingFields(
+      Class<?> formClass) {
     String collectionName = formClass == FormRPartA.class ? PART_A_COLLECTION : PART_B_COLLECTION;
     when(mongoTemplate.getCollectionName(formClass)).thenReturn(collectionName);
 
