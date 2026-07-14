@@ -118,9 +118,9 @@ class AdminLtftResourceIntegrationTest {
   private static final String DBC_1 = "1-abc123";
   private static final String DBC_2 = "1-yxz789";
 
-  // DBCs matching review-workflow config in application.yml
-  private static final String DBC_THREE_STAGES = "1-1RSSQ6R"; // Thames Valley: 3 stages
-  private static final String DBC_ONE_STAGE = "1-1RUZV1D";    // KSS: 1 stage
+  // DBCs matching review-workflow config in application-test.yml (test-specific)
+  private static final String DBC_THREE_STAGES = "TEST-DBC-3-STAGES";
+  private static final String DBC_ONE_STAGE = "TEST-DBC-1-STAGE";
 
   @Container
   @ServiceConnection
@@ -1833,9 +1833,9 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.stages").isArray())
         .andExpect(jsonPath("$.stages", hasSize(4)))
-        .andExpect(jsonPath("$.stages[0]", is("Programme/Education Team Triage")))
-        .andExpect(jsonPath("$.stages[1]", is("Programme Manager Review")))
-        .andExpect(jsonPath("$.stages[2]", is("Associate Dean Approval")))
+        .andExpect(jsonPath("$.stages[0]", is("Stage One")))
+        .andExpect(jsonPath("$.stages[1]", is("Stage Two")))
+        .andExpect(jsonPath("$.stages[2]", is("Stage Three")))
         .andExpect(jsonPath("$.stages[3]", is("Review complete")))
         .andExpect(jsonPath("$.currentStage", nullValue()));
   }
@@ -1843,9 +1843,9 @@ class AdminLtftResourceIntegrationTest {
   @Test
   void shouldReturnReviewWorkflowWithCurrentStageIndexWhenFormSubmittedWithReviewStage()
       throws Exception {
-    // Form at stage index 1 (Programme Manager Review)
+    // Form at stage index 1 (Stage Two)
     LtftForm form = template.insert(
-        createSubmittedFormWithReviewStage(DBC_THREE_STAGES, 1, "Programme Manager Review"));
+        createSubmittedFormWithReviewStage(DBC_THREE_STAGES, 1, "Stage Two"));
 
     mockMvc.perform(get("/api/admin/ltft/{id}/review-workflow", form.getId())
             .with(TestJwtUtil.createAdminToken(List.of(DBC_THREE_STAGES), REQUIRED_ROLES)))
@@ -1853,9 +1853,9 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.stages").isArray())
         .andExpect(jsonPath("$.stages", hasSize(4)))
-        .andExpect(jsonPath("$.stages[0]", is("Programme/Education Team Triage")))
-        .andExpect(jsonPath("$.stages[1]", is("Programme Manager Review")))
-        .andExpect(jsonPath("$.stages[2]", is("Associate Dean Approval")))
+        .andExpect(jsonPath("$.stages[0]", is("Stage One")))
+        .andExpect(jsonPath("$.stages[1]", is("Stage Two")))
+        .andExpect(jsonPath("$.stages[2]", is("Stage Three")))
         .andExpect(jsonPath("$.stages[3]", is("Review complete")))
         .andExpect(jsonPath("$.currentStage", is(1)));
   }
@@ -1906,16 +1906,16 @@ class AdminLtftResourceIntegrationTest {
 
   @Test
   void shouldAdvanceReviewStageWhenFormIsSubmittedAndNotAtFinalStage() throws Exception {
-    // Form at stage 0, can advance to stage 1 (Programme Manager Review)
+    // Form at stage 0, can advance to stage 1 (Stage Two)
     LtftForm form = template.insert(
-        createSubmittedFormWithReviewStage(DBC_THREE_STAGES, 0, "Programme/Education Team Triage"));
+        createSubmittedFormWithReviewStage(DBC_THREE_STAGES, 0, "Stage One"));
 
     mockMvc.perform(put("/api/admin/ltft/{id}/review-stage/advance", form.getId())
             .with(TestJwtUtil.createAdminToken(List.of(DBC_THREE_STAGES), REQUIRED_ROLES)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status.current.state", is(SUBMITTED.toString())))
         .andExpect(jsonPath("$.status.current.reviewStage.index", is(1)))
-        .andExpect(jsonPath("$.status.current.reviewStage.label", is("Programme Manager Review")))
+        .andExpect(jsonPath("$.status.current.reviewStage.label", is("Stage Two")))
         .andExpect(jsonPath("$.status.current.modifiedBy.name", is("Ad Min")))
         .andExpect(jsonPath("$.status.current.modifiedBy.email", is("ad.min@example.com")))
         .andExpect(jsonPath("$.status.current.modifiedBy.role", is("ADMIN")))
@@ -1925,7 +1925,7 @@ class AdminLtftResourceIntegrationTest {
   @Test
   void shouldAdvanceReviewStageAndRecordDetailWhenDetailProvided() throws Exception {
     LtftForm form = template.insert(
-        createSubmittedFormWithReviewStage(DBC_THREE_STAGES, 0, "Programme/Education Team Triage"));
+        createSubmittedFormWithReviewStage(DBC_THREE_STAGES, 0, "Stage One"));
 
     mockMvc.perform(put("/api/admin/ltft/{id}/review-stage/advance", form.getId())
             .with(TestJwtUtil.createAdminToken(List.of(DBC_THREE_STAGES), REQUIRED_ROLES))
@@ -1939,7 +1939,7 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status.current.state", is(SUBMITTED.toString())))
         .andExpect(jsonPath("$.status.current.reviewStage.index", is(1)))
-        .andExpect(jsonPath("$.status.current.reviewStage.label", is("Programme Manager Review")))
+        .andExpect(jsonPath("$.status.current.reviewStage.label", is("Stage Two")))
         .andExpect(jsonPath("$.status.current.detail.reason", is("Triage complete")))
         .andExpect(jsonPath("$.status.current.detail.message", is("All checks passed.")))
         .andExpect(jsonPath("$.status.current.modifiedBy.name", is("Ad Min")))

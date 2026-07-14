@@ -86,9 +86,9 @@ import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ProgrammeMembershi
 @Testcontainers
 class LtftServiceIntegrationTest {
 
-  // DBC codes from application.yml review-workflows config
-  private static final String DBC_THREE_STAGES = "1-1RSSQ6R"; // Thames Valley: 3 stages
-  private static final String DBC_ONE_STAGE = "1-1RUZV1D";    // KSS: 1 stage
+  // DBC codes from application-test.yml review-workflows config (test-specific, not production)
+  private static final String DBC_THREE_STAGES = "TEST-DBC-3-STAGES";
+  private static final String DBC_ONE_STAGE = "TEST-DBC-1-STAGE";
   private static final String DBC_NO_WORKFLOW = "unknown-dbc"; // not in config
 
   private static final String TRAINEE_ID = "47165";
@@ -437,9 +437,9 @@ class LtftServiceIntegrationTest {
 
     assertThat("Unexpected result presence.", result.isPresent(), is(true));
     assertThat("Unexpected stages.", result.get().stages(), contains(
-        "Programme/Education Team Triage",
-        "Programme Manager Review",
-        "Associate Dean Approval",
+        "Stage One",
+        "Stage Two",
+        "Stage Three",
         "Review complete"));
     assertThat("Unexpected current stage.", result.get().currentStage(), nullValue());
   }
@@ -448,9 +448,9 @@ class LtftServiceIntegrationTest {
   void shouldReturnCurrentStageIndexWhenFormIsSubmittedWithReviewStage() {
     adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
 
-    // Form is at stage 1 (Programme Manager Review) — visible position is 1.
+    // Form is at stage 1 (Stage Two) — visible position is 1.
     LtftForm form = savedSubmittedFormWithReviewStage(
-        DBC_THREE_STAGES, 1, "Programme Manager Review");
+        DBC_THREE_STAGES, 1, "Stage Two");
 
     Optional<ReviewWorkflowDto> result = service.getReviewWorkflow(form.getId());
 
@@ -496,7 +496,7 @@ class LtftServiceIntegrationTest {
 
     // KSS has only one stage (index 0 = final configured stage).
     LtftForm form = savedSubmittedFormWithReviewStage(
-        DBC_ONE_STAGE, 0, "Completeness checks");
+        DBC_ONE_STAGE, 0, "Single Review");
 
     Optional<LtftFormDto> result = service.advanceReviewStage(form.getId(), null);
 
@@ -527,7 +527,7 @@ class LtftServiceIntegrationTest {
     adminIdentity.setEmail("ad.min@test.com");
 
     LtftForm form = savedSubmittedFormWithReviewStage(
-        DBC_THREE_STAGES, 0, "Programme/Education Team Triage");
+        DBC_THREE_STAGES, 0, "Stage One");
 
     Optional<LtftFormDto> result = service.advanceReviewStage(form.getId(), null);
 
@@ -537,14 +537,14 @@ class LtftServiceIntegrationTest {
     StatusInfoDto current = result.get().status().current();
     assertThat("Unexpected state.", current.state(), is(LifecycleState.SUBMITTED));
     assertThat("Unexpected review stage.", current.reviewStage(),
-        is(new ReviewStageStatus(1, "Programme Manager Review")));
+        is(new ReviewStageStatus(1, "Stage Two")));
 
     // Verify the change was persisted to MongoDB.
     LtftForm persisted = template.findById(form.getId(), LtftForm.class);
     assertThat("Unexpected persisted form.", persisted, notNullValue());
     assertThat("Unexpected persisted review stage.",
         persisted.getStatus().current().reviewStage(),
-        is(new ReviewStageStatus(1, "Programme Manager Review")));
+        is(new ReviewStageStatus(1, "Stage Two")));
   }
 
   @Test
@@ -553,7 +553,7 @@ class LtftServiceIntegrationTest {
     adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
 
     LtftForm form = savedSubmittedFormWithReviewStage(
-        DBC_THREE_STAGES, 0, "Programme/Education Team Triage");
+        DBC_THREE_STAGES, 0, "Stage One");
 
     service.advanceReviewStage(form.getId(), null);
 
@@ -569,7 +569,7 @@ class LtftServiceIntegrationTest {
     adminIdentity.setEmail("ad.min@test.com");
 
     LtftForm form = savedSubmittedFormWithReviewStage(
-        DBC_THREE_STAGES, 0, "Programme/Education Team Triage");
+        DBC_THREE_STAGES, 0, "Stage One");
 
     LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("Triage complete",
         "All checks passed.");
@@ -605,7 +605,7 @@ class LtftServiceIntegrationTest {
     assertThat("Unexpected state.", current.state(), is(LifecycleState.SUBMITTED));
     assertThat("Unexpected review stage index.", current.reviewStage().index(), is(0));
     assertThat("Unexpected review stage label.", current.reviewStage().label(),
-        is("Programme/Education Team Triage"));
+        is("Stage One"));
   }
 
   @Test
@@ -632,7 +632,7 @@ class LtftServiceIntegrationTest {
 
     // Form at stage 0 — not the final stage (final is index 2).
     LtftForm form = savedSubmittedFormWithReviewStage(
-        DBC_THREE_STAGES, 0, "Programme/Education Team Triage");
+        DBC_THREE_STAGES, 0, "Stage One");
 
     assertThrows(MethodArgumentNotValidException.class,
         () -> service.updateStatusAsAdmin(form.getId(), LifecycleState.APPROVED, null));
@@ -658,7 +658,7 @@ class LtftServiceIntegrationTest {
     adminIdentity.setGroups(Set.of(DBC_ONE_STAGE));
 
     // KSS single stage: at configured stage 0, not yet at terminal.
-    LtftForm form = savedSubmittedFormWithReviewStage(DBC_ONE_STAGE, 0, "Completeness checks");
+    LtftForm form = savedSubmittedFormWithReviewStage(DBC_ONE_STAGE, 0, "Single Review");
 
     assertThrows(MethodArgumentNotValidException.class,
         () -> service.updateStatusAsAdmin(form.getId(), LifecycleState.APPROVED, null));
@@ -721,7 +721,7 @@ class LtftServiceIntegrationTest {
 
     // Form at non-final stage (index 0) — UNSUBMIT is always allowed.
     LtftForm form = savedSubmittedFormWithReviewStage(
-        DBC_THREE_STAGES, 0, "Programme/Education Team Triage");
+        DBC_THREE_STAGES, 0, "Stage One");
 
     LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("trainee request", "notes");
     Optional<LtftFormDto> result = service.updateStatusAsAdmin(
@@ -762,6 +762,6 @@ class LtftServiceIntegrationTest {
     assertThat("Unexpected review stage index on re-submit.",
         current.reviewStage().index(), is(0));
     assertThat("Unexpected review stage label on re-submit.",
-        current.reviewStage().label(), is("Programme/Education Team Triage"));
+        current.reviewStage().label(), is("Stage One"));
   }
 }

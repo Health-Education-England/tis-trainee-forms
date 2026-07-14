@@ -1,0 +1,26 @@
+# Staging-specific review workflow configuration.
+# These are the DBC codes and stages used for testing the review workflow feature
+# on the staging environment before going live.
+application:
+  review-workflows:
+    "1-1RUZV6H": # NW London
+      - label: "Programme/Education Team Triage"
+        enabled: true
+      - label: "Programme Manager Review"
+        enabled: true
+      - label: "Associate Dean Approval"
+        enabled: true
+    "1-1RUZV4H": # North Central and East London
+      - label: "Programme/Education Team Triage"
+        enabled: false
+      - label: "Education Team Review"
+        enabled: true
+      - label: "APD Approval"
+        enabled: true
+    "1-1RSSQ5L": # South London
+      - label: "Completeness checks"
+        enabled: true
+    "1-1RUZUVB": # South West (legacy, no longer active)
+      - label: "Programme/Education Team Triage"
+        enabled: false
+
