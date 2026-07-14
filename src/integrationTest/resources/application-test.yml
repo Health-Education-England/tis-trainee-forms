@@ -1,6 +1,20 @@
 application:
   signature:
     secret-key: test-secret-key
+  review-workflows:
+    "TEST-DBC-3-STAGES":
+      - label: "Stage One"
+        enabled: true
+      - label: "Stage Two"
+        enabled: true
+      - label: "Stage Three"
+        enabled: true
+    "TEST-DBC-1-STAGE":
+      - label: "Single Review"
+        enabled: true
+    "TEST-DBC-DISABLED":
+      - label: "Disabled Stage"
+        enabled: false
   aws:
     sns:
       formr-file-event: dummy

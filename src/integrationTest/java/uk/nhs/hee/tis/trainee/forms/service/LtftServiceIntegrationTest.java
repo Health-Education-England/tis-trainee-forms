@@ -22,21 +22,28 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import io.awspring.cloud.sns.core.SnsTemplate;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -49,6 +56,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -58,11 +66,17 @@ import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto.FormFeatures;
 import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto.FormFeatures.LtftFeatures;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
+import uk.nhs.hee.tis.trainee.forms.dto.ReviewWorkflowDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.LtftSubmissionHistory;
+import uk.nhs.hee.tis.trainee.forms.model.ReviewStageStatus;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ProgrammeMembership;
@@ -71,6 +85,11 @@ import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ProgrammeMembershi
 @ActiveProfiles("test")
 @Testcontainers
 class LtftServiceIntegrationTest {
+
+  // DBC codes from application-test.yml review-workflows config (test-specific, not production)
+  private static final String DBC_THREE_STAGES = "TEST-DBC-3-STAGES";
+  private static final String DBC_ONE_STAGE = "TEST-DBC-1-STAGE";
+  private static final String DBC_NO_WORKFLOW = "unknown-dbc"; // not in config
 
   private static final String TRAINEE_ID = "47165";
   private static final UUID PM_UUID = UUID.randomUUID();
@@ -352,5 +371,397 @@ class LtftServiceIntegrationTest {
 
     assertThat("Unexpected forms moved when trainee ID null",
         originalTraineeForms, hasSize(1));
+  }
+
+  /**
+   * Save a SUBMITTED form with the given DBC and review stage directly to MongoDB, bypassing the
+   * service layer to allow precise state control.
+   */
+  private LtftForm savedSubmittedFormWithReviewStage(String dbc, int stageIndex,
+      String stageLabel) {
+    LtftForm form = new LtftForm();
+    form.setContent(LtftContent.builder()
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(dbc)
+            .build())
+        .build());
+    form.setStatus(Status.builder()
+        .current(StatusInfo.builder()
+            .state(LifecycleState.SUBMITTED)
+            .reviewStage(new ReviewStageStatus(stageIndex, stageLabel))
+            .build())
+        .history(List.of())
+        .build());
+    return template.save(form);
+  }
+
+  // -- getReviewWorkflow --
+
+  @Test
+  void shouldReturnEmptyWhenFormNotInAdminDbcsForReviewWorkflow() {
+    adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
+
+    LtftForm form = savedSubmittedFormWithReviewStage(DBC_NO_WORKFLOW, 0, "Triage");
+
+    Optional<ReviewWorkflowDto> result = service.getReviewWorkflow(form.getId());
+
+    assertThat("Unexpected result presence.", result.isPresent(), is(false));
+  }
+
+  @Test
+  void shouldReturnEmptyStagesForDbcWithNoConfiguredWorkflow() {
+    adminIdentity.setGroups(Set.of(DBC_NO_WORKFLOW));
+
+    LtftForm form = savedSubmittedFormWithReviewStage(DBC_NO_WORKFLOW, 0, "Triage");
+
+    Optional<ReviewWorkflowDto> result = service.getReviewWorkflow(form.getId());
+
+    assertThat("Unexpected result presence.", result.isPresent(), is(true));
+    assertThat("Unexpected stages.", result.get().stages(), empty());
+    assertThat("Unexpected current stage.", result.get().currentStage(), nullValue());
+  }
+
+  @Test
+  void shouldReturnConfiguredStageLabelsForKnownDbc() {
+    adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
+
+    LtftForm form = new LtftForm();
+    form.setContent(LtftContent.builder()
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(DBC_THREE_STAGES)
+            .build())
+        .build());
+    template.save(form); // not submitted — no review stage
+
+    Optional<ReviewWorkflowDto> result = service.getReviewWorkflow(form.getId());
+
+    assertThat("Unexpected result presence.", result.isPresent(), is(true));
+    assertThat("Unexpected stages.", result.get().stages(), contains(
+        "Stage One",
+        "Stage Two",
+        "Stage Three",
+        "Review complete"));
+    assertThat("Unexpected current stage.", result.get().currentStage(), nullValue());
+  }
+
+  @Test
+  void shouldReturnCurrentStageIndexWhenFormIsSubmittedWithReviewStage() {
+    adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
+
+    // Form is at stage 1 (Stage Two) — visible position is 1.
+    LtftForm form = savedSubmittedFormWithReviewStage(
+        DBC_THREE_STAGES, 1, "Stage Two");
+
+    Optional<ReviewWorkflowDto> result = service.getReviewWorkflow(form.getId());
+
+    assertThat("Unexpected result presence.", result.isPresent(), is(true));
+    assertThat("Unexpected current stage.", result.get().currentStage(), is(1));
+  }
+
+  // -- advanceReviewStage --
+
+  @Test
+  void shouldReturnEmptyWhenFormNotFoundForAdvanceReviewStage()
+      throws MethodArgumentNotValidException {
+    adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
+
+    Optional<LtftFormDto> result = service.advanceReviewStage(UUID.randomUUID(), null);
+
+    assertThat("Unexpected result presence.", result.isPresent(), is(false));
+  }
+
+  @Test
+  void shouldThrowExceptionWhenFormNotSubmittedForAdvanceReviewStage() {
+    adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
+
+    LtftForm form = new LtftForm();
+    form.setContent(LtftContent.builder()
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(DBC_THREE_STAGES)
+            .build())
+        .build());
+    form.setLifecycleState(LifecycleState.DRAFT);
+    template.save(form);
+
+    assertThrows(MethodArgumentNotValidException.class,
+        () -> service.advanceReviewStage(form.getId(), null));
+  }
+
+  @Test
+  void shouldAdvanceToTerminalStageWhenAtFinalConfiguredStage()
+      throws MethodArgumentNotValidException {
+    adminIdentity.setGroups(Set.of(DBC_ONE_STAGE));
+    adminIdentity.setName("Ad Min");
+    adminIdentity.setEmail("ad.min@test.com");
+
+    // KSS has only one stage (index 0 = final configured stage).
+    LtftForm form = savedSubmittedFormWithReviewStage(
+        DBC_ONE_STAGE, 0, "Single Review");
+
+    Optional<LtftFormDto> result = service.advanceReviewStage(form.getId(), null);
+
+    assertThat("Unexpected result presence.", result.isPresent(), is(true));
+    StatusInfoDto current = result.get().status().current();
+    assertThat("Unexpected state.", current.state(), is(LifecycleState.SUBMITTED));
+    assertThat("Unexpected review stage index.", current.reviewStage().index(), is(1));
+    assertThat("Unexpected review stage label.", current.reviewStage().label(),
+        is("Review complete"));
+  }
+
+  @Test
+  void shouldThrowExceptionWhenAlreadyAtTerminalStageForAdvanceReviewStage() {
+    adminIdentity.setGroups(Set.of(DBC_ONE_STAGE));
+
+    // KSS single stage: terminal stage is at index 1.
+    LtftForm form = savedSubmittedFormWithReviewStage(
+        DBC_ONE_STAGE, 1, "Review complete");
+
+    assertThrows(MethodArgumentNotValidException.class,
+        () -> service.advanceReviewStage(form.getId(), null));
+  }
+
+  @Test
+  void shouldAdvanceReviewStageAndPersistToDatabase() throws MethodArgumentNotValidException {
+    adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
+    adminIdentity.setName("Ad Min");
+    adminIdentity.setEmail("ad.min@test.com");
+
+    LtftForm form = savedSubmittedFormWithReviewStage(
+        DBC_THREE_STAGES, 0, "Stage One");
+
+    Optional<LtftFormDto> result = service.advanceReviewStage(form.getId(), null);
+
+    assertThat("Unexpected result presence.", result.isPresent(), is(true));
+
+    // Verify the DTO reflects the new stage.
+    StatusInfoDto current = result.get().status().current();
+    assertThat("Unexpected state.", current.state(), is(LifecycleState.SUBMITTED));
+    assertThat("Unexpected review stage.", current.reviewStage(),
+        is(new ReviewStageStatus(1, "Stage Two")));
+
+    // Verify the change was persisted to MongoDB.
+    LtftForm persisted = template.findById(form.getId(), LtftForm.class);
+    assertThat("Unexpected persisted form.", persisted, notNullValue());
+    assertThat("Unexpected persisted review stage.",
+        persisted.getStatus().current().reviewStage(),
+        is(new ReviewStageStatus(1, "Stage Two")));
+  }
+
+  @Test
+  void shouldNotCreateSubmissionHistoryEntryWhenAdvancingReviewStage()
+      throws MethodArgumentNotValidException {
+    adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
+
+    LtftForm form = savedSubmittedFormWithReviewStage(
+        DBC_THREE_STAGES, 0, "Stage One");
+
+    service.advanceReviewStage(form.getId(), null);
+
+    List<LtftSubmissionHistory> histories = template.findAll(LtftSubmissionHistory.class);
+    assertThat("Unexpected submission history entries.", histories, empty());
+  }
+
+  @Test
+  void shouldStoreDetailAndModifiedByWhenAdvancingReviewStageWithDetail()
+      throws MethodArgumentNotValidException {
+    adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
+    adminIdentity.setName("Ad Min");
+    adminIdentity.setEmail("ad.min@test.com");
+
+    LtftForm form = savedSubmittedFormWithReviewStage(
+        DBC_THREE_STAGES, 0, "Stage One");
+
+    LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("Triage complete",
+        "All checks passed.");
+
+    Optional<LtftFormDto> result = service.advanceReviewStage(form.getId(), detail);
+
+    assertThat("Unexpected result presence.", result.isPresent(), is(true));
+    StatusInfoDto current = result.get().status().current();
+    assertThat("Unexpected detail reason.", current.detail().reason(), is("Triage complete"));
+    assertThat("Unexpected detail message.", current.detail().message(), is("All checks passed."));
+    assertThat("Unexpected modifiedBy name.", current.modifiedBy().name(), is("Ad Min"));
+    assertThat("Unexpected modifiedBy email.", current.modifiedBy().email(), is("ad.min@test.com"));
+    assertThat("Unexpected modifiedBy role.", current.modifiedBy().role(), is("ADMIN"));
+  }
+
+  // -- review stage set/cleared during lifecycle transitions --
+
+  @Test
+  void shouldSetFirstReviewStageWhenFormSubmittedWithConfiguredDbc() {
+    LtftFormDto dto = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .name("test form")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .designatedBodyCode(DBC_THREE_STAGES)
+            .build())
+        .build();
+
+    LtftFormDto draft = service.createLtftForm(dto).orElseThrow();
+    LtftFormDto submitted = service.submitLtftForm(draft.id(), null).orElseThrow();
+
+    StatusInfoDto current = submitted.status().current();
+    assertThat("Unexpected state.", current.state(), is(LifecycleState.SUBMITTED));
+    assertThat("Unexpected review stage index.", current.reviewStage().index(), is(0));
+    assertThat("Unexpected review stage label.", current.reviewStage().label(),
+        is("Stage One"));
+  }
+
+  @Test
+  void shouldNotSetReviewStageWhenFormSubmittedWithUnconfiguredDbc() {
+    LtftFormDto dto = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .name("test form")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .designatedBodyCode(DBC_NO_WORKFLOW)
+            .build())
+        .build();
+
+    LtftFormDto draft = service.createLtftForm(dto).orElseThrow();
+    LtftFormDto submitted = service.submitLtftForm(draft.id(), null).orElseThrow();
+
+    assertThat("Unexpected review stage for unconfigured DBC.",
+        submitted.status().current().reviewStage(), nullValue());
+  }
+
+  @Test
+  void shouldThrowWhenApprovingFormNotAtFinalReviewStage() {
+    adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
+
+    // Form at stage 0 — not the final stage (final is index 2).
+    LtftForm form = savedSubmittedFormWithReviewStage(
+        DBC_THREE_STAGES, 0, "Stage One");
+
+    assertThrows(MethodArgumentNotValidException.class,
+        () -> service.updateStatusAsAdmin(form.getId(), LifecycleState.APPROVED, null));
+  }
+
+  @Test
+  void shouldAllowApprovalWhenAtTerminalReviewStage() throws MethodArgumentNotValidException {
+    adminIdentity.setGroups(Set.of(DBC_ONE_STAGE));
+
+    // KSS single stage: terminal stage is at index 1 (= stages.size()).
+    LtftForm form = savedSubmittedFormWithReviewStage(DBC_ONE_STAGE, 1, "Review complete");
+
+    Optional<LtftFormDto> result = service.updateStatusAsAdmin(
+        form.getId(), LifecycleState.APPROVED, null);
+
+    assertThat("Unexpected result presence.", result.isPresent(), is(true));
+    assertThat("Unexpected state.", result.get().status().current().state(),
+        is(LifecycleState.APPROVED));
+  }
+
+  @Test
+  void shouldThrowWhenApprovingFormAtFinalConfiguredStageBeforeTerminal() {
+    adminIdentity.setGroups(Set.of(DBC_ONE_STAGE));
+
+    // KSS single stage: at configured stage 0, not yet at terminal.
+    LtftForm form = savedSubmittedFormWithReviewStage(DBC_ONE_STAGE, 0, "Single Review");
+
+    assertThrows(MethodArgumentNotValidException.class,
+        () -> service.updateStatusAsAdmin(form.getId(), LifecycleState.APPROVED, null));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
+  void shouldAllowTerminalTransitionForPreWorkflowFormWithNoReviewStage(
+      LifecycleState targetState) throws MethodArgumentNotValidException {
+    adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
+
+    // Simulate a pre-workflow form: SUBMITTED with no reviewStage, for a DBC that now has a
+    // 3-stage workflow. This mirrors forms that were already SUBMITTED when review stages were
+    // first deployed for the DBC.
+    LtftForm form = new LtftForm();
+    form.setContent(LtftContent.builder()
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(DBC_THREE_STAGES)
+            .build())
+        .build());
+    form.setStatus(Status.builder()
+        .current(StatusInfo.builder()
+            .state(LifecycleState.SUBMITTED)
+            .build()) // no reviewStage — submitted before workflow was deployed
+        .history(List.of())
+        .build());
+    template.save(form);
+
+    // Provide a reason; required for REJECTED/WITHDRAWN, harmless for APPROVED.
+    LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("pre-workflow transition", null);
+
+    Optional<LtftFormDto> result = service.updateStatusAsAdmin(form.getId(), targetState, detail);
+
+    assertThat("Unexpected result presence.", result.isPresent(), is(true));
+    assertThat("Unexpected state.", result.get().status().current().state(), is(targetState));
+    assertThat("Unexpected review stage after transition.",
+        result.get().status().current().reviewStage(), nullValue());
+  }
+
+  @Test
+  void shouldClearReviewStageWhenFormTransitionsOutOfSubmitted()
+      throws MethodArgumentNotValidException {
+    adminIdentity.setGroups(Set.of(DBC_ONE_STAGE));
+
+    // Single-stage workflow: at terminal stage (index 1), can approve.
+    LtftForm form = savedSubmittedFormWithReviewStage(DBC_ONE_STAGE, 1, "Review complete");
+
+    Optional<LtftFormDto> result = service.updateStatusAsAdmin(
+        form.getId(), LifecycleState.APPROVED, null);
+
+    assertThat("Unexpected result presence.", result.isPresent(), is(true));
+    assertThat("Unexpected review stage after approval.",
+        result.get().status().current().reviewStage(), nullValue());
+  }
+
+  @Test
+  void shouldAllowUnsubmitFromAnyReviewStageAndClearReviewStage()
+      throws MethodArgumentNotValidException {
+    adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
+
+    // Form at non-final stage (index 0) — UNSUBMIT is always allowed.
+    LtftForm form = savedSubmittedFormWithReviewStage(
+        DBC_THREE_STAGES, 0, "Stage One");
+
+    LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("trainee request", "notes");
+    Optional<LtftFormDto> result = service.updateStatusAsAdmin(
+        form.getId(), LifecycleState.UNSUBMITTED, detail);
+
+    assertThat("Unexpected result presence.", result.isPresent(), is(true));
+    assertThat("Unexpected state.", result.get().status().current().state(),
+        is(LifecycleState.UNSUBMITTED));
+    assertThat("Unexpected review stage after unsubmit.",
+        result.get().status().current().reviewStage(), nullValue());
+  }
+
+  @Test
+  void shouldRestartFromFirstReviewStageWhenResubmittingAfterUnsubmit()
+      throws MethodArgumentNotValidException {
+    LtftFormDto dto = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .name("test form")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .designatedBodyCode(DBC_THREE_STAGES)
+            .build())
+        .build();
+
+    LtftFormDto draft = service.createLtftForm(dto).orElseThrow();
+    LtftFormDto submitted = service.submitLtftForm(draft.id(), null).orElseThrow();
+
+    adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
+    // Advance to stage 1 then unsubmit.
+    service.advanceReviewStage(submitted.id(), null).orElseThrow();
+    LftfStatusInfoDetailDto reason = new LftfStatusInfoDetailDto("reason", "message");
+    service.unsubmitLtftForm(submitted.id(), reason).orElseThrow();
+
+    // Re-submit: review stage should restart from stage 0.
+    LtftFormDto resubmitted = service.submitLtftForm(draft.id(), null).orElseThrow();
+
+    StatusInfoDto current = resubmitted.status().current();
+    assertThat("Unexpected review stage index on re-submit.",
+        current.reviewStage().index(), is(0));
+    assertThat("Unexpected review stage label on re-submit.",
+        current.reviewStage().label(), is("Stage One"));
   }
 }

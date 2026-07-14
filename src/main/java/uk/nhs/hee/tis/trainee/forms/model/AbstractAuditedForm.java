@@ -22,6 +22,7 @@
 package uk.nhs.hee.tis.trainee.forms.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.annotation.Nullable;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -124,6 +125,21 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
    */
   public void setLifecycleState(LifecycleState lifecycleState, StatusDetail detail,
       Person modifiedBy, int revision) {
+    setLifecycleState(lifecycleState, detail, modifiedBy, revision, null);
+  }
+
+  /**
+   * Set the current lifecycle state of the form, appending to the status history. This does not
+   * consider whether a state transition is valid or not, it simply sets the state.
+   *
+   * @param lifecycleState The new lifecycle state.
+   * @param detail         Any status detail.
+   * @param modifiedBy     The Person who made this status change.
+   * @param revision       The revision number associated with this status change.
+   * @param reviewStage    The review stage to associate with this status change, or null.
+   */
+  public void setLifecycleState(LifecycleState lifecycleState, StatusDetail detail,
+      Person modifiedBy, int revision, @Nullable ReviewStageStatus reviewStage) {
     StatusInfo statusInfo = StatusInfo.builder()
         .state(lifecycleState)
         .detail(detail)
@@ -132,9 +148,48 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
         .modifiedBy(modifiedBy)
         .timestamp(Instant.now())
         .revision(revision)
+        .reviewStage(reviewStage)
         .build();
 
     updateStatusInfo(statusInfo, true);
+  }
+
+  /**
+   * Set the current review stage of the form without changing any other state, appending to the
+   * status history. The existing detail and modifiedBy are copied from the current status.
+   *
+   * @param reviewStage The new review stage.
+   */
+  public void setReviewStage(@Nullable ReviewStageStatus reviewStage) {
+    StatusDetail currentDetail =
+        status == null || status.current == null ? null : status.current.detail;
+    Person currentModifiedBy =
+        status == null || status.current == null ? null : status.current.modifiedBy;
+    setReviewStage(reviewStage, currentDetail, currentModifiedBy);
+  }
+
+  /**
+   * Set the current review stage of the form without changing any other state, appending to the
+   * status history. The provided detail and modifiedBy are recorded in the new history entry.
+   *
+   * @param reviewStage The new review stage.
+   * @param detail      The status detail to record, or {@code null} to clear.
+   * @param modifiedBy  The person making this change, or {@code null} if unknown.
+   */
+  public void setReviewStage(@Nullable ReviewStageStatus reviewStage,
+      @Nullable StatusDetail detail, @Nullable Person modifiedBy) {
+    StatusInfo statusInfo = StatusInfo.builder()
+        .state(getLifecycleState())
+        .detail(detail)
+        .assignedAdmin(
+            status == null || status.current == null ? null : status.current.assignedAdmin)
+        .modifiedBy(modifiedBy)
+        .timestamp(Instant.now())
+        .revision(status == null || status.current == null ? null : status.current.revision)
+        .reviewStage(reviewStage)
+        .build();
+
+    updateStatusInfo(statusInfo, false);
   }
 
   /**
@@ -192,6 +247,7 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
      * @param modifiedBy    The Person who made this status change.
      * @param timestamp     The timestamp of the status change.
      * @param revision      The revision number associated with this status change.
+     * @param reviewStage   The review stage associated with this status change, if any.
      */
     @Builder
     public record StatusInfo(
@@ -202,7 +258,8 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
         Person assignedAdmin,
         Person modifiedBy,
         Instant timestamp,
-        Integer revision
+        Integer revision,
+        ReviewStageStatus reviewStage
     ) {
 
     }

@@ -16,6 +16,7 @@ application:
       coj-received: ${COJ_RECEIVED_QUEUE:}
       notification-event: ${NOTIFICATION_EVENT_QUEUE:}
       profile-move: ${PROFILE_MOVE_QUEUE:}
+  review-workflows: {} # Empty by default; configure per environment via profiles or env vars
   schedules:
     publish-all-formr-partas: "-"
     publish-all-formr-partbs: "-"

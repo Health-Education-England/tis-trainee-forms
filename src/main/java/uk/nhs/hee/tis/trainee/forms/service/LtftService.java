@@ -33,6 +33,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.fge.jsonpatch.JsonPatch;
 import com.github.fge.jsonpatch.JsonPatchException;
+import jakarta.annotation.Nullable;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
@@ -47,6 +48,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.MethodParameter;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -56,6 +58,9 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto.FormFeatures.LtftFeatures;
 import uk.nhs.hee.tis.trainee.forms.dto.FormPatchDto;
@@ -65,14 +70,17 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
+import uk.nhs.hee.tis.trainee.forms.dto.ReviewWorkflowDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.TraineeIdentity;
+import uk.nhs.hee.tis.trainee.forms.dto.identity.UserIdentity;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
+import uk.nhs.hee.tis.trainee.forms.model.ReviewStageStatus;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 
@@ -86,6 +94,10 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
 
   protected static final String FORM_ATTRIBUTE_FORM_STATUS = "status.current.state";
   protected static final String FORM_ATTRIBUTE_TPD_STATUS = "content.discussions.tpdStatus";
+
+  private static final String FORM_OBJECT_NAME = "LtftForm";
+  private static final String METHOD_UPDATE_STATUS = "updateStatus";
+  private static final String METHOD_ADVANCE_REVIEW_STAGE = "advanceReviewStage";
 
   private final AdminIdentity adminIdentity;
   private final TraineeIdentity traineeIdentity;
@@ -105,6 +117,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   private final String ltftContentUpdateTopic;
 
   private final SubmissionHistoryService<LtftForm> ltftSubmissionHistoryService;
+  private final ReviewStageService reviewStageService;
 
   /**
    * Instantiate the LTFT form service.
@@ -121,6 +134,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    * @param ltftStatusUpdateTopic        The SNS topic for LTFT status updates.
    * @param ltftContentUpdateTopic       The SNS topic for LTFT content updates.
    * @param ltftSubmissionHistoryService The service for LTFT submission history.
+   * @param reviewStageService           The service for managing review stage transitions.
    */
   public LtftService(AdminIdentity adminIdentity, TraineeIdentity traineeIdentity,
       LtftFormRepository ltftFormRepository, MongoTemplate mongoTemplate, ObjectMapper objectMapper,
@@ -128,7 +142,8 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
       @Value("${application.aws.sns.ltft-assignment-updated}") String ltftAssignmentUpdateTopic,
       @Value("${application.aws.sns.ltft-status-updated}") String ltftStatusUpdateTopic,
       @Value("${application.aws.sns.ltft-content-updated}") String ltftContentUpdateTopic,
-      SubmissionHistoryService<LtftForm> ltftSubmissionHistoryService) {
+      SubmissionHistoryService<LtftForm> ltftSubmissionHistoryService,
+      ReviewStageService reviewStageService) {
     super(ltftFormRepository, ltftSubmissionHistoryService);
 
     this.adminIdentity = adminIdentity;
@@ -143,6 +158,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
     this.ltftContentUpdateTopic = ltftContentUpdateTopic;
     this.ltftSubmissionHistoryService = ltftSubmissionHistoryService;
     this.eventBroadcastService = eventBroadcastService;
+    this.reviewStageService = reviewStageService;
   }
 
   /**
@@ -496,8 +512,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
     LtftForm form = formOptional.get();
 
     try {
-      StatusDetail detailEntity = mapper.toStatusDetail(detail);
-      LtftForm updatedForm = updateStatus(form, targetState, traineeIdentity, detailEntity);
+      LtftForm updatedForm = updateStatus(form, targetState, traineeIdentity, detail);
       return Optional.of(mapper.toDto(updatedForm));
     } catch (MethodArgumentNotValidException e) {
       return Optional.empty();
@@ -612,13 +627,302 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
             dbcs);
 
     if (form.isPresent()) {
-      StatusDetail detailEntity = mapper.toStatusDetail(detail);
-      LtftForm updatedForm = updateStatus(form.get(), state, adminIdentity, detailEntity);
+      LtftForm updatedForm = updateStatus(form.get(), state, adminIdentity, detail);
       return Optional.of(mapper.toDto(updatedForm));
     } else {
       log.warn("Could not update form {} since no form exists with this ID for DBCs [{}]",
           formId, dbcs);
       return Optional.empty();
+    }
+  }
+
+  /**
+   * Get the review workflow state for an LTFT form associated with the calling admin's local
+   * office.
+   *
+   * @param formId The ID of the form.
+   * @return The workflow DTO, or empty if no form was found for the admin's DBCs.
+   */
+  public Optional<ReviewWorkflowDto> getReviewWorkflow(UUID formId) {
+    log.info("Getting review workflow for LTFT form {} as admin [{}]", formId,
+        adminIdentity.getEmail());
+    Set<String> dbcs = adminIdentity.getGroups();
+    Optional<LtftForm> optForm =
+        ltftFormRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(formId,
+            dbcs);
+
+    if (optForm.isEmpty()) {
+      log.warn("Could not get review workflow for form {} since no form exists for DBCs [{}]",
+          formId, dbcs);
+      return Optional.empty();
+    }
+
+    return Optional.of(reviewStageService.getWorkflowDto(optForm.get()));
+  }
+
+  /**
+   * Advance the review stage of an LTFT form for the calling admin's local office.
+   *
+   * <p>Delegates to {@link #advanceReviewStage(UUID, LftfStatusInfoDetailDto)} with no detail.
+   *
+   * @param formId The ID of the form to advance.
+   * @return The updated LTFT application, or empty if the form was not found or does not belong to
+   *     the admin's local office.
+   * @throws MethodArgumentNotValidException If the form is not currently SUBMITTED or is already
+   *                                         at the final review stage.
+   */
+  public Optional<LtftFormDto> advanceReviewStage(UUID formId)
+      throws MethodArgumentNotValidException {
+    return advanceReviewStage(formId, null);
+  }
+
+  /**
+   * Advance the review stage of an LTFT form for the calling admin's local office.
+   *
+   * <p>If the form is already at its final configured review stage this action is rejected.
+   * Transitioning to APPROVED or another terminal state must be performed via
+   * {@link #updateStatusAsAdmin(UUID, LifecycleState, LftfStatusInfoDetailDto)}.
+   *
+   * @param formId The ID of the form to advance.
+   * @param detail Optional detail to record alongside the stage change.
+   * @return The updated LTFT application, or empty if the form was not found or does not belong to
+   *     the admin's local office.
+   * @throws MethodArgumentNotValidException If the form is not currently SUBMITTED or is already
+   *                                         at the final review stage.
+   */
+  public Optional<LtftFormDto> advanceReviewStage(UUID formId,
+      @Nullable LftfStatusInfoDetailDto detail) throws MethodArgumentNotValidException {
+    Set<String> dbcs = adminIdentity.getGroups();
+    log.info("Advancing review stage of LTFT form {} for admin [{}] with DBCs [{}]",
+        formId, adminIdentity.getEmail(), dbcs);
+
+    Optional<LtftForm> optForm =
+        ltftFormRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(formId,
+            dbcs);
+
+    if (optForm.isEmpty()) {
+      log.warn("Could not advance review stage for form {} since no form exists with this ID "
+          + "for DBCs [{}]", formId, dbcs);
+      return Optional.empty();
+    }
+
+    LtftForm form = optForm.get();
+
+    if (form.getStatus() == null || form.getStatus().current() == null
+        || form.getStatus().current().state() != SUBMITTED) {
+      log.warn("Cannot advance review stage of form {} as it is not currently SUBMITTED.",
+          formId);
+      BeanPropertyBindingResult result = new BeanPropertyBindingResult(form, "form");
+      result.addError(new FieldError(FORM_OBJECT_NAME, FORM_ATTRIBUTE_FORM_STATUS,
+          "review stage can only be advanced when the form is SUBMITTED"));
+      try {
+        MethodParameter parameter = new MethodParameter(
+            this.getClass().getDeclaredMethod(METHOD_ADVANCE_REVIEW_STAGE, UUID.class,
+                LftfStatusInfoDetailDto.class), 0);
+        throw new MethodArgumentNotValidException(parameter, result);
+      } catch (NoSuchMethodException e) {
+        throw new IllegalStateException("Unable to reflect advanceReviewStage method.", e);
+      }
+    }
+
+    if (form.getStatus().current().reviewStage() == null) {
+      log.warn("Cannot advance review stage of form {} as it has no active review stage.",
+          formId);
+      BeanPropertyBindingResult result = new BeanPropertyBindingResult(form, "form");
+      result.addError(new FieldError(FORM_OBJECT_NAME, FORM_ATTRIBUTE_FORM_STATUS,
+          "review stage can only be advanced from an active review stage"));
+      try {
+        MethodParameter parameter = new MethodParameter(
+            this.getClass().getDeclaredMethod(METHOD_ADVANCE_REVIEW_STAGE, UUID.class,
+                LftfStatusInfoDetailDto.class), 0);
+        throw new MethodArgumentNotValidException(parameter, result);
+      } catch (NoSuchMethodException e) {
+        throw new IllegalStateException("Unable to reflect advanceReviewStage method.", e);
+      }
+    }
+
+    Optional<ReviewStageStatus> nextStage = reviewStageService.resolveAdvance(form);
+
+    if (nextStage.isPresent()) {
+      // Advance within SUBMITTED to the next stage.
+      Person modifiedBy = Person.builder()
+          .name(adminIdentity.getName())
+          .email(adminIdentity.getEmail())
+          .role(adminIdentity.getRole())
+          .build();
+      StatusDetail detailEntity = mapper.toStatusDetail(detail);
+      form.setReviewStage(nextStage.get(), detailEntity, modifiedBy);
+      LtftForm savedForm = ltftFormRepository.save(form);
+      publishUpdateNotification(savedForm, FORM_ATTRIBUTE_FORM_STATUS, ltftStatusUpdateTopic);
+      return Optional.of(mapper.toDto(savedForm));
+    } else {
+      // Already at the final stage — advancing further is not permitted via this action.
+      // Use updateStatus to transition to APPROVED (or other states) from the final stage.
+      log.warn("Cannot advance review stage of form {} as it is already at the final stage.",
+          formId);
+      BeanPropertyBindingResult result = new BeanPropertyBindingResult(form, "form");
+      result.addError(new FieldError(FORM_OBJECT_NAME, FORM_ATTRIBUTE_FORM_STATUS,
+          "review stage cannot be advanced past the final stage"));
+      try {
+        MethodParameter parameter = new MethodParameter(
+            this.getClass().getDeclaredMethod(METHOD_ADVANCE_REVIEW_STAGE, UUID.class,
+                LftfStatusInfoDetailDto.class), 0);
+        throw new MethodArgumentNotValidException(parameter, result);
+      } catch (NoSuchMethodException e) {
+        throw new IllegalStateException("Unable to reflect advanceReviewStage method.", e);
+      }
+    }
+  }
+
+  /**
+   * Update the status of the LTFT, the current status and history will both be updated.
+   *
+   * @param form        The form to update the status of.
+   * @param targetState The state to change to.
+   * @param identity    Who is performing the status change.
+   * @param detail      A detailed reason for the change, may be null.
+   * @return The updated LTFT application.
+   * @throws MethodArgumentNotValidException If the state transition is not allowed.
+   */
+  private LtftForm updateStatus(LtftForm form, LifecycleState targetState,
+      UserIdentity identity, @Nullable LftfStatusInfoDetailDto detail)
+      throws MethodArgumentNotValidException {
+
+    validateLifecycleTransition(form, targetState);
+    validateStatusDetail(form, targetState, detail);
+    validateReviewStageTransition(form, targetState);
+
+    if (targetState.isIncrementsRevision()) {
+      form.setRevision(form.getRevision() + 1);
+    }
+
+    StatusDetail detailEntity = mapper.toStatusDetail(detail);
+    ReviewStageStatus reviewStage = reviewStageService.resolveReviewStageForTransition(form,
+        targetState);
+
+    Person modifiedBy = Person.builder()
+        .name(identity.getName())
+        .email(identity.getEmail())
+        .role(identity.getRole())
+        .build();
+    form.setLifecycleState(targetState, detailEntity, modifiedBy, form.getRevision(), reviewStage);
+
+    assignFormRefIfNew(form, targetState);
+
+    LtftForm savedForm = ltftFormRepository.save(form);
+    if (targetState == SUBMITTED) {
+      ltftSubmissionHistoryService.takeSnapshot(savedForm);
+    }
+
+    publishUpdateNotification(savedForm, FORM_ATTRIBUTE_FORM_STATUS, ltftStatusUpdateTopic);
+    return savedForm;
+  }
+
+  /**
+   * Validate that the requested lifecycle transition is permitted for the given form.
+   *
+   * @param form        The form being updated.
+   * @param targetState The intended target lifecycle state.
+   * @throws MethodArgumentNotValidException If the transition is not allowed.
+   */
+  private void validateLifecycleTransition(LtftForm form, LifecycleState targetState)
+      throws MethodArgumentNotValidException {
+    if (!LifecycleState.canTransitionTo(form, targetState)) {
+      LifecycleState currentState = (form.getStatus() != null && form.getStatus().current() != null)
+          ? form.getStatus().current().state() : null;
+      log.warn("Could not update form {}, invalid lifecycle transition from {} to {} "
+              + "for form type '{}'", form.getId(), currentState, targetState, form.getFormType());
+
+      BeanPropertyBindingResult result = new BeanPropertyBindingResult(form, "form");
+      result.addError(new FieldError(FORM_OBJECT_NAME, FORM_ATTRIBUTE_FORM_STATUS,
+          "can not be transitioned to %s".formatted(targetState)));
+      throw buildUpdateStatusException(result, 1);
+    }
+  }
+
+  /**
+   * Validate that a status detail with a reason is present when the target state requires one.
+   *
+   * @param form        The form being updated.
+   * @param targetState The intended target lifecycle state.
+   * @param detail      The supplied status detail, which may be {@code null}.
+   * @throws MethodArgumentNotValidException If a reason is required but absent.
+   */
+  private void validateStatusDetail(LtftForm form, LifecycleState targetState,
+      @Nullable LftfStatusInfoDetailDto detail) throws MethodArgumentNotValidException {
+    if (targetState.isRequiresDetails() && (detail == null || detail.reason() == null)) {
+      log.warn("Form {} requires a reason to change to state [{}]", form.getId(), targetState);
+
+      BeanPropertyBindingResult result = new BeanPropertyBindingResult(detail, "detail");
+      String field = detail == null ? "detail" : "detail.reason";
+      result.addError(new FieldError("StatusInfo", field,
+          "must not be null when transitioning to %s".formatted(targetState)));
+      throw buildUpdateStatusException(result, 3);
+    }
+  }
+
+  /**
+   * Validate that the form's current review stage permits a transition to the target state.
+   *
+   * <p>This method is only called after {@link #validateLifecycleTransition}, which guarantees
+   * that {@code form.getStatus()} and {@code form.getStatus().current()} are non-null (a null
+   * current state would have caused {@code canTransitionTo} to return false and thrown before
+   * reaching this point).
+   *
+   * @param form        The form being updated.
+   * @param targetState The intended target lifecycle state.
+   * @throws MethodArgumentNotValidException If the review stage does not allow this transition.
+   */
+  private void validateReviewStageTransition(LtftForm form, LifecycleState targetState)
+      throws MethodArgumentNotValidException {
+    if (form.getStatus().current().state() == SUBMITTED
+        && !reviewStageService.canTransitionToLifecycleState(form, targetState)) {
+      log.warn("Form {} cannot transition from review stage {} to {}.",
+          form.getId(), form.getStatus().current().reviewStage(), targetState);
+
+      BeanPropertyBindingResult result = new BeanPropertyBindingResult(form, "form");
+      result.addError(new FieldError(FORM_OBJECT_NAME, FORM_ATTRIBUTE_FORM_STATUS,
+          "can not be transitioned to %s from the current review stage".formatted(targetState)));
+      throw buildUpdateStatusException(result, 1);
+    }
+  }
+
+  /**
+   * Build a {@link MethodArgumentNotValidException} whose {@link MethodParameter} refers to the
+   * private {@code updateStatus} method.
+   *
+   * @param result     The binding result containing the validation errors.
+   * @param paramIndex The zero-based index of the offending parameter.
+   * @return The constructed exception, ready to be thrown.
+   * @throws IllegalStateException If the {@code updateStatus} method cannot be found via
+   *                               reflection.
+   */
+  private MethodArgumentNotValidException buildUpdateStatusException(
+      BindingResult result, int paramIndex) {
+    try {
+      MethodParameter parameter = new MethodParameter(this.getClass()
+          .getDeclaredMethod(METHOD_UPDATE_STATUS, LtftForm.class, LifecycleState.class,
+              UserIdentity.class, LftfStatusInfoDetailDto.class), paramIndex);
+      return new MethodArgumentNotValidException(parameter, result);
+    } catch (NoSuchMethodException e) {
+      throw new IllegalStateException("Unable to reflect updateStatus method.", e);
+    }
+  }
+
+  /**
+   * Assign a form reference to the form if it is being submitted for the first time.
+   *
+   * @param form        The form being updated.
+   * @param targetState The target lifecycle state.
+   */
+  private void assignFormRefIfNew(LtftForm form, LifecycleState targetState) {
+    if (form.getFormRef() == null && targetState == SUBMITTED) {
+      String traineeId = form.getTraineeTisId();
+      int previousFormCount = ltftFormRepository
+          .countByTraineeTisIdAndStatus_SubmittedIsNotNull(traineeId);
+      String formRef = "ltft_%s_%03d".formatted(traineeId, previousFormCount + 1);
+      log.info("Assigning form reference {} to LTFT {}", formRef, form.getId());
+      form.setFormRef(formRef);
     }
   }
 
