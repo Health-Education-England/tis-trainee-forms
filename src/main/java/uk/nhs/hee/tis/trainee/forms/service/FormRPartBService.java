@@ -318,7 +318,7 @@ public class FormRPartBService extends AbstractAuditedFormService<FormRPartB> {
   /**
    * Publish Form-R status update notification.
    *
-   * @param form The updated LTFT form.
+   * @param form The updated form.
    */
   @Override
   public void publishStatusUpdateNotification(FormRPartB form) {
@@ -343,7 +343,7 @@ public class FormRPartBService extends AbstractAuditedFormService<FormRPartB> {
    *
    * @param formDto The form DTO to publish.
    */
-  private void publishFormRUpdateEvent(FormRPartBDto formDto) {
+  public void publishFormRUpdateEvent(FormRPartBDto formDto) {
     log.debug("Publishing FormRPartB {} event for form id: {}",
         formDto.getLifecycleState(), formDto.getId());
     publishUpdateNotification(formDto, formRPartBUpdatedTopic);
