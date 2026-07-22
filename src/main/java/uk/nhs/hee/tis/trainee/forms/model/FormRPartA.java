@@ -31,7 +31,7 @@ import uk.nhs.hee.tis.trainee.forms.model.content.FormrPartaContent;
 @Data
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
-public class FormRPartA extends AbstractFormR<FormrPartaContent> {
+public class FormRPartA extends AbstractFormR<FormrPartaContent> implements CurrentForm {
 
   @Override
   public String getFormType() {

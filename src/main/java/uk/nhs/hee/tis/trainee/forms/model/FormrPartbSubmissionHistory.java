@@ -25,7 +25,6 @@ package uk.nhs.hee.tis.trainee.forms.model;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
-import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 import uk.nhs.hee.tis.trainee.forms.model.content.FormrPartbContent;
 
@@ -36,7 +35,6 @@ import uk.nhs.hee.tis.trainee.forms.model.content.FormrPartbContent;
 @Data
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
-@CompoundIndex(def = "{'formRef': 1, 'revision': 1}", unique = true)
 public class FormrPartbSubmissionHistory extends AbstractAuditedForm<FormrPartbContent> implements
     FormSubmissionHistory {
 

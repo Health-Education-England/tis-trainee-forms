@@ -20,31 +20,23 @@
  *
  */
 
-package uk.nhs.hee.tis.trainee.forms.model;
-
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
-import org.springframework.data.mongodb.core.mapping.Document;
-import uk.nhs.hee.tis.trainee.forms.model.content.FormrPartaContent;
+package uk.nhs.hee.tis.trainee.forms.repository;
 
 /**
- * A FormR Part A form submission entity.
+ * A set of flags to describe an index.
+ *
+ * @param hidden   Whether it is a hidden index.
+ * @param hashed   Whether it is a hashed index.
+ * @param sparse   Whether it is a sparse index.
+ * @param unique   Whether it is a unique index.
+ * @param wildcard Whether it is a wildcard index.
  */
-@Document("FormrPartaSubmissionHistory")
-@Data
-@ToString(callSuper = true)
-@EqualsAndHashCode(callSuper = true)
-public class FormrPartaSubmissionHistory extends AbstractAuditedForm<FormrPartaContent> implements
-    FormSubmissionHistory {
+public record IndexFlags(
+    boolean hidden,
+    boolean hashed,
+    boolean sparse,
+    boolean unique,
+    boolean wildcard
+) {
 
-  @Override
-  public String getFormType() {
-    return "formrPartaSubmissionHistory";
-  }
-
-  @Override
-  public String getFormReferencePrefix() {
-    return null;
-  }
 }
