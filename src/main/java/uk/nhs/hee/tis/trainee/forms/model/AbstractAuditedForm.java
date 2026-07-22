@@ -53,7 +53,6 @@ import uk.nhs.hee.tis.trainee.forms.model.content.FormContent;
 public abstract class AbstractAuditedForm<T extends FormContent> extends AbstractForm implements
     Persistable<UUID> {
 
-  @Indexed
   private String formRef;
   private int revision;
 

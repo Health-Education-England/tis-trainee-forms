@@ -22,29 +22,12 @@
 
 package uk.nhs.hee.tis.trainee.forms.model;
 
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
-import org.springframework.data.mongodb.core.mapping.Document;
-import uk.nhs.hee.tis.trainee.forms.model.content.FormrPartaContent;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 
 /**
- * A FormR Part A form submission entity.
+ * An interface representing the current version of a form, stored in the main collection.
  */
-@Document("FormrPartaSubmissionHistory")
-@Data
-@ToString(callSuper = true)
-@EqualsAndHashCode(callSuper = true)
-public class FormrPartaSubmissionHistory extends AbstractAuditedForm<FormrPartaContent> implements
-    FormSubmissionHistory {
+@CompoundIndex(name = "formRef", def = "{'formRef': 1}", unique = true, sparse = true)
+public interface CurrentForm {
 
-  @Override
-  public String getFormType() {
-    return "formrPartaSubmissionHistory";
-  }
-
-  @Override
-  public String getFormReferencePrefix() {
-    return null;
-  }
 }

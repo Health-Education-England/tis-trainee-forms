@@ -22,9 +22,13 @@
 
 package uk.nhs.hee.tis.trainee.forms.model;
 
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+
 /**
  * An interface representing the history of form submissions.
  */
+@CompoundIndex(name = "formRef", def = "{'formRef': 1}")
+@CompoundIndex(def = "{'formRef': 1, 'revision': 1}", unique = true)
 public interface FormSubmissionHistory {
 
 }

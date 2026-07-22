@@ -36,11 +36,14 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 import org.bson.Document;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -56,6 +59,7 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
+import uk.nhs.hee.tis.trainee.forms.model.FormRPartB;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 
@@ -77,6 +81,12 @@ class LtftRepositoryIntegrationTest {
   @MockitoBean
   private JwtDecoder jwtDecoder;
 
+  private static Stream<Arguments> customSingleFieldIndexes() {
+    return Stream.of(
+        Arguments.of("formRef", "formRef", new IndexFlags(false, false, true, true, false))
+    );
+  }
+
   @AfterEach
   void tearDown() {
     template.findAllAndRemove(new Query(), LtftForm.class);
@@ -84,20 +94,19 @@ class LtftRepositoryIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      _id_                                  | _id
-      traineeTisId                          | traineeTisId
-      formRef                               | formRef
-      content.personalDetails.forenames     | content.personalDetails.forenames
-      content.personalDetails.gdcNumber     | content.personalDetails.gdcNumber
-      content.personalDetails.gmcNumber     | content.personalDetails.gmcNumber
-      content.personalDetails.surname       | content.personalDetails.surname
-      content.programmeMembership.id        | content.programmeMembership.id
-      content.programmeMembership.dbc       | content.programmeMembership.designatedBodyCode
-      content.programmeMembership.name      | content.programmeMembership.name
-      status.current.state                  | status.current.state
-      status.history.state                  | status.history.state
+      _id_                              | _id
+      traineeTisId                      | traineeTisId
+      content.personalDetails.forenames | content.personalDetails.forenames
+      content.personalDetails.gdcNumber | content.personalDetails.gdcNumber
+      content.personalDetails.gmcNumber | content.personalDetails.gmcNumber
+      content.personalDetails.surname   | content.personalDetails.surname
+      content.programmeMembership.id    | content.programmeMembership.id
+      content.programmeMembership.dbc   | content.programmeMembership.designatedBodyCode
+      content.programmeMembership.name  | content.programmeMembership.name
+      status.current.state              | status.current.state
+      status.history.state              | status.history.state
       """)
-  void shouldCreateSingleFieldIndexes(String indexName, String fieldName) {
+  void shouldCreateDefaultSingleFieldIndexes(String indexName, String fieldName) {
     IndexOperations indexOperations = template.indexOps(LtftForm.class);
     List<IndexInfo> indexes = indexOperations.getIndexInfo();
 
@@ -120,6 +129,34 @@ class LtftRepositoryIntegrationTest {
     assertThat("Unexpected sparse index.", index.isSparse(), is(false));
     assertThat("Unexpected unique index.", index.isUnique(), is(false));
     assertThat("Unexpected wildcard index.", index.isWildcard(), is(false));
+  }
+
+  @ParameterizedTest
+  @MethodSource("customSingleFieldIndexes")
+  void shouldCreateCustomSingleFieldIndexes(String indexName, String fieldName,
+      IndexFlags indexFlags) {
+    IndexOperations indexOperations = template.indexOps(FormRPartB.class);
+    List<IndexInfo> indexes = indexOperations.getIndexInfo();
+
+    assertThat("Unexpected index count.", indexes, hasSize(5));
+
+    IndexInfo index = indexes.stream()
+        .filter(i -> i.getName().equals(indexName))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("Expected index not found."));
+
+    List<IndexField> indexFields = index.getIndexFields();
+    assertThat("Unexpected index field count.", indexFields, hasSize(1));
+
+    IndexField indexField = indexFields.get(0);
+    assertThat("Unexpected index field key.", indexField.getKey(), is(fieldName));
+    assertThat("Unexpected index field direction.", indexField.getDirection(), is(ASC));
+
+    assertThat("Unexpected hidden index.", index.isHidden(), is(indexFlags.hidden()));
+    assertThat("Unexpected hashed index.", index.isHashed(), is(indexFlags.hashed()));
+    assertThat("Unexpected sparse index.", index.isSparse(), is(indexFlags.sparse()));
+    assertThat("Unexpected unique index.", index.isUnique(), is(indexFlags.unique()));
+    assertThat("Unexpected wildcard index.", index.isWildcard(), is(indexFlags.wildcard()));
   }
 
   @Test

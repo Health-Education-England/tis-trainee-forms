@@ -34,7 +34,7 @@ import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 @Data
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
-public class LtftForm extends AbstractAuditedForm<LtftContent> {
+public class LtftForm extends AbstractAuditedForm<LtftContent> implements CurrentForm {
 
   @Override
   public String getFormType() {
