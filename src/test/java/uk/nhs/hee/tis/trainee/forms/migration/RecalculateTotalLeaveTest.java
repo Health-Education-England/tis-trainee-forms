@@ -70,7 +70,7 @@ class RecalculateTotalLeaveTest {
   void shouldOnlyRecalculateDocumentsWithZeroTotalLeaveAndUnCalculatedLeave() {
     migration.migrate();
 
-    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
     verify(template).find(queryCaptor.capture(), eq(FormRPartB.class));
 
     Query query = queryCaptor.getValue();
@@ -110,7 +110,7 @@ class RecalculateTotalLeaveTest {
 
     migration.migrate();
 
-    ArgumentCaptor<FormRPartBDto> formCaptor = ArgumentCaptor.forClass(FormRPartBDto.class);
+    ArgumentCaptor<FormRPartBDto> formCaptor = ArgumentCaptor.captor();
     verify(service).save(formCaptor.capture());
 
     FormRPartBDto updatedForm = formCaptor.getValue();

@@ -21,6 +21,8 @@
 
 package uk.nhs.hee.tis.trainee.forms.migration;
 
+import static org.springframework.data.mongodb.core.schema.JsonSchemaObject.Type.STRING;
+
 import com.mongodb.client.result.DeleteResult;
 import io.mongock.api.annotations.ChangeUnit;
 import io.mongock.api.annotations.Execution;
@@ -29,6 +31,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -54,7 +57,7 @@ public class ConvertUuidStringsToUuidObjects {
   }
 
   /**
-   * Generate a new UUID object for each UUID string form.
+   * Convert existing UUID string based form IDs to UUID for each form.
    */
   @Execution
   public void migrateCollections() {
@@ -62,50 +65,62 @@ public class ConvertUuidStringsToUuidObjects {
     migrateCollection(FormRPartB.class);
   }
 
+  /**
+   * Migrate a collection of forms from UUID string to UUID.
+   *
+   * @param formClass The class of the forms to migrate.
+   */
   private void migrateCollection(Class<? extends AbstractForm> formClass) {
     String collectionName = mongoTemplate.getCollectionName(formClass);
     log.info("Converting UUID strings to objects for forms in collection {}.", collectionName);
 
-    // Filter to only non UUID objects, so that retries can skip migrated forms on retry.
-    List<Document> allDocuments = mongoTemplate.findAll(Document.class, collectionName);
-    List<Document> uuidStringDocuments = allDocuments.stream()
-        .filter(document -> document.get(ID_FIELD) instanceof String)
-        .toList();
-    log.info("Found {} form(s) that require UUID conversion.", uuidStringDocuments.size());
+    int total = 0;
+    int batchSize;
 
-    for (Document document : uuidStringDocuments) {
-      String originalId = document.getString(ID_FIELD);
-      log.info("Converting form {}.", originalId);
+    // Filter to only ObjectId forms, so that retries can skip migrated forms.
+    Query query = Query.query(Criteria.where(ID_FIELD).type(STRING))
+        .with(Sort.by(ID_FIELD))
+        .limit(1000);
 
-      UUID newId = UUID.fromString(originalId);
-      document.put(ID_FIELD, newId);
+    do {
+      List<Document> forms = mongoTemplate.find(query, Document.class, collectionName);
+      batchSize = forms.size();
+      total += batchSize;
+      log.debug("Found batch of {} form(s) that require UUID strings conversion.", batchSize);
 
-      log.info("Saving updated form {}.", newId);
-      mongoTemplate.insert(document, collectionName);
-      log.info("Saved updated form {}.", newId);
+      for (Document form : forms) {
+        migrateForm(form, collectionName);
+      }
+    } while (batchSize > 0);
 
-      deleteOriginalForm(originalId, collectionName);
-    }
+    log.info("Converted UUID strings for {} form(s) in collection {}.", total, collectionName);
   }
 
   /**
-   * Delete the original forms from the database.
+   * Migrate a single form from ObjectId to UUID string.
    *
-   * @param originalId     The original ID of the form to delete.
-   * @param collectionName The name of the collection to delete from.
+   * @param form           The form to migrate.
+   * @param collectionName The collection the form belongs to.
    */
-  private void deleteOriginalForm(String originalId, String collectionName) {
-    log.info("Deleting previous form {} from the database.", originalId);
-    Criteria originalFormCriteria = Criteria.where(ID_FIELD).is(originalId);
-    Query originalFormQuery = Query.query(originalFormCriteria);
-    DeleteResult result = mongoTemplate.remove(originalFormQuery, collectionName);
+  private void migrateForm(Document form, String collectionName) {
+    String originalId = form.getString(ID_FIELD);
+    log.info("Converting form {}.", originalId);
+
+    UUID newId = UUID.fromString(originalId);
+    Document newForm = new Document(form);
+    newForm.put(ID_FIELD, newId);
+
+    // Insert the updated form to the database.
+    mongoTemplate.insert(newForm, collectionName);
+
+    // Remove the original form.
+    DeleteResult result = mongoTemplate.remove(Query.query(Criteria.where(ID_FIELD).is(originalId)),
+        collectionName);
 
     if (result.getDeletedCount() != 1) {
       // Log an error, but do not fail the migration so that other forms can still be migrated.
       log.error("Unexpected delete count of {} for form ID {}.", result.getDeletedCount(),
           originalId);
-    } else {
-      log.info("Deleted previous form {} from the database.", originalId);
     }
   }
 

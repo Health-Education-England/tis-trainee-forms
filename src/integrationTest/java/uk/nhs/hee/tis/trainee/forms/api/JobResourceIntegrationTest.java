@@ -164,7 +164,7 @@ class JobResourceIntegrationTest {
     mockMvc.perform(post("/api/job/formr-parta/publish-refresh"))
         .andExpect(status().isOk());
 
-    ArgumentCaptor<PublishRequest> captor = ArgumentCaptor.forClass(PublishRequest.class);
+    ArgumentCaptor<PublishRequest> captor = ArgumentCaptor.captor();
     verify(snsClient).publish(captor.capture());
 
     PublishRequest request = captor.getValue();
@@ -230,7 +230,7 @@ class JobResourceIntegrationTest {
     mockMvc.perform(post("/api/job/formr-partb/publish-refresh"))
         .andExpect(status().isOk());
 
-    ArgumentCaptor<PublishRequest> captor = ArgumentCaptor.forClass(PublishRequest.class);
+    ArgumentCaptor<PublishRequest> captor = ArgumentCaptor.captor();
     verify(snsClient).publish(captor.capture());
 
     PublishRequest request = captor.getValue();

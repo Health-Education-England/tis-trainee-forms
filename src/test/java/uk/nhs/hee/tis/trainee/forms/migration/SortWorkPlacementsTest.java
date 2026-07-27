@@ -124,7 +124,7 @@ class SortWorkPlacementsTest {
     migration.migrate();
 
     //then
-    ArgumentCaptor<FormRPartBDto> formCaptor = ArgumentCaptor.forClass(FormRPartBDto.class);
+    ArgumentCaptor<FormRPartBDto> formCaptor = ArgumentCaptor.captor();
     verify(service).save(formCaptor.capture());
 
     FormRPartBDto updatedForm = formCaptor.getValue();
@@ -154,7 +154,7 @@ class SortWorkPlacementsTest {
     migration.migrate();
 
     //then
-    ArgumentCaptor<FormRPartBDto> formCaptor = ArgumentCaptor.forClass(FormRPartBDto.class);
+    ArgumentCaptor<FormRPartBDto> formCaptor = ArgumentCaptor.captor();
     verify(service).save(formCaptor.capture());
 
     FormRPartBDto updatedForm = formCaptor.getValue();

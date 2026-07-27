@@ -219,7 +219,7 @@ class FixDuplicateFormrRefsIntegrationTest {
 
     migration.migrateCollections();
 
-    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.captor();
     verify(snsClient, times(2)).publish(requestCaptor.capture());
 
     List<PublishRequest> requests = requestCaptor.getAllValues();

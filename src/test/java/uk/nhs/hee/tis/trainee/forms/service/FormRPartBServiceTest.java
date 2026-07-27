@@ -663,7 +663,7 @@ class FormRPartBServiceTest {
 
     service.partialDeleteFormRPartBById(DEFAULT_ID);
 
-    ArgumentCaptor<FormRPartBDto> dtoCaptor = ArgumentCaptor.forClass(FormRPartBDto.class);
+    ArgumentCaptor<FormRPartBDto> dtoCaptor = ArgumentCaptor.captor();
     verify(eventBroadcastService).publishFormRPartBEvent(
         dtoCaptor.capture(), eq(Map.of("formType", "formr-b")), eq(FORM_R_PART_B_UPDATED_TOPIC));
 
@@ -717,7 +717,7 @@ class FormRPartBServiceTest {
 
     service.save(dto);
 
-    ArgumentCaptor<FormRPartBDto> dtoCaptor = ArgumentCaptor.forClass(FormRPartBDto.class);
+    ArgumentCaptor<FormRPartBDto> dtoCaptor = ArgumentCaptor.captor();
     verify(eventBroadcastService).publishFormRPartBEvent(
         dtoCaptor.capture(), eq(Map.of("formType", "formr-b")), eq(FORM_R_PART_B_UPDATED_TOPIC));
 
@@ -816,7 +816,7 @@ class FormRPartBServiceTest {
 
     service.unsubmitFormRPartBById(DEFAULT_ID);
 
-    ArgumentCaptor<FormRPartBDto> dtoCaptor = ArgumentCaptor.forClass(FormRPartBDto.class);
+    ArgumentCaptor<FormRPartBDto> dtoCaptor = ArgumentCaptor.captor();
     verify(eventBroadcastService).publishFormRPartBEvent(
         dtoCaptor.capture(), eq(Map.of("formType", "formr-b")), eq(FORM_R_PART_B_UPDATED_TOPIC));
 

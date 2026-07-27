@@ -616,7 +616,7 @@ class FormRPartAServiceTest {
 
     service.save(dto);
 
-    ArgumentCaptor<FormRPartADto> dtoCaptor = ArgumentCaptor.forClass(FormRPartADto.class);
+    ArgumentCaptor<FormRPartADto> dtoCaptor = ArgumentCaptor.captor();
     verify(eventBroadcastService).publishFormRPartAEvent(
         dtoCaptor.capture(), eq(Map.of("formType", "formr-a")), eq(FORM_R_PART_A_UPDATED_TOPIC));
 
@@ -724,7 +724,7 @@ class FormRPartAServiceTest {
 
     service.unsubmitFormRPartAById(DEFAULT_ID);
 
-    ArgumentCaptor<FormRPartADto> dtoCaptor = ArgumentCaptor.forClass(FormRPartADto.class);
+    ArgumentCaptor<FormRPartADto> dtoCaptor = ArgumentCaptor.captor();
     verify(eventBroadcastService).publishFormRPartAEvent(
         dtoCaptor.capture(), eq(Map.of("formType", "formr-a")), eq(FORM_R_PART_A_UPDATED_TOPIC));
 
