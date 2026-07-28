@@ -54,7 +54,7 @@ class DeleteTestFormTest {
   void setUp() {
     template = mock(MongoTemplate.class);
     s3 = mock(S3Client.class);
-    queryCaptor = ArgumentCaptor.forClass(Query.class);
+    queryCaptor = ArgumentCaptor.captor();
     Environment env = mock(Environment.class);
     when(env.getProperty("application.file-store.bucket")).thenReturn(BUCKET_NAME);
     migration = new DeleteTestForm(template, s3, env);

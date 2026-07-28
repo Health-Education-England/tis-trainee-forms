@@ -312,8 +312,7 @@ class SignedDataFilterTest {
 
     filter.doFilterInternal(request, response, filterChain);
 
-    ArgumentCaptor<HttpServletRequest> requestCaptor = ArgumentCaptor.forClass(
-        HttpServletRequest.class);
+    ArgumentCaptor<HttpServletRequest> requestCaptor = ArgumentCaptor.captor();
     verify(filterChain).doFilter(requestCaptor.capture(), any());
 
     ServletInputStream inputStream = requestCaptor.getValue().getInputStream();

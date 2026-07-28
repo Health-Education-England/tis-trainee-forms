@@ -60,7 +60,7 @@ class DeletePilotFormsTest {
   void shouldMigrateForms(Class<AbstractForm> formClass) {
     migration.migrate();
 
-    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
     verify(template).remove(queryCaptor.capture(), eq(formClass));
 
     Query query = queryCaptor.getValue();

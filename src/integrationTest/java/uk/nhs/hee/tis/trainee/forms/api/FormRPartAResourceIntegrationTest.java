@@ -425,7 +425,7 @@ class FormRPartAResourceIntegrationTest {
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.lifecycleState").value("SUBMITTED"));
 
-    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.forClass(PublishRequest.class);
+    ArgumentCaptor<PublishRequest> requestCaptor = ArgumentCaptor.captor();
     verify(snsClient, times(2)).publish(requestCaptor.capture());
 
     PublishRequest publishRequest1 = requestCaptor.getAllValues().get(0);

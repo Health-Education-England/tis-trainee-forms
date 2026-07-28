@@ -74,7 +74,7 @@ class FixLtftSubmissionDatesTest {
 
     migration.migrate();
 
-    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
     verify(template).find(queryCaptor.capture(), eq(LtftForm.class));
 
     Query query = queryCaptor.getValue();
@@ -284,7 +284,7 @@ class FixLtftSubmissionDatesTest {
 
     migration.migrate();
 
-    ArgumentCaptor<Update> updateCaptor = ArgumentCaptor.forClass(Update.class);
+    ArgumentCaptor<Update> updateCaptor = ArgumentCaptor.captor();
     verify(template).updateFirst(any(Query.class), updateCaptor.capture(), eq(LtftForm.class));
 
     Update update = updateCaptor.getValue();
@@ -348,7 +348,7 @@ class FixLtftSubmissionDatesTest {
 
     migration.migrate();
 
-    ArgumentCaptor<Update> updateCaptor = ArgumentCaptor.forClass(Update.class);
+    ArgumentCaptor<Update> updateCaptor = ArgumentCaptor.captor();
     verify(template).updateFirst(any(Query.class), updateCaptor.capture(), eq(LtftForm.class));
 
     Update update = updateCaptor.getValue();
@@ -397,7 +397,7 @@ class FixLtftSubmissionDatesTest {
 
     migration.migrate();
 
-    ArgumentCaptor<Update> updateCaptor = ArgumentCaptor.forClass(Update.class);
+    ArgumentCaptor<Update> updateCaptor = ArgumentCaptor.captor();
     verify(template).updateFirst(any(Query.class), updateCaptor.capture(), eq(LtftForm.class));
 
     Update update = updateCaptor.getValue();
@@ -572,7 +572,7 @@ class FixLtftSubmissionDatesTest {
 
     migration.migrate();
 
-    ArgumentCaptor<String> topicCaptor = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<String> topicCaptor = ArgumentCaptor.captor();
     verify(ltftService).publishUpdateNotification(
         any(),
         eq(null),
