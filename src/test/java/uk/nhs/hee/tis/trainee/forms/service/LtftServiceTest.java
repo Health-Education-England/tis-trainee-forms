@@ -110,6 +110,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctChangeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.DeclarationsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.DiscussionsDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.ExceptionalReasonsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.ProgrammeMembershipDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.ReasonsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto;
@@ -139,6 +140,7 @@ import uk.nhs.hee.tis.trainee.forms.model.content.CctChangeType;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Declarations;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Discussions;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ExceptionalReasons;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.PersonalDetails;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ProgrammeMembership;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Reasons;
@@ -1283,6 +1285,86 @@ class LtftServiceTest {
     assertThat("Unexpected other detail.", reasons.otherDetail(), nullValue());
     assertThat("Unexpected supporting information detail.", reasons.supportingInformation(),
         nullValue());
+  }
+
+  @Test
+  void shouldGetAdminLtftExceptionalReasonsDetailWhenFormFound() {
+    LtftForm entity = new LtftForm();
+    entity.setId(ID);
+
+    LocalDate now = LocalDate.now();
+
+    LtftContent content = LtftContent.builder()
+        .exceptionalReasons(ExceptionalReasons.builder()
+            .exceptional(true)
+            .supportingInformation("Supporting Information")
+            .startDate(now)
+            .build())
+        .build();
+    entity.setContent(content);
+
+    when(repository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            any(), any(), any())).thenReturn(Optional.of(entity));
+
+    Optional<LtftFormDto> optionalDto = service.getAdminLtftDetail(ID);
+
+    assertThat("Unexpected dto presence.", optionalDto.isPresent(), is(true));
+
+    LtftFormDto dto = optionalDto.get();
+    ExceptionalReasonsDto exceptionalReasons = dto.exceptionalReasons();
+    assertThat("Unexpected exceptional flag.", exceptionalReasons.exceptional(), is(true));
+    assertThat("Unexpected supporting information.", exceptionalReasons.supportingInformation(),
+        is("Supporting Information"));
+    assertThat("Unexpected start date.", exceptionalReasons.startDate(), is(now));
+  }
+
+  @Test
+  void shouldGetAdminLtftExceptionalReasonsDetailWithNullValueWhenFormFoundWithNullValue() {
+    LtftForm entity = new LtftForm();
+    entity.setId(ID);
+
+    LtftContent content = LtftContent.builder()
+        .exceptionalReasons(null)
+        .build();
+    entity.setContent(content);
+
+    when(repository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            any(), any(), any())).thenReturn(Optional.of(entity));
+
+    Optional<LtftFormDto> optionalDto = service.getAdminLtftDetail(ID);
+
+    assertThat("Unexpected dto presence.", optionalDto.isPresent(), is(true));
+
+    LtftFormDto dto = optionalDto.get();
+    assertThat("Unexpected exceptional reasons.", dto.exceptionalReasons(), nullValue());
+  }
+
+  @Test
+  void shouldGetAdminLtftExceptionalReasonsDetailWithDefaultValuesWhenFormFoundWithNullValues() {
+    LtftForm entity = new LtftForm();
+    entity.setId(ID);
+
+    LtftContent content = LtftContent.builder()
+        .exceptionalReasons(ExceptionalReasons.builder().build())
+        .build();
+    entity.setContent(content);
+
+    when(repository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            any(), any(), any())).thenReturn(Optional.of(entity));
+
+    Optional<LtftFormDto> optionalDto = service.getAdminLtftDetail(ID);
+
+    assertThat("Unexpected dto presence.", optionalDto.isPresent(), is(true));
+
+    LtftFormDto dto = optionalDto.get();
+    ExceptionalReasonsDto exceptionalReasons = dto.exceptionalReasons();
+    assertThat("Unexpected exceptional flag.", exceptionalReasons.exceptional(), nullValue());
+    assertThat("Unexpected supporting information.", exceptionalReasons.supportingInformation(),
+        nullValue());
+    assertThat("Unexpected start date.", exceptionalReasons.startDate(), nullValue());
   }
 
   @Test
@@ -3361,6 +3443,51 @@ class LtftServiceTest {
     assertThat("Unexpected other detail.", reasons.otherDetail(), is("new other detail"));
     assertThat("Unexpected supporting information.", reasons.supportingInformation(),
         is("new supporting information"));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"DRAFT", "UNSUBMITTED"})
+  void shouldUpdateExceptionalReasonsWhenUpdatingLtftFormForTrainee(LifecycleState state) {
+    LocalDate now = LocalDate.now();
+
+    LtftFormDto dtoToSave = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .exceptionalReasons(ExceptionalReasonsDto.builder()
+            .exceptional(true)
+            .supportingInformation("new supporting information")
+            .startDate(now)
+            .build())
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
+        .build();
+
+    LtftForm existingForm = new LtftForm();
+    existingForm.setId(ID);
+    existingForm.setTraineeTisId(TRAINEE_ID);
+    existingForm.setLifecycleState(state);
+    existingForm.setContent(LtftContent.builder()
+        .exceptionalReasons(ExceptionalReasons.builder()
+            .exceptional(false)
+            .supportingInformation(null)
+            .startDate(null)
+            .build())
+        .build());
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(existingForm));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> formDtoOptional = service.updateLtftForm(ID, dtoToSave);
+    assertThat("Unexpected form returned.", formDtoOptional.isPresent(), is(true));
+
+    LtftFormDto formDto = formDtoOptional.get();
+    ExceptionalReasonsDto exceptionalReasons = formDto.exceptionalReasons();
+
+    assertThat("Unexpected exceptional flag.", exceptionalReasons.exceptional(), is(true));
+    assertThat("Unexpected supporting information.", exceptionalReasons.supportingInformation(),
+        is("new supporting information"));
+    assertThat("Unexpected start date.", exceptionalReasons.startDate(), is(now));
   }
 
   @ParameterizedTest
