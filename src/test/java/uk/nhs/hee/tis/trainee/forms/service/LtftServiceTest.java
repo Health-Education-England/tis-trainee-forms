@@ -2162,9 +2162,10 @@ class LtftServiceTest {
   @Test
   void shouldReturnEnabledStageLabelsAndTerminalStageFromReviewStageService() {
     Set<String> enabledLabels = Set.of("Triage", "Review");
-    List<String> dbcs = List.of("DBC-1", "DBC-2");
-    when(reviewStageService.getEnabledStageLabels(dbcs)).thenReturn(enabledLabels);
-    when(reviewStageService.getDisabledStageLabels(dbcs)).thenReturn(Set.of());
+    List<String> dbcs = List.of(ADMIN_GROUP, "DBC-2");
+    List<String> filteredDbcs = List.of(ADMIN_GROUP);
+    when(reviewStageService.getEnabledStageLabels(filteredDbcs)).thenReturn(enabledLabels);
+    when(reviewStageService.getDisabledStageLabels(filteredDbcs)).thenReturn(Set.of());
 
     Set<String> result = service.getReviewStageLabels(dbcs);
 
@@ -2176,7 +2177,7 @@ class LtftServiceTest {
 
   @Test
   void shouldNotIncludeTerminalStageWhenNoEnabledStagesExist() {
-    List<String> dbcs = List.of("DBC-1");
+    List<String> dbcs = List.of(ADMIN_GROUP);
     when(reviewStageService.getEnabledStageLabels(dbcs)).thenReturn(Set.of());
     when(reviewStageService.getDisabledStageLabels(dbcs)).thenReturn(Set.of());
 
@@ -2187,7 +2188,7 @@ class LtftServiceTest {
 
   @Test
   void shouldIncludeDisabledStageLabelsWhenFormsExistInThem() {
-    List<String> dbcs = List.of("DBC-1");
+    List<String> dbcs = List.of(ADMIN_GROUP);
     when(reviewStageService.getEnabledStageLabels(dbcs)).thenReturn(Set.of("Triage"));
     when(reviewStageService.getDisabledStageLabels(dbcs)).thenReturn(Set.of("Disabled Stage"));
 
@@ -2199,8 +2200,8 @@ class LtftServiceTest {
             .build())
         .build());
     when(repository
-        .findByStatus_Current_StateAndContent_ProgrammeMembership_DesignatedBodyCodeInAndStatus_Current_ReviewStage_LabelIn(
-            eq(SUBMITTED), eq(dbcs), any()))
+        .findByContent_ProgrammeMembership_DesignatedBodyCodeInAndStatus_Current_ReviewStage_LabelIn(
+            eq(dbcs), any()))
         .thenReturn(List.of(form));
 
     Set<String> result = service.getReviewStageLabels(dbcs);
@@ -2213,33 +2214,46 @@ class LtftServiceTest {
 
   @Test
   void shouldNotQueryForDisabledStagesWhenNoneConfigured() {
-    List<String> dbcs = List.of("DBC-1");
+    List<String> dbcs = List.of(ADMIN_GROUP);
     when(reviewStageService.getEnabledStageLabels(dbcs)).thenReturn(Set.of("Triage"));
     when(reviewStageService.getDisabledStageLabels(dbcs)).thenReturn(Set.of());
 
     Set<String> result = service.getReviewStageLabels(dbcs);
 
     verify(repository, never())
-        .findByStatus_Current_StateAndContent_ProgrammeMembership_DesignatedBodyCodeInAndStatus_Current_ReviewStage_LabelIn(
-            any(), any(), any());
+        .findByContent_ProgrammeMembership_DesignatedBodyCodeInAndStatus_Current_ReviewStage_LabelIn(
+            any(), any());
     assertThat("Expected enabled + terminal labels.", result, hasSize(2));
   }
 
   @Test
   void shouldNotQueryForDisabledStagesAlreadyInEnabledSet() {
-    List<String> dbcs = List.of("DBC-1", "DBC-2");
+    List<String> dbcs = List.of(ADMIN_GROUP, "DBC-2");
+    List<String> filteredDbcs = List.of(ADMIN_GROUP);
     // "Triage" is enabled for one DBC and disabled for another
-    when(reviewStageService.getEnabledStageLabels(dbcs)).thenReturn(Set.of("Triage", "Review"));
-    when(reviewStageService.getDisabledStageLabels(dbcs))
+    when(reviewStageService.getEnabledStageLabels(filteredDbcs)).thenReturn(Set.of("Triage", "Review"));
+    when(reviewStageService.getDisabledStageLabels(filteredDbcs))
         .thenReturn(new java.util.HashSet<>(Set.of("Triage")));
 
     Set<String> result = service.getReviewStageLabels(dbcs);
 
     // Should not query because the disabled label "Triage" is already in the enabled set
     verify(repository, never())
-        .findByStatus_Current_StateAndContent_ProgrammeMembership_DesignatedBodyCodeInAndStatus_Current_ReviewStage_LabelIn(
-            any(), any(), any());
+        .findByContent_ProgrammeMembership_DesignatedBodyCodeInAndStatus_Current_ReviewStage_LabelIn(
+            any(), any());
     assertThat("Expected enabled + terminal labels.", result, hasSize(3));
+  }
+
+  @Test
+  void shouldFilterDbcsToOnlyIncludeAdminGroups() {
+    List<String> dbcs = List.of("not-admin-group-1", "not-admin-group-2");
+    // No DBCs match admin groups, so filtered list is empty
+    when(reviewStageService.getEnabledStageLabels(List.of())).thenReturn(Set.of());
+    when(reviewStageService.getDisabledStageLabels(List.of())).thenReturn(Set.of());
+
+    Set<String> result = service.getReviewStageLabels(dbcs);
+
+    assertThat("Expected empty labels when no DBCs match admin groups.", result, hasSize(0));
   }
 
   @Test

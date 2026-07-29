@@ -2137,6 +2137,21 @@ class AdminLtftResourceIntegrationTest {
             "Single Review", "Review complete", "Disabled Stage")));
   }
 
+  @Test
+  void shouldFilterOutDbcsNotInAdminGroups() throws Exception {
+    // Admin token only has DBC_ONE_STAGE, but request body includes DBC_THREE_STAGES too
+    mockMvc.perform(get("/api/admin/ltft/review-stages")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_ONE_STAGE), REQUIRED_ROLES))
+            .contentType(APPLICATION_JSON)
+            .content("[\"" + DBC_ONE_STAGE + "\",\"" + DBC_THREE_STAGES + "\"]"))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$").isArray())
+        // Only DBC_ONE_STAGE stages should be returned (Single Review + Review complete)
+        .andExpect(jsonPath("$", hasSize(2)))
+        .andExpect(jsonPath("$", containsInAnyOrder("Single Review", "Review complete")));
+  }
+
   /**
    * Create a form with the given details, other fields will get sensible defaults.
    *

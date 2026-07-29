@@ -674,8 +674,13 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    * @return A set of deduplicated review stage labels.
    */
   public Set<String> getReviewStageLabels(Collection<String> dbcs) {
-    log.info("Getting review stage labels for DBCs {}", dbcs);
-    Set<String> labels = new LinkedHashSet<>(reviewStageService.getEnabledStageLabels(dbcs));
+    // Filter to only include DBCs that the admin has access to.
+    List<String> filteredDbcs = dbcs.stream()
+        .filter(dbc -> adminIdentity.getGroups().contains(dbc))
+        .toList();
+    log.info("Getting review stage labels for DBCs {} (filtered from {})", filteredDbcs, dbcs);
+    Set<String> labels = new LinkedHashSet<>(
+        reviewStageService.getEnabledStageLabels(filteredDbcs));
 
     // Include the implicit terminal stage when at least one enabled stage exists.
     if (!labels.isEmpty()) {
@@ -683,20 +688,20 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
     }
 
     Set<String> disabledLabels = new LinkedHashSet<>(
-        reviewStageService.getDisabledStageLabels(dbcs));
+        reviewStageService.getDisabledStageLabels(filteredDbcs));
     // Remove labels already present from the enabled set to avoid unnecessary queries.
     disabledLabels.removeAll(labels);
 
     if (!disabledLabels.isEmpty()) {
       List<LtftForm> forms = ltftFormRepository
-          .findByStatus_Current_StateAndContent_ProgrammeMembership_DesignatedBodyCodeInAndStatus_Current_ReviewStage_LabelIn(
-              SUBMITTED, dbcs, disabledLabels);
+          .findByContent_ProgrammeMembership_DesignatedBodyCodeInAndStatus_Current_ReviewStage_LabelIn(
+              filteredDbcs, disabledLabels);
       forms.stream()
           .map(f -> f.getStatus().current().reviewStage().label())
           .forEach(labels::add);
     }
 
-    log.info("Found {} review stage labels for DBCs {}: {}", labels.size(), dbcs, labels);
+    log.info("Found {} review stage labels for DBCs {}: {}", labels.size(), filteredDbcs, labels);
     return labels;
   }
 
