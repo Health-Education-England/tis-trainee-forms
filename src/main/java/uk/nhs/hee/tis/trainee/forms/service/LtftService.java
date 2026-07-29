@@ -665,7 +665,8 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   /**
    * Get a deduplicated set of review stage labels relevant to the given DBCs.
    *
-   * <p>This includes all <em>enabled</em> configured stages plus any <em>disabled</em> stages
+   * <p>This includes all <em>enabled</em> configured stages, the implicit "Review complete"
+   * terminal stage (when at least one enabled stage exists), plus any <em>disabled</em> stages
    * that currently have LTFT forms in them (i.e. forms that entered the stage before it was
    * disabled).
    *
@@ -675,6 +676,11 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   public Set<String> getReviewStageLabels(Collection<String> dbcs) {
     log.info("Getting review stage labels for DBCs {}", dbcs);
     Set<String> labels = new LinkedHashSet<>(reviewStageService.getEnabledStageLabels(dbcs));
+
+    // Include the implicit terminal stage when at least one enabled stage exists.
+    if (!labels.isEmpty()) {
+      labels.add(ReviewStageService.TERMINAL_STAGE_LABEL);
+    }
 
     Set<String> disabledLabels = new LinkedHashSet<>(
         reviewStageService.getDisabledStageLabels(dbcs));

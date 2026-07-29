@@ -2156,7 +2156,7 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldReturnEnabledStageLabelsFromReviewStageService() {
+  void shouldReturnEnabledStageLabelsAndTerminalStageFromReviewStageService() {
     Set<String> enabledLabels = Set.of("Triage", "Review");
     List<String> dbcs = List.of("DBC-1", "DBC-2");
     when(reviewStageService.getEnabledStageLabels(dbcs)).thenReturn(enabledLabels);
@@ -2164,13 +2164,14 @@ class LtftServiceTest {
 
     Set<String> result = service.getReviewStageLabels(dbcs);
 
-    assertThat("Unexpected number of labels.", result, hasSize(2));
+    assertThat("Unexpected number of labels.", result, hasSize(3));
     assertThat("Expected Triage label.", result, hasItem("Triage"));
     assertThat("Expected Review label.", result, hasItem("Review"));
+    assertThat("Expected terminal stage label.", result, hasItem("Review complete"));
   }
 
   @Test
-  void shouldReturnEmptyLabelsWhenNoStagesConfigured() {
+  void shouldNotIncludeTerminalStageWhenNoEnabledStagesExist() {
     List<String> dbcs = List.of("DBC-1");
     when(reviewStageService.getEnabledStageLabels(dbcs)).thenReturn(Set.of());
     when(reviewStageService.getDisabledStageLabels(dbcs)).thenReturn(Set.of());
@@ -2200,8 +2201,9 @@ class LtftServiceTest {
 
     Set<String> result = service.getReviewStageLabels(dbcs);
 
-    assertThat("Expected enabled and disabled labels.", result, hasSize(2));
+    assertThat("Expected enabled, terminal and disabled labels.", result, hasSize(3));
     assertThat("Expected Triage label.", result, hasItem("Triage"));
+    assertThat("Expected terminal stage label.", result, hasItem("Review complete"));
     assertThat("Expected Disabled Stage label.", result, hasItem("Disabled Stage"));
   }
 
@@ -2216,7 +2218,7 @@ class LtftServiceTest {
     verify(repository, never())
         .findByStatus_Current_StateAndContent_ProgrammeMembership_DesignatedBodyCodeInAndStatus_Current_ReviewStage_LabelIn(
             any(), any(), any());
-    assertThat("Expected only enabled labels.", result, hasSize(1));
+    assertThat("Expected enabled + terminal labels.", result, hasSize(2));
   }
 
   @Test
@@ -2233,7 +2235,7 @@ class LtftServiceTest {
     verify(repository, never())
         .findByStatus_Current_StateAndContent_ProgrammeMembership_DesignatedBodyCodeInAndStatus_Current_ReviewStage_LabelIn(
             any(), any(), any());
-    assertThat("Expected only enabled labels.", result, hasSize(2));
+    assertThat("Expected enabled + terminal labels.", result, hasSize(3));
   }
 
   @Test

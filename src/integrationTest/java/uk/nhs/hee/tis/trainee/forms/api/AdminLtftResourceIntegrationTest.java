@@ -1988,8 +1988,9 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$").isArray())
-        .andExpect(jsonPath("$", hasSize(3)))
-        .andExpect(jsonPath("$", containsInAnyOrder("Stage One", "Stage Two", "Stage Three")));
+        .andExpect(jsonPath("$", hasSize(4)))
+        .andExpect(jsonPath("$", containsInAnyOrder(
+            "Stage One", "Stage Two", "Stage Three", "Review complete")));
   }
 
   @Test
@@ -2003,9 +2004,9 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$").isArray())
-        .andExpect(jsonPath("$", hasSize(4)))
+        .andExpect(jsonPath("$", hasSize(5)))
         .andExpect(jsonPath("$", containsInAnyOrder(
-            "Stage One", "Stage Two", "Stage Three", "Single Review")));
+            "Stage One", "Stage Two", "Stage Three", "Single Review", "Review complete")));
   }
 
   @Test
@@ -2053,8 +2054,9 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$").isArray())
-        .andExpect(jsonPath("$", hasSize(2)))
-        .andExpect(jsonPath("$", containsInAnyOrder("Single Review", "Disabled Stage")));
+        .andExpect(jsonPath("$", hasSize(3)))
+        .andExpect(jsonPath("$", containsInAnyOrder(
+            "Single Review", "Review complete", "Disabled Stage")));
   }
 
   /**
