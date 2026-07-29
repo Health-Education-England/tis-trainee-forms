@@ -870,6 +870,67 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.content[0].personalDetails.id", is("trainee id to find")));
   }
 
+  @Test
+  void shouldCountOnlyLtftsWithMatchingReviewStageFilter() throws Exception {
+    template.insert(createSubmittedFormWithReviewStage(DBC_1, 0, "Stage One"));
+    template.insert(createSubmittedFormWithReviewStage(DBC_1, 1, "Stage Two"));
+    template.insert(createSubmittedFormWithReviewStage(DBC_1, 0, "Stage One"));
+    template.insert(createSubmittedFormWithReviewStage(DBC_1, 2, "Stage Three"));
+
+    mockMvc.perform(get("/api/admin/ltft/count")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .param("reviewStage", "Stage One"))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.TEXT_PLAIN))
+        .andExpect(content().string("2"));
+  }
+
+  @Test
+  void shouldCountLtftsWithMultipleReviewStageFilters() throws Exception {
+    template.insert(createSubmittedFormWithReviewStage(DBC_1, 0, "Stage One"));
+    template.insert(createSubmittedFormWithReviewStage(DBC_1, 1, "Stage Two"));
+    template.insert(createSubmittedFormWithReviewStage(DBC_1, 2, "Stage Three"));
+
+    mockMvc.perform(get("/api/admin/ltft/count")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .param("reviewStage", "Stage One,Stage Three"))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.TEXT_PLAIN))
+        .andExpect(content().string("2"));
+  }
+
+  @Test
+  void shouldReturnSummariesWithMatchingReviewStageFilter() throws Exception {
+    LtftForm stageOneForm = createSubmittedFormWithReviewStage(DBC_1, 0, "Stage One");
+    template.insert(stageOneForm);
+    template.insert(createSubmittedFormWithReviewStage(DBC_1, 1, "Stage Two"));
+    template.insert(createSubmittedFormWithReviewStage(DBC_1, 2, "Stage Three"));
+
+    mockMvc.perform(get("/api/admin/ltft")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .param("reviewStage", "Stage One"))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.content").isArray())
+        .andExpect(jsonPath("$.content", hasSize(1)))
+        .andExpect(jsonPath("$.content[0].id", is(stageOneForm.getId().toString())));
+  }
+
+  @Test
+  void shouldReturnSummariesWithMultipleReviewStageFilters() throws Exception {
+    template.insert(createSubmittedFormWithReviewStage(DBC_1, 0, "Stage One"));
+    template.insert(createSubmittedFormWithReviewStage(DBC_1, 1, "Stage Two"));
+    template.insert(createSubmittedFormWithReviewStage(DBC_1, 2, "Stage Three"));
+
+    mockMvc.perform(get("/api/admin/ltft")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .param("reviewStage", "Stage One,Stage Two"))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.content").isArray())
+        .andExpect(jsonPath("$.content", hasSize(2)));
+  }
+
   @ParameterizedTest
   @ValueSource(ints = {0, 1, 2})
   void shouldPageLtftSummariesWhenTooManyResults(int pageNumber) throws Exception {

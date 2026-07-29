@@ -1021,6 +1021,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
             case "personalDetails.gmcNumber" -> "content.personalDetails.gmcNumber";
             case "personalDetails.surname" -> "content.personalDetails.surname";
             case "programmeName" -> "content.programmeMembership.name";
+            case "reviewStage" -> "status.current.reviewStage.label";
             case "status" -> FORM_ATTRIBUTE_FORM_STATUS;
             case "traineeId" -> "traineeTisId";
             default -> null;
