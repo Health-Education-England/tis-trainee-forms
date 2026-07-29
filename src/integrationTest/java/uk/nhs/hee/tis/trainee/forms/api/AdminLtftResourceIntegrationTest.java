@@ -724,6 +724,7 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.content[0].tpd.email", is("tpd@example.com")))
         .andExpect(jsonPath("$.content[0].tpd.emailStatus", is("VALID")))
         .andExpect(jsonPath("$.content[0].status", is(SUBMITTED.name())))
+        .andExpect(jsonPath("$.content[0].reviewStage", nullValue()))
         .andExpect(jsonPath("$.content[0].assignedAdmin.name", is("Ad Min")))
         .andExpect(jsonPath("$.content[0].assignedAdmin.email", is("ad.min@example.com")))
         .andExpect(jsonPath("$.content[0].assignedAdmin.role").doesNotExist())
@@ -732,6 +733,22 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.page.number", is(0)))
         .andExpect(jsonPath("$.page.totalElements", is(1)))
         .andExpect(jsonPath("$.page.totalPages", is(1)));
+  }
+
+  @Test
+  void shouldReturnReviewStageLabelInSummaryWhenFormHasReviewStage() throws Exception {
+    LtftForm form = createSubmittedFormWithReviewStage(DBC_1, 1, "Manager Review");
+    template.insert(form);
+
+    mockMvc.perform(get("/api/admin/ltft")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.content").isArray())
+        .andExpect(jsonPath("$.content", hasSize(1)))
+        .andExpect(jsonPath("$.content[0].id", is(form.getId().toString())))
+        .andExpect(jsonPath("$.content[0].status", is(SUBMITTED.name())))
+        .andExpect(jsonPath("$.content[0].reviewStage", is("Manager Review")));
   }
 
   @ParameterizedTest

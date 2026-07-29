@@ -90,6 +90,7 @@ public abstract class LtftMapper implements FormMapper<LtftForm, LtftFormDto>,
   @Mapping(target = "tpd.email", source = "content.discussions.tpdEmail")
   @Mapping(target = "tpd.emailStatus", source = "content.tpdEmailValidity")
   @Mapping(target = "status", source = "status.current.state")
+  @Mapping(target = "reviewStage", source = "status.current.reviewStage.label")
   @Mapping(target = "assignedAdmin.name", source = "status.current.assignedAdmin.name")
   @Mapping(target = "assignedAdmin.email", source = "status.current.assignedAdmin.email")
   @Mapping(target = "assignedAdmin.role", ignore = true)

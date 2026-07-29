@@ -41,6 +41,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
  * @param shortNotice       Whether the LTFT application was submitted at short notice.
  * @param tpd               The details of the notification sent to the TPD.
  * @param status            The current status of the LTFT application.
+ * @param reviewStage       The current review stage label, or null if no review stage is active.
  * @param assignedAdmin     The admin assigned to process the LTFT application.
  */
 @Builder
@@ -57,6 +58,7 @@ public record LtftAdminSummaryDto(
     Boolean shortNotice,
     LtftAdminNotificationDto tpd,
     LifecycleState status,
+    String reviewStage,
     PersonDto assignedAdmin) {
 
   /**
