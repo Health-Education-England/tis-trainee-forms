@@ -275,25 +275,25 @@ public class ReviewStageService {
     return atTerminalStage;
   }
 
- /**
- * Collect the labels of all <em>enabled</em> review stages across the given DBCs.
- *
- * @param dbcs The designated body codes to inspect.
- * @return A deduplicated set of enabled stage labels.
- */
-public Set<String> getEnabledStageLabels(Collection<String> dbcs) {
-  return getStageLabels(dbcs, true);
-}
+  /**
+   * Collect the labels of all <em>enabled</em> review stages across the given DBCs.
+   *
+   * @param dbcs The designated body codes to inspect.
+   * @return A deduplicated set of enabled stage labels.
+   */
+  public Set<String> getEnabledStageLabels(Collection<String> dbcs) {
+    return getStageLabels(dbcs, true);
+  }
 
-/**
- * Collect the labels of all <em>disabled</em> review stages across the given DBCs.
- *
- * @param dbcs The designated body codes to inspect.
- * @return A deduplicated set of disabled stage labels.
- */
-public Set<String> getDisabledStageLabels(Collection<String> dbcs) {
-  return getStageLabels(dbcs, false);
-}
+  /**
+   * Collect the labels of all <em>disabled</em> review stages across the given DBCs.
+   *
+   * @param dbcs The designated body codes to inspect.
+   * @return A deduplicated set of disabled stage labels.
+   */
+  public Set<String> getDisabledStageLabels(Collection<String> dbcs) {
+    return getStageLabels(dbcs, false);
+  }
 
   /**
    * Collect the labels of all review stages across the given DBCs matching the given
