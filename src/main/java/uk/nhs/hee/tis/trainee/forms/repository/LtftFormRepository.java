@@ -23,6 +23,7 @@ package uk.nhs.hee.tis.trainee.forms.repository;
 
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -102,6 +103,19 @@ public interface LtftFormRepository extends BaseAuditedFormRepository<LtftForm> 
    */
   Optional<LtftForm> findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(UUID id,
       Set<String> dbcs);
+
+  /**
+   * Find LTFT forms that are in the SUBMITTED state with one of the given DBCs and one of the
+   * given review stage labels.
+   *
+   * @param state  The lifecycle state to filter by.
+   * @param dbcs   The designated body codes to include in the search.
+   * @param labels The review stage labels to filter by.
+   * @return The found LTFT forms, empty if none found.
+   */
+  List<LtftForm>
+      findByStatus_Current_StateAndContent_ProgrammeMembership_DesignatedBodyCodeInAndStatus_Current_ReviewStage_LabelIn(
+          LifecycleState state, Collection<String> dbcs, Collection<String> labels);
 
   /**
    * Delete the LTFT form with the given id.

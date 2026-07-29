@@ -38,6 +38,8 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
 import java.util.AbstractMap.SimpleEntry;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -658,6 +660,38 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
     }
 
     return Optional.of(reviewStageService.getWorkflowDto(optForm.get()));
+  }
+
+  /**
+   * Get a deduplicated set of review stage labels relevant to the given DBCs.
+   *
+   * <p>This includes all <em>enabled</em> configured stages plus any <em>disabled</em> stages
+   * that currently have LTFT forms in them (i.e. forms that entered the stage before it was
+   * disabled).
+   *
+   * @param dbcs The designated body codes to retrieve review stages for.
+   * @return A set of deduplicated review stage labels.
+   */
+  public Set<String> getReviewStageLabels(Collection<String> dbcs) {
+    log.info("Getting review stage labels for DBCs {}", dbcs);
+    Set<String> labels = new LinkedHashSet<>(reviewStageService.getEnabledStageLabels(dbcs));
+
+    Set<String> disabledLabels = new LinkedHashSet<>(
+        reviewStageService.getDisabledStageLabels(dbcs));
+    // Remove labels already present from the enabled set to avoid unnecessary queries.
+    disabledLabels.removeAll(labels);
+
+    if (!disabledLabels.isEmpty()) {
+      List<LtftForm> forms = ltftFormRepository
+          .findByStatus_Current_StateAndContent_ProgrammeMembership_DesignatedBodyCodeInAndStatus_Current_ReviewStage_LabelIn(
+              SUBMITTED, dbcs, disabledLabels);
+      forms.stream()
+          .map(f -> f.getStatus().current().reviewStage().label())
+          .forEach(labels::add);
+    }
+
+    log.info("Found {} review stage labels for DBCs {}: {}", labels.size(), dbcs, labels);
+    return labels;
   }
 
   /**

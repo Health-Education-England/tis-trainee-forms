@@ -33,6 +33,7 @@ import jakarta.validation.Valid;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -160,6 +161,19 @@ public class AdminLtftResource {
     }
 
     return ResponseEntity.notFound().build();
+  }
+
+  /**
+   * Get a deduplicated list of review stage labels for the given DBCs. Includes all enabled stages
+   * plus any disabled stages that currently have LTFT forms in them.
+   *
+   * @param dbcs The list of designated body codes to retrieve review stages for.
+   * @return An array of deduplicated review stage labels.
+   */
+  @GetMapping("/review-stages")
+  ResponseEntity<Set<String>> getReviewStages(@RequestBody List<String> dbcs) {
+    Set<String> stages = service.getReviewStageLabels(dbcs);
+    return ResponseEntity.ok(stages);
   }
 
   /**

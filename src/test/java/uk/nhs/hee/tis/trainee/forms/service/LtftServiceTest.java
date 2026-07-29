@@ -2156,6 +2156,87 @@ class LtftServiceTest {
   }
 
   @Test
+  void shouldReturnEnabledStageLabelsFromReviewStageService() {
+    Set<String> enabledLabels = Set.of("Triage", "Review");
+    List<String> dbcs = List.of("DBC-1", "DBC-2");
+    when(reviewStageService.getEnabledStageLabels(dbcs)).thenReturn(enabledLabels);
+    when(reviewStageService.getDisabledStageLabels(dbcs)).thenReturn(Set.of());
+
+    Set<String> result = service.getReviewStageLabels(dbcs);
+
+    assertThat("Unexpected number of labels.", result, hasSize(2));
+    assertThat("Expected Triage label.", result, hasItem("Triage"));
+    assertThat("Expected Review label.", result, hasItem("Review"));
+  }
+
+  @Test
+  void shouldReturnEmptyLabelsWhenNoStagesConfigured() {
+    List<String> dbcs = List.of("DBC-1");
+    when(reviewStageService.getEnabledStageLabels(dbcs)).thenReturn(Set.of());
+    when(reviewStageService.getDisabledStageLabels(dbcs)).thenReturn(Set.of());
+
+    Set<String> result = service.getReviewStageLabels(dbcs);
+
+    assertThat("Expected empty labels.", result, hasSize(0));
+  }
+
+  @Test
+  void shouldIncludeDisabledStageLabelsWhenFormsExistInThem() {
+    List<String> dbcs = List.of("DBC-1");
+    when(reviewStageService.getEnabledStageLabels(dbcs)).thenReturn(Set.of("Triage"));
+    when(reviewStageService.getDisabledStageLabels(dbcs)).thenReturn(Set.of("Disabled Stage"));
+
+    LtftForm form = new LtftForm();
+    form.setStatus(Status.builder()
+        .current(StatusInfo.builder()
+            .state(SUBMITTED)
+            .reviewStage(new ReviewStageStatus(1, "Disabled Stage"))
+            .build())
+        .build());
+    when(repository
+        .findByStatus_Current_StateAndContent_ProgrammeMembership_DesignatedBodyCodeInAndStatus_Current_ReviewStage_LabelIn(
+            eq(SUBMITTED), eq(dbcs), any()))
+        .thenReturn(List.of(form));
+
+    Set<String> result = service.getReviewStageLabels(dbcs);
+
+    assertThat("Expected enabled and disabled labels.", result, hasSize(2));
+    assertThat("Expected Triage label.", result, hasItem("Triage"));
+    assertThat("Expected Disabled Stage label.", result, hasItem("Disabled Stage"));
+  }
+
+  @Test
+  void shouldNotQueryForDisabledStagesWhenNoneConfigured() {
+    List<String> dbcs = List.of("DBC-1");
+    when(reviewStageService.getEnabledStageLabels(dbcs)).thenReturn(Set.of("Triage"));
+    when(reviewStageService.getDisabledStageLabels(dbcs)).thenReturn(Set.of());
+
+    Set<String> result = service.getReviewStageLabels(dbcs);
+
+    verify(repository, never())
+        .findByStatus_Current_StateAndContent_ProgrammeMembership_DesignatedBodyCodeInAndStatus_Current_ReviewStage_LabelIn(
+            any(), any(), any());
+    assertThat("Expected only enabled labels.", result, hasSize(1));
+  }
+
+  @Test
+  void shouldNotQueryForDisabledStagesAlreadyInEnabledSet() {
+    List<String> dbcs = List.of("DBC-1", "DBC-2");
+    // "Triage" is enabled for one DBC and disabled for another
+    when(reviewStageService.getEnabledStageLabels(dbcs)).thenReturn(Set.of("Triage", "Review"));
+    when(reviewStageService.getDisabledStageLabels(dbcs))
+        .thenReturn(new java.util.HashSet<>(Set.of("Triage")));
+
+    Set<String> result = service.getReviewStageLabels(dbcs);
+
+    // Should not query because the disabled label "Triage" is already in the enabled set
+    verify(repository, never())
+        .findByStatus_Current_StateAndContent_ProgrammeMembership_DesignatedBodyCodeInAndStatus_Current_ReviewStage_LabelIn(
+            any(), any(), any());
+    assertThat("Expected only enabled labels.", result, hasSize(2));
+  }
+
+  @Test
   void shouldLookUpFormByIdWhenAdvancingReviewStage()
       throws MethodArgumentNotValidException {
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(

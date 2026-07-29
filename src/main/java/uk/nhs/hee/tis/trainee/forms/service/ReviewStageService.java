@@ -26,8 +26,11 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBM
 
 import jakarta.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import uk.nhs.hee.tis.trainee.forms.config.ReviewWorkflowProperties;
@@ -271,6 +274,42 @@ public class ReviewStageService {
     }
     return atTerminalStage;
   }
+
+ /**
+ * Collect the labels of all <em>enabled</em> review stages across the given DBCs.
+ *
+ * @param dbcs The designated body codes to inspect.
+ * @return A deduplicated set of enabled stage labels.
+ */
+public Set<String> getEnabledStageLabels(Collection<String> dbcs) {
+  return getStageLabels(dbcs, true);
+}
+
+/**
+ * Collect the labels of all <em>disabled</em> review stages across the given DBCs.
+ *
+ * @param dbcs The designated body codes to inspect.
+ * @return A deduplicated set of disabled stage labels.
+ */
+public Set<String> getDisabledStageLabels(Collection<String> dbcs) {
+  return getStageLabels(dbcs, false);
+}
+
+  /**
+   * Collect the labels of all review stages across the given DBCs matching the given
+   * enabled/disabled status.
+   *
+   * @param dbcs    The designated body codes to inspect.
+   * @param enabled The enabled/disabled status.
+   * @return A deduplicated set of matched stage labels.
+   */
+  private Set<String> getStageLabels(Collection<String> dbcs, boolean enabled) {
+  return dbcs.stream()
+      .flatMap(dbc -> getConfiguredStages(dbc).stream())
+      .filter(stage -> stage.enabled() == enabled)
+      .map(StateStage::label)
+      .collect(Collectors.toSet());
+}
 
   /**
    * Return the configured review-workflow stages for the given DBC code, or an empty list if no

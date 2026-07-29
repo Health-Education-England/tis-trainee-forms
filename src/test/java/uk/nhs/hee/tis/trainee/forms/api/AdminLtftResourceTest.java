@@ -48,6 +48,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -583,5 +584,29 @@ class AdminLtftResourceTest {
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), sameInstance(dto));
     verify(service).advanceReviewStage(id, detail);
+  }
+
+  @Test
+  void shouldReturnReviewStageLabelsForDbcs() {
+    List<String> dbcs = List.of("DBC-1", "DBC-2");
+    Set<String> expectedLabels = Set.of("Triage", "Review", "Approval");
+    when(service.getReviewStageLabels(dbcs)).thenReturn(expectedLabels);
+
+    ResponseEntity<Set<String>> response = controller.getReviewStages(dbcs);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), is(expectedLabels));
+    verify(service).getReviewStageLabels(dbcs);
+  }
+
+  @Test
+  void shouldReturnEmptyReviewStageLabelsWhenNoStagesConfigured() {
+    List<String> dbcs = List.of("DBC-1");
+    when(service.getReviewStageLabels(dbcs)).thenReturn(Set.of());
+
+    ResponseEntity<Set<String>> response = controller.getReviewStages(dbcs);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body size.", response.getBody(), hasSize(0));
   }
 }
