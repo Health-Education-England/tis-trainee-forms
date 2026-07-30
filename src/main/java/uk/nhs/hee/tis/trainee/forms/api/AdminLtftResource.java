@@ -163,6 +163,18 @@ public class AdminLtftResource {
   }
 
   /**
+   * Get a deduplicated set of review stage labels for the admin's local office DBCs. Includes all
+   * enabled stages plus any disabled stages that currently have LTFT forms in them.
+   *
+   * @return A set of deduplicated review stage labels.
+   */
+  @GetMapping("/review-stages")
+  ResponseEntity<Set<String>> getReviewStages() {
+    Set<String> stages = service.getReviewStageLabels();
+    return ResponseEntity.ok(stages);
+  }
+
+  /**
    * Patch the contents of an LTFT with a particular ID associated with the admin's local office.
    *
    * @param id        The ID of the form.

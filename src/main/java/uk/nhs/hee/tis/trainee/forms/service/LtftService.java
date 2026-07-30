@@ -38,6 +38,7 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
 import java.util.AbstractMap.SimpleEntry;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -661,6 +662,45 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   }
 
   /**
+   * Get a deduplicated set of review stage labels relevant to the user's group DBCs.
+   *
+   * <p>This includes all <em>enabled</em> configured stages, the implicit "Review complete"
+   * terminal stage (when at least one enabled stage exists), plus any <em>disabled</em> stages
+   * that currently have LTFT forms in them (i.e. forms that entered the stage before it was
+   * disabled).
+   *
+   * @return A set of deduplicated review stage labels.
+   */
+  public Set<String> getReviewStageLabels() {
+    List<String> filteredDbcs = adminIdentity.getGroups().stream().toList();
+    log.info("Getting review stage labels for DBCs {}", filteredDbcs);
+    Set<String> labels = new LinkedHashSet<>(
+        reviewStageService.getEnabledStageLabels(filteredDbcs));
+
+    // Include the implicit terminal stage when at least one enabled stage exists.
+    if (!labels.isEmpty()) {
+      labels.add(ReviewStageService.TERMINAL_STAGE_LABEL);
+    }
+
+    Set<String> disabledLabels = new LinkedHashSet<>(
+        reviewStageService.getDisabledStageLabels(filteredDbcs));
+    // Remove labels already present from the enabled set to avoid unnecessary queries.
+    disabledLabels.removeAll(labels);
+
+    if (!disabledLabels.isEmpty()) {
+      List<LtftForm> forms = ltftFormRepository
+          .findByContent_ProgrammeMembership_DesignatedBodyCodeInAndStatus_Current_ReviewStage_LabelIn(
+              filteredDbcs, disabledLabels);
+      forms.stream()
+          .map(f -> f.getStatus().current().reviewStage().label())
+          .forEach(labels::add);
+    }
+
+    log.info("Found {} review stage labels for DBCs {}: {}", labels.size(), filteredDbcs, labels);
+    return labels;
+  }
+
+  /**
    * Advance the review stage of an LTFT form for the calling admin's local office.
    *
    * <p>Delegates to {@link #advanceReviewStage(UUID, LftfStatusInfoDetailDto)} with no detail.
@@ -981,6 +1021,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
             case "personalDetails.gmcNumber" -> "content.personalDetails.gmcNumber";
             case "personalDetails.surname" -> "content.personalDetails.surname";
             case "programmeName" -> "content.programmeMembership.name";
+            case "reviewStage" -> "status.current.reviewStage.label";
             case "status" -> FORM_ATTRIBUTE_FORM_STATUS;
             case "traineeId" -> "traineeTisId";
             default -> null;

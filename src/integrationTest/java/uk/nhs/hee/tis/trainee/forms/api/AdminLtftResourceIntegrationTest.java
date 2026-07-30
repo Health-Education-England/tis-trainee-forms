@@ -23,6 +23,7 @@ package uk.nhs.hee.tis.trainee.forms.api;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.aMapWithSize;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
@@ -121,6 +122,7 @@ class AdminLtftResourceIntegrationTest {
   // DBCs matching review-workflow config in application-test.yml (test-specific)
   private static final String DBC_THREE_STAGES = "TEST-DBC-3-STAGES";
   private static final String DBC_ONE_STAGE = "TEST-DBC-1-STAGE";
+  private static final String DBC_DISABLED = "TEST-DBC-DISABLED";
 
   @Container
   @ServiceConnection
@@ -722,6 +724,7 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.content[0].tpd.email", is("tpd@example.com")))
         .andExpect(jsonPath("$.content[0].tpd.emailStatus", is("VALID")))
         .andExpect(jsonPath("$.content[0].status", is(SUBMITTED.name())))
+        .andExpect(jsonPath("$.content[0].reviewStage", nullValue()))
         .andExpect(jsonPath("$.content[0].assignedAdmin.name", is("Ad Min")))
         .andExpect(jsonPath("$.content[0].assignedAdmin.email", is("ad.min@example.com")))
         .andExpect(jsonPath("$.content[0].assignedAdmin.role").doesNotExist())
@@ -730,6 +733,22 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.page.number", is(0)))
         .andExpect(jsonPath("$.page.totalElements", is(1)))
         .andExpect(jsonPath("$.page.totalPages", is(1)));
+  }
+
+  @Test
+  void shouldReturnReviewStageLabelInSummaryWhenFormHasReviewStage() throws Exception {
+    LtftForm form = createSubmittedFormWithReviewStage(DBC_1, 1, "Manager Review");
+    template.insert(form);
+
+    mockMvc.perform(get("/api/admin/ltft")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.content").isArray())
+        .andExpect(jsonPath("$.content", hasSize(1)))
+        .andExpect(jsonPath("$.content[0].id", is(form.getId().toString())))
+        .andExpect(jsonPath("$.content[0].status", is(SUBMITTED.name())))
+        .andExpect(jsonPath("$.content[0].reviewStage", is("Manager Review")));
   }
 
   @ParameterizedTest
@@ -866,6 +885,67 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.content").isArray())
         .andExpect(jsonPath("$.content", hasSize(1)))
         .andExpect(jsonPath("$.content[0].personalDetails.id", is("trainee id to find")));
+  }
+
+  @Test
+  void shouldCountOnlyLtftsWithMatchingReviewStageFilter() throws Exception {
+    template.insert(createSubmittedFormWithReviewStage(DBC_1, 0, "Stage One"));
+    template.insert(createSubmittedFormWithReviewStage(DBC_1, 1, "Stage Two"));
+    template.insert(createSubmittedFormWithReviewStage(DBC_1, 0, "Stage One"));
+    template.insert(createSubmittedFormWithReviewStage(DBC_1, 2, "Stage Three"));
+
+    mockMvc.perform(get("/api/admin/ltft/count")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .param("reviewStage", "Stage One"))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.TEXT_PLAIN))
+        .andExpect(content().string("2"));
+  }
+
+  @Test
+  void shouldCountLtftsWithMultipleReviewStageFilters() throws Exception {
+    template.insert(createSubmittedFormWithReviewStage(DBC_1, 0, "Stage One"));
+    template.insert(createSubmittedFormWithReviewStage(DBC_1, 1, "Stage Two"));
+    template.insert(createSubmittedFormWithReviewStage(DBC_1, 2, "Stage Three"));
+
+    mockMvc.perform(get("/api/admin/ltft/count")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .param("reviewStage", "Stage One,Stage Three"))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.TEXT_PLAIN))
+        .andExpect(content().string("2"));
+  }
+
+  @Test
+  void shouldReturnSummariesWithMatchingReviewStageFilter() throws Exception {
+    LtftForm stageOneForm = createSubmittedFormWithReviewStage(DBC_1, 0, "Stage One");
+    template.insert(stageOneForm);
+    template.insert(createSubmittedFormWithReviewStage(DBC_1, 1, "Stage Two"));
+    template.insert(createSubmittedFormWithReviewStage(DBC_1, 2, "Stage Three"));
+
+    mockMvc.perform(get("/api/admin/ltft")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .param("reviewStage", "Stage One"))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.content").isArray())
+        .andExpect(jsonPath("$.content", hasSize(1)))
+        .andExpect(jsonPath("$.content[0].id", is(stageOneForm.getId().toString())));
+  }
+
+  @Test
+  void shouldReturnSummariesWithMultipleReviewStageFilters() throws Exception {
+    template.insert(createSubmittedFormWithReviewStage(DBC_1, 0, "Stage One"));
+    template.insert(createSubmittedFormWithReviewStage(DBC_1, 1, "Stage Two"));
+    template.insert(createSubmittedFormWithReviewStage(DBC_1, 2, "Stage Three"));
+
+    mockMvc.perform(get("/api/admin/ltft")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .param("reviewStage", "Stage One,Stage Two"))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.content").isArray())
+        .andExpect(jsonPath("$.content", hasSize(2)));
   }
 
   @ParameterizedTest
@@ -1944,6 +2024,113 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.current.detail.message", is("All checks passed.")))
         .andExpect(jsonPath("$.status.current.modifiedBy.name", is("Ad Min")))
         .andExpect(jsonPath("$.status.current.modifiedBy.email", is("ad.min@example.com")));
+  }
+
+  // -- GET /review-stages --
+
+  @Test
+  void shouldReturnForbiddenGettingReviewStagesWhenNoToken() throws Exception {
+    mockMvc.perform(get("/api/admin/ltft/review-stages"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void shouldReturnForbiddenGettingReviewStagesWhenNoGroups() throws Exception {
+    mockMvc.perform(get("/api/admin/ltft/review-stages")
+            .with(TestJwtUtil.createAdminToken(List.of(), REQUIRED_ROLES)))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void shouldReturnEmptyReviewStagesWhenDbcsHaveNoConfiguredWorkflow() throws Exception {
+    mockMvc.perform(get("/api/admin/ltft/review-stages")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$", hasSize(0)));
+  }
+
+  @Test
+  void shouldReturnEnabledReviewStageLabelsForSingleDbc() throws Exception {
+    mockMvc.perform(get("/api/admin/ltft/review-stages")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_THREE_STAGES), REQUIRED_ROLES)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$", hasSize(4)))
+        .andExpect(jsonPath("$", containsInAnyOrder(
+            "Stage One", "Stage Two", "Stage Three", "Review complete")));
+  }
+
+  @Test
+  void shouldReturnDeduplicatedEnabledLabelsAcrossMultipleDbcs() throws Exception {
+    // DBC_THREE_STAGES has Stage One, Stage Two, Stage Three; DBC_ONE_STAGE has Single Review
+    mockMvc.perform(get("/api/admin/ltft/review-stages")
+            .with(TestJwtUtil.createAdminToken(
+                List.of(DBC_THREE_STAGES, DBC_ONE_STAGE), REQUIRED_ROLES)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$", hasSize(5)))
+        .andExpect(jsonPath("$", containsInAnyOrder(
+            "Stage One", "Stage Two", "Stage Three", "Single Review", "Review complete")));
+  }
+
+  @Test
+  void shouldNotIncludeDisabledStageLabelsWhenNoFormsExistInThem() throws Exception {
+    // DBC_DISABLED has one stage "Disabled Stage" with enabled=false, no forms exist
+    mockMvc.perform(get("/api/admin/ltft/review-stages")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_DISABLED), REQUIRED_ROLES)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$", hasSize(0)));
+  }
+
+  @Test
+  void shouldIncludeDisabledStageLabelsWhenFormsExistInThem() throws Exception {
+    // Create a form that is SUBMITTED and in the disabled review stage for DBC_DISABLED
+    LtftForm form = createSubmittedFormWithReviewStage(DBC_DISABLED, 0, "Disabled Stage");
+    template.insert(form);
+
+    mockMvc.perform(get("/api/admin/ltft/review-stages")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_DISABLED), REQUIRED_ROLES)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$", hasSize(1)))
+        .andExpect(jsonPath("$[0]", is("Disabled Stage")));
+  }
+
+  @Test
+  void shouldIncludeBothEnabledAndInUseDisabledLabelsAcrossDbcs() throws Exception {
+    // Create a form in the disabled stage for DBC_DISABLED
+    LtftForm form = createSubmittedFormWithReviewStage(DBC_DISABLED, 0, "Disabled Stage");
+    template.insert(form);
+
+    // Admin token has DBC_ONE_STAGE (enabled: Single Review) + DBC_DISABLED (disabled: Disabled Stage)
+    mockMvc.perform(get("/api/admin/ltft/review-stages")
+            .with(TestJwtUtil.createAdminToken(
+                List.of(DBC_ONE_STAGE, DBC_DISABLED), REQUIRED_ROLES)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$", hasSize(3)))
+        .andExpect(jsonPath("$", containsInAnyOrder(
+            "Single Review", "Review complete", "Disabled Stage")));
+  }
+
+  @Test
+  void shouldOnlyReturnStagesForAdminGroups() throws Exception {
+    // Admin token only has DBC_ONE_STAGE, so only its stages should be returned
+    mockMvc.perform(get("/api/admin/ltft/review-stages")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_ONE_STAGE), REQUIRED_ROLES)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$", hasSize(2)))
+        .andExpect(jsonPath("$", containsInAnyOrder("Single Review", "Review complete")));
   }
 
   /**

@@ -23,6 +23,7 @@ package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
@@ -37,6 +38,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -883,5 +885,76 @@ class ReviewStageServiceTest {
 
     assertTrue(service.canTransitionToLifecycleState(form, UNSUBMITTED),
         "Expected UNSUBMIT to be allowed from terminal stage.");
+  }
+
+  @Test
+  void shouldReturnEmptyEnabledLabelsWhenNoDbcsProvided() {
+    Set<String> labels = service.getEnabledStageLabels(Set.of());
+    assertThat("Expected empty labels for empty DBCs.", labels, empty());
+  }
+
+  @Test
+  void shouldReturnEmptyEnabledLabelsWhenDbcHasNoWorkflow() {
+    Set<String> labels = service.getEnabledStageLabels(Set.of("UNKNOWN-DBC"));
+    assertThat("Expected empty labels for unknown DBC.", labels, empty());
+  }
+
+  @Test
+  void shouldReturnEnabledLabelsForSingleDbc() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        stage("Triage"), disabledStage("Disabled"), stage("Review"))));
+
+    Set<String> labels = service.getEnabledStageLabels(Set.of(DBC));
+    assertThat("Expected only enabled labels.", labels,
+        containsInAnyOrder("Triage", "Review"));
+  }
+
+  @Test
+  void shouldDeduplicateEnabledLabelsAcrossMultipleDbcs() {
+    String dbc2 = "OTHER-DBC";
+    workflowProperties.setReviewWorkflows(Map.of(
+        DBC, List.of(stage("Triage"), stage("Review")),
+        dbc2, List.of(stage("Triage"), stage("Approval"))));
+
+    Set<String> labels = service.getEnabledStageLabels(Set.of(DBC, dbc2));
+    assertThat("Expected deduplicated labels.", labels,
+        containsInAnyOrder("Triage", "Review", "Approval"));
+  }
+
+  @Test
+  void shouldReturnEmptyDisabledLabelsWhenNoDbcsProvided() {
+    Set<String> labels = service.getDisabledStageLabels(Set.of());
+    assertThat("Expected empty labels for empty DBCs.", labels, empty());
+  }
+
+  @Test
+  void shouldReturnEmptyDisabledLabelsWhenAllStagesEnabled() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        stage("Triage"), stage("Review"))));
+
+    Set<String> labels = service.getDisabledStageLabels(Set.of(DBC));
+    assertThat("Expected no disabled labels.", labels, empty());
+  }
+
+  @Test
+  void shouldReturnDisabledLabelsForSingleDbc() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        stage("Triage"), disabledStage("Disabled One"), disabledStage("Disabled Two"))));
+
+    Set<String> labels = service.getDisabledStageLabels(Set.of(DBC));
+    assertThat("Expected disabled labels.", labels,
+        containsInAnyOrder("Disabled One", "Disabled Two"));
+  }
+
+  @Test
+  void shouldDeduplicateDisabledLabelsAcrossMultipleDbcs() {
+    String dbc2 = "OTHER-DBC";
+    workflowProperties.setReviewWorkflows(Map.of(
+        DBC, List.of(disabledStage("Shared Disabled"), stage("Enabled")),
+        dbc2, List.of(disabledStage("Shared Disabled"), disabledStage("Other Disabled"))));
+
+    Set<String> labels = service.getDisabledStageLabels(Set.of(DBC, dbc2));
+    assertThat("Expected deduplicated disabled labels.", labels,
+        containsInAnyOrder("Shared Disabled", "Other Disabled"));
   }
 }

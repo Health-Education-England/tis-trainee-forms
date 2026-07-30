@@ -385,6 +385,7 @@ class LtftServiceTest {
       personalDetails.gmcNumber | content.personalDetails.gmcNumber
       personalDetails.surname | content.personalDetails.surname
       programmeName | content.programmeMembership.name
+      reviewStage | status.current.reviewStage.label
       status | status.current.state
       traineeId | traineeTisId
       """)
@@ -412,6 +413,7 @@ class LtftServiceTest {
       personalDetails.gmcNumber | content.personalDetails.gmcNumber
       personalDetails.surname | content.personalDetails.surname
       programmeName | content.programmeMembership.name
+      reviewStage | status.current.reviewStage.label
       status | status.current.state
       traineeId | traineeTisId
       """)
@@ -603,6 +605,7 @@ class LtftServiceTest {
       personalDetails.gmcNumber | content.personalDetails.gmcNumber
       personalDetails.surname | content.personalDetails.surname
       programmeName | content.programmeMembership.name
+      reviewStage | status.current.reviewStage.label
       status | status.current.state
       traineeId | traineeTisId
       """)
@@ -633,6 +636,7 @@ class LtftServiceTest {
       personalDetails.gmcNumber | content.personalDetails.gmcNumber
       personalDetails.surname | content.personalDetails.surname
       programmeName | content.programmeMembership.name
+      reviewStage | status.current.reviewStage.label
       status | status.current.state
       traineeId | traineeTisId
       """)
@@ -2153,6 +2157,89 @@ class LtftServiceTest {
 
     assertThat("Unexpected result presence.", result.isPresent(), is(true));
     assertThat("Unexpected workflow dto.", result.get(), is(expectedDto));
+  }
+
+  @Test
+  void shouldReturnEnabledStageLabelsAndTerminalStageFromReviewStageService() {
+    Set<String> enabledLabels = Set.of("Triage", "Review");
+    List<String> adminDbcs = List.of(ADMIN_GROUP);
+    when(reviewStageService.getEnabledStageLabels(adminDbcs)).thenReturn(enabledLabels);
+    when(reviewStageService.getDisabledStageLabels(adminDbcs)).thenReturn(Set.of());
+
+    Set<String> result = service.getReviewStageLabels();
+
+    assertThat("Unexpected number of labels.", result, hasSize(3));
+    assertThat("Expected Triage label.", result, hasItem("Triage"));
+    assertThat("Expected Review label.", result, hasItem("Review"));
+    assertThat("Expected terminal stage label.", result, hasItem("Review complete"));
+  }
+
+  @Test
+  void shouldNotIncludeTerminalStageWhenNoEnabledStagesExist() {
+    List<String> adminDbcs = List.of(ADMIN_GROUP);
+    when(reviewStageService.getEnabledStageLabels(adminDbcs)).thenReturn(Set.of());
+    when(reviewStageService.getDisabledStageLabels(adminDbcs)).thenReturn(Set.of());
+
+    Set<String> result = service.getReviewStageLabels();
+
+    assertThat("Expected empty labels.", result, hasSize(0));
+  }
+
+  @Test
+  void shouldIncludeDisabledStageLabelsWhenFormsExistInThem() {
+    List<String> adminDbcs = List.of(ADMIN_GROUP);
+    when(reviewStageService.getEnabledStageLabels(adminDbcs)).thenReturn(Set.of("Triage"));
+    when(reviewStageService.getDisabledStageLabels(adminDbcs)).thenReturn(Set.of("Disabled Stage"));
+
+    LtftForm form = new LtftForm();
+    form.setStatus(Status.builder()
+        .current(StatusInfo.builder()
+            .state(SUBMITTED)
+            .reviewStage(new ReviewStageStatus(1, "Disabled Stage"))
+            .build())
+        .build());
+    when(repository
+        .findByContent_ProgrammeMembership_DesignatedBodyCodeInAndStatus_Current_ReviewStage_LabelIn(
+            eq(adminDbcs), any()))
+        .thenReturn(List.of(form));
+
+    Set<String> result = service.getReviewStageLabels();
+
+    assertThat("Expected enabled, terminal and disabled labels.", result, hasSize(3));
+    assertThat("Expected Triage label.", result, hasItem("Triage"));
+    assertThat("Expected terminal stage label.", result, hasItem("Review complete"));
+    assertThat("Expected Disabled Stage label.", result, hasItem("Disabled Stage"));
+  }
+
+  @Test
+  void shouldNotQueryForDisabledStagesWhenNoneConfigured() {
+    List<String> adminDbcs = List.of(ADMIN_GROUP);
+    when(reviewStageService.getEnabledStageLabels(adminDbcs)).thenReturn(Set.of("Triage"));
+    when(reviewStageService.getDisabledStageLabels(adminDbcs)).thenReturn(Set.of());
+
+    Set<String> result = service.getReviewStageLabels();
+
+    verify(repository, never())
+        .findByContent_ProgrammeMembership_DesignatedBodyCodeInAndStatus_Current_ReviewStage_LabelIn(
+            any(), any());
+    assertThat("Expected enabled + terminal labels.", result, hasSize(2));
+  }
+
+  @Test
+  void shouldNotQueryForDisabledStagesAlreadyInEnabledSet() {
+    List<String> adminDbcs = List.of(ADMIN_GROUP);
+    // "Triage" is enabled for one DBC and disabled for another
+    when(reviewStageService.getEnabledStageLabels(adminDbcs)).thenReturn(Set.of("Triage", "Review"));
+    when(reviewStageService.getDisabledStageLabels(adminDbcs))
+        .thenReturn(new java.util.HashSet<>(Set.of("Triage")));
+
+    Set<String> result = service.getReviewStageLabels();
+
+    // Should not query because the disabled label "Triage" is already in the enabled set
+    verify(repository, never())
+        .findByContent_ProgrammeMembership_DesignatedBodyCodeInAndStatus_Current_ReviewStage_LabelIn(
+            any(), any());
+    assertThat("Expected enabled + terminal labels.", result, hasSize(3));
   }
 
   @Test
