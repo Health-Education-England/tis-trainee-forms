@@ -171,7 +171,7 @@ public class AdminLtftResource {
    * @return A set of deduplicated review stage labels.
    */
   @GetMapping("/review-stages")
-  ResponseEntity<Set<String>> getReviewStages(@RequestBody List<String> dbcs) {
+  ResponseEntity<Set<String>> getReviewStages(@RequestParam List<String> dbcs) {
     Set<String> stages = service.getReviewStageLabels(dbcs);
     return ResponseEntity.ok(stages);
   }
