@@ -167,12 +167,12 @@ public class AdminLtftResource {
    * Get a deduplicated set of review stage labels for the given DBCs. Includes all enabled stages
    * plus any disabled stages that currently have LTFT forms in them.
    *
-   * @param dbcs The list of designated body codes to retrieve review stages for.
+   * @param dbc The list of designated body codes to retrieve review stages for.
    * @return A set of deduplicated review stage labels.
    */
   @GetMapping("/review-stages")
-  ResponseEntity<Set<String>> getReviewStages(@RequestParam List<String> dbcs) {
-    Set<String> stages = service.getReviewStageLabels(dbcs);
+  ResponseEntity<Set<String>> getReviewStages(@RequestParam List<String> dbc) {
+    Set<String> stages = service.getReviewStageLabels(dbc);
     return ResponseEntity.ok(stages);
   }
 

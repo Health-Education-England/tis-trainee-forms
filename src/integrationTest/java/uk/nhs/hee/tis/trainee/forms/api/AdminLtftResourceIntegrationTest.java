@@ -2031,7 +2031,7 @@ class AdminLtftResourceIntegrationTest {
   @Test
   void shouldReturnForbiddenGettingReviewStagesWhenNoToken() throws Exception {
     mockMvc.perform(get("/api/admin/ltft/review-stages")
-            .param("dbcs", "DBC-1"))
+            .param("dbc", "DBC-1"))
         .andExpect(status().isForbidden());
   }
 
@@ -2039,7 +2039,7 @@ class AdminLtftResourceIntegrationTest {
   void shouldReturnForbiddenGettingReviewStagesWhenNoGroups() throws Exception {
     mockMvc.perform(get("/api/admin/ltft/review-stages")
             .with(TestJwtUtil.createAdminToken(List.of(), REQUIRED_ROLES))
-            .param("dbcs", "DBC-1"))
+            .param("dbc", "DBC-1"))
         .andExpect(status().isForbidden());
   }
 
@@ -2047,7 +2047,7 @@ class AdminLtftResourceIntegrationTest {
   void shouldReturnEmptyReviewStagesWhenDbcsHaveNoConfiguredWorkflow() throws Exception {
     mockMvc.perform(get("/api/admin/ltft/review-stages")
             .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
-            .param("dbcs", DBC_1))
+            .param("dbc", DBC_1))
         .andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$").isArray())
@@ -2058,7 +2058,7 @@ class AdminLtftResourceIntegrationTest {
   void shouldReturnEnabledReviewStageLabelsForSingleDbc() throws Exception {
     mockMvc.perform(get("/api/admin/ltft/review-stages")
             .with(TestJwtUtil.createAdminToken(List.of(DBC_THREE_STAGES), REQUIRED_ROLES))
-            .param("dbcs", DBC_THREE_STAGES))
+            .param("dbc", DBC_THREE_STAGES))
         .andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$").isArray())
@@ -2073,7 +2073,7 @@ class AdminLtftResourceIntegrationTest {
     mockMvc.perform(get("/api/admin/ltft/review-stages")
             .with(TestJwtUtil.createAdminToken(
                 List.of(DBC_THREE_STAGES, DBC_ONE_STAGE), REQUIRED_ROLES))
-            .param("dbcs", DBC_THREE_STAGES, DBC_ONE_STAGE))
+            .param("dbc", DBC_THREE_STAGES, DBC_ONE_STAGE))
         .andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$").isArray())
@@ -2087,7 +2087,7 @@ class AdminLtftResourceIntegrationTest {
     // DBC_DISABLED has one stage "Disabled Stage" with enabled=false, no forms exist
     mockMvc.perform(get("/api/admin/ltft/review-stages")
             .with(TestJwtUtil.createAdminToken(List.of(DBC_DISABLED), REQUIRED_ROLES))
-            .param("dbcs", DBC_DISABLED))
+            .param("dbc", DBC_DISABLED))
         .andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$").isArray())
@@ -2102,7 +2102,7 @@ class AdminLtftResourceIntegrationTest {
 
     mockMvc.perform(get("/api/admin/ltft/review-stages")
             .with(TestJwtUtil.createAdminToken(List.of(DBC_DISABLED), REQUIRED_ROLES))
-            .param("dbcs", DBC_DISABLED))
+            .param("dbc", DBC_DISABLED))
         .andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$").isArray())
@@ -2120,7 +2120,7 @@ class AdminLtftResourceIntegrationTest {
     mockMvc.perform(get("/api/admin/ltft/review-stages")
             .with(TestJwtUtil.createAdminToken(
                 List.of(DBC_ONE_STAGE, DBC_DISABLED), REQUIRED_ROLES))
-            .param("dbcs", DBC_ONE_STAGE, DBC_DISABLED))
+            .param("dbc", DBC_ONE_STAGE, DBC_DISABLED))
         .andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$").isArray())
@@ -2134,7 +2134,7 @@ class AdminLtftResourceIntegrationTest {
     // Admin token only has DBC_ONE_STAGE, but request includes DBC_THREE_STAGES too
     mockMvc.perform(get("/api/admin/ltft/review-stages")
             .with(TestJwtUtil.createAdminToken(List.of(DBC_ONE_STAGE), REQUIRED_ROLES))
-            .param("dbcs", DBC_ONE_STAGE, DBC_THREE_STAGES))
+            .param("dbc", DBC_ONE_STAGE, DBC_THREE_STAGES))
         .andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$").isArray())

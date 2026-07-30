@@ -588,23 +588,23 @@ class AdminLtftResourceTest {
 
   @Test
   void shouldReturnReviewStageLabelsForDbcs() {
-    List<String> dbcs = List.of("DBC-1", "DBC-2");
+    List<String> dbc = List.of("DBC-1", "DBC-2");
     Set<String> expectedLabels = Set.of("Triage", "Review", "Approval");
-    when(service.getReviewStageLabels(dbcs)).thenReturn(expectedLabels);
+    when(service.getReviewStageLabels(dbc)).thenReturn(expectedLabels);
 
-    ResponseEntity<Set<String>> response = controller.getReviewStages(dbcs);
+    ResponseEntity<Set<String>> response = controller.getReviewStages(dbc);
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), is(expectedLabels));
-    verify(service).getReviewStageLabels(dbcs);
+    verify(service).getReviewStageLabels(dbc);
   }
 
   @Test
   void shouldReturnEmptyReviewStageLabelsWhenNoStagesConfigured() {
-    List<String> dbcs = List.of("DBC-1");
-    when(service.getReviewStageLabels(dbcs)).thenReturn(Set.of());
+    List<String> dbc = List.of("DBC-1");
+    when(service.getReviewStageLabels(dbc)).thenReturn(Set.of());
 
-    ResponseEntity<Set<String>> response = controller.getReviewStages(dbcs);
+    ResponseEntity<Set<String>> response = controller.getReviewStages(dbc);
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body size.", response.getBody(), hasSize(0));
