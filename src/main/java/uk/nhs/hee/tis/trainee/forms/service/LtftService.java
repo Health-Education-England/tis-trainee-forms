@@ -38,7 +38,6 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
 import java.util.AbstractMap.SimpleEntry;
-import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -663,22 +662,18 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   }
 
   /**
-   * Get a deduplicated set of review stage labels relevant to the given DBCs.
+   * Get a deduplicated set of review stage labels relevant to the user's group DBCs.
    *
    * <p>This includes all <em>enabled</em> configured stages, the implicit "Review complete"
    * terminal stage (when at least one enabled stage exists), plus any <em>disabled</em> stages
    * that currently have LTFT forms in them (i.e. forms that entered the stage before it was
    * disabled).
    *
-   * @param dbcs The designated body codes to retrieve review stages for.
    * @return A set of deduplicated review stage labels.
    */
-  public Set<String> getReviewStageLabels(Collection<String> dbcs) {
-    // Filter to only include DBCs that the admin has access to.
-    List<String> filteredDbcs = dbcs.stream()
-        .filter(dbc -> adminIdentity.getGroups().contains(dbc))
-        .toList();
-    log.info("Getting review stage labels for DBCs {} (filtered from {})", filteredDbcs, dbcs);
+  public Set<String> getReviewStageLabels() {
+    List<String> filteredDbcs = adminIdentity.getGroups().stream().toList();
+    log.info("Getting review stage labels for DBCs {}", filteredDbcs);
     Set<String> labels = new LinkedHashSet<>(
         reviewStageService.getEnabledStageLabels(filteredDbcs));
 
