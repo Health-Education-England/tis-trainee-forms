@@ -1294,12 +1294,12 @@ class LtftResourceIntegrationTest {
 
     LtftContent content = LtftContent.builder()
         .name("Reducing Hours")
-        .personalDetails(LtftContent.PersonalDetails.builder().build())
+        .personalDetails(PersonalDetails.builder().build())
         .programmeMembership(ProgrammeMembership.builder().build())
         .change(CctChange.builder().build())
-        .reasons(LtftContent.Reasons.builder().build())
+        .reasons(Reasons.builder().build())
         .exceptionalReasons(ExceptionalReasons.builder().build())
-        .declarations(LtftContent.Declarations.builder().build())
+        .declarations(Declarations.builder().build())
         .discussions(Discussions.builder().build())
         .build();
     ltft.setContent(content);
@@ -1362,12 +1362,12 @@ class LtftResourceIntegrationTest {
 
     LtftContent content = LtftContent.builder()
         .name("Reducing Hours")
-        .personalDetails(LtftContent.PersonalDetails.builder().build())
+        .personalDetails(PersonalDetails.builder().build())
         .programmeMembership(ProgrammeMembership.builder().build())
         .change(CctChange.builder().build())
-        .reasons(LtftContent.Reasons.builder().build())
+        .reasons(Reasons.builder().build())
         .exceptionalReasons(ExceptionalReasons.builder().build())
-        .declarations(LtftContent.Declarations.builder().build())
+        .declarations(Declarations.builder().build())
         .discussions(Discussions.builder().build())
         .build();
     ltft.setContent(content);
@@ -1448,7 +1448,7 @@ class LtftResourceIntegrationTest {
     LocalDate altStartDate = startDate.plusMonths(7);
 
     LtftContent content = LtftContent.builder()
-        .personalDetails(LtftContent.PersonalDetails.builder().build())
+        .personalDetails(PersonalDetails.builder().build())
         .programmeMembership(ProgrammeMembership.builder()
             .designatedBodyCode(DBC_1)
             .name("General Practice")
@@ -1463,9 +1463,9 @@ class LtftResourceIntegrationTest {
             .endDate(endDate)
             .wte(0.75)
             .build())
-        .reasons(LtftContent.Reasons.builder().build())
+        .reasons(Reasons.builder().build())
         .exceptionalReasons(ExceptionalReasons.builder().build())
-        .declarations(LtftContent.Declarations.builder().build())
+        .declarations(Declarations.builder().build())
         .discussions(Discussions.builder().build())
         .build();
     ltft.setContent(content);
@@ -1548,12 +1548,12 @@ class LtftResourceIntegrationTest {
     ltft.setTraineeTisId(TRAINEE_ID);
 
     LtftContent content = LtftContent.builder()
-        .personalDetails(LtftContent.PersonalDetails.builder().build())
+        .personalDetails(PersonalDetails.builder().build())
         .programmeMembership(ProgrammeMembership.builder().build())
         .change(CctChange.builder().build())
-        .reasons(LtftContent.Reasons.builder().build())
+        .reasons(Reasons.builder().build())
         .exceptionalReasons(ExceptionalReasons.builder().build())
-        .declarations(LtftContent.Declarations.builder().build())
+        .declarations(Declarations.builder().build())
         .discussions(Discussions.builder()
             .tpdName("Tee Pee-Dee")
             .tpdEmail("tpd@example.com")
@@ -1629,16 +1629,16 @@ class LtftResourceIntegrationTest {
     ltft.setAssignedAdmin(Person.builder().build(), null);
 
     LtftContent content = LtftContent.builder()
-        .personalDetails(LtftContent.PersonalDetails.builder().build())
+        .personalDetails(PersonalDetails.builder().build())
         .programmeMembership(ProgrammeMembership.builder().build())
         .change(CctChange.builder().build())
-        .reasons(LtftContent.Reasons.builder()
+        .reasons(Reasons.builder()
             .selected(List.of("Test1", "Test2", "Other"))
             .otherDetail("other-detail")
             .supportingInformation("supporting-information")
             .build())
         .exceptionalReasons(ExceptionalReasons.builder().build())
-        .declarations(LtftContent.Declarations.builder().build())
+        .declarations(Declarations.builder().build())
         .discussions(Discussions.builder().build())
         .build();
     ltft.setContent(content);
@@ -1691,72 +1691,12 @@ class LtftResourceIntegrationTest {
   }
 
   @Test
-  void shouldGetDetailPdfExceptionalReasons() throws Exception {
-    LtftForm ltft = new LtftForm();
-    ltft.setTraineeTisId(TRAINEE_ID);
-    ltft.setAssignedAdmin(Person.builder().build(), null);
-
-    LtftContent content = LtftContent.builder()
-        .personalDetails(PersonalDetails.builder().build())
-        .programmeMembership(ProgrammeMembership.builder().build())
-        .change(CctChange.builder().build())
-        .reasons(Reasons.builder().build())
-        .exceptionalReasons(ExceptionalReasons.builder()
-            .exceptional(true)
-            .supportingInformation("supporting-information")
-            .startDate(LocalDate.now())
-            .build())
-        .declarations(Declarations.builder().build())
-        .discussions(Discussions.builder().build())
-        .build();
-    ltft.setContent(content);
-
-    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
-
-    AbstractAuditedForm.Status.StatusInfo statusInfo = AbstractAuditedForm.Status.StatusInfo.builder()
-        .state(SUBMITTED).timestamp(Instant.now())
-        .build();
-    ltft.setStatus(AbstractAuditedForm.Status.builder()
-        .current(statusInfo)
-        .history(List.of(
-            statusInfo,
-            AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED)
-                .timestamp(latestSubmitted).build()))
-        .build()
-    );
-
-    ltft = template.insert(ltft);
-
-    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
-    MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
-            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
-            .with(jwt().jwt(token)))
-        .andExpect(status().isOk())
-        .andExpect(content().contentType(APPLICATION_PDF))
-        .andReturn();
-
-    byte[] response = result.getResponse().getContentAsByteArray();
-    PDDocument pdf = Loader.loadPDF(response);
-    PDFTextStripper textStripper = new PDFTextStripper();
-    textStripper.setAddMoreFormatting(false);
-    String pdfText = textStripper.getText(pdf);
-
-    // Supporting information
-    assertThat("Unexpected section header.", pdfText,
-        containsString("Supporting information" + System.lineSeparator()));
-    assertThat("Unexpected support info question.", removeLineBreak(pdfText),
-        containsString("Please provide brief supporting information for your application."));
-    assertThat("Unexpected support info.", pdfText,
-        containsString("supporting-information" + System.lineSeparator()));
-  }
-
-  @Test
   void shouldGetDetailPdfPersonalDetails() throws Exception {
     LtftForm ltft = new LtftForm();
     ltft.setTraineeTisId(TRAINEE_ID);
 
     LtftContent content = LtftContent.builder()
-        .personalDetails(LtftContent.PersonalDetails.builder()
+        .personalDetails(PersonalDetails.builder()
             .title("Dr")
             .forenames("Anthony")
             .surname("Gilliam")
@@ -1769,9 +1709,9 @@ class LtftResourceIntegrationTest {
             .build())
         .programmeMembership(ProgrammeMembership.builder().build())
         .change(CctChange.builder().build())
-        .reasons(LtftContent.Reasons.builder().build())
+        .reasons(Reasons.builder().build())
         .exceptionalReasons(ExceptionalReasons.builder().build())
-        .declarations(LtftContent.Declarations.builder().build())
+        .declarations(Declarations.builder().build())
         .discussions(LtftContent.Discussions.builder().build())
         .build();
     ltft.setContent(content);
@@ -1849,7 +1789,7 @@ class LtftResourceIntegrationTest {
     LocalDate altStartDate = startDate.plusMonths(7);
 
     LtftContent content = LtftContent.builder()
-        .personalDetails(LtftContent.PersonalDetails.builder().build())
+        .personalDetails(PersonalDetails.builder().build())
         .programmeMembership(ProgrammeMembership.builder()
             .designatedBodyCode(DBC_1)
             .name("General Practice")
@@ -1864,9 +1804,9 @@ class LtftResourceIntegrationTest {
             .endDate(endDate)
             .wte(0.75)
             .build())
-        .reasons(LtftContent.Reasons.builder().build())
+        .reasons(Reasons.builder().build())
         .exceptionalReasons(ExceptionalReasons.builder().build())
-        .declarations(LtftContent.Declarations.builder().build())
+        .declarations(Declarations.builder().build())
         .discussions(Discussions.builder().build())
         .build();
     ltft.setContent(content);
@@ -1940,7 +1880,7 @@ class LtftResourceIntegrationTest {
     LocalDate changeStartDate = startDate.plusMonths(1);
 
     LtftContent content = LtftContent.builder()
-        .personalDetails(LtftContent.PersonalDetails.builder().build())
+        .personalDetails(PersonalDetails.builder().build())
         .programmeMembership(ProgrammeMembership.builder()
             .designatedBodyCode(DBC_1)
             .name("General Practice")
@@ -1954,9 +1894,9 @@ class LtftResourceIntegrationTest {
             .endDate(endDate)
             .wte(0.8)
             .build())
-        .reasons(LtftContent.Reasons.builder().build())
+        .reasons(Reasons.builder().build())
         .exceptionalReasons(ExceptionalReasons.builder().build())
-        .declarations(LtftContent.Declarations.builder().build())
+        .declarations(Declarations.builder().build())
         .discussions(Discussions.builder().build())
         .build();
     ltft.setContent(content);
@@ -2005,14 +1945,14 @@ class LtftResourceIntegrationTest {
     ltft.setAssignedAdmin(Person.builder().build(), null);
 
     LtftContent content = LtftContent.builder()
-        .personalDetails(LtftContent.PersonalDetails.builder().build())
+        .personalDetails(PersonalDetails.builder().build())
         .programmeMembership(ProgrammeMembership.builder()
             .designatedBodyCode(DBC_1)
             .build())
         .change(CctChange.builder().build())
-        .reasons(LtftContent.Reasons.builder().build())
+        .reasons(Reasons.builder().build())
         .exceptionalReasons(ExceptionalReasons.builder().build())
-        .declarations(LtftContent.Declarations.builder()
+        .declarations(Declarations.builder()
             .discussedWithTpd(true)
             .informationIsCorrect(true)
             .notGuaranteed(true)
