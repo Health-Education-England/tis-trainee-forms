@@ -100,15 +100,15 @@ public class ReviewStageService {
         form.getStatus() != null
             && form.getStatus().current() != null
             && form.getStatus().current().state() == SUBMITTED;
-    Integer currentAbsoluteIndex =
-        (isSubmitted && currentReviewStage != null) ? currentReviewStage.index() : null;
+    String currentLabel =
+        (isSubmitted && currentReviewStage != null) ? currentReviewStage.label() : null;
 
     List<String> visibleLabels = new ArrayList<>();
     Integer currentVisiblePosition = null;
 
     for (int i = 0; i < allStages.size(); i++) {
       StateStage stage = allStages.get(i);
-      boolean isCurrent = currentAbsoluteIndex != null && currentAbsoluteIndex == i;
+      boolean isCurrent = currentLabel != null && currentLabel.equals(stage.label());
       if (stage.enabled() || isCurrent) {
         if (isCurrent) {
           currentVisiblePosition = visibleLabels.size();
@@ -120,7 +120,7 @@ public class ReviewStageService {
     // Append the implicit terminal stage if any configured stages are enabled.
     boolean anyEnabled = allStages.stream().anyMatch(StateStage::enabled);
     if (anyEnabled) {
-      if (currentAbsoluteIndex != null && currentAbsoluteIndex == allStages.size()) {
+      if (TERMINAL_STAGE_LABEL.equals(currentLabel)) {
         currentVisiblePosition = visibleLabels.size();
       }
       visibleLabels.add(TERMINAL_STAGE_LABEL);
@@ -208,15 +208,25 @@ public class ReviewStageService {
     int currentIndex = current.index();
 
     // Already at the terminal stage — no further advancement is possible.
-    // Note, not stages.size() - 1, as the terminal stage is not part of the configured stages list.
-    if (currentIndex == stages.size()) {
+    if (TERMINAL_STAGE_LABEL.equals(current.label())) {
       log.debug(
           "Form {} is already at the terminal review stage; no advancement possible.",
           form.getId());
       return Optional.empty();
     }
 
-    Optional<ReviewStageStatus> next = nextEnabledStageAfter(stages, currentIndex);
+    int currentAbsoluteIndex = findAbsoluteIndexByLabel(stages, current.label());
+    if (currentAbsoluteIndex == -1) {
+      log.warn(
+          "Form {} has review stage label '{}' which does not match any configured stage for "
+              + "DBC '{}'; cannot advance.",
+          form.getId(),
+          current.label(),
+          dbc);
+      return Optional.empty();
+    }
+
+    Optional<ReviewStageStatus> next = nextEnabledStageAfter(stages, currentAbsoluteIndex);
     if (next.isPresent()) {
       log.debug(
           "Advancing form {} from review stage index {} to {} ('{}').",
@@ -228,11 +238,12 @@ public class ReviewStageService {
     }
 
     // At the effective final configured stage — advance to the implicit terminal stage.
+    int enabledCount = (int) stages.stream().filter(StateStage::enabled).count();
     log.debug(
         "Advancing form {} from final configured stage (index {}) to terminal stage.",
         form.getId(),
         currentIndex);
-    return Optional.of(new ReviewStageStatus(stages.size(), TERMINAL_STAGE_LABEL));
+    return Optional.of(new ReviewStageStatus(enabledCount, TERMINAL_STAGE_LABEL));
   }
 
   /**
@@ -281,7 +292,7 @@ public class ReviewStageService {
 
     // Terminal transitions (APPROVED, REJECTED, WITHDRAWN) are only permitted from the implicit
     // terminal stage, i.e. after all configured review stages have been completed.
-    boolean atTerminalStage = currentReviewStage.index() >= stages.size();
+    boolean atTerminalStage = TERMINAL_STAGE_LABEL.equals(currentReviewStage.label());
     if (!atTerminalStage) {
       log.warn(
           "Form {} is at review stage index {} but attempted to transition to {}; "
@@ -361,22 +372,47 @@ public class ReviewStageService {
 
   /**
    * Find the next enabled stage in {@code stages} whose index is strictly greater than {@code
-   * fromIndex}.
+   * fromAbsoluteIndex}.
    *
-   * <p>Pass {@code -1} as {@code fromIndex} to find the very first enabled stage.
+   * <p>Pass {@code -1} as {@code fromAbsoluteIndex} to find the very first enabled stage.
+   *
+   * <p>The returned {@link ReviewStageStatus} uses a <em>visible</em> index: the zero-based
+   * position among enabled stages only.
    *
    * @param stages The ordered list of configured stages.
-   * @param fromIndex The index to start searching <em>after</em> (exclusive).
+   * @param fromAbsoluteIndex The absolute index to start searching <em>after</em> (exclusive).
    * @return The first enabled stage found, or empty if none exists.
    */
   private Optional<ReviewStageStatus> nextEnabledStageAfter(
-      List<StateStage> stages, int fromIndex) {
-    for (int i = fromIndex + 1; i < stages.size(); i++) {
+      List<StateStage> stages, int fromAbsoluteIndex) {
+    int enabledCount = 0;
+    for (int i = 0; i <= fromAbsoluteIndex && i < stages.size(); i++) {
       if (stages.get(i).enabled()) {
-        return Optional.of(new ReviewStageStatus(i, stages.get(i).label()));
+        enabledCount++;
+      }
+    }
+    for (int i = fromAbsoluteIndex + 1; i < stages.size(); i++) {
+      if (stages.get(i).enabled()) {
+        return Optional.of(new ReviewStageStatus(enabledCount, stages.get(i).label()));
       }
     }
     return Optional.empty();
+  }
+
+  /**
+   * Find the absolute index of the stage with the given label in the configured stages list.
+   *
+   * @param stages The ordered list of configured stages.
+   * @param label The label to find.
+   * @return The absolute index, or {@code -1} if not found.
+   */
+  private int findAbsoluteIndexByLabel(List<StateStage> stages, String label) {
+    for (int i = 0; i < stages.size(); i++) {
+      if (stages.get(i).label().equals(label)) {
+        return i;
+      }
+    }
+    return -1;
   }
 
   @Nullable

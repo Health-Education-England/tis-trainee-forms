@@ -24,7 +24,8 @@ package uk.nhs.hee.tis.trainee.forms.model;
 /**
  * The active review stage of an LTFT form, recorded in the form's status history.
  *
- * @param index The zero-based position of this stage within the configured workflow.
+ * @param index The zero-based position of this stage among <em>enabled</em> (visible) stages in the
+ *              configured workflow. Disabled stages are not counted.
  * @param label The display label for this stage.
  */
 public record ReviewStageStatus(int index, String label) {

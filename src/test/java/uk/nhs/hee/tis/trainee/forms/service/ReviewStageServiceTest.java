@@ -170,7 +170,7 @@ class ReviewStageServiceTest {
     LtftForm form = formWithDbc(DBC);
     ReviewStageStatus result = service.resolveReviewStageForTransition(form, SUBMITTED);
 
-    assertThat("Unexpected stage index.", result.index(), is(1));
+    assertThat("Unexpected stage index.", result.index(), is(0));
     assertThat("Unexpected stage label.", result.label(), is("Manager Review"));
   }
 
@@ -320,7 +320,7 @@ class ReviewStageServiceTest {
     Optional<ReviewStageStatus> result = service.resolveAdvance(form);
 
     assertTrue(result.isPresent(), "Expected next stage to be present after skipping disabled.");
-    assertThat("Unexpected next stage index.", result.get().index(), is(2));
+    assertThat("Unexpected next stage index.", result.get().index(), is(1));
     assertThat("Unexpected next stage label.", result.get().label(), is("Dean Approval"));
   }
 
@@ -334,7 +334,7 @@ class ReviewStageServiceTest {
 
     assertTrue(result.isPresent(),
         "Expected terminal stage when no enabled stages follow the current stage.");
-    assertThat("Unexpected terminal stage index.", result.get().index(), is(2));
+    assertThat("Unexpected terminal stage index.", result.get().index(), is(1));
     assertThat("Unexpected terminal stage label.", result.get().label(), is(TERMINAL_STAGE_LABEL));
   }
 
@@ -347,7 +347,7 @@ class ReviewStageServiceTest {
     Optional<ReviewStageStatus> result = service.resolveAdvance(form);
 
     assertTrue(result.isPresent(), "Expected next stage when advancing from a disabled stage.");
-    assertThat("Unexpected next stage index.", result.get().index(), is(2));
+    assertThat("Unexpected next stage index.", result.get().index(), is(1));
     assertThat("Unexpected next stage label.", result.get().label(), is("Dean Approval"));
   }
 
@@ -361,7 +361,7 @@ class ReviewStageServiceTest {
 
     assertTrue(result.isPresent(),
         "Expected terminal stage at disabled final stage.");
-    assertThat("Unexpected terminal stage index.", result.get().index(), is(2));
+    assertThat("Unexpected terminal stage index.", result.get().index(), is(1));
     assertThat("Unexpected terminal stage label.", result.get().label(), is(TERMINAL_STAGE_LABEL));
   }
 
@@ -374,7 +374,7 @@ class ReviewStageServiceTest {
     Optional<ReviewStageStatus> result = service.resolveAdvance(form);
 
     assertTrue(result.isPresent(), "Expected next stage after skipping multiple disabled stages.");
-    assertThat("Unexpected next stage index.", result.get().index(), is(3));
+    assertThat("Unexpected next stage index.", result.get().index(), is(1));
     assertThat("Unexpected next stage label.", result.get().label(), is("Stage D"));
   }
 
@@ -414,6 +414,19 @@ class ReviewStageServiceTest {
 
     assertTrue(result.isEmpty(),
         "Expected empty optional when form has no programme membership.");
+  }
+
+  @Test
+  void shouldReturnEmptyWhenCurrentStageLabelNotFoundInConfig() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        stage("Triage"), stage("Manager Review"))));
+
+    // Form is at a stage whose label no longer exists in config (e.g. stage was renamed/removed).
+    LtftForm form = formAtReviewStage(DBC, 0, "Removed Stage");
+    Optional<ReviewStageStatus> result = service.resolveAdvance(form);
+
+    assertTrue(result.isEmpty(),
+        "Expected empty optional when current stage label is not in configured stages.");
   }
 
   @Test
@@ -885,6 +898,28 @@ class ReviewStageServiceTest {
 
     assertTrue(service.canTransitionToLifecycleState(form, UNSUBMITTED),
         "Expected UNSUBMIT to be allowed from terminal stage.");
+  }
+
+  @Test
+  void shouldReturnConsistentIndexBetweenFormStatusAndWorkflowWhenFirstStageDisabled() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        disabledStage("Triage"), stage("Education Team Review"), stage("APD Approval"))));
+
+    LtftForm form = formWithDbc(DBC);
+    ReviewStageStatus reviewStage = service.resolveReviewStageForTransition(form, SUBMITTED);
+
+    // Simulate the form having been submitted with this review stage.
+    form.setStatus(Status.builder()
+        .current(StatusInfo.builder()
+            .state(SUBMITTED)
+            .reviewStage(reviewStage)
+            .build())
+        .build());
+
+    ReviewWorkflowDto dto = service.getWorkflowDto(form);
+
+    assertThat("Form status index should match workflow endpoint index.",
+        reviewStage.index(), is(dto.currentStage()));
   }
 
   @Test

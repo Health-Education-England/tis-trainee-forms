@@ -15,6 +15,22 @@ application:
     "TEST-DBC-DISABLED":
       - label: "Disabled Stage"
         enabled: false
+    "TEST-DBC-DISABLED-FIRST":
+      - label: "Triage"
+        enabled: false
+      - label: "Education Review"
+        enabled: true
+      - label: "APD Approval"
+        enabled: true
+    "TEST-DBC-MIXED":
+      - label: "Stage A"
+        enabled: true
+      - label: "Stage B"
+        enabled: false
+      - label: "Stage C"
+        enabled: true
+      - label: "Stage D"
+        enabled: true
   aws:
     sns:
       formr-file-event: dummy
