@@ -21,6 +21,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonView;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
@@ -78,7 +79,7 @@ public record LtftFormDto(
     @Valid
     CctChangeDto change,
     ReasonsDto reasons,
-
+    ExceptionalReasonsDto exceptionalReasons,
     @JsonView(ReadOnly.class)
     @Null(groups = {Create.class, Update.class})
     EmailValidityType tpdEmailStatus,
@@ -169,6 +170,26 @@ public record LtftFormDto(
       List<String> selected,
       String otherDetail,
       String supportingInformation) {
+
+  }
+
+  /**
+   * Additional reasons for exceptional applications.
+   *
+   * @param exceptional           Whether the application is exceptional.
+   * @param supportingInformation The supporting information for the exception.
+   * @param startDate             The proposed start date for the exception.
+   */
+  @Builder
+  public record ExceptionalReasonsDto(
+      @JsonProperty("isExceptional")
+      Boolean exceptional,
+
+      @JsonProperty("exceptionalReasons")
+      String supportingInformation,
+
+      @JsonProperty("exceptionalReasonsDate")
+      LocalDate startDate) {
 
   }
 

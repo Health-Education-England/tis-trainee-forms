@@ -39,6 +39,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
  * @param reason            The reason given for applying for LTFT.
  * @param daysToStart       How many days until the start of the LTFT change.
  * @param shortNotice       Whether the LTFT application was submitted at short notice.
+ * @param exceptional       Whether the LTFT application is exceptional.
  * @param tpd               The details of the notification sent to the TPD.
  * @param status            The current status of the LTFT application.
  * @param reviewStage       The current review stage label, or null if no review stage is active.
@@ -56,6 +57,7 @@ public record LtftAdminSummaryDto(
     String reason,
     Integer daysToStart,
     Boolean shortNotice,
+    Boolean exceptional,
     LtftAdminNotificationDto tpd,
     LifecycleState status,
     String reviewStage,

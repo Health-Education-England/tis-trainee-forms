@@ -41,6 +41,7 @@ import uk.nhs.hee.tis.trainee.forms.model.Person;
  * @param discussions         Discussions which took place as part of the LTFT process.
  * @param change              The calculated LTFT change.
  * @param reasons             The reasons for applying for LTFT.
+ * @param exceptionalReasons  Additional reasons for exceptional applications.
  * @param tpdEmailValidity    The validity of the email address for the TPD, if applicable.
  */
 @Builder
@@ -52,6 +53,7 @@ public record LtftContent(
     Discussions discussions,
     CctChange change,
     Reasons reasons,
+    ExceptionalReasons exceptionalReasons,
     @With
     EmailValidityType tpdEmailValidity) implements FormContent {
 
@@ -154,6 +156,21 @@ public record LtftContent(
       List<String> selected,
       String otherDetail,
       String supportingInformation) {
+
+  }
+
+  /**
+   * Additional reasons for exceptional applications.
+   *
+   * @param exceptional           Whether the application is exceptional.
+   * @param supportingInformation The supporting information for the exception.
+   * @param startDate             The proposed start date for the exception.
+   */
+  @Builder
+  public record ExceptionalReasons(
+      Boolean exceptional,
+      String supportingInformation,
+      LocalDate startDate) {
 
   }
 }
