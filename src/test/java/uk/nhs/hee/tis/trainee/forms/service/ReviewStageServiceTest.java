@@ -430,6 +430,53 @@ class ReviewStageServiceTest {
   }
 
   @Test
+  void shouldComputeCorrectVisibleIndexWhenAdvancingFromLastStageWithDisabledPriorStages() {
+    // [disabled, enabled, disabled, enabled] — advance from abs index 3 (last, "D")
+    // Exercises the boundary: fromAbsoluteIndex == stages.size()-1 with disabled prior stages.
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        disabledStage("A"), stage("B"), disabledStage("C"), stage("D"))));
+
+    LtftForm form = formAtReviewStage(DBC, 1, "D");
+    Optional<ReviewStageStatus> result = service.resolveAdvance(form);
+
+    // First loop [0..3]: A(disabled→0), B(enabled→1), C(disabled→1), D(enabled→2)
+    // Second loop starts at 4 which >= size → empty. Terminal index = total enabled = 2.
+    assertTrue(result.isPresent(), "Expected terminal stage to be present.");
+    assertThat("Unexpected terminal stage index — should count only enabled stages in list.",
+        result.get().index(), is(2));
+    assertThat("Unexpected terminal stage label.", result.get().label(), is(TERMINAL_STAGE_LABEL));
+  }
+
+  @Test
+  void shouldComputeCorrectVisibleIndexThroughFullMixedWorkflowAdvancement() {
+    // [enabled, disabled, enabled, disabled, enabled] — advance step-by-step verifying the
+    // first loop's enabledCount accumulation produces correct visible indices at each step.
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        stage("S1"), disabledStage("S2"), stage("S3"), disabledStage("S4"), stage("S5"))));
+
+    // Step 1: From S1 (abs 0). First loop [0..0]: S1→1. Next enabled S3 → index 1.
+    LtftForm form1 = formAtReviewStage(DBC, 0, "S1");
+    Optional<ReviewStageStatus> step1 = service.resolveAdvance(form1);
+    assertTrue(step1.isPresent(), "Expected step 1 to be present.");
+    assertThat("Unexpected step 1 index.", step1.get().index(), is(1));
+    assertThat("Unexpected step 1 label.", step1.get().label(), is("S3"));
+
+    // Step 2: From S3 (abs 2). First loop [0..2]: S1(1), S2(skip), S3(2). Next S5 → index 2.
+    LtftForm form2 = formAtReviewStage(DBC, 1, "S3");
+    Optional<ReviewStageStatus> step2 = service.resolveAdvance(form2);
+    assertTrue(step2.isPresent(), "Expected step 2 to be present.");
+    assertThat("Unexpected step 2 index.", step2.get().index(), is(2));
+    assertThat("Unexpected step 2 label.", step2.get().label(), is("S5"));
+
+    // Step 3: From S5 (abs 4, last). No enabled after → terminal at enabledCount=3.
+    LtftForm form3 = formAtReviewStage(DBC, 2, "S5");
+    Optional<ReviewStageStatus> step3 = service.resolveAdvance(form3);
+    assertTrue(step3.isPresent(), "Expected terminal stage to be present.");
+    assertThat("Unexpected step 3 (terminal) index.", step3.get().index(), is(3));
+    assertThat("Unexpected step 3 label.", step3.get().label(), is(TERMINAL_STAGE_LABEL));
+  }
+
+  @Test
   void shouldAllowUnsubmitFromAnyStageWhenNoWorkflowConfigured() {
     LtftForm form = formWithDbc(DBC);
 
