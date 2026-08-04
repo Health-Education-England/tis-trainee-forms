@@ -132,12 +132,12 @@ class ReviewWorkflowPropertiesTest {
   }
 
   @Test
-  void shouldAllowDuplicateStageLabelsWithinSameDbc() {
+  void shouldThrowWhenDuplicateStageLabelsWithinSameDbc() {
     properties.setReviewWorkflows(
         Map.of(DBC_1, List.of(stage("Review", true), stage("Review", false),
             stage("Final Review", true))));
 
-    assertDoesNotThrow(() -> properties.validate());
+    assertThrows(IllegalStateException.class, () -> properties.validate());
   }
 
   @Test
