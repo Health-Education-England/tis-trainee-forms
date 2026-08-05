@@ -82,7 +82,8 @@ public class ReviewStageService {
    * <p>The {@code stages} list contains only enabled stages, with one exception: if the form is
    * currently SUBMITTED and its active review stage is disabled (e.g. the stage was disabled after
    * the form entered it), that stage is also included at its correct position. When at least one
-   * configured stage is enabled, an implicit terminal "Review complete" stage is appended.
+   * configured stage is enabled, or the form is currently at a stage in the workflow (in-flight),
+   * an implicit terminal "Review complete" stage is appended.
    *
    * <p>The {@code currentStage} field is the zero-based index of the form's current review stage
    * within the returned {@code stages} list, or {@code null} if the form is not SUBMITTED or has no
@@ -92,41 +93,61 @@ public class ReviewStageService {
    * @return The workflow DTO describing the visible stages and the form's current position.
    */
   public ReviewWorkflowDto getWorkflowDto(LtftForm form) {
-    String dbc = getDesignatedBodyCode(form);
-    List<StateStage> allStages = getConfiguredStages(dbc);
+    List<StateStage> allStages = getConfiguredStages(getDesignatedBodyCode(form));
+    String activeLabel = getActiveReviewLabel(form);
 
-    ReviewStageStatus currentReviewStage = getCurrentReviewStage(form);
-    boolean isSubmitted =
-        form.getStatus() != null
-            && form.getStatus().current() != null
-            && form.getStatus().current().state() == SUBMITTED;
-    String currentLabel =
-        (isSubmitted && currentReviewStage != null) ? currentReviewStage.label() : null;
+    List<String> visibleLabels = buildVisibleLabels(allStages, activeLabel);
+    Integer currentPosition =
+        activeLabel != null ? indexOfOrNull(visibleLabels, activeLabel) : null;
 
-    List<String> visibleLabels = new ArrayList<>();
-    Integer currentVisiblePosition = null;
+    return new ReviewWorkflowDto(visibleLabels, currentPosition);
+  }
 
-    for (int i = 0; i < allStages.size(); i++) {
-      StateStage stage = allStages.get(i);
-      boolean isCurrent = currentLabel != null && currentLabel.equals(stage.label());
-      if (stage.enabled() || isCurrent) {
-        if (isCurrent) {
-          currentVisiblePosition = visibleLabels.size();
-        }
-        visibleLabels.add(stage.label());
-      }
+  /**
+   * Return the label of the form's active review stage, or {@code null} if the form is not
+   * SUBMITTED or has no review stage.
+   */
+  @Nullable
+  private String getActiveReviewLabel(LtftForm form) {
+    if (form.getStatus() == null || form.getStatus().current() == null
+        || form.getStatus().current().state() != SUBMITTED) {
+      return null;
     }
+    ReviewStageStatus stage = getCurrentReviewStage(form);
+    return stage != null ? stage.label() : null;
+  }
 
-    // Append the implicit terminal stage if any configured stages are enabled.
+  /**
+   * Build the list of visible stage labels for the workflow DTO.
+   *
+   * <p>Includes all enabled stages, plus the {@code activeLabel} stage if it is disabled but
+   * current. Appends the terminal "Review complete" stage when the workflow is active (has enabled
+   * stages) or the form is genuinely in-flight.
+   */
+  private List<String> buildVisibleLabels(List<StateStage> allStages,
+      @Nullable String activeLabel) {
+    List<String> labels = allStages.stream()
+        .filter(s -> s.enabled() || s.label().equals(activeLabel))
+        .map(StateStage::label)
+        .collect(Collectors.toCollection(ArrayList::new));
+
     boolean anyEnabled = allStages.stream().anyMatch(StateStage::enabled);
-    if (anyEnabled) {
-      if (TERMINAL_STAGE_LABEL.equals(currentLabel)) {
-        currentVisiblePosition = visibleLabels.size();
-      }
-      visibleLabels.add(TERMINAL_STAGE_LABEL);
-    }
+    boolean inFlight = activeLabel != null
+        && (labels.contains(activeLabel) || TERMINAL_STAGE_LABEL.equals(activeLabel));
 
-    return new ReviewWorkflowDto(visibleLabels, currentVisiblePosition);
+    if (anyEnabled || inFlight) {
+      labels.add(TERMINAL_STAGE_LABEL);
+    }
+    return labels;
+  }
+
+  /**
+   * Return the index of {@code label} in the list, or {@code null} if not found.
+   */
+  @Nullable
+  private Integer indexOfOrNull(List<String> labels, String label) {
+    int index = labels.indexOf(label);
+    return index >= 0 ? index : null;
   }
 
   /**
@@ -191,12 +212,6 @@ public class ReviewStageService {
     String dbc = getDesignatedBodyCode(form);
     List<StateStage> stages = getConfiguredStages(dbc);
 
-    boolean anyEnabled = stages.stream().anyMatch(StateStage::enabled);
-    if (!anyEnabled) {
-      log.debug("All review stages disabled for DBC '{}'; no stages to advance through.", dbc);
-      return Optional.empty();
-    }
-
     ReviewStageStatus current = getCurrentReviewStage(form);
     if (current == null) {
       log.warn(
@@ -254,8 +269,8 @@ public class ReviewStageService {
    * REJECTED, WITHDRAWN) require the form to be at the implicit terminal stage, i.e. past all
    * configured stages.
    *
-   * <p>If no workflow is configured for the form's DBC, or all configured stages are disabled, the
-   * transition is always permitted.
+   * <p>If no workflow is configured for the form's DBC, or the form has no current review stage
+   * (e.g. it was submitted after all stages were disabled), the transition is always permitted.
    *
    * @param form The form to check.
    * @param targetState The lifecycle state the form is being transitioned to.
@@ -270,13 +285,6 @@ public class ReviewStageService {
     List<StateStage> stages = getConfiguredStages(dbc);
 
     if (stages.isEmpty()) {
-      return true;
-    }
-
-    // If all stages are disabled treat as no workflow — allow any transition.
-    boolean anyEnabled = stages.stream().anyMatch(StateStage::enabled);
-    if (!anyEnabled) {
-      log.debug("All review stages disabled for DBC '{}'; treating as no workflow.", dbc);
       return true;
     }
 
