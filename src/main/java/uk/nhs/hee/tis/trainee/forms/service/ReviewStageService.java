@@ -82,7 +82,8 @@ public class ReviewStageService {
    * <p>The {@code stages} list contains only enabled stages, with one exception: if the form is
    * currently SUBMITTED and its active review stage is disabled (e.g. the stage was disabled after
    * the form entered it), that stage is also included at its correct position. When at least one
-   * configured stage is enabled, an implicit terminal "Review complete" stage is appended.
+   * configured stage is enabled, or the form is currently at a stage in the workflow (in-flight),
+   * an implicit terminal "Review complete" stage is appended.
    *
    * <p>The {@code currentStage} field is the zero-based index of the form's current review stage
    * within the returned {@code stages} list, or {@code null} if the form is not SUBMITTED or has no
@@ -117,9 +118,10 @@ public class ReviewStageService {
       }
     }
 
-    // Append the implicit terminal stage if any configured stages are enabled.
+    // Append the implicit terminal stage if any configured stages are enabled, or if the form
+    // is currently at a stage in the workflow (i.e. it was in-flight when stages were disabled).
     boolean anyEnabled = allStages.stream().anyMatch(StateStage::enabled);
-    if (anyEnabled) {
+    if (anyEnabled || (currentLabel != null && !allStages.isEmpty())) {
       if (TERMINAL_STAGE_LABEL.equals(currentLabel)) {
         currentVisiblePosition = visibleLabels.size();
       }
@@ -191,12 +193,6 @@ public class ReviewStageService {
     String dbc = getDesignatedBodyCode(form);
     List<StateStage> stages = getConfiguredStages(dbc);
 
-    boolean anyEnabled = stages.stream().anyMatch(StateStage::enabled);
-    if (!anyEnabled) {
-      log.debug("All review stages disabled for DBC '{}'; no stages to advance through.", dbc);
-      return Optional.empty();
-    }
-
     ReviewStageStatus current = getCurrentReviewStage(form);
     if (current == null) {
       log.warn(
@@ -254,8 +250,8 @@ public class ReviewStageService {
    * REJECTED, WITHDRAWN) require the form to be at the implicit terminal stage, i.e. past all
    * configured stages.
    *
-   * <p>If no workflow is configured for the form's DBC, or all configured stages are disabled, the
-   * transition is always permitted.
+   * <p>If no workflow is configured for the form's DBC, or the form has no current review stage
+   * (e.g. it was submitted after all stages were disabled), the transition is always permitted.
    *
    * @param form The form to check.
    * @param targetState The lifecycle state the form is being transitioned to.
@@ -270,13 +266,6 @@ public class ReviewStageService {
     List<StateStage> stages = getConfiguredStages(dbc);
 
     if (stages.isEmpty()) {
-      return true;
-    }
-
-    // If all stages are disabled treat as no workflow — allow any transition.
-    boolean anyEnabled = stages.stream().anyMatch(StateStage::enabled);
-    if (!anyEnabled) {
-      log.debug("All review stages disabled for DBC '{}'; treating as no workflow.", dbc);
       return true;
     }
 

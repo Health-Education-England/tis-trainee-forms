@@ -270,15 +270,17 @@ class ReviewStageServiceTest {
   }
 
   @Test
-  void shouldReturnEmptyWhenAllStagesDisabledForAdvance() {
+  void shouldAdvanceToTerminalStageWhenAllStagesDisabledButFormIsAtStage() {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
         disabledStage("Triage"), disabledStage("Manager Review"))));
 
     LtftForm form = formAtReviewStage(DBC, 0, "Triage");
     Optional<ReviewStageStatus> result = service.resolveAdvance(form);
 
-    assertTrue(result.isEmpty(),
-        "Expected empty optional when all stages are disabled.");
+    assertTrue(result.isPresent(),
+        "Expected advancement to terminal stage when form is at a disabled stage.");
+    assertThat("Unexpected terminal index.", result.get().index(), is(0));
+    assertThat("Unexpected terminal label.", result.get().label(), is(TERMINAL_STAGE_LABEL));
   }
 
   @Test
@@ -638,14 +640,30 @@ class ReviewStageServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
-  void shouldAllowTerminalTransitionWhenAllStagesDisabled(LifecycleState targetState) {
+  void shouldAllowTerminalTransitionWhenAllStagesDisabledAndFormHasNoReviewStage(
+      LifecycleState targetState) {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
         disabledStage("Triage"), disabledStage("Manager Review"))));
 
     LtftForm form = formWithDbc(DBC);
 
     assertTrue(service.canTransitionToLifecycleState(form, targetState),
-        "Expected terminal transition to be allowed when all stages disabled.");
+        "Expected terminal transition to be allowed when form has no review stage.");
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
+  void shouldDenyTerminalTransitionWhenAllStagesDisabledButFormIsAtDisabledStage(
+      LifecycleState targetState) {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        disabledStage("Triage"), disabledStage("Manager Review"))));
+
+    // Form was in-flight when stage was disabled — must advance to terminal first.
+    LtftForm form = formAtReviewStage(DBC, 0, "Triage");
+
+    assertFalse(service.canTransitionToLifecycleState(form, targetState),
+        "Expected terminal transition denied from disabled stage "
+            + "(must advance to terminal stage first).");
   }
 
   @ParameterizedTest
@@ -889,6 +907,20 @@ class ReviewStageServiceTest {
 
     assertThat("Unexpected stages when all disabled.", dto.stages(), empty());
     assertThat("Unexpected current stage when all disabled.", dto.currentStage(), nullValue());
+  }
+
+  @Test
+  void shouldIncludeTerminalStageWhenAllStagesDisabledButFormIsAtDisabledStage() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        disabledStage("Triage"), disabledStage("Middle"))));
+
+    LtftForm form = formAtReviewStage(DBC, 0, "Triage");
+
+    ReviewWorkflowDto dto = service.getWorkflowDto(form);
+
+    assertThat("Unexpected stages.", dto.stages(),
+        contains("Triage", TERMINAL_STAGE_LABEL));
+    assertThat("Unexpected current stage.", dto.currentStage(), is(0));
   }
 
   @Test
