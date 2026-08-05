@@ -90,6 +90,8 @@ class LtftServiceIntegrationTest {
   private static final String DBC_THREE_STAGES = "TEST-DBC-3-STAGES";
   private static final String DBC_ONE_STAGE = "TEST-DBC-1-STAGE";
   private static final String DBC_NO_WORKFLOW = "unknown-dbc"; // not in config
+  private static final String DBC_DISABLED_FIRST = "TEST-DBC-DISABLED-FIRST";
+  private static final String DBC_MIXED = "TEST-DBC-MIXED";
 
   private static final String TRAINEE_ID = "47165";
   private static final UUID PM_UUID = UUID.randomUUID();
@@ -763,5 +765,171 @@ class LtftServiceIntegrationTest {
         current.reviewStage().index(), is(0));
     assertThat("Unexpected review stage label on re-submit.",
         current.reviewStage().label(), is("Stage One"));
+  }
+
+  // -- disabled stage index consistency --
+
+  @Test
+  void shouldAssignVisibleIndexZeroWhenFirstConfiguredStageIsDisabled() {
+    // TEST-DBC-DISABLED-FIRST: [Triage(disabled), Education Review(enabled), APD Approval(enabled)]
+    // First enabled stage should get visible index 0, not absolute index 1.
+    LtftFormDto dto = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .name("disabled first stage test")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .designatedBodyCode(DBC_DISABLED_FIRST)
+            .build())
+        .build();
+
+    LtftFormDto draft = service.createLtftForm(dto).orElseThrow();
+    LtftFormDto submitted = service.submitLtftForm(draft.id(), null).orElseThrow();
+
+    StatusInfoDto current = submitted.status().current();
+    assertThat("Unexpected state.", current.state(), is(LifecycleState.SUBMITTED));
+    assertThat("Unexpected review stage index — should be visible index 0.",
+        current.reviewStage().index(), is(0));
+    assertThat("Unexpected review stage label.",
+        current.reviewStage().label(), is("Education Review"));
+  }
+
+  @Test
+  void shouldReturnConsistentIndexBetweenFormStatusAndWorkflowEndpoint() {
+    // Submit a form to DBC with disabled first stage, then verify that the index in the form's
+    // status matches the currentStage from the review-workflow endpoint.
+    adminIdentity.setGroups(Set.of(DBC_DISABLED_FIRST));
+
+    LtftFormDto dto = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .name("consistency test")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .designatedBodyCode(DBC_DISABLED_FIRST)
+            .build())
+        .build();
+
+    LtftFormDto draft = service.createLtftForm(dto).orElseThrow();
+    LtftFormDto submitted = service.submitLtftForm(draft.id(), null).orElseThrow();
+
+    int formStatusIndex = submitted.status().current().reviewStage().index();
+    Optional<ReviewWorkflowDto> workflow = service.getReviewWorkflow(submitted.id());
+
+    assertThat("Workflow should be present.", workflow.isPresent(), is(true));
+    assertThat("Form status index should match workflow endpoint currentStage.",
+        formStatusIndex, is(workflow.get().currentStage()));
+  }
+
+  @Test
+  void shouldAdvanceThroughStagesWithCorrectVisibleIndicesWhenMiddleStageDisabled()
+      throws MethodArgumentNotValidException {
+    // TEST-DBC-MIXED: A(enabled=0), B(disabled), C(enabled=1), D(enabled=2)
+    // Advance: A(0) → C(1) → D(2) → terminal(3)
+    adminIdentity.setGroups(Set.of(DBC_MIXED));
+    adminIdentity.setName("Ad Min");
+    adminIdentity.setEmail("ad.min@test.com");
+
+    LtftForm form = savedSubmittedFormWithReviewStage(DBC_MIXED, 0, "Stage A");
+
+    // Advance from A(0) → should skip B(disabled) → C(1)
+    Optional<LtftFormDto> step1 = service.advanceReviewStage(form.getId(), null);
+    assertThat("Step 1 result presence.", step1.isPresent(), is(true));
+    assertThat("Step 1 index.", step1.get().status().current().reviewStage().index(), is(1));
+    assertThat("Step 1 label.", step1.get().status().current().reviewStage().label(),
+        is("Stage C"));
+
+    // Advance from C(1) → D(2)
+    Optional<LtftFormDto> step2 = service.advanceReviewStage(form.getId(), null);
+    assertThat("Step 2 result presence.", step2.isPresent(), is(true));
+    assertThat("Step 2 index.", step2.get().status().current().reviewStage().index(), is(2));
+    assertThat("Step 2 label.", step2.get().status().current().reviewStage().label(),
+        is("Stage D"));
+
+    // Advance from D(2) → terminal(3 = enabled count)
+    Optional<LtftFormDto> step3 = service.advanceReviewStage(form.getId(), null);
+    assertThat("Step 3 result presence.", step3.isPresent(), is(true));
+    assertThat("Step 3 (terminal) index.", step3.get().status().current().reviewStage().index(),
+        is(3));
+    assertThat("Step 3 (terminal) label.", step3.get().status().current().reviewStage().label(),
+        is("Review complete"));
+  }
+
+  @Test
+  void shouldAdvanceThroughStagesWithCorrectVisibleIndicesWhenFirstStageDisabled()
+      throws MethodArgumentNotValidException {
+    // TEST-DBC-DISABLED-FIRST: [Triage(disabled), Education Review(enabled=0),
+    //                           APD Approval(enabled=1)]
+    // Advance: Education(0) → APD(1) → terminal(2)
+    adminIdentity.setGroups(Set.of(DBC_DISABLED_FIRST));
+    adminIdentity.setName("Ad Min");
+    adminIdentity.setEmail("ad.min@test.com");
+
+    LtftForm form = savedSubmittedFormWithReviewStage(DBC_DISABLED_FIRST, 0, "Education Review");
+
+    // Advance from Education Review(0) → APD Approval(1)
+    Optional<LtftFormDto> step1 = service.advanceReviewStage(form.getId(), null);
+    assertThat("Step 1 result presence.", step1.isPresent(), is(true));
+    assertThat("Step 1 index.", step1.get().status().current().reviewStage().index(), is(1));
+    assertThat("Step 1 label.", step1.get().status().current().reviewStage().label(),
+        is("APD Approval"));
+
+    // Advance from APD Approval(1) → terminal(2 = enabled count)
+    Optional<LtftFormDto> step2 = service.advanceReviewStage(form.getId(), null);
+    assertThat("Step 2 result presence.", step2.isPresent(), is(true));
+    assertThat("Step 2 (terminal) index.", step2.get().status().current().reviewStage().index(),
+        is(2));
+    assertThat("Step 2 (terminal) label.", step2.get().status().current().reviewStage().label(),
+        is("Review complete"));
+  }
+
+  @Test
+  void shouldAdvanceFromDisabledStageToNextEnabledStageWithCorrectIndex()
+      throws MethodArgumentNotValidException {
+    // TEST-DBC-MIXED: A(enabled=0), B(disabled), C(enabled=1), D(enabled=2)
+    // Form is at B (entered when B was enabled). Should advance to C with visible index 1.
+    adminIdentity.setGroups(Set.of(DBC_MIXED));
+    adminIdentity.setName("Ad Min");
+    adminIdentity.setEmail("ad.min@test.com");
+
+    // Simulate a form that entered B when it was enabled (visible index was 1 at that time).
+    LtftForm form = savedSubmittedFormWithReviewStage(DBC_MIXED, 1, "Stage B");
+
+    Optional<LtftFormDto> result = service.advanceReviewStage(form.getId(), null);
+    assertThat("Result presence.", result.isPresent(), is(true));
+    // Note that reviewStage.index remains 1: this is because the disabled stage it moved out of
+    // is no longer counted (and will no longer be visible in the review-workflow either).
+    assertThat("Next stage index.", result.get().status().current().reviewStage().index(), is(1));
+    assertThat("Next stage label.", result.get().status().current().reviewStage().label(),
+        is("Stage C"));
+  }
+
+  @Test
+  void shouldReturnCorrectWorkflowStagesAndCurrentPositionForDisabledFirstStage() {
+    // Verify the workflow endpoint returns only enabled stages + terminal,
+    // with the correct currentStage position.
+    adminIdentity.setGroups(Set.of(DBC_DISABLED_FIRST));
+
+    LtftForm form = savedSubmittedFormWithReviewStage(DBC_DISABLED_FIRST, 0, "Education Review");
+
+    Optional<ReviewWorkflowDto> workflow = service.getReviewWorkflow(form.getId());
+
+    assertThat("Workflow should be present.", workflow.isPresent(), is(true));
+    assertThat("Unexpected stages.", workflow.get().stages(),
+        contains("Education Review", "APD Approval", "Review complete"));
+    assertThat("Unexpected currentStage.", workflow.get().currentStage(), is(0));
+  }
+
+  @Test
+  void shouldReturnCorrectWorkflowStagesAndCurrentPositionForMixedDisabledStages() {
+    // TEST-DBC-MIXED at Stage D (visible index 2).
+    adminIdentity.setGroups(Set.of(DBC_MIXED));
+
+    LtftForm form = savedSubmittedFormWithReviewStage(DBC_MIXED, 2, "Stage D");
+
+    Optional<ReviewWorkflowDto> workflow = service.getReviewWorkflow(form.getId());
+
+    assertThat("Workflow should be present.", workflow.isPresent(), is(true));
+    assertThat("Unexpected stages.", workflow.get().stages(),
+        contains("Stage A", "Stage C", "Stage D", "Review complete"));
+    assertThat("Unexpected currentStage.", workflow.get().currentStage(), is(2));
   }
 }

@@ -23,8 +23,10 @@ package uk.nhs.hee.tis.trainee.forms.config;
 
 import jakarta.annotation.PostConstruct;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -63,17 +65,23 @@ public class ReviewWorkflowProperties {
   /**
    * Validates the configured review workflows after properties have been bound.
    *
-   * @throws IllegalStateException if any stage label is blank.
+   * @throws IllegalStateException if any stage label is blank or duplicated within a DBC.
    */
   @PostConstruct
   void validate() {
     reviewWorkflows.forEach((dbc, stages) -> {
+      Set<String> seenLabels = new HashSet<>();
       for (int i = 0; i < stages.size(); i++) {
         String label = stages.get(i).label();
         if (label == null || label.isBlank()) {
           throw new IllegalStateException(
               "Review workflow for DBC '%s' contains a blank stage label at index %d."
                   .formatted(dbc, i));
+        }
+        if (!seenLabels.add(label)) {
+          throw new IllegalStateException(
+              "Review workflow for DBC '%s' contains duplicate stage label '%s' at index %d."
+                  .formatted(dbc, label, i));
         }
       }
     });
