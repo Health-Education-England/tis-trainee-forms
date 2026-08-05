@@ -92,6 +92,7 @@ class LtftServiceIntegrationTest {
   private static final String DBC_NO_WORKFLOW = "unknown-dbc"; // not in config
   private static final String DBC_DISABLED_FIRST = "TEST-DBC-DISABLED-FIRST";
   private static final String DBC_MIXED = "TEST-DBC-MIXED";
+  private static final String DBC_ALL_DISABLED = "TEST-DBC-DISABLED";
 
   private static final String TRAINEE_ID = "47165";
   private static final UUID PM_UUID = UUID.randomUUID();
@@ -931,5 +932,79 @@ class LtftServiceIntegrationTest {
     assertThat("Unexpected stages.", workflow.get().stages(),
         contains("Stage A", "Stage C", "Stage D", "Review complete"));
     assertThat("Unexpected currentStage.", workflow.get().currentStage(), is(2));
+  }
+
+  // -- all-disabled DBC (TEST-DBC-DISABLED) in-flight form behaviour --
+
+  @Test
+  void shouldAppendTerminalStageInWorkflowWhenFormIsAtDisabledStageInAllDisabledDbc() {
+    // TEST-DBC-DISABLED has a single disabled stage "Disabled Stage".
+    // A form in-flight at that stage should see the terminal stage appended.
+    adminIdentity.setGroups(Set.of(DBC_ALL_DISABLED));
+
+    LtftForm form = savedSubmittedFormWithReviewStage(DBC_ALL_DISABLED, 0, "Disabled Stage");
+
+    Optional<ReviewWorkflowDto> workflow = service.getReviewWorkflow(form.getId());
+
+    assertThat("Workflow should be present.", workflow.isPresent(), is(true));
+    assertThat("Expected disabled stage and terminal stage.", workflow.get().stages(),
+        contains("Disabled Stage", "Review complete"));
+    assertThat("Expected current stage to be at the disabled stage.",
+        workflow.get().currentStage(), is(0));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
+  void shouldDenyTerminalTransitionWhenFormIsAtDisabledStageInAllDisabledDbc(
+      LifecycleState targetState) {
+    // Form is in-flight at the disabled stage — must advance to "Review complete" first.
+    adminIdentity.setGroups(Set.of(DBC_ALL_DISABLED));
+
+    LtftForm form = savedSubmittedFormWithReviewStage(DBC_ALL_DISABLED, 0, "Disabled Stage");
+
+    assertThrows(MethodArgumentNotValidException.class,
+        () -> service.updateStatusAsAdmin(form.getId(), targetState, null),
+        "Expected terminal transition to be denied from disabled stage.");
+  }
+
+  @Test
+  void shouldAdvanceFromDisabledStageToTerminalInAllDisabledDbc()
+      throws MethodArgumentNotValidException {
+    // Form is in-flight at the disabled stage — advance should go to "Review complete".
+    adminIdentity.setGroups(Set.of(DBC_ALL_DISABLED));
+    adminIdentity.setName("Ad Min");
+    adminIdentity.setEmail("ad.min@test.com");
+
+    LtftForm form = savedSubmittedFormWithReviewStage(DBC_ALL_DISABLED, 0, "Disabled Stage");
+
+    Optional<LtftFormDto> result = service.advanceReviewStage(form.getId(), null);
+
+    assertThat("Expected advancement to succeed.", result.isPresent(), is(true));
+    assertThat("Unexpected terminal stage index.",
+        result.get().status().current().reviewStage().index(), is(0));
+    assertThat("Unexpected terminal stage label.",
+        result.get().status().current().reviewStage().label(), is("Review complete"));
+  }
+
+  @Test
+  void shouldAllowApprovalAfterAdvancingToTerminalInAllDisabledDbc()
+      throws MethodArgumentNotValidException {
+    // Full lifecycle: advance to terminal, then approve.
+    adminIdentity.setGroups(Set.of(DBC_ALL_DISABLED));
+    adminIdentity.setName("Ad Min");
+    adminIdentity.setEmail("ad.min@test.com");
+
+    LtftForm form = savedSubmittedFormWithReviewStage(DBC_ALL_DISABLED, 0, "Disabled Stage");
+
+    // Advance to terminal stage.
+    service.advanceReviewStage(form.getId(), null);
+
+    // Now approve should succeed.
+    Optional<LtftFormDto> approved = service.updateStatusAsAdmin(
+        form.getId(), LifecycleState.APPROVED, null);
+
+    assertThat("Expected approval to succeed.", approved.isPresent(), is(true));
+    assertThat("Unexpected state.", approved.get().status().current().state(),
+        is(LifecycleState.APPROVED));
   }
 }

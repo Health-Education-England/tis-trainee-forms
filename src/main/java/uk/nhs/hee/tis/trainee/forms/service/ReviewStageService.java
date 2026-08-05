@@ -119,9 +119,11 @@ public class ReviewStageService {
     }
 
     // Append the implicit terminal stage if any configured stages are enabled, or if the form
-    // is currently at a stage in the workflow (i.e. it was in-flight when stages were disabled).
+    // is genuinely in-flight (its current label exists in the configured workflow or is the
+    // terminal label itself). Stale/unknown labels do not trigger terminal stage appending.
     boolean anyEnabled = allStages.stream().anyMatch(StateStage::enabled);
-    if (anyEnabled || (currentLabel != null && !allStages.isEmpty())) {
+    boolean inFlight = currentVisiblePosition != null || TERMINAL_STAGE_LABEL.equals(currentLabel);
+    if (anyEnabled || inFlight) {
       if (TERMINAL_STAGE_LABEL.equals(currentLabel)) {
         currentVisiblePosition = visibleLabels.size();
       }

@@ -924,6 +924,20 @@ class ReviewStageServiceTest {
   }
 
   @Test
+  void shouldNotAppendTerminalStageWhenFormHasStaleReviewStageLabelAndAllStagesDisabled() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        disabledStage("Triage"), disabledStage("Middle"))));
+
+    // Form has a stale label that no longer exists in the configured workflow.
+    LtftForm form = formAtReviewStage(DBC, 0, "Renamed Stage");
+
+    ReviewWorkflowDto dto = service.getWorkflowDto(form);
+
+    assertThat("Expected empty stages for stale label.", dto.stages(), empty());
+    assertThat("Expected null current stage for stale label.", dto.currentStage(), nullValue());
+  }
+
+  @Test
   void shouldReturnEmptyStagesWhenFormHasContentButNoProgrammeMembership() {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(stage("Triage"))));
 
