@@ -2494,7 +2494,7 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldPublishStatusUpdateNotificationWhenAdvancingReviewStage()
+  void shouldNotPublishStatusUpdateNotificationWhenAdvancingReviewStage()
       throws MethodArgumentNotValidException {
     LtftForm form = new LtftForm();
     form.setId(ID);
@@ -2513,8 +2513,8 @@ class LtftServiceTest {
 
     service.advanceReviewStage(ID);
 
-    verify(eventBroadcastService).publishLtftFormUpdateEvent(any(), eq(FORM_ATTRIBUTE_FORM_STATUS),
-        eq(LTFT_STATUS_UPDATE_TOPIC));
+    verify(eventBroadcastService, never()).publishLtftFormUpdateEvent(any(),
+        eq(FORM_ATTRIBUTE_FORM_STATUS), eq(LTFT_STATUS_UPDATE_TOPIC));
   }
 
   @Test

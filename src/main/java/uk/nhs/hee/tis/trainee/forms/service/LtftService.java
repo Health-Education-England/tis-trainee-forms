@@ -793,7 +793,6 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
       StatusDetail detailEntity = mapper.toStatusDetail(detail);
       form.setReviewStage(nextStage.get(), detailEntity, modifiedBy);
       LtftForm savedForm = ltftFormRepository.save(form);
-      publishUpdateNotification(savedForm, FORM_ATTRIBUTE_FORM_STATUS, ltftStatusUpdateTopic);
       return Optional.of(mapper.toDto(savedForm));
     } else {
       // Already at the final stage — advancing further is not permitted via this action.
