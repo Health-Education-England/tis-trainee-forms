@@ -21,7 +21,6 @@
 
 package uk.nhs.hee.tis.trainee.forms.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonView;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
@@ -182,13 +181,8 @@ public record LtftFormDto(
    */
   @Builder
   public record ExceptionalReasonsDto(
-      @JsonProperty("isExceptional")
       Boolean exceptional,
-
-      @JsonProperty("exceptionalReasons")
       String supportingInformation,
-
-      @JsonProperty("exceptionalReasonsDate")
       LocalDate startDate) {
 
   }
