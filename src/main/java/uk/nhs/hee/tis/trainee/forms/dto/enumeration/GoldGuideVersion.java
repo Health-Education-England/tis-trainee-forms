@@ -32,7 +32,8 @@ import org.thymeleaf.templatemode.TemplateMode;
 public enum GoldGuideVersion {
 
   GG9("gg9.html"),
-  GG10("gg10.html");
+  GG10("gg10.html"),
+  GG11("gg11.html");
 
   private static final String COJ_TEMPLATE_PATH = "conditions-of-joining";
 
