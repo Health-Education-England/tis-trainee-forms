@@ -268,6 +268,80 @@ class PdfServiceTest {
     assertThat("Unexpected content.", resource.getContentAsByteArray(), is(contentBytes));
   }
 
+  @ParameterizedTest
+  @EnumSource(GoldGuideVersion.class)
+  void shouldGenerateConditionsOfJoiningPdfFromTemplate(GoldGuideVersion version)
+      throws IOException {
+    ConditionsOfJoining conditionsOfJoining = new ConditionsOfJoining(version, Instant.now());
+    ConditionsOfJoiningPdfRequestDto request = new ConditionsOfJoiningPdfRequestDto(TRAINEE_ID,
+        PROGRAMME_MEMBERSHIP_ID, PROGRAMME_NAME, conditionsOfJoining);
+
+    service.generatePdf(request);
+
+    ArgumentCaptor<TemplateSpec> templateCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<Context> contextCaptor = ArgumentCaptor.captor();
+    verify(templateEngine).process(templateCaptor.capture(), contextCaptor.capture());
+
+    TemplateSpec templateSpec = templateCaptor.getValue();
+    String filename = version.toString().toLowerCase() + ".html";
+    assertThat("Unexpected template.", templateSpec.getTemplate(),
+        is("conditions-of-joining" + File.separatorChar + filename));
+    assertThat("Unexpected template selectors.", templateSpec.getTemplateSelectors(), nullValue());
+    assertThat("Unexpected template mode.", templateSpec.getTemplateMode(), is(HTML));
+    assertThat("Unexpected template resolution attributes.",
+        templateSpec.getTemplateResolutionAttributes(), nullValue());
+
+    Context context = contextCaptor.getValue();
+    assertThat("Unexpected locale.", context.getLocale(), is(Locale.ENGLISH));
+
+    Set<String> variableNames = context.getVariableNames();
+    assertThat("Unexpected variable count.", variableNames.size(), is(2));
+    assertThat("Unexpected event value.", context.getVariable("var"), sameInstance(request));
+    assertThat("Unexpected timezone value.", context.getVariable("timezone"), is(TIMEZONE.getId()));
+  }
+
+  @ParameterizedTest
+  @EnumSource(GoldGuideVersion.class)
+  void shouldReturnGeneratedConditionsOfJoiningPdf(GoldGuideVersion version) throws IOException {
+    ConditionsOfJoining conditionsOfJoining = new ConditionsOfJoining(version, Instant.now());
+    ConditionsOfJoiningPdfRequestDto request = new ConditionsOfJoiningPdfRequestDto(TRAINEE_ID,
+        PROGRAMME_MEMBERSHIP_ID, PROGRAMME_NAME, conditionsOfJoining);
+
+    String content = "<html>test content</html>";
+    when(templateEngine.process(any(TemplateSpec.class), any())).thenReturn(content);
+
+    byte[] bytes = service.generatePdf(request);
+
+    PDDocument pdf = Loader.loadPDF(bytes);
+    String pdfText = new PDFTextStripper().getText(pdf);
+    assertThat("Unexpected content.", pdfText, is("test content" + System.lineSeparator()));
+  }
+
+  @ParameterizedTest
+  @EnumSource(GoldGuideVersion.class)
+  void shouldNotUploadGeneratedConditionsOfJoiningPdf(GoldGuideVersion version) throws IOException {
+    ConditionsOfJoining conditionsOfJoining = new ConditionsOfJoining(version, Instant.now());
+    ConditionsOfJoiningPdfRequestDto request = new ConditionsOfJoiningPdfRequestDto(TRAINEE_ID,
+        PROGRAMME_MEMBERSHIP_ID, PROGRAMME_NAME, conditionsOfJoining);
+
+    service.generatePdf(request);
+
+    verifyNoInteractions(s3Template);
+  }
+
+  @ParameterizedTest
+  @EnumSource(GoldGuideVersion.class)
+  void shouldNotSendNotificationOfGeneratedConditionsOfJoiningPdf(GoldGuideVersion version)
+      throws IOException {
+    ConditionsOfJoining conditionsOfJoining = new ConditionsOfJoining(version, Instant.now());
+    ConditionsOfJoiningPdfRequestDto request = new ConditionsOfJoiningPdfRequestDto(TRAINEE_ID,
+        PROGRAMME_MEMBERSHIP_ID, PROGRAMME_NAME, conditionsOfJoining);
+
+    service.generatePdf(request);
+
+    verifyNoInteractions(snsTemplate);
+  }
+
   @Test
   void shouldGenerateLtftFromTemplate() throws IOException {
     LtftFormDto dto = LtftFormDto.builder()

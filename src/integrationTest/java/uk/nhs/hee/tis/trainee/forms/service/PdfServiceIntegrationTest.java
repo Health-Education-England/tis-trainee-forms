@@ -53,6 +53,8 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
+import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoining;
+import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.CovidDeclarationDto;
 import uk.nhs.hee.tis.trainee.forms.dto.DeclarationDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
@@ -70,6 +72,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.WorkDto;
 import uk.nhs.hee.tis.trainee.forms.dto.content.FormrPartaContentDto;
 import uk.nhs.hee.tis.trainee.forms.dto.content.FormrPartbContentDto;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.GoldGuideVersion;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 
 @SpringBootTest
@@ -379,6 +382,24 @@ class PdfServiceIntegrationTest {
     byte[] generatedBytes = service.generatePdf(dto, "trainee");
 
     int problems = compareGeneratedPdf("ltft-trainee-alternate", generatedBytes);
+    assertThat("Unexpected PDF comparison problem count.", problems, is(0));
+  }
+
+  @Test
+  void shouldMatchConditionsOfJoiningGg11Pdf() throws IOException {
+    ConditionsOfJoining coj = new ConditionsOfJoining(
+        GoldGuideVersion.GG11,
+        LocalDate.of(2025, 6, 15).atTime(10, 30)
+            .atZone(zoneId).toInstant());
+    ConditionsOfJoiningPdfRequestDto request = new ConditionsOfJoiningPdfRequestDto(
+        "trainee-id-12345",
+        UUID.fromString("550e8400-e29b-41d4-a716-446655440000"),
+        "General Practice",
+        coj);
+
+    byte[] pdf = service.generatePdf(request);
+
+    int problems = compareGeneratedPdf("coj-gg11", pdf);
     assertThat("Unexpected PDF comparison problem count.", problems, is(0));
   }
 

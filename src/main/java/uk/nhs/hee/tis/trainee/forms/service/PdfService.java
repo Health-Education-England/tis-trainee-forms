@@ -62,7 +62,6 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.GoldGuideVersion;
 import uk.nhs.hee.tis.trainee.forms.event.ConditionsOfJoiningPublishedEvent;
 import uk.nhs.hee.tis.trainee.forms.event.FormRPartAPublishedEvent;
 import uk.nhs.hee.tis.trainee.forms.event.FormRPartBPublishedEvent;
-import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 
 /**
  * A service handling PDF generation and publishing via S3 and SNS.
@@ -220,6 +219,21 @@ public class PdfService {
   }
 
   /**
+   * Generate a PDF for a {@link ConditionsOfJoiningPdfRequestDto}.
+   *
+   * @param request The request details to convert to a PDF.
+   * @return The bytes of the generated PDF.
+   * @throws IOException If a valid PDF could not be created.
+   */
+  public byte[] generatePdf(ConditionsOfJoiningPdfRequestDto request) throws IOException {
+    GoldGuideVersion version = request.conditionsOfJoining().version();
+    log.info("Generating a PDF for Conditions of Joining version '{}'", version);
+
+    TemplateSpec templateSpec = version.getConditionsOfJoiningTemplate();
+    return generatePdf(templateSpec, Map.of("var", request));
+  }
+
+  /**
    * Generate a PDF for a {@link LtftFormDto}.
    *
    * @param dto              The data object to convert to a PDF.
@@ -284,6 +298,7 @@ public class PdfService {
     String body = templateEngine.process(templateSpec,
         new Context(Locale.ENGLISH, enhancedVariables));
     Document parsedBody = Jsoup.parse(body);
+
 
     ByteArrayOutputStream os = new ByteArrayOutputStream();
     new PdfRendererBuilder()
