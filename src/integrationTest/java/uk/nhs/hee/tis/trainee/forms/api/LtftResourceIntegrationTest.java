@@ -61,6 +61,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -71,8 +72,10 @@ import org.hamcrest.number.IsCloseTo;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -127,6 +130,12 @@ class LtftResourceIntegrationTest {
   private static final UUID ID = UUID.randomUUID();
   private static final UUID PM_UUID = FEATURES_LTFT_PROGRAMME_INCLUDED;
 
+
+  private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern(
+      "dd MMMM yyyy");
+  private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern(
+      "dd MMMM yyyy HH:mm (z)");
+
   @Autowired
   private ObjectMapper mapper;
 
@@ -149,6 +158,20 @@ class LtftResourceIntegrationTest {
 
   @Autowired
   private MongoTemplate template;
+
+  /**
+   * Create null, empty and false ExceptionalReasons arguments.
+   *
+   * @return The arguments.
+   */
+  private static Stream<Arguments> notExceptionalReasons() {
+    return Stream.of(
+        Arguments.of((ExceptionalReasons) null),
+        Arguments.of(ExceptionalReasons.builder().build()),
+        Arguments.of(ExceptionalReasons.builder().exceptional(null).build()),
+        Arguments.of(ExceptionalReasons.builder().exceptional(false).build())
+    );
+  }
 
   @AfterEach
   void tearDown() {
@@ -1331,24 +1354,24 @@ class LtftResourceIntegrationTest {
         .andReturn();
 
     byte[] response = result.getResponse().getContentAsByteArray();
-    PDDocument pdf = Loader.loadPDF(response);
-    PDFTextStripper textStripper = new PDFTextStripper();
-    textStripper.setAddMoreFormatting(false);
-    String pdfText = textStripper.getText(pdf);
+    try (PDDocument pdf = Loader.loadPDF(response)) {
+      PDFTextStripper textStripper = new PDFTextStripper();
+      textStripper.setAddMoreFormatting(false);
+      String pdfText = textStripper.getText(pdf);
 
-    assertThat("Unexpected sub title.", pdfText,
-        containsString(status + " Application" + System.lineSeparator()));
-    DateTimeFormatter datePattern = DateTimeFormatter.ofPattern("dd MMMM yyyy HH:mm (z)");
-    String modifiedString = ZonedDateTime.ofInstant(ltft.getLastModified(), timezone)
-        .format(datePattern);
-    if (status == DRAFT) {
-      assertThat("Unexpected modified timestamp.", pdfText,
-          not(containsString(status + " date " + modifiedString + System.lineSeparator())));
-      assertThat("Unexpected form ref.", pdfText,
-          not(containsString("Reference")));
-    } else {
-      assertThat("Unexpected modified timestamp.", pdfText,
-          containsString(status + " date " + modifiedString + System.lineSeparator()));
+      assertThat("Unexpected sub title.", pdfText,
+          containsString(status + " Application" + System.lineSeparator()));
+      String modifiedString = ZonedDateTime.ofInstant(ltft.getLastModified(), timezone)
+          .format(DATE_TIME_FORMATTER);
+      if (status == DRAFT) {
+        assertThat("Unexpected modified timestamp.", pdfText,
+            not(containsString(status + " date " + modifiedString + System.lineSeparator())));
+        assertThat("Unexpected form ref.", pdfText,
+            not(containsString("Reference")));
+      } else {
+        assertThat("Unexpected modified timestamp.", pdfText,
+            containsString(status + " date " + modifiedString + System.lineSeparator()));
+      }
     }
   }
 
@@ -1405,35 +1428,36 @@ class LtftResourceIntegrationTest {
         .andReturn();
 
     byte[] response = result.getResponse().getContentAsByteArray();
-    PDDocument pdf = Loader.loadPDF(response);
-    PDFTextStripper textStripper = new PDFTextStripper();
-    textStripper.setAddMoreFormatting(false);
-    String pdfText = textStripper.getText(pdf);
+    try (PDDocument pdf = Loader.loadPDF(response)) {
+      PDFTextStripper textStripper = new PDFTextStripper();
+      textStripper.setAddMoreFormatting(false);
+      String pdfText = textStripper.getText(pdf);
 
-    assertThat("Unexpected header.", pdfText,
-        startsWith("Less Than Full Time (LTFT)" + System.lineSeparator()));
-    assertThat("Unexpected sub title.", pdfText,
-        containsString(status + " Application" + System.lineSeparator()));
-    assertThat("Unexpected name.", pdfText,
-        containsString("Name Reducing Hours" + System.lineSeparator()));
+      assertThat("Unexpected header.", pdfText,
+          startsWith("Less Than Full Time (LTFT)" + System.lineSeparator()));
+      assertThat("Unexpected sub title.", pdfText,
+          containsString(status + " Application" + System.lineSeparator()));
+      assertThat("Unexpected name.", pdfText,
+          containsString("Name Reducing Hours" + System.lineSeparator()));
 
-    DateTimeFormatter datePattern = DateTimeFormatter.ofPattern("dd MMMM yyyy HH:mm (z)");
-    String createdString = ZonedDateTime.ofInstant(ltft.getCreated(), timezone).format(datePattern);
-    assertThat("Unexpected created timestamp.", pdfText,
-        containsString("Created date " + createdString + System.lineSeparator()));
+      String createdString = ZonedDateTime.ofInstant(ltft.getCreated(), timezone)
+          .format(DATE_TIME_FORMATTER);
+      assertThat("Unexpected created timestamp.", pdfText,
+          containsString("Created date " + createdString + System.lineSeparator()));
 
-    String modifiedString = ZonedDateTime.ofInstant(ltft.getLastModified(), timezone)
-        .format(datePattern);
-    assertThat("Unexpected modified timestamp.", pdfText,
-        containsString(status + " date " + modifiedString + System.lineSeparator()));
-    assertThat("Unexpected modified by.", pdfText,
-        containsString(status + " by Me" + System.lineSeparator()));
-    assertThat("Unexpected status reason.", pdfText,
-        containsString("Reason Change WTE percentage" + System.lineSeparator()));
-    assertThat("Unexpected status message.", pdfText,
-        containsString("Message Testing Message" + System.lineSeparator()));
-    assertThat("Unexpected form ref.", pdfText,
-        containsString("Reference ltft_47165_001" + System.lineSeparator()));
+      String modifiedString = ZonedDateTime.ofInstant(ltft.getLastModified(), timezone)
+          .format(DATE_TIME_FORMATTER);
+      assertThat("Unexpected modified timestamp.", pdfText,
+          containsString(status + " date " + modifiedString + System.lineSeparator()));
+      assertThat("Unexpected modified by.", pdfText,
+          containsString(status + " by Me" + System.lineSeparator()));
+      assertThat("Unexpected status reason.", pdfText,
+          containsString("Reason Change WTE percentage" + System.lineSeparator()));
+      assertThat("Unexpected status message.", pdfText,
+          containsString("Message Testing Message" + System.lineSeparator()));
+      assertThat("Unexpected form ref.", pdfText,
+          containsString("Reference ltft_47165_001" + System.lineSeparator()));
+    }
   }
 
   @Test
@@ -1493,53 +1517,53 @@ class LtftResourceIntegrationTest {
         .andReturn();
 
     byte[] response = result.getResponse().getContentAsByteArray();
-    PDDocument pdf = Loader.loadPDF(response);
-    PDFTextStripper textStripper = new PDFTextStripper();
-    textStripper.setAddMoreFormatting(false);
-    String pdfText = textStripper.getText(pdf);
+    try (PDDocument pdf = Loader.loadPDF(response)) {
+      PDFTextStripper textStripper = new PDFTextStripper();
+      textStripper.setAddMoreFormatting(false);
+      String pdfText = textStripper.getText(pdf);
 
-    // Your Programme
-    assertThat("Unexpected section header.", pdfText,
-        containsString("Your Programme" + System.lineSeparator()));
-    assertThat("Unexpected working hours question.", removeLineBreak(pdfText),
-        containsString(
-            "What percentage of your full time hours do you work before your proposed change?"));
-    assertThat("Unexpected programme name.", pdfText,
-        containsString("General Practice" + System.lineSeparator()));
+      // Your Programme
+      assertThat("Unexpected section header.", pdfText,
+          containsString("Your Programme" + System.lineSeparator()));
+      assertThat("Unexpected working hours question.", removeLineBreak(pdfText),
+          containsString(
+              "What percentage of your full time hours do you work before your proposed change?"));
+      assertThat("Unexpected programme name.", pdfText,
+          containsString("General Practice" + System.lineSeparator()));
 
-    // Working hours before change
-    assertThat("Unexpected section header.", pdfText,
-        containsString("Working hours before change" + System.lineSeparator()));
-    assertThat("Unexpected working hours question.", removeLineBreak(pdfText),
-        containsString(
-            "What percentage of your full time hours do you work before your proposed change?"));
-    assertThat("Unexpected working hours value.", pdfText,
-        containsString("85" + System.lineSeparator()));
+      // Working hours before change
+      assertThat("Unexpected section header.", pdfText,
+          containsString("Working hours before change" + System.lineSeparator()));
+      assertThat("Unexpected working hours question.", removeLineBreak(pdfText),
+          containsString(
+              "What percentage of your full time hours do you work before your proposed change?"));
+      assertThat("Unexpected working hours value.", pdfText,
+          containsString("85" + System.lineSeparator()));
 
-    // Proposed change to your working hours
-    assertThat("Unexpected section header.", pdfText,
-        containsString("Proposed change to your working hours" + System.lineSeparator()));
-    assertThat("Unexpected change wte question.", removeLineBreak(pdfText),
-        containsString("What percentage of your full time hours do you want to work?"));
-    assertThat("Unexpected change wte.", pdfText,
-        containsString("75" + System.lineSeparator()));
+      // Proposed change to your working hours
+      assertThat("Unexpected section header.", pdfText,
+          containsString("Proposed change to your working hours" + System.lineSeparator()));
+      assertThat("Unexpected change wte question.", removeLineBreak(pdfText),
+          containsString("What percentage of your full time hours do you want to work?"));
+      assertThat("Unexpected change wte.", pdfText,
+          containsString("75" + System.lineSeparator()));
 
-    // Start date
-    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMMM yyyy");
-    assertThat("Unexpected section header." + System.lineSeparator(), pdfText,
-        containsString("Start date" + System.lineSeparator()));
-    assertThat("Unexpected change start date question.", removeLineBreak(pdfText),
-        containsString("When should this change to your working hours begin?"));
-    assertThat("Unexpected change start date." + System.lineSeparator(), pdfText,
-        containsString(changeStartDate.format(formatter)));
+      // Start date
+      assertThat("Unexpected section header." + System.lineSeparator(), pdfText,
+          containsString("Start date" + System.lineSeparator()));
+      assertThat("Unexpected change start date question.", removeLineBreak(pdfText),
+          containsString("When should this change to your working hours begin?"));
+      assertThat("Unexpected change start date." + System.lineSeparator(), pdfText,
+          containsString(changeStartDate.format(DATE_FORMATTER)));
 
-    // Alternate start date
-    assertThat("Unexpected alternate start date section header.", pdfText,
-        containsString("Alternate start date" + System.lineSeparator()));
-    assertThat("Unexpected alternate start date question.", removeLineBreak(pdfText),
-        containsString("Alternative start for change to your working hours?"));
-    assertThat("Unexpected alternate start date value.", pdfText,
-        containsString(altStartDate.format(formatter)));
+      // Alternate start date
+      assertThat("Unexpected alternate start date section header.", pdfText,
+          containsString("Alternate start date" + System.lineSeparator()));
+      assertThat("Unexpected alternate start date question.", removeLineBreak(pdfText),
+          containsString("Alternative start for change to your working hours?"));
+      assertThat("Unexpected alternate start date value.", pdfText,
+          containsString(altStartDate.format(DATE_FORMATTER)));
+    }
   }
 
   @Test
@@ -1600,26 +1624,27 @@ class LtftResourceIntegrationTest {
         .andReturn();
 
     byte[] response = result.getResponse().getContentAsByteArray();
-    PDDocument pdf = Loader.loadPDF(response);
-    PDFTextStripper textStripper = new PDFTextStripper();
-    textStripper.setAddMoreFormatting(false);
-    String pdfText = textStripper.getText(pdf);
+    try (PDDocument pdf = Loader.loadPDF(response)) {
+      PDFTextStripper textStripper = new PDFTextStripper();
+      textStripper.setAddMoreFormatting(false);
+      String pdfText = textStripper.getText(pdf);
 
-    // Pre-approver discussions
-    assertThat("Unexpected section header.", pdfText,
-        containsString("Pre-approver discussions" + System.lineSeparator()));
-    assertThat("Unexpected TPD name.", pdfText,
-        containsString("Pre-approver name Tee Pee-Dee" + System.lineSeparator()));
-    assertThat("Unexpected TPD email.", pdfText,
-        containsString("Pre-approver email address tpd@example.com" + System.lineSeparator()));
+      // Pre-approver discussions
+      assertThat("Unexpected section header.", pdfText,
+          containsString("Pre-approver discussions" + System.lineSeparator()));
+      assertThat("Unexpected TPD name.", pdfText,
+          containsString("Pre-approver name Tee Pee-Dee" + System.lineSeparator()));
+      assertThat("Unexpected TPD email.", pdfText,
+          containsString("Pre-approver email address tpd@example.com" + System.lineSeparator()));
 
-    // Other discussions
-    assertThat("Unexpected section header.", pdfText,
-        containsString("Other discussions" + System.lineSeparator()));
-    assertThat("Unexpected other discussions.", removeLineBreak(pdfText), containsString(
-        "Name: Ed Super Email: ed.super@example.com Role: Educational Supervisor"));
-    assertThat("Unexpected other discussions.", removeLineBreak(pdfText), containsString(
-        "Name: Person Two Email: person.2@example.com Role: Test Data"));
+      // Other discussions
+      assertThat("Unexpected section header.", pdfText,
+          containsString("Other discussions" + System.lineSeparator()));
+      assertThat("Unexpected other discussions.", removeLineBreak(pdfText), containsString(
+          "Name: Ed Super Email: ed.super@example.com Role: Educational Supervisor"));
+      assertThat("Unexpected other discussions.", removeLineBreak(pdfText), containsString(
+          "Name: Person Two Email: person.2@example.com Role: Test Data"));
+    }
   }
 
   @Test
@@ -1668,26 +1693,146 @@ class LtftResourceIntegrationTest {
         .andReturn();
 
     byte[] response = result.getResponse().getContentAsByteArray();
-    PDDocument pdf = Loader.loadPDF(response);
-    PDFTextStripper textStripper = new PDFTextStripper();
-    textStripper.setAddMoreFormatting(false);
-    String pdfText = textStripper.getText(pdf);
+    try (PDDocument pdf = Loader.loadPDF(response)) {
+      PDFTextStripper textStripper = new PDFTextStripper();
+      textStripper.setAddMoreFormatting(false);
+      String pdfText = textStripper.getText(pdf);
 
-    // Reason(s) for applying
-    assertThat("Unexpected section header.", pdfText,
-        containsString("Reason(s) for applying" + System.lineSeparator()));
-    assertThat("Unexpected reason.", pdfText,
-        containsString("Why are you applying? Test1, Test2, Other" + System.lineSeparator()));
-    assertThat("Unexpected other reason.", pdfText,
-        containsString("Other reason other-detail" + System.lineSeparator()));
+      // Reason(s) for applying
+      assertThat("Unexpected section header.", pdfText,
+          containsString("Reason(s) for applying" + System.lineSeparator()));
+      assertThat("Unexpected reason.", pdfText,
+          containsString("Why are you applying? Test1, Test2, Other" + System.lineSeparator()));
+      assertThat("Unexpected other reason.", pdfText,
+          containsString("Other reason other-detail" + System.lineSeparator()));
 
-    // Supporting information
-    assertThat("Unexpected section header.", pdfText,
-        containsString("Supporting information" + System.lineSeparator()));
-    assertThat("Unexpected support info question.", removeLineBreak(pdfText),
-        containsString("Please provide brief supporting information for your application."));
-    assertThat("Unexpected support info.", pdfText,
-        containsString("supporting-information" + System.lineSeparator()));
+      // Supporting information
+      assertThat("Unexpected section header.", pdfText,
+          containsString("Supporting information" + System.lineSeparator()));
+      assertThat("Unexpected support info question.", removeLineBreak(pdfText),
+          containsString("Please provide brief supporting information for your application."));
+      assertThat("Unexpected support info.", pdfText,
+          containsString("supporting-information" + System.lineSeparator()));
+    }
+  }
+
+  @ParameterizedTest
+  @MethodSource("notExceptionalReasons")
+  void shouldGetDetailPdfWithoutExceptionalReasonsWhenNotExceptional(
+      ExceptionalReasons exceptionalReasons) throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setAssignedAdmin(Person.builder().build(), null);
+
+    LtftContent content = LtftContent.builder()
+        .personalDetails(PersonalDetails.builder().build())
+        .programmeMembership(ProgrammeMembership.builder().build())
+        .change(CctChange.builder().build())
+        .reasons(Reasons.builder().build())
+        .exceptionalReasons(exceptionalReasons)
+        .declarations(Declarations.builder().build())
+        .discussions(Discussions.builder().build())
+        .build();
+    ltft.setContent(content);
+
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+
+    AbstractAuditedForm.Status.StatusInfo statusInfo = AbstractAuditedForm.Status.StatusInfo.builder()
+        .state(SUBMITTED).timestamp(Instant.now())
+        .build();
+    ltft.setStatus(AbstractAuditedForm.Status.builder()
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED)
+                .timestamp(latestSubmitted).build()))
+        .build()
+    );
+
+    ltft = template.insert(ltft);
+
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
+    MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
+            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+            .with(jwt().jwt(token)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_PDF))
+        .andReturn();
+
+    byte[] response = result.getResponse().getContentAsByteArray();
+    try (PDDocument pdf = Loader.loadPDF(response)) {
+      PDFTextStripper textStripper = new PDFTextStripper();
+      textStripper.setAddMoreFormatting(false);
+      String pdfText = textStripper.getText(pdf);
+
+      assertThat("Unexpected section header.", pdfText, not(containsString("Exceptional Reasons")));
+    }
+  }
+
+  @Test
+  void shouldGetDetailPdfWithExceptionalReasonsWhenExceptional() throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setAssignedAdmin(Person.builder().build(), null);
+
+    LocalDate exceptionalStartDate = LocalDate.now();
+
+    LtftContent content = LtftContent.builder()
+        .personalDetails(PersonalDetails.builder().build())
+        .programmeMembership(ProgrammeMembership.builder().build())
+        .change(CctChange.builder().build())
+        .reasons(Reasons.builder().build())
+        .exceptionalReasons(ExceptionalReasons.builder()
+            .exceptional(true)
+            .supportingInformation("supporting-information")
+            .startDate(exceptionalStartDate)
+            .build())
+        .declarations(Declarations.builder().build())
+        .discussions(Discussions.builder().build())
+        .build();
+    ltft.setContent(content);
+
+    Instant latestSubmitted = Instant.now().plus(Duration.ofDays(7));
+
+    AbstractAuditedForm.Status.StatusInfo statusInfo = AbstractAuditedForm.Status.StatusInfo.builder()
+        .state(SUBMITTED).timestamp(Instant.now())
+        .build();
+    ltft.setStatus(AbstractAuditedForm.Status.builder()
+        .current(statusInfo)
+        .history(List.of(
+            statusInfo,
+            AbstractAuditedForm.Status.StatusInfo.builder().state(SUBMITTED)
+                .timestamp(latestSubmitted).build()))
+        .build()
+    );
+
+    ltft = template.insert(ltft);
+
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
+    MvcResult result = mockMvc.perform(get("/api/ltft/" + ltft.getId())
+            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+            .with(jwt().jwt(token)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_PDF))
+        .andReturn();
+
+    byte[] response = result.getResponse().getContentAsByteArray();
+    try (PDDocument pdf = Loader.loadPDF(response)) {
+      PDFTextStripper textStripper = new PDFTextStripper();
+      textStripper.setAddMoreFormatting(false);
+      String pdfText = textStripper.getText(pdf);
+
+      assertThat("Unexpected exceptional start date question.", removeLineBreak(pdfText),
+          containsString("When would you like this change to your working hours to begin?"));
+      assertThat("Unexpected exceptional start date value.", pdfText,
+          containsString(exceptionalStartDate.format(DATE_FORMATTER)));
+
+      assertThat("Unexpected support info question.", removeLineBreak(pdfText), containsString(
+          "Please give the exceptional reason(s) why you cannot give 16 weeks' notice to change your"
+              + " working hours."));
+      assertThat("Unexpected support info.", pdfText,
+          containsString("supporting-information" + System.lineSeparator()));
+    }
   }
 
   @Test
@@ -1743,38 +1888,39 @@ class LtftResourceIntegrationTest {
         .andReturn();
 
     byte[] response = result.getResponse().getContentAsByteArray();
-    PDDocument pdf = Loader.loadPDF(response);
-    PDFTextStripper textStripper = new PDFTextStripper();
-    textStripper.setAddMoreFormatting(false);
-    String pdfText = textStripper.getText(pdf);
+    try (PDDocument pdf = Loader.loadPDF(response)) {
+      PDFTextStripper textStripper = new PDFTextStripper();
+      textStripper.setAddMoreFormatting(false);
+      String pdfText = textStripper.getText(pdf);
 
-    // Tier 2 / Skilled Worker status
-    assertThat("Unexpected section header.", pdfText,
-        containsString("Tier 2 / Skilled Worker status" + System.lineSeparator()));
-    assertThat("Unexpected visa holder question.", removeLineBreak(pdfText),
-        containsString("Are you a Tier 2 / Skilled Worker Visa holder?"));
-    assertThat("Unexpected visa holder.", pdfText,
-        containsString("true" + System.lineSeparator()));
+      // Tier 2 / Skilled Worker status
+      assertThat("Unexpected section header.", pdfText,
+          containsString("Tier 2 / Skilled Worker status" + System.lineSeparator()));
+      assertThat("Unexpected visa holder question.", removeLineBreak(pdfText),
+          containsString("Are you a Tier 2 / Skilled Worker Visa holder?"));
+      assertThat("Unexpected visa holder.", pdfText,
+          containsString("true" + System.lineSeparator()));
 
-    // Personal Details
-    assertThat("Unexpected section header.", pdfText,
-        containsString("Personal Details" + System.lineSeparator()));
-    assertThat("Unexpected forename.", pdfText,
-        containsString("Forename Anthony" + System.lineSeparator()));
-    assertThat("Unexpected surname.", pdfText,
-        containsString("Surname (GMC-Registered) Gilliam" + System.lineSeparator()));
-    assertThat("Unexpected contact telphone.", pdfText,
-        containsString("Contact Telephone 07700900000" + System.lineSeparator()));
-    assertThat("Unexpected contact mobile.", pdfText,
-        containsString("Contact Mobile 07700900001" + System.lineSeparator()));
-    assertThat("Unexpected email.", pdfText,
-        containsString("Email Address anthony.gilliam@example.com" + System.lineSeparator()));
-    assertThat("Unexpected GMC.", pdfText,
-        containsString("GMC Number 1234567" + System.lineSeparator()));
-    assertThat("Unexpected GDC.", pdfText,
-        containsString("GDC Number (if applicable) D123456" + System.lineSeparator()));
-    assertThat("Unexpected GDC.", removeLineBreak(pdfText),
-        containsString("Public Health Number (if applicable) Not provided"));
+      // Personal Details
+      assertThat("Unexpected section header.", pdfText,
+          containsString("Personal Details" + System.lineSeparator()));
+      assertThat("Unexpected forename.", pdfText,
+          containsString("Forename Anthony" + System.lineSeparator()));
+      assertThat("Unexpected surname.", pdfText,
+          containsString("Surname (GMC-Registered) Gilliam" + System.lineSeparator()));
+      assertThat("Unexpected contact telphone.", pdfText,
+          containsString("Contact Telephone 07700900000" + System.lineSeparator()));
+      assertThat("Unexpected contact mobile.", pdfText,
+          containsString("Contact Mobile 07700900001" + System.lineSeparator()));
+      assertThat("Unexpected email.", pdfText,
+          containsString("Email Address anthony.gilliam@example.com" + System.lineSeparator()));
+      assertThat("Unexpected GMC.", pdfText,
+          containsString("GMC Number 1234567" + System.lineSeparator()));
+      assertThat("Unexpected GDC.", pdfText,
+          containsString("GDC Number (if applicable) D123456" + System.lineSeparator()));
+      assertThat("Unexpected GDC.", removeLineBreak(pdfText),
+          containsString("Public Health Number (if applicable) Not provided"));
+    }
   }
 
   @Test
@@ -1836,37 +1982,38 @@ class LtftResourceIntegrationTest {
         .andReturn();
 
     byte[] response = result.getResponse().getContentAsByteArray();
-    PDDocument pdf = Loader.loadPDF(response);
-    PDFTextStripper textStripper = new PDFTextStripper();
-    textStripper.setAddMoreFormatting(false);
-    String pdfText = textStripper.getText(pdf);
+    try (PDDocument pdf = Loader.loadPDF(response)) {
+      PDFTextStripper textStripper = new PDFTextStripper();
+      textStripper.setAddMoreFormatting(false);
+      String pdfText = textStripper.getText(pdf);
 
-    assertThat("Unexpected section header.", removeLineBreak(pdfText),
-        containsString("Change to your completion date for General Practice"));
-    assertThat("Unexpected programme.", pdfText,
-        containsString("Programme General Practice" + System.lineSeparator()));
-    DateTimeFormatter datePattern = DateTimeFormatter.ofPattern("dd MMMM yyyy");
-    assertThat("Unexpected 16 weeks warning.", removeLineBreak(pdfText),
-        containsString(
-            "Warning: Giving less than 16 weeks notice to change your working hours is classed as a late application and will only be considered on an exceptional basis."));
-    String endDateString = endDate.format(datePattern);
-    assertThat("Unexpected current end date.", removeLineBreak(pdfText),
-        containsString(
-            "Current completion date " + endDateString + " (Programme end date on TIS)"));
-    assertThat("Unexpected precentage change.", removeLineBreak(pdfText),
-        containsString("Working hours percentage change 85% -> 75%"));
-    String startDateString = changeStartDate.format(datePattern);
-    assertThat("Unexpected start date.", removeLineBreak(pdfText),
-        containsString("LTFT Start date " + startDateString));
-    String altStartDateString = altStartDate.format(datePattern);
-    assertThat("Unexpected alternate start date.", pdfText,
-        containsString("Alternate start date" + System.lineSeparator()));
-    assertThat("Unexpected alternate start date value.", removeLineBreak(pdfText),
-        containsString("Alternative start for change to your working hours? "
-            + altStartDateString));
-    assertThat("Unexpected note.", removeLineBreak(pdfText),
-        containsString(
-            "Reducing your working hours from 85% to 75% will extend programme completion date. Your formal completion date will be agreed at ARCP."));
+      assertThat("Unexpected section header.", removeLineBreak(pdfText),
+          containsString("Change to your completion date for General Practice"));
+      assertThat("Unexpected programme.", pdfText,
+          containsString("Programme General Practice" + System.lineSeparator()));
+      assertThat("Unexpected 16 weeks warning.", removeLineBreak(pdfText),
+          containsString(
+              "Warning: Giving less than 16 weeks notice to change your working hours is classed as"
+                  + " a late application and will only be considered on an exceptional basis."));
+      String endDateString = endDate.format(DATE_FORMATTER);
+      assertThat("Unexpected current end date.", removeLineBreak(pdfText),
+          containsString(
+              "Current completion date " + endDateString + " (Programme end date on TIS)"));
+      assertThat("Unexpected precentage change.", removeLineBreak(pdfText),
+          containsString("Working hours percentage change 85% -> 75%"));
+      String startDateString = changeStartDate.format(DATE_FORMATTER);
+      assertThat("Unexpected start date.", removeLineBreak(pdfText),
+          containsString("LTFT Start date " + startDateString));
+      String altStartDateString = altStartDate.format(DATE_FORMATTER);
+      assertThat("Unexpected alternate start date.", pdfText,
+          containsString("Alternate start date" + System.lineSeparator()));
+      assertThat("Unexpected alternate start date value.", removeLineBreak(pdfText),
+          containsString("Alternative start for change to your working hours? "
+              + altStartDateString));
+      assertThat("Unexpected note.", removeLineBreak(pdfText),
+          containsString(
+              "Reducing your working hours from 85% to 75% will extend programme completion date. Your formal completion date will be agreed at ARCP."));
+    }
   }
 
   @Test
@@ -1926,16 +2073,17 @@ class LtftResourceIntegrationTest {
         .andReturn();
 
     byte[] response = result.getResponse().getContentAsByteArray();
-    PDDocument pdf = Loader.loadPDF(response);
-    PDFTextStripper textStripper = new PDFTextStripper();
-    textStripper.setAddMoreFormatting(false);
-    String pdfText = textStripper.getText(pdf);
+    try (PDDocument pdf = Loader.loadPDF(response)) {
+      PDFTextStripper textStripper = new PDFTextStripper();
+      textStripper.setAddMoreFormatting(false);
+      String pdfText = textStripper.getText(pdf);
 
-    assertThat("Unexpected precentage change.", removeLineBreak(pdfText),
-        containsString("Working hours percentage change 60% -> 80%"));
-    assertThat("Unexpected note.", removeLineBreak(pdfText),
-        containsString(
-            "Increasing your working hours from 60% to 80% will shorten programme completion date. Your formal completion date will be agreed at ARCP."));
+      assertThat("Unexpected precentage change.", removeLineBreak(pdfText),
+          containsString("Working hours percentage change 60% -> 80%"));
+      assertThat("Unexpected note.", removeLineBreak(pdfText),
+          containsString(
+              "Increasing your working hours from 60% to 80% will shorten programme completion date. Your formal completion date will be agreed at ARCP."));
+    }
   }
 
   @Test
@@ -1986,18 +2134,19 @@ class LtftResourceIntegrationTest {
         .andReturn();
 
     byte[] response = result.getResponse().getContentAsByteArray();
-    PDDocument pdf = Loader.loadPDF(response);
-    PDFTextStripper textStripper = new PDFTextStripper();
-    textStripper.setAddMoreFormatting(false);
-    String pdfText = textStripper.getText(pdf);
+    try (PDDocument pdf = Loader.loadPDF(response)) {
+      PDFTextStripper textStripper = new PDFTextStripper();
+      textStripper.setAddMoreFormatting(false);
+      String pdfText = textStripper.getText(pdf);
 
-    assertThat("Unexpected section header.", pdfText,
-        containsString("Declarations" + System.lineSeparator()));
-    assertThat("Unexpected declaration.", removeLineBreak(pdfText),
-        containsString(
-            "I confirm that the information I have provided is correct and accurate to the best of my knowledge. true"));
-    assertThat("Unexpected declaration.", removeLineBreak(pdfText),
-        containsString("I understand that approval of my application is not guaranteed. true"));
+      assertThat("Unexpected section header.", pdfText,
+          containsString("Declarations" + System.lineSeparator()));
+      assertThat("Unexpected declaration.", removeLineBreak(pdfText),
+          containsString(
+              "I confirm that the information I have provided is correct and accurate to the best of my knowledge. true"));
+      assertThat("Unexpected declaration.", removeLineBreak(pdfText),
+          containsString("I understand that approval of my application is not guaranteed. true"));
+    }
   }
 
   private String removeLineBreak(String text) {

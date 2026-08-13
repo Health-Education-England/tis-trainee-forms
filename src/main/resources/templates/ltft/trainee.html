@@ -85,12 +85,28 @@
         </div>
       </div>
       <div class="nhsuk-card">
-        <div class="nhsuk-card__content">
+        <div class="nhsuk-card__content" th:with="isExceptional=${var.exceptionalReasons?.exceptional == true}">
           <h2 class="nhsuk-card__heading nhsuk-card__heading--feature">Start date</h2><br/>
           <div class="nhsuk-summary-list__row">
-            <dt class="nhsuk-summary-list__key">When should this change to your working hours begin?</dt>
-            <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(var.change?.startDate, 'dd MMMM yyyy')} ?: _">Not provided</dd>
+            <dt class="nhsuk-summary-list__key">Are you giving at least 16 weeks' notice to change your working hours?</dt>
+            <dd class="nhsuk-summary-list__value" th:text="${isExceptional ? 'No' : 'Yes'}">Not provided</dd>
           </div>
+          <th:block th:if="${isExceptional}" th:with="exceptional=${var.exceptionalReasons}">
+            <div class="nhsuk-summary-list__row">
+              <dt class="nhsuk-summary-list__key">Please give the exceptional reason(s) why you cannot give 16 weeks' notice to change your working hours.</dt>
+              <dd class="nhsuk-summary-list__value" th:text="${not #strings.isEmpty(exceptional.supportingInformation)} ? ${exceptional.supportingInformation} : _">Not provided</dd>
+            </div>
+            <div class="nhsuk-summary-list__row">
+              <dt class="nhsuk-summary-list__key">When would you like this change to your working hours to begin?</dt>
+              <dd class="nhsuk-summary-list__value" th:text="${exceptional.startDate != null ? #temporals.format(exceptional.startDate, 'dd MMMM yyyy') : _}">Not provided</dd>
+            </div>
+          </th:block>
+          <th:block th:unless="${isExceptional}">
+            <div class="nhsuk-summary-list__row">
+              <dt class="nhsuk-summary-list__key">When should this change to your working hours begin?</dt>
+              <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(var.change?.startDate, 'dd MMMM yyyy')} ?: _">Not provided</dd>
+            </div>
+          </th:block>
         </div>
         <div class="nhsuk-card__content" th:if="${var.change?.altStartDate != null}">
           <h2 class="nhsuk-card__heading nhsuk-card__heading--feature">Alternate start date</h2><br/>
