@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.model.content;
 import java.time.LocalDate;
 import java.util.UUID;
 import lombok.Builder;
+import lombok.With;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 /**
@@ -44,6 +45,7 @@ public record CctChange(
     UUID calculationId,
     CctChangeType type,
     Double wte,
+    @With
     LocalDate startDate,
     LocalDate altStartDate,
     LocalDate endDate) {

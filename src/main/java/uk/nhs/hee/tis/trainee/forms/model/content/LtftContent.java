@@ -51,6 +51,7 @@ public record LtftContent(
     ProgrammeMembership programmeMembership,
     Declarations declarations,
     Discussions discussions,
+    @With
     CctChange change,
     Reasons reasons,
     ExceptionalReasons exceptionalReasons,
