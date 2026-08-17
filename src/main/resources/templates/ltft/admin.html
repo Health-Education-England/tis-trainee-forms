@@ -110,6 +110,10 @@
               <dt class="nhsuk-summary-list__key">Alternate Start Date</dt>
               <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(change?.altStartDate, 'dd MMMM yyyy')} ?: _">Not Given</dd>
             </div>
+            <div class="nhsuk-summary-list__row" th:if="${var.exceptionalReasons?.exceptional}">
+              <dt class="nhsuk-summary-list__key">Exceptional Start Date</dt>
+              <dd class="nhsuk-summary-list__value" th:text="${var.exceptionalReasons.startDate != null ? #temporals.format(var.exceptionalReasons.startDate, 'dd MMMM yyyy') : _}">Not Given</dd>
+            </div>
           </dl>
         </div>
       </div>
@@ -132,6 +136,10 @@
             <div class="nhsuk-summary-list__row">
               <dt class="nhsuk-summary-list__key">Supporting Information</dt>
               <dd class="nhsuk-summary-list__value" th:text="${reasons?.supportingInformation} ?: _">Not Given</dd>
+            </div>
+            <div class="nhsuk-summary-list__row" th:if="${var.exceptionalReasons?.exceptional}">
+              <dt class="nhsuk-summary-list__key">Exceptional Supporting Information</dt>
+              <dd class="nhsuk-summary-list__value" th:text="${var.exceptionalReasons.supportingInformation} ?: _">Not Given</dd>
             </div>
           </dl>
         </div>

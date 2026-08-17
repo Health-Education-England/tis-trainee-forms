@@ -39,6 +39,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -164,6 +165,8 @@ class LtftServiceTest {
   private static final String LTFT_STATUS_CONTENT_TOPIC = "update/topic/content";
   private static final UUID PM_UUID = UUID.randomUUID();
 
+  private static final ZoneId TIMEZONE = ZoneId.of("Europe/London");
+
   private LtftService service;
   private LtftFormRepository repository;
   private MongoTemplate mongoTemplate;
@@ -203,14 +206,14 @@ class LtftServiceTest {
     when(reviewStageService.canTransitionToLifecycleState(any(), any())).thenReturn(true);
 
     jsonMapper = (JsonMapper) new JsonMapper().registerModule(new JavaTimeModule());
-    temporalMapper = mock();
-    mapper = new LtftMapperImpl(new TemporalMapper(ZoneId.of("Etc/UTC")));
+    temporalMapper = spy(new TemporalMapper(ZoneId.of("Etc/UTC")));
+    mapper = new LtftMapperImpl(temporalMapper);
     mapper.setTemporalMapper(temporalMapper);
     validator = mock();
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, jsonMapper,
         mapper, validator, eventBroadcastService, LTFT_ASSIGNMENT_UPDATE_TOPIC,
         LTFT_STATUS_UPDATE_TOPIC, LTFT_STATUS_CONTENT_TOPIC, ltftSubmissionHistoryService,
-        reviewStageService);
+        reviewStageService, TIMEZONE);
   }
 
   @Test
@@ -2311,7 +2314,8 @@ class LtftServiceTest {
   void shouldNotQueryForDisabledStagesAlreadyInEnabledSet() {
     List<String> adminDbcs = List.of(ADMIN_GROUP);
     // "Triage" is enabled for one DBC and disabled for another
-    when(reviewStageService.getEnabledStageLabels(adminDbcs)).thenReturn(Set.of("Triage", "Review"));
+    when(reviewStageService.getEnabledStageLabels(adminDbcs)).thenReturn(
+        Set.of("Triage", "Review"));
     when(reviewStageService.getDisabledStageLabels(adminDbcs))
         .thenReturn(new java.util.HashSet<>(Set.of("Triage")));
 
@@ -2882,7 +2886,7 @@ class LtftServiceTest {
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, jsonMapper,
         mapper, validator, eventBroadcastService, LTFT_ASSIGNMENT_UPDATE_TOPIC,
         LTFT_STATUS_UPDATE_TOPIC, LTFT_STATUS_CONTENT_TOPIC, ltftSubmissionHistoryService,
-        reviewStageService);
+        reviewStageService, TIMEZONE);
 
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
@@ -2920,7 +2924,7 @@ class LtftServiceTest {
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, jsonMapper,
         mapper, validator, eventBroadcastService, LTFT_ASSIGNMENT_UPDATE_TOPIC,
         LTFT_STATUS_UPDATE_TOPIC, LTFT_STATUS_CONTENT_TOPIC, ltftSubmissionHistoryService,
-        reviewStageService);
+        reviewStageService, TIMEZONE);
 
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
@@ -2957,7 +2961,7 @@ class LtftServiceTest {
     service = new LtftService(adminIdentity, traineeIdentity, repository, mongoTemplate, jsonMapper,
         mapper, validator, eventBroadcastService, LTFT_ASSIGNMENT_UPDATE_TOPIC,
         LTFT_STATUS_UPDATE_TOPIC, LTFT_STATUS_CONTENT_TOPIC, ltftSubmissionHistoryService,
-        reviewStageService);
+        reviewStageService, TIMEZONE);
 
     LtftFormDto dtoToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
@@ -4042,6 +4046,60 @@ class LtftServiceTest {
     assertThat("Unexpected form ref.", form.getFormRef(), is(formRef));
     verify(repository).save(form);
     verify(ltftSubmissionHistoryService).takeSnapshot(form);
+  }
+
+  @Test
+  void shouldNotChangeStartDateWhenSubmittingExceptionalFormWithStartDate() {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(DRAFT);
+    form.setContent(LtftContent.builder()
+        .change(CctChange.builder()
+            .type(CctChangeType.LTFT)
+            .startDate(LocalDate.EPOCH)
+            .wte(1.0).build())
+        .exceptionalReasons(ExceptionalReasons.builder()
+            .exceptional(true)
+            .build())
+        .build());
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> result = service.submitLtftForm(ID, null);
+
+    assertThat("Unexpected result when form is submitted.", result.isPresent(), is(true));
+
+    LocalDate startDate = form.getContent().change().startDate();
+    assertThat("Unexpected change state date.", startDate, is(LocalDate.EPOCH));
+  }
+
+  @Test
+  void shouldSetStartDateWhenSubmittingExceptionalFormWithNoStartDate() {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(DRAFT);
+    form.setContent(LtftContent.builder()
+        .change(CctChange.builder()
+            .type(CctChangeType.LTFT)
+            .wte(1.0).build())
+        .exceptionalReasons(ExceptionalReasons.builder()
+            .exceptional(true)
+            .build())
+        .build());
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> result = service.submitLtftForm(ID, null);
+
+    assertThat("Unexpected result when form is submitted.", result.isPresent(), is(true));
+
+    LocalDate startDate = form.getContent().change().startDate();
+    LocalDate expectedStartDate = LocalDate.now(ZoneId.of("Europe/London")).plusDays(112);
+    assertThat("Unexpected change state date.", startDate, is(expectedStartDate));
   }
 
   @Test

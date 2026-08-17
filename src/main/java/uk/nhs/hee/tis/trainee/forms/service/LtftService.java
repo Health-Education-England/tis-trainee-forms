@@ -37,6 +37,8 @@ import jakarta.annotation.Nullable;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -82,7 +84,9 @@ import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetai
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
 import uk.nhs.hee.tis.trainee.forms.model.ReviewStageStatus;
+import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ExceptionalReasons;
 import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 
 /**
@@ -99,6 +103,8 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   private static final String FORM_OBJECT_NAME = "LtftForm";
   private static final String METHOD_UPDATE_STATUS = "updateStatus";
   private static final String METHOD_ADVANCE_REVIEW_STAGE = "advanceReviewStage";
+
+  private static final int MINIMUM_NOTICE_DAYS = 7 * 16; // 16 weeks in days
 
   private final AdminIdentity adminIdentity;
   private final TraineeIdentity traineeIdentity;
@@ -119,6 +125,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
 
   private final SubmissionHistoryService<LtftForm> ltftSubmissionHistoryService;
   private final ReviewStageService reviewStageService;
+  private final ZoneId timezone;
 
   /**
    * Instantiate the LTFT form service.
@@ -144,7 +151,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
       @Value("${application.aws.sns.ltft-status-updated}") String ltftStatusUpdateTopic,
       @Value("${application.aws.sns.ltft-content-updated}") String ltftContentUpdateTopic,
       SubmissionHistoryService<LtftForm> ltftSubmissionHistoryService,
-      ReviewStageService reviewStageService) {
+      ReviewStageService reviewStageService, @Value("${application.timezone}") ZoneId timezone) {
     super(ltftFormRepository, ltftSubmissionHistoryService);
 
     this.adminIdentity = adminIdentity;
@@ -160,6 +167,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
     this.ltftSubmissionHistoryService = ltftSubmissionHistoryService;
     this.eventBroadcastService = eventBroadcastService;
     this.reviewStageService = reviewStageService;
+    this.timezone = timezone;
   }
 
   /**
@@ -665,9 +673,8 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    * Get a deduplicated set of review stage labels relevant to the user's group DBCs.
    *
    * <p>This includes all <em>enabled</em> configured stages, the implicit "Review complete"
-   * terminal stage (when at least one enabled stage exists), plus any <em>disabled</em> stages
-   * that currently have LTFT forms in them (i.e. forms that entered the stage before it was
-   * disabled).
+   * terminal stage (when at least one enabled stage exists), plus any <em>disabled</em> stages that
+   * currently have LTFT forms in them (i.e. forms that entered the stage before it was disabled).
    *
    * @return A set of deduplicated review stage labels.
    */
@@ -708,8 +715,8 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    * @param formId The ID of the form to advance.
    * @return The updated LTFT application, or empty if the form was not found or does not belong to
    *     the admin's local office.
-   * @throws MethodArgumentNotValidException If the form is not currently SUBMITTED or is already
-   *                                         at the final review stage.
+   * @throws MethodArgumentNotValidException If the form is not currently SUBMITTED or is already at
+   *                                         the final review stage.
    */
   public Optional<LtftFormDto> advanceReviewStage(UUID formId)
       throws MethodArgumentNotValidException {
@@ -727,8 +734,8 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    * @param detail Optional detail to record alongside the stage change.
    * @return The updated LTFT application, or empty if the form was not found or does not belong to
    *     the admin's local office.
-   * @throws MethodArgumentNotValidException If the form is not currently SUBMITTED or is already
-   *                                         at the final review stage.
+   * @throws MethodArgumentNotValidException If the form is not currently SUBMITTED or is already at
+   *                                         the final review stage.
    */
   public Optional<LtftFormDto> advanceReviewStage(UUID formId,
       @Nullable LftfStatusInfoDetailDto detail) throws MethodArgumentNotValidException {
@@ -847,6 +854,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
     form.setLifecycleState(targetState, detailEntity, modifiedBy, form.getRevision(), reviewStage);
 
     assignFormRefIfNew(form, targetState);
+    calculateNonExceptionalStartDate(form, targetState);
 
     LtftForm savedForm = ltftFormRepository.save(form);
     if (targetState == SUBMITTED) {
@@ -870,7 +878,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
       LifecycleState currentState = (form.getStatus() != null && form.getStatus().current() != null)
           ? form.getStatus().current().state() : null;
       log.warn("Could not update form {}, invalid lifecycle transition from {} to {} "
-              + "for form type '{}'", form.getId(), currentState, targetState, form.getFormType());
+          + "for form type '{}'", form.getId(), currentState, targetState, form.getFormType());
 
       BeanPropertyBindingResult result = new BeanPropertyBindingResult(form, "form");
       result.addError(new FieldError(FORM_OBJECT_NAME, FORM_ATTRIBUTE_FORM_STATUS,
@@ -963,6 +971,32 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
       log.info("Assigning form reference {} to LTFT {}", formRef, form.getId());
       form.setFormRef(formRef);
     }
+  }
+
+  /**
+   * Calculate a start date for the LTFT form if it is being submitted as an exceptional application
+   * and there is no current start date, the minimum notice period is applied to the current date to
+   * calculate the start date.
+   *
+   * @param form        The form being updated.
+   * @param targetState The target lifecycle state.
+   */
+  private void calculateNonExceptionalStartDate(LtftForm form, LifecycleState targetState) {
+    if (targetState != SUBMITTED || form.getContent() == null) {
+      return;
+    }
+
+    LtftContent content = form.getContent();
+    CctChange change = content.change();
+    ExceptionalReasons exceptionalReasons = content.exceptionalReasons();
+
+    if (exceptionalReasons == null || !Boolean.TRUE.equals(exceptionalReasons.exceptional())
+        || change == null || change.startDate() != null) {
+      return;
+    }
+
+    LocalDate startDate = LocalDate.now(timezone).plusDays(MINIMUM_NOTICE_DAYS);
+    form.setContent(content.withChange(change.withStartDate(startDate)));
   }
 
   /**
