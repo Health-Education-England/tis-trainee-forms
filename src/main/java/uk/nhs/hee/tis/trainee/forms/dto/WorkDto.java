@@ -27,6 +27,7 @@ import lombok.Data;
 import uk.nhs.hee.tis.trainee.forms.annotations.MaxDateValidation;
 import uk.nhs.hee.tis.trainee.forms.annotations.MinDateValidation;
 import uk.nhs.hee.tis.trainee.forms.annotations.NotBeforeAnotherDateValidation;
+import uk.nhs.hee.tis.trainee.forms.annotations.NotEmptyIfAnotherFieldHasValueValidation;
 
 /**
  * A DTO for work information.
@@ -37,7 +38,19 @@ import uk.nhs.hee.tis.trainee.forms.annotations.NotBeforeAnotherDateValidation;
     dependFieldName = "endDate",
     message = "End date must not be before start date"
 )
-public class  WorkDto {
+@NotEmptyIfAnotherFieldHasValueValidation(
+    fieldName = "trainingPost",
+    fieldValue = "No",
+    isNotCondition = true,
+    dependFieldName = "site",
+    message = "Site must be provided if this is a training post")
+@NotEmptyIfAnotherFieldHasValueValidation(
+    fieldName = "trainingPost",
+    fieldValue = "No",
+    isNotCondition = true,
+    dependFieldName = "siteLocation",
+    message = "Site location must be provided if this is a training post")
+public class WorkDto {
 
   @NotNull
   @Size(min = 1, max = 100)
@@ -57,11 +70,9 @@ public class  WorkDto {
   @Size(min = 1, max = 100)
   private String trainingPost;
 
-  @NotNull
   @Size(min = 1, max = 100)
   private String site;
 
-  @NotNull
   @Size(min = 1, max = 100)
   private String siteLocation;
 
