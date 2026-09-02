@@ -98,6 +98,7 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
         .modifiedBy(modifiedBy)
         .timestamp(Instant.now())
         .revision(status == null || status.current == null ? null : status.current.revision)
+        .reviewStage(status == null || status.current == null ? null : status.current.reviewStage)
         .build();
 
     updateStatusInfo(statusInfo, false);
