@@ -349,6 +349,33 @@ class AbstractAuditedFormTest {
         is("test message"));
   }
 
+  @Test
+  void shouldRetainReviewStageWhenSettingAssignedAdmin() {
+    ReviewStageStatus reviewStage = new ReviewStageStatus(1, "Manager Review");
+    StatusInfo submittedStatus = StatusInfo.builder()
+        .state(SUBMITTED)
+        .revision(2)
+        .reviewStage(reviewStage)
+        .build();
+
+    form.setStatus(Status.builder()
+        .current(submittedStatus)
+        .history(List.of(submittedStatus))
+        .build());
+
+    form.setAssignedAdmin(
+        Person.builder().name("Ad Min").email("ad.min@example.com").role("ADMIN").build(),
+        Person.builder().name("Mo Defy").email("mo.defy@example.com").role("ADMIN").build()
+    );
+
+    assertThat("Unexpected current review stage.", form.getStatus().current().reviewStage(),
+        is(reviewStage));
+
+    List<StatusInfo> history = form.getStatus().history();
+    assertThat("Unexpected review stage in history.",
+        history.get(history.size() - 1).reviewStage(), is(reviewStage));
+  }
+
   @ParameterizedTest
   @NullSource
   @ValueSource(strings = "2024-01-01T10:00:00Z")

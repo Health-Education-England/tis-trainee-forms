@@ -1887,6 +1887,30 @@ class AdminLtftResourceIntegrationTest {
             is(originalSubmitted.truncatedTo(ChronoUnit.MILLIS).toString())));
   }
 
+  @Test
+  void shouldRetainReviewStageWhenAssigningAdmin() throws Exception {
+    LtftForm form = template.insert(
+        createSubmittedFormWithReviewStage(DBC_1, 1, "Manager Review"));
+
+    mockMvc.perform(put("/api/admin/ltft/{id}/assign", form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .contentType(APPLICATION_JSON)
+            .content("""
+                {
+                  "name": "Ad min",
+                  "email": "ad.min@example.com",
+                  "role": "ADMIN"
+                }
+                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status.current.state", is(SUBMITTED.toString())))
+        .andExpect(jsonPath("$.status.current.assignedAdmin.name", is("Ad min")))
+        .andExpect(jsonPath("$.status.current.reviewStage.index", is(1)))
+        .andExpect(jsonPath("$.status.current.reviewStage.label", is("Manager Review")))
+        .andExpect(jsonPath("$.status.history[0].reviewStage.index", is(1)))
+        .andExpect(jsonPath("$.status.history[0].reviewStage.label", is("Manager Review")));
+  }
+
   // -- GET /{id}/review-workflow --
 
   @Test
