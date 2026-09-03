@@ -377,10 +377,10 @@ class LtftServiceIntegrationTest {
   }
 
   /**
-   * Save a SUBMITTED form with the given DBC and review stage directly to MongoDB, bypassing the
+   * Save an UNDER_REVIEW form with the given DBC and review stage directly to MongoDB, bypassing the
    * service layer to allow precise state control.
    */
-  private LtftForm savedSubmittedFormWithReviewStage(String dbc, int stageIndex,
+  private LtftForm savedUnderReviewFormWithReviewStage(String dbc, int stageIndex,
       String stageLabel) {
     LtftForm form = new LtftForm();
     form.setContent(LtftContent.builder()
@@ -390,7 +390,7 @@ class LtftServiceIntegrationTest {
         .build());
     form.setStatus(Status.builder()
         .current(StatusInfo.builder()
-            .state(LifecycleState.SUBMITTED)
+            .state(LifecycleState.UNDER_REVIEW)
             .reviewStage(new ReviewStageStatus(stageIndex, stageLabel))
             .build())
         .history(List.of())
@@ -404,7 +404,7 @@ class LtftServiceIntegrationTest {
   void shouldReturnEmptyWhenFormNotInAdminDbcsForReviewWorkflow() {
     adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
 
-    LtftForm form = savedSubmittedFormWithReviewStage(DBC_NO_WORKFLOW, 0, "Triage");
+    LtftForm form = savedUnderReviewFormWithReviewStage(DBC_NO_WORKFLOW, 0, "Triage");
 
     Optional<ReviewWorkflowDto> result = service.getReviewWorkflow(form.getId());
 
@@ -415,7 +415,7 @@ class LtftServiceIntegrationTest {
   void shouldReturnEmptyStagesForDbcWithNoConfiguredWorkflow() {
     adminIdentity.setGroups(Set.of(DBC_NO_WORKFLOW));
 
-    LtftForm form = savedSubmittedFormWithReviewStage(DBC_NO_WORKFLOW, 0, "Triage");
+    LtftForm form = savedUnderReviewFormWithReviewStage(DBC_NO_WORKFLOW, 0, "Triage");
 
     Optional<ReviewWorkflowDto> result = service.getReviewWorkflow(form.getId());
 
@@ -452,7 +452,7 @@ class LtftServiceIntegrationTest {
     adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
 
     // Form is at stage 1 (Stage Two) — visible position is 1.
-    LtftForm form = savedSubmittedFormWithReviewStage(
+    LtftForm form = savedUnderReviewFormWithReviewStage(
         DBC_THREE_STAGES, 1, "Stage Two");
 
     Optional<ReviewWorkflowDto> result = service.getReviewWorkflow(form.getId());
@@ -498,14 +498,14 @@ class LtftServiceIntegrationTest {
     adminIdentity.setEmail("ad.min@test.com");
 
     // KSS has only one stage (index 0 = final configured stage).
-    LtftForm form = savedSubmittedFormWithReviewStage(
+    LtftForm form = savedUnderReviewFormWithReviewStage(
         DBC_ONE_STAGE, 0, "Single Review");
 
     Optional<LtftFormDto> result = service.advanceReviewStage(form.getId(), null);
 
     assertThat("Unexpected result presence.", result.isPresent(), is(true));
     StatusInfoDto current = result.get().status().current();
-    assertThat("Unexpected state.", current.state(), is(LifecycleState.SUBMITTED));
+    assertThat("Unexpected state.", current.state(), is(LifecycleState.UNDER_REVIEW));
     assertThat("Unexpected review stage index.", current.reviewStage().index(), is(1));
     assertThat("Unexpected review stage label.", current.reviewStage().label(),
         is("Review complete"));
@@ -516,7 +516,7 @@ class LtftServiceIntegrationTest {
     adminIdentity.setGroups(Set.of(DBC_ONE_STAGE));
 
     // KSS single stage: terminal stage is at index 1.
-    LtftForm form = savedSubmittedFormWithReviewStage(
+    LtftForm form = savedUnderReviewFormWithReviewStage(
         DBC_ONE_STAGE, 1, "Review complete");
 
     assertThrows(MethodArgumentNotValidException.class,
@@ -529,7 +529,7 @@ class LtftServiceIntegrationTest {
     adminIdentity.setName("Ad Min");
     adminIdentity.setEmail("ad.min@test.com");
 
-    LtftForm form = savedSubmittedFormWithReviewStage(
+    LtftForm form = savedUnderReviewFormWithReviewStage(
         DBC_THREE_STAGES, 0, "Stage One");
 
     Optional<LtftFormDto> result = service.advanceReviewStage(form.getId(), null);
@@ -538,7 +538,7 @@ class LtftServiceIntegrationTest {
 
     // Verify the DTO reflects the new stage.
     StatusInfoDto current = result.get().status().current();
-    assertThat("Unexpected state.", current.state(), is(LifecycleState.SUBMITTED));
+    assertThat("Unexpected state.", current.state(), is(LifecycleState.UNDER_REVIEW));
     assertThat("Unexpected review stage.", current.reviewStage(),
         is(new ReviewStageStatus(1, "Stage Two")));
 
@@ -555,7 +555,7 @@ class LtftServiceIntegrationTest {
       throws MethodArgumentNotValidException {
     adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
 
-    LtftForm form = savedSubmittedFormWithReviewStage(
+    LtftForm form = savedUnderReviewFormWithReviewStage(
         DBC_THREE_STAGES, 0, "Stage One");
 
     service.advanceReviewStage(form.getId(), null);
@@ -571,7 +571,7 @@ class LtftServiceIntegrationTest {
     adminIdentity.setName("Ad Min");
     adminIdentity.setEmail("ad.min@test.com");
 
-    LtftForm form = savedSubmittedFormWithReviewStage(
+    LtftForm form = savedUnderReviewFormWithReviewStage(
         DBC_THREE_STAGES, 0, "Stage One");
 
     LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("Triage complete",
@@ -591,7 +591,8 @@ class LtftServiceIntegrationTest {
   // -- review stage set/cleared during lifecycle transitions --
 
   @Test
-  void shouldSetFirstReviewStageWhenFormSubmittedWithConfiguredDbc() {
+  void shouldSetFirstReviewStageWhenReviewStartedWithConfiguredDbc()
+      throws MethodArgumentNotValidException {
     LtftFormDto dto = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("test form")
@@ -604,15 +605,22 @@ class LtftServiceIntegrationTest {
     LtftFormDto draft = service.createLtftForm(dto).orElseThrow();
     LtftFormDto submitted = service.submitLtftForm(draft.id(), null).orElseThrow();
 
-    StatusInfoDto current = submitted.status().current();
-    assertThat("Unexpected state.", current.state(), is(LifecycleState.SUBMITTED));
+    assertThat("Unexpected review stage before review starts.",
+        submitted.status().current().reviewStage(), nullValue());
+
+    adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
+    LtftFormDto underReview = service.startReview(submitted.id()).orElseThrow();
+
+    StatusInfoDto current = underReview.status().current();
+    assertThat("Unexpected state.", current.state(), is(LifecycleState.UNDER_REVIEW));
     assertThat("Unexpected review stage index.", current.reviewStage().index(), is(0));
     assertThat("Unexpected review stage label.", current.reviewStage().label(),
         is("Stage One"));
   }
 
   @Test
-  void shouldNotSetReviewStageWhenFormSubmittedWithUnconfiguredDbc() {
+  void shouldNotSetReviewStageWhenReviewStartedWithUnconfiguredDbc()
+      throws MethodArgumentNotValidException {
     LtftFormDto dto = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
         .name("test form")
@@ -625,8 +633,11 @@ class LtftServiceIntegrationTest {
     LtftFormDto draft = service.createLtftForm(dto).orElseThrow();
     LtftFormDto submitted = service.submitLtftForm(draft.id(), null).orElseThrow();
 
+    adminIdentity.setGroups(Set.of(DBC_NO_WORKFLOW));
+    LtftFormDto underReview = service.startReview(submitted.id()).orElseThrow();
+
     assertThat("Unexpected review stage for unconfigured DBC.",
-        submitted.status().current().reviewStage(), nullValue());
+        underReview.status().current().reviewStage(), nullValue());
   }
 
   @Test
@@ -634,7 +645,7 @@ class LtftServiceIntegrationTest {
     adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
 
     // Form at stage 0 — not the final stage (final is index 2).
-    LtftForm form = savedSubmittedFormWithReviewStage(
+    LtftForm form = savedUnderReviewFormWithReviewStage(
         DBC_THREE_STAGES, 0, "Stage One");
 
     assertThrows(MethodArgumentNotValidException.class,
@@ -646,7 +657,7 @@ class LtftServiceIntegrationTest {
     adminIdentity.setGroups(Set.of(DBC_ONE_STAGE));
 
     // KSS single stage: terminal stage is at index 1 (= stages.size()).
-    LtftForm form = savedSubmittedFormWithReviewStage(DBC_ONE_STAGE, 1, "Review complete");
+    LtftForm form = savedUnderReviewFormWithReviewStage(DBC_ONE_STAGE, 1, "Review complete");
 
     Optional<LtftFormDto> result = service.updateStatusAsAdmin(
         form.getId(), LifecycleState.APPROVED, null);
@@ -661,7 +672,7 @@ class LtftServiceIntegrationTest {
     adminIdentity.setGroups(Set.of(DBC_ONE_STAGE));
 
     // KSS single stage: at configured stage 0, not yet at terminal.
-    LtftForm form = savedSubmittedFormWithReviewStage(DBC_ONE_STAGE, 0, "Single Review");
+    LtftForm form = savedUnderReviewFormWithReviewStage(DBC_ONE_STAGE, 0, "Single Review");
 
     assertThrows(MethodArgumentNotValidException.class,
         () -> service.updateStatusAsAdmin(form.getId(), LifecycleState.APPROVED, null));
@@ -673,8 +684,8 @@ class LtftServiceIntegrationTest {
       LifecycleState targetState) throws MethodArgumentNotValidException {
     adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
 
-    // Simulate a pre-workflow form: SUBMITTED with no reviewStage, for a DBC that now has a
-    // 3-stage workflow. This mirrors forms that were already SUBMITTED when review stages were
+    // Simulate a pre-workflow form: UNDER_REVIEW with no reviewStage, for a DBC that now has a
+    // 3-stage workflow. This mirrors forms that were already under review when review stages were
     // first deployed for the DBC.
     LtftForm form = new LtftForm();
     form.setContent(LtftContent.builder()
@@ -684,7 +695,7 @@ class LtftServiceIntegrationTest {
         .build());
     form.setStatus(Status.builder()
         .current(StatusInfo.builder()
-            .state(LifecycleState.SUBMITTED)
+            .state(LifecycleState.UNDER_REVIEW)
             .build()) // no reviewStage — submitted before workflow was deployed
         .history(List.of())
         .build());
@@ -707,7 +718,7 @@ class LtftServiceIntegrationTest {
     adminIdentity.setGroups(Set.of(DBC_ONE_STAGE));
 
     // Single-stage workflow: at terminal stage (index 1), can approve.
-    LtftForm form = savedSubmittedFormWithReviewStage(DBC_ONE_STAGE, 1, "Review complete");
+    LtftForm form = savedUnderReviewFormWithReviewStage(DBC_ONE_STAGE, 1, "Review complete");
 
     Optional<LtftFormDto> result = service.updateStatusAsAdmin(
         form.getId(), LifecycleState.APPROVED, null);
@@ -723,7 +734,7 @@ class LtftServiceIntegrationTest {
     adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
 
     // Form at non-final stage (index 0) — UNSUBMIT is always allowed.
-    LtftForm form = savedSubmittedFormWithReviewStage(
+    LtftForm form = savedUnderReviewFormWithReviewStage(
         DBC_THREE_STAGES, 0, "Stage One");
 
     LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("trainee request", "notes");
@@ -753,13 +764,15 @@ class LtftServiceIntegrationTest {
     LtftFormDto submitted = service.submitLtftForm(draft.id(), null).orElseThrow();
 
     adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
-    // Advance to stage 1 then unsubmit.
+    // Start the review, advance to stage 1, then unsubmit.
+    service.startReview(submitted.id()).orElseThrow();
     service.advanceReviewStage(submitted.id(), null).orElseThrow();
     LftfStatusInfoDetailDto reason = new LftfStatusInfoDetailDto("reason", "message");
     service.unsubmitLtftForm(submitted.id(), reason).orElseThrow();
 
-    // Re-submit: review stage should restart from stage 0.
-    LtftFormDto resubmitted = service.submitLtftForm(draft.id(), null).orElseThrow();
+    // Re-submit and re-start review: review stage should restart from stage 0.
+    service.submitLtftForm(draft.id(), null).orElseThrow();
+    LtftFormDto resubmitted = service.startReview(submitted.id()).orElseThrow();
 
     StatusInfoDto current = resubmitted.status().current();
     assertThat("Unexpected review stage index on re-submit.",
@@ -768,10 +781,42 @@ class LtftServiceIntegrationTest {
         current.reviewStage().label(), is("Stage One"));
   }
 
+  // -- startReview --
+
+  @Test
+  void shouldTransitionToUnderReviewAndSelfAssignWhenStartingReview()
+      throws MethodArgumentNotValidException {
+    adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
+    adminIdentity.setName("Ad Min");
+    adminIdentity.setEmail("ad.min@test.com");
+
+    LtftFormDto dto = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .name("test form")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .designatedBodyCode(DBC_THREE_STAGES)
+            .build())
+        .build();
+    LtftFormDto draft = service.createLtftForm(dto).orElseThrow();
+    LtftFormDto submitted = service.submitLtftForm(draft.id(), null).orElseThrow();
+
+    LtftFormDto underReview = service.startReview(submitted.id()).orElseThrow();
+
+    StatusInfoDto current = underReview.status().current();
+    assertThat("Unexpected state.", current.state(), is(LifecycleState.UNDER_REVIEW));
+    assertThat("Unexpected self-assigned admin email.", current.assignedAdmin().email(),
+        is("ad.min@test.com"));
+    assertThat("Unexpected first review stage index.", current.reviewStage().index(), is(0));
+    assertThat("Unexpected first review stage label.", current.reviewStage().label(),
+        is("Stage One"));
+  }
+
   // -- disabled stage index consistency --
 
   @Test
-  void shouldAssignVisibleIndexZeroWhenFirstConfiguredStageIsDisabled() {
+  void shouldAssignVisibleIndexZeroWhenFirstConfiguredStageIsDisabled()
+      throws MethodArgumentNotValidException {
     // TEST-DBC-DISABLED-FIRST: [Triage(disabled), Education Review(enabled), APD Approval(enabled)]
     // First enabled stage should get visible index 0, not absolute index 1.
     LtftFormDto dto = LtftFormDto.builder()
@@ -786,8 +831,11 @@ class LtftServiceIntegrationTest {
     LtftFormDto draft = service.createLtftForm(dto).orElseThrow();
     LtftFormDto submitted = service.submitLtftForm(draft.id(), null).orElseThrow();
 
-    StatusInfoDto current = submitted.status().current();
-    assertThat("Unexpected state.", current.state(), is(LifecycleState.SUBMITTED));
+    adminIdentity.setGroups(Set.of(DBC_DISABLED_FIRST));
+    LtftFormDto underReview = service.startReview(submitted.id()).orElseThrow();
+
+    StatusInfoDto current = underReview.status().current();
+    assertThat("Unexpected state.", current.state(), is(LifecycleState.UNDER_REVIEW));
     assertThat("Unexpected review stage index — should be visible index 0.",
         current.reviewStage().index(), is(0));
     assertThat("Unexpected review stage label.",
@@ -795,9 +843,10 @@ class LtftServiceIntegrationTest {
   }
 
   @Test
-  void shouldReturnConsistentIndexBetweenFormStatusAndWorkflowEndpoint() {
-    // Submit a form to DBC with disabled first stage, then verify that the index in the form's
-    // status matches the currentStage from the review-workflow endpoint.
+  void shouldReturnConsistentIndexBetweenFormStatusAndWorkflowEndpoint()
+      throws MethodArgumentNotValidException {
+    // Start review on a form for a DBC with a disabled first stage, then verify that the index in
+    // the form's status matches the currentStage from the review-workflow endpoint.
     adminIdentity.setGroups(Set.of(DBC_DISABLED_FIRST));
 
     LtftFormDto dto = LtftFormDto.builder()
@@ -811,9 +860,10 @@ class LtftServiceIntegrationTest {
 
     LtftFormDto draft = service.createLtftForm(dto).orElseThrow();
     LtftFormDto submitted = service.submitLtftForm(draft.id(), null).orElseThrow();
+    LtftFormDto underReview = service.startReview(submitted.id()).orElseThrow();
 
-    int formStatusIndex = submitted.status().current().reviewStage().index();
-    Optional<ReviewWorkflowDto> workflow = service.getReviewWorkflow(submitted.id());
+    int formStatusIndex = underReview.status().current().reviewStage().index();
+    Optional<ReviewWorkflowDto> workflow = service.getReviewWorkflow(underReview.id());
 
     assertThat("Workflow should be present.", workflow.isPresent(), is(true));
     assertThat("Form status index should match workflow endpoint currentStage.",
@@ -829,7 +879,7 @@ class LtftServiceIntegrationTest {
     adminIdentity.setName("Ad Min");
     adminIdentity.setEmail("ad.min@test.com");
 
-    LtftForm form = savedSubmittedFormWithReviewStage(DBC_MIXED, 0, "Stage A");
+    LtftForm form = savedUnderReviewFormWithReviewStage(DBC_MIXED, 0, "Stage A");
 
     // Advance from A(0) → should skip B(disabled) → C(1)
     Optional<LtftFormDto> step1 = service.advanceReviewStage(form.getId(), null);
@@ -864,7 +914,7 @@ class LtftServiceIntegrationTest {
     adminIdentity.setName("Ad Min");
     adminIdentity.setEmail("ad.min@test.com");
 
-    LtftForm form = savedSubmittedFormWithReviewStage(DBC_DISABLED_FIRST, 0, "Education Review");
+    LtftForm form = savedUnderReviewFormWithReviewStage(DBC_DISABLED_FIRST, 0, "Education Review");
 
     // Advance from Education Review(0) → APD Approval(1)
     Optional<LtftFormDto> step1 = service.advanceReviewStage(form.getId(), null);
@@ -892,7 +942,7 @@ class LtftServiceIntegrationTest {
     adminIdentity.setEmail("ad.min@test.com");
 
     // Simulate a form that entered B when it was enabled (visible index was 1 at that time).
-    LtftForm form = savedSubmittedFormWithReviewStage(DBC_MIXED, 1, "Stage B");
+    LtftForm form = savedUnderReviewFormWithReviewStage(DBC_MIXED, 1, "Stage B");
 
     Optional<LtftFormDto> result = service.advanceReviewStage(form.getId(), null);
     assertThat("Result presence.", result.isPresent(), is(true));
@@ -909,7 +959,7 @@ class LtftServiceIntegrationTest {
     // with the correct currentStage position.
     adminIdentity.setGroups(Set.of(DBC_DISABLED_FIRST));
 
-    LtftForm form = savedSubmittedFormWithReviewStage(DBC_DISABLED_FIRST, 0, "Education Review");
+    LtftForm form = savedUnderReviewFormWithReviewStage(DBC_DISABLED_FIRST, 0, "Education Review");
 
     Optional<ReviewWorkflowDto> workflow = service.getReviewWorkflow(form.getId());
 
@@ -924,7 +974,7 @@ class LtftServiceIntegrationTest {
     // TEST-DBC-MIXED at Stage D (visible index 2).
     adminIdentity.setGroups(Set.of(DBC_MIXED));
 
-    LtftForm form = savedSubmittedFormWithReviewStage(DBC_MIXED, 2, "Stage D");
+    LtftForm form = savedUnderReviewFormWithReviewStage(DBC_MIXED, 2, "Stage D");
 
     Optional<ReviewWorkflowDto> workflow = service.getReviewWorkflow(form.getId());
 
@@ -942,7 +992,7 @@ class LtftServiceIntegrationTest {
     // A form in-flight at that stage should see the terminal stage appended.
     adminIdentity.setGroups(Set.of(DBC_ALL_DISABLED));
 
-    LtftForm form = savedSubmittedFormWithReviewStage(DBC_ALL_DISABLED, 0, "Disabled Stage");
+    LtftForm form = savedUnderReviewFormWithReviewStage(DBC_ALL_DISABLED, 0, "Disabled Stage");
 
     Optional<ReviewWorkflowDto> workflow = service.getReviewWorkflow(form.getId());
 
@@ -960,7 +1010,7 @@ class LtftServiceIntegrationTest {
     // Form is in-flight at the disabled stage — must advance to "Review complete" first.
     adminIdentity.setGroups(Set.of(DBC_ALL_DISABLED));
 
-    LtftForm form = savedSubmittedFormWithReviewStage(DBC_ALL_DISABLED, 0, "Disabled Stage");
+    LtftForm form = savedUnderReviewFormWithReviewStage(DBC_ALL_DISABLED, 0, "Disabled Stage");
 
     assertThrows(MethodArgumentNotValidException.class,
         () -> service.updateStatusAsAdmin(form.getId(), targetState, null),
@@ -975,7 +1025,7 @@ class LtftServiceIntegrationTest {
     adminIdentity.setName("Ad Min");
     adminIdentity.setEmail("ad.min@test.com");
 
-    LtftForm form = savedSubmittedFormWithReviewStage(DBC_ALL_DISABLED, 0, "Disabled Stage");
+    LtftForm form = savedUnderReviewFormWithReviewStage(DBC_ALL_DISABLED, 0, "Disabled Stage");
 
     Optional<LtftFormDto> result = service.advanceReviewStage(form.getId(), null);
 
@@ -994,7 +1044,7 @@ class LtftServiceIntegrationTest {
     adminIdentity.setName("Ad Min");
     adminIdentity.setEmail("ad.min@test.com");
 
-    LtftForm form = savedSubmittedFormWithReviewStage(DBC_ALL_DISABLED, 0, "Disabled Stage");
+    LtftForm form = savedUnderReviewFormWithReviewStage(DBC_ALL_DISABLED, 0, "Disabled Stage");
 
     // Advance to terminal stage.
     service.advanceReviewStage(form.getId(), null);

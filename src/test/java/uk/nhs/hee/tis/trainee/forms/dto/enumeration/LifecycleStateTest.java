@@ -160,8 +160,8 @@ class LifecycleStateTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = EXCLUDE,
-      names = {"APPROVED", "REJECTED", "UNSUBMITTED", "WITHDRAWN"})
-  void shouldNotAllowLtftToTransitionFromSubmittedToNotApprovedOrRejectedOrWithdrawnOrUnsubmitted(
+      names = {"UNDER_REVIEW", "UNSUBMITTED", "WITHDRAWN"})
+  void shouldNotAllowLtftToTransitionFromSubmittedToNotUnderReviewOrUnsubmittedOrWithdrawn(
       LifecycleState state) {
     LtftForm form = new LtftForm();
     form.setLifecycleState(LifecycleState.SUBMITTED);
@@ -174,8 +174,8 @@ class LifecycleStateTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = INCLUDE,
-      names = {"APPROVED", "REJECTED", "UNSUBMITTED", "WITHDRAWN"})
-  void shouldAllowLtftToTransitionFromSubmittedToApprovedOrRejectedOrWithdrawnOrUnsubmitted(
+      names = {"UNDER_REVIEW", "UNSUBMITTED", "WITHDRAWN"})
+  void shouldAllowLtftToTransitionFromSubmittedToUnderReviewOrUnsubmittedOrWithdrawn(
       LifecycleState state) {
     LtftForm form = new LtftForm();
     form.setLifecycleState(LifecycleState.SUBMITTED);
@@ -183,6 +183,34 @@ class LifecycleStateTest {
     boolean canTransition = LifecycleState.canTransitionTo(form, state);
 
     assertTrue(canTransition, "Expected LTFT transition from SUBMITTED to " + state
+        + " to be allowed.");
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE,
+      names = {"APPROVED", "REJECTED", "UNSUBMITTED", "WITHDRAWN"})
+  void shouldNotAllowLtftFromUnderReviewToNotApprovedRejectedUnsubmittedWithdrawn(
+      LifecycleState state) {
+    LtftForm form = new LtftForm();
+    form.setLifecycleState(LifecycleState.UNDER_REVIEW);
+
+    boolean canTransition = LifecycleState.canTransitionTo(form, state);
+
+    assertFalse(canTransition, "Expected LTFT transition from UNDER_REVIEW to " + state
+        + " to be disallowed.");
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE,
+      names = {"APPROVED", "REJECTED", "UNSUBMITTED", "WITHDRAWN"})
+  void shouldAllowLtftFromUnderReviewToApprovedRejectedUnsubmittedWithdrawn(
+      LifecycleState state) {
+    LtftForm form = new LtftForm();
+    form.setLifecycleState(LifecycleState.UNDER_REVIEW);
+
+    boolean canTransition = LifecycleState.canTransitionTo(form, state);
+
+    assertTrue(canTransition, "Expected LTFT transition from UNDER_REVIEW to " + state
         + " to be allowed.");
   }
 

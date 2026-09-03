@@ -94,7 +94,7 @@ class PublishLtftRefreshTest {
     job.execute(Optional.empty());
 
     Set<LifecycleState> states = statesCaptor.getValue();
-    assertThat("Unexpected state query count.", states, hasSize(6));
+    assertThat("Unexpected state query count.", states, hasSize(7));
     assertThat("Unexpected state in query.", states, hasItem(state));
   }
 
@@ -109,7 +109,7 @@ class PublishLtftRefreshTest {
     job.execute(Optional.of(since));
 
     Set<LifecycleState> states = statesCaptor.getValue();
-    assertThat("Unexpected state query count.", states, hasSize(6));
+    assertThat("Unexpected state query count.", states, hasSize(7));
     assertThat("Unexpected state in query.", states, hasItem(state));
   }
 

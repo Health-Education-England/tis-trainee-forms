@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.service;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.VALID;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNDER_REVIEW;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
 
@@ -260,8 +261,8 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   public Optional<LtftFormDto> applyAdminPatch(UUID formId, FormPatchDto formPatch) {
     log.info("Applying patch to form '{}': {}", formId, formPatch);
     return getLtftForAdmin(formId)
-        // Will result in NOT FOUND when not submitted, which mirrors GET behaviour.
-        .filter(ltft -> ltft.getLifecycleState().equals(SUBMITTED))
+        // Will result in NOT FOUND when not under review, which mirrors GET behaviour.
+        .filter(ltft -> ltft.getLifecycleState().equals(UNDER_REVIEW))
 
         .map(ltft -> {
           try {
@@ -646,6 +647,52 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   }
 
   /**
+   * Start the review of an LTFT form as an admin, transitioning it from SUBMITTED to UNDER_REVIEW.
+   *
+   * <p>If no admin is currently assigned to the form, the calling admin is self-assigned as part
+   * of starting the review. The form must be associated with the admin's local office.
+   *
+   * @param formId The ID of the form to start reviewing.
+   * @return The updated LTFT application, empty if the form did not exist or did not belong to the
+   *     admin's local office.
+   * @throws MethodArgumentNotValidException If the form cannot be transitioned to UNDER_REVIEW.
+   */
+  public Optional<LtftFormDto> startReview(UUID formId) throws MethodArgumentNotValidException {
+    log.info("Starting review of LTFT form {} as admin [{}]", formId, adminIdentity.getEmail());
+
+    Set<String> dbcs = adminIdentity.getGroups();
+    Optional<LtftForm> optForm =
+        ltftFormRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            formId, dbcs);
+
+    if (optForm.isEmpty()) {
+      log.warn("Could not start review of form {} since no form exists with this ID for DBCs [{}]",
+          formId, dbcs);
+      return Optional.empty();
+    }
+
+    LtftForm form = optForm.get();
+    boolean adminAlreadyAssigned = form.getStatus() != null && form.getStatus().current() != null
+        && form.getStatus().current().assignedAdmin() != null;
+
+    // Transition to UNDER_REVIEW first; this throws if the form is not in a reviewable state,
+    // avoiding an erroneous self-assignment when the review cannot be started.
+    Optional<LtftFormDto> reviewed = updateStatusAsAdmin(formId, UNDER_REVIEW, null);
+
+    // Self-assign the reviewing admin only when no admin was previously assigned.
+    if (reviewed.isPresent() && !adminAlreadyAssigned) {
+      PersonDto self = PersonDto.builder()
+          .name(adminIdentity.getName())
+          .email(adminIdentity.getEmail())
+          .role(adminIdentity.getRole())
+          .build();
+      return assignAdmin(formId, self);
+    }
+
+    return reviewed;
+  }
+
+  /**
    * Get the review workflow state for an LTFT form associated with the calling admin's local
    * office.
    *
@@ -756,12 +803,12 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
     LtftForm form = optForm.get();
 
     if (form.getStatus() == null || form.getStatus().current() == null
-        || form.getStatus().current().state() != SUBMITTED) {
-      log.warn("Cannot advance review stage of form {} as it is not currently SUBMITTED.",
+        || form.getStatus().current().state() != UNDER_REVIEW) {
+      log.warn("Cannot advance review stage of form {} as it is not currently UNDER_REVIEW.",
           formId);
       BeanPropertyBindingResult result = new BeanPropertyBindingResult(form, "form");
       result.addError(new FieldError(FORM_OBJECT_NAME, FORM_ATTRIBUTE_FORM_STATUS,
-          "review stage can only be advanced when the form is SUBMITTED"));
+          "review stage can only be advanced when the form is UNDER_REVIEW"));
       try {
         MethodParameter parameter = new MethodParameter(
             this.getClass().getDeclaredMethod(METHOD_ADVANCE_REVIEW_STAGE, UUID.class,
@@ -922,7 +969,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    */
   private void validateReviewStageTransition(LtftForm form, LifecycleState targetState)
       throws MethodArgumentNotValidException {
-    if (form.getStatus().current().state() == SUBMITTED
+    if (form.getStatus().current().state() == UNDER_REVIEW
         && !reviewStageService.canTransitionToLifecycleState(form, targetState)) {
       log.warn("Form {} cannot transition from review stage {} to {}.",
           form.getId(), form.getStatus().current().reviewStage(), targetState);
