@@ -206,8 +206,10 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    */
   public Page<LtftAdminSummaryDto> getAdminLtftSummaries(Map<String, String> filterParams,
       Pageable pageable) {
-    Set<String> groups = adminIdentity.getGroups();
-    log.info("Getting LTFT forms for admin {} with DBCs {}", adminIdentity.getEmail(), groups);
+    boolean isProgrammeAdmin = isProgrammeAdmin();
+    log.warn("Getting LTFT forms for admin {} with {} [{}]",
+        adminIdentity.getEmail(), isProgrammeAdmin ? "Programmes" : "DBCs",
+        isProgrammeAdmin ? adminIdentity.getProgrammes() : adminIdentity.getGroups());
     Page<LtftForm> forms;
 
     Query query = buildAdminFilteredQuery(filterParams, pageable);
@@ -242,6 +244,15 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    * @return The found form, empty if the form does not exist or does not match the admin's DBCs.
    */
   private Optional<LtftForm> getLtftForAdmin(UUID formId) {
+    if (isProgrammeAdmin()) {
+      Set<UUID> programmes = adminIdentity.getProgrammes();
+      log.info("Getting LTFT form {} for admin {} with programmes [{}]",
+          formId, adminIdentity.getEmail(), programmes);
+      return ltftFormRepository
+          .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_IdIn(
+              formId, Set.of(DRAFT), adminIdentity.getProgrammes());
+    }
+
     Set<String> groups = adminIdentity.getGroups();
     log.info("Getting LTFT form {} for admin {} with DBCs [{}]", formId, adminIdentity.getEmail(),
         groups);
@@ -539,11 +550,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   public Optional<LtftFormDto> assignAdmin(UUID formId, PersonDto admin) {
     log.info("Assigning admin {} to LTFT form {}", admin.email(), formId);
 
-    Set<String> dbcs = adminIdentity.getGroups();
-    Optional<LtftForm> form =
-        ltftFormRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(formId,
-            dbcs);
-
+    Optional<LtftForm> form = findFormForAdmin(formId);
     if (form.isPresent()) {
       LtftForm ltftForm = form.get();
 
@@ -569,8 +576,10 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
 
       return Optional.of(mapper.toDto(updatedForm));
     } else {
-      log.warn("Could not assign admin to form {} since no form exists with this ID for DBCs [{}]",
-          formId, dbcs);
+      boolean isProgrammeAdmin = isProgrammeAdmin();
+      log.warn("Could not assign admin to form {} since no form exists with this ID for {} [{}]",
+          formId, isProgrammeAdmin ? "Programmes" : "DBCs",
+          isProgrammeAdmin ? adminIdentity.getProgrammes() : adminIdentity.getGroups());
       return Optional.empty();
     }
   }
@@ -630,17 +639,16 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
     log.info("Updating LTFT form {} as admin [{}]: New state = {}", formId,
         adminIdentity.getEmail(), state);
 
-    Set<String> dbcs = adminIdentity.getGroups();
-    Optional<LtftForm> form =
-        ltftFormRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(formId,
-            dbcs);
+    Optional<LtftForm> form = findFormForAdmin(formId);
 
     if (form.isPresent()) {
       LtftForm updatedForm = updateStatus(form.get(), state, adminIdentity, detail);
       return Optional.of(mapper.toDto(updatedForm));
     } else {
-      log.warn("Could not update form {} since no form exists with this ID for DBCs [{}]",
-          formId, dbcs);
+      boolean isProgrammeAdmin = isProgrammeAdmin();
+      log.warn("Could not update form {} since no form exists with this ID for {} [{}]",
+          formId, isProgrammeAdmin ? "Programmes" : "DBCs",
+          isProgrammeAdmin ? adminIdentity.getProgrammes() : adminIdentity.getGroups());
       return Optional.empty();
     }
   }
@@ -655,14 +663,13 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   public Optional<ReviewWorkflowDto> getReviewWorkflow(UUID formId) {
     log.info("Getting review workflow for LTFT form {} as admin [{}]", formId,
         adminIdentity.getEmail());
-    Set<String> dbcs = adminIdentity.getGroups();
-    Optional<LtftForm> optForm =
-        ltftFormRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(formId,
-            dbcs);
+    Optional<LtftForm> optForm = findFormForAdmin(formId);
 
     if (optForm.isEmpty()) {
-      log.warn("Could not get review workflow for form {} since no form exists for DBCs [{}]",
-          formId, dbcs);
+      boolean isProgrammeAdmin = isProgrammeAdmin();
+      log.warn("Could not get review workflow for form {} since no form exists for {} [{}]",
+          formId, isProgrammeAdmin ? "Programmes" : "DBCs",
+          isProgrammeAdmin ? adminIdentity.getProgrammes() : adminIdentity.getGroups());
       return Optional.empty();
     }
 
@@ -679,7 +686,16 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    * @return A set of deduplicated review stage labels.
    */
   public Set<String> getReviewStageLabels() {
-    List<String> filteredDbcs = adminIdentity.getGroups().stream().toList();
+    List<String> filteredDbcs;
+    if (isProgrammeAdmin()) {
+      Query query = new Query(
+          Criteria.where("content.programmeMembership.id").in(adminIdentity.getProgrammes()));
+      filteredDbcs = mongoTemplate.findDistinct(query, "content.programmeMembership.designatedBodyCode",
+          LtftForm.class, String.class);
+    }
+    else {
+      filteredDbcs = adminIdentity.getGroups().stream().toList();
+    }
     log.info("Getting review stage labels for DBCs {}", filteredDbcs);
     Set<String> labels = new LinkedHashSet<>(
         reviewStageService.getEnabledStageLabels(filteredDbcs));
@@ -739,17 +755,18 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    */
   public Optional<LtftFormDto> advanceReviewStage(UUID formId,
       @Nullable LftfStatusInfoDetailDto detail) throws MethodArgumentNotValidException {
-    Set<String> dbcs = adminIdentity.getGroups();
-    log.info("Advancing review stage of LTFT form {} for admin [{}] with DBCs [{}]",
-        formId, adminIdentity.getEmail(), dbcs);
+    boolean isProgrammeAdmin = isProgrammeAdmin();
+    log.warn("Advancing review stage of LTFT form {} for admin [{}] with {} [{}]",
+        formId, adminIdentity.getEmail(), isProgrammeAdmin ? "Programmes" : "DBCs",
+        isProgrammeAdmin ? adminIdentity.getProgrammes() : adminIdentity.getGroups());
 
-    Optional<LtftForm> optForm =
-        ltftFormRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(formId,
-            dbcs);
+    Optional<LtftForm> optForm = findFormForAdmin(formId);
 
     if (optForm.isEmpty()) {
-      log.warn("Could not advance review stage for form {} since no form exists with this ID "
-          + "for DBCs [{}]", formId, dbcs);
+      log.warn("Could not advance review stage for form {} since no form exists with this ID " +
+              "for {} [{}]",
+          formId, isProgrammeAdmin ? "Programmes" : "DBCs",
+          isProgrammeAdmin ? adminIdentity.getProgrammes() : adminIdentity.getGroups());
       return Optional.empty();
     }
 
@@ -1000,7 +1017,8 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   }
 
   /**
-   * Build a filtered query for admin users, which excludes DRAFT results and applies DBC filters.
+   * Build a filtered query for admin users, which excludes DRAFT results
+   * and applies DBC/programme filters.
    *
    * @param filterParams The user-supplied filters to apply, unsupported fields will be dropped.
    * @param pageable     The paging and sorting to apply to the query.
@@ -1033,10 +1051,8 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
       query = new Query().with(pageable);
     }
 
-    // Restrict results to the user's DBCs.
-    query.addCriteria(
-        Criteria.where("content.programmeMembership.designatedBodyCode")
-            .in(adminIdentity.getGroups()));
+    // Restrict results based on the admin's role.
+    query.addCriteria(buildAdminAccessCriteria());
 
     // Remove DRAFT applications from the result using the submitted timestamp.
     query.addCriteria(Criteria.where("status.submitted").ne(null));
@@ -1170,5 +1186,53 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
       return false;
     }
     return true;
+  }
+
+  /**
+   * Build criteria to restrict LTFT access based on roles.
+   *
+   * @return a Criteria for the query.
+   */
+  private Criteria buildAdminAccessCriteria() {
+    if (isProgrammeAdmin()) {
+      log.info("Restricting LTFT access by programme for HEE Programme Admin {}: {}",
+          adminIdentity.getEmail(), adminIdentity.getProgrammes());
+      return Criteria.where("content.programmeMembership.id")
+          .in(adminIdentity.getProgrammes());
+    }
+
+    log.info("Restricting LTFT access by DBC for NHSE LTFT Admin {}: {}",
+        adminIdentity.getEmail(), adminIdentity.getGroups());
+    return Criteria.where("content.programmeMembership.designatedBodyCode")
+        .in(adminIdentity.getGroups());
+  }
+
+  /**
+   * Find a LTFT form by form ID from DB.
+   *
+   * @return Optional<LtftForm> the form with the form ID,
+   * empty if it does not exist or is not accessible to the admin.
+   */
+  private Optional<LtftForm> findFormForAdmin(UUID formId) {
+    if (isProgrammeAdmin()) {
+      Set<UUID> programmeIds = adminIdentity.getProgrammes();
+      log.info("Finding LTFT form {} for admin {} by programmes {}", formId,
+          adminIdentity.getEmail(), programmeIds);
+      return ltftFormRepository.findByIdAndContent_ProgrammeMembership_IdIn(formId, programmeIds);
+    }
+
+    Set<String> dbcs = adminIdentity.getGroups();
+    log.info("Finding LTFT form {} for admin {} by DBCs {}", formId, adminIdentity.getEmail(), dbcs);
+    return ltftFormRepository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(formId, dbcs);
+  }
+
+  /**
+   * Determine if the user is a HEE Programme Admin.
+   *
+   * @return true if the roles contain HEE Programme Admin.
+   */
+  private Boolean isProgrammeAdmin() {
+    return adminIdentity.getRoles() != null
+        && adminIdentity.getRoles().contains("HEE Programme Admin");
   }
 }

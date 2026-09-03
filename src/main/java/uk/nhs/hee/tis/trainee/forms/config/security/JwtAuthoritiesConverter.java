@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.config.security;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.springframework.core.convert.converter.Converter;
@@ -38,15 +39,17 @@ public class JwtAuthoritiesConverter implements Converter<Jwt, Collection<Grante
 
   private static final String COGNITO_ROLES = "cognito:roles";
   private static final String COGNITO_GROUPS = "cognito:groups";
+  private static final String COGNITO_PROGRAMMES = "cognito:programmes";
 
   @Override
   public Collection<GrantedAuthority> convert(Jwt source) {
     List<String> roles = source.getClaimAsStringList(COGNITO_ROLES);
     List<String> groups = source.getClaimAsStringList(COGNITO_GROUPS);
+    List<String> programmes = source.getClaimAsStringList(COGNITO_PROGRAMMES);
 
-    return Stream.concat(
-            Stream.ofNullable(roles).flatMap(List::stream),
-            Stream.ofNullable(groups).flatMap(List::stream))
+    return Stream.of(roles, groups, programmes)
+        .filter(Objects::nonNull)
+        .flatMap(List::stream)
         .map(s -> "ROLE_" + s.replace(" ", "_"))
         .map(SimpleGrantedAuthority::new)
         .collect(Collectors.toSet());

@@ -22,6 +22,8 @@
 package uk.nhs.hee.tis.trainee.forms.dto.identity;
 
 import java.util.Set;
+import java.util.UUID;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -35,6 +37,8 @@ public class AdminIdentity extends UserIdentity {
   private static final String ROLE = "ADMIN";
 
   private Set<String> groups;
+  private Set<String> roles;
+  private Set<UUID> programmes;
 
   /**
    * Whether the admin identity is considered complete based on the populated fields.

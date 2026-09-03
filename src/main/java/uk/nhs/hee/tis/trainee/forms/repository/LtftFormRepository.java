@@ -95,6 +95,18 @@ public interface LtftFormRepository extends BaseAuditedFormRepository<LtftForm> 
       UUID id, Set<LifecycleState> states, Set<String> dbcs);
 
   /**
+   * Find the LTFT form with the given ID and one of the given programmes.
+   *
+   * @param id     The ID of the form to find.
+   * @param states The states to exclude from the search.
+   * @param programmeIds   The designated body codes to include in the search.
+   * @return The found LTFT form, empty if not found.
+   */
+  Optional<LtftForm>
+  findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_IdIn(
+      UUID id, Set<LifecycleState> states, Set<UUID> programmeIds);
+
+  /**
    * Find the LTFT form with the given ID associated with one of the given DBCs.
    *
    * @param id   The ID of the form.
@@ -103,6 +115,16 @@ public interface LtftFormRepository extends BaseAuditedFormRepository<LtftForm> 
    */
   Optional<LtftForm> findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(UUID id,
       Set<String> dbcs);
+
+  /**
+   * Find the LTFT form with the given ID associated with one of the given programme IDs.
+   *
+   * @param id   The ID of the form.
+   * @param programmeIds The programme IDs to include in the search.
+   * @return The LTFT form, or optional empty if ID not found or did not match programmes.
+   */
+  Optional<LtftForm> findByIdAndContent_ProgrammeMembership_IdIn(UUID id,
+       Set<UUID> programmeIds);
 
   /**
    * Find LTFT forms in one of the given DBCs and one of the given review stage labels.
@@ -114,6 +136,17 @@ public interface LtftFormRepository extends BaseAuditedFormRepository<LtftForm> 
   List<LtftForm>
       findByContent_ProgrammeMembership_DesignatedBodyCodeInAndStatus_Current_ReviewStage_LabelIn(
           Collection<String> dbcs, Collection<String> labels);
+
+  /**
+   * Find LTFT forms in one of the given programmes and one of the given review stage labels.
+   *
+   * @param programmeIds   The programme Ids to include in the search.
+   * @param labels The review stage labels to filter by.
+   * @return The found LTFT forms, empty if none found.
+   */
+  List<LtftForm>
+  findByContent_ProgrammeMembership_IdInAndStatus_Current_ReviewStage_LabelIn(
+      Collection<UUID> programmeIds, Collection<String> labels);
 
   /**
    * Delete the LTFT form with the given id.
