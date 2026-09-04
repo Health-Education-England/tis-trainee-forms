@@ -113,7 +113,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    * The type of user acting on a form. Certain lifecycle transitions are restricted to a single
    * actor (see {@link #TRANSITION_ACTORS}).
    */
-  private enum Actor {
+  enum Actor {
     TRAINEE,
     ADMIN
   }
@@ -557,7 +557,8 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
     LtftForm form = formOptional.get();
 
     try {
-      LtftForm updatedForm = updateStatus(form, targetState, traineeIdentity, Actor.TRAINEE, detail);
+      LtftForm updatedForm
+          = updateStatus(form, targetState, traineeIdentity, Actor.TRAINEE, detail);
       return Optional.of(mapper.toDto(updatedForm));
     } catch (MethodArgumentNotValidException e) {
       return Optional.empty();
@@ -972,6 +973,19 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   }
 
   /**
+   * Determine which actor, if any, is permitted to perform a lifecycle transition.
+   *
+   * @param currentState The form's current lifecycle state.
+   * @param targetState  The intended target lifecycle state.
+   * @return The single {@link Actor} permitted to perform the transition, or {@code null} if the
+   *     transition is not actor-restricted (governed solely by the {@link LifecycleState} graph and
+   *     review-stage rules).
+   */
+  static Actor requiredActorFor(LifecycleState currentState, LifecycleState targetState) {
+    return TRANSITION_ACTORS.getOrDefault(currentState, Map.of()).get(targetState);
+  }
+
+  /**
    * Validate that the given actor is permitted to perform the requested lifecycle transition.
    *
    * <p>Only called after {@link #validateLifecycleTransition}, so the current state is non-null and
@@ -986,7 +1000,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   private void validateActorForTransition(LtftForm form, LifecycleState targetState, Actor actor)
       throws MethodArgumentNotValidException {
     LifecycleState currentState = form.getStatus().current().state();
-    Actor requiredActor = TRANSITION_ACTORS.getOrDefault(currentState, Map.of()).get(targetState);
+    Actor requiredActor = requiredActorFor(currentState, targetState);
 
     if (requiredActor != null && requiredActor != actor) {
       log.warn("Actor {} may not transition form {} from {} to {}; requires {}.",

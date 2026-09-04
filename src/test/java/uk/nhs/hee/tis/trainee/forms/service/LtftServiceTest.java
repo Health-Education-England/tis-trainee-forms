@@ -2070,6 +2070,31 @@ class LtftServiceTest {
   }
 
   @Test
+  void shouldThrowStartingReviewWhenFormHasNoStatus() {
+    LtftForm entity = new LtftForm(); // no status set, so getStatus() is null
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(entity));
+
+    assertThrows(MethodArgumentNotValidException.class, () -> service.startReview(ID));
+
+    verify(repository, never()).save(any());
+  }
+
+  @Test
+  void shouldThrowStartingReviewWhenFormStatusHasNoCurrent() {
+    LtftForm entity = new LtftForm();
+    entity.setStatus(Status.builder().build()); // status present but current() is null
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(entity));
+
+    assertThrows(MethodArgumentNotValidException.class, () -> service.startReview(ID));
+
+    verify(repository, never()).save(any());
+  }
+
+  @Test
   void shouldThrowUpdatingStatusWhenFormHasNoStatus() {
     LtftForm form = new LtftForm(); // no status set, so getStatus() is null
 
@@ -2463,6 +2488,27 @@ class LtftServiceTest {
 
     assertThat("Unexpected form presence.", result.isPresent(), is(false));
     verify(repository, never()).save(any());
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      DRAFT        | SUBMITTED    | TRAINEE
+      UNSUBMITTED  | SUBMITTED    | TRAINEE
+      UNSUBMITTED  | WITHDRAWN    | TRAINEE
+      SUBMITTED    | UNSUBMITTED  | TRAINEE
+      SUBMITTED    | WITHDRAWN    | TRAINEE
+      UNDER_REVIEW | WITHDRAWN    | TRAINEE
+      SUBMITTED    | UNDER_REVIEW | ADMIN
+      UNDER_REVIEW | APPROVED     | ADMIN
+      UNDER_REVIEW | REJECTED     | ADMIN
+      UNDER_REVIEW | UNSUBMITTED  | ADMIN
+      DRAFT        | WITHDRAWN    |
+      APPROVED     | DRAFT        |
+      """)
+  void shouldResolveRequiredActorForTransition(LifecycleState currentState,
+      LifecycleState targetState, LtftService.Actor expectedActor) {
+    assertThat("Unexpected required actor.",
+        LtftService.requiredActorFor(currentState, targetState), is(expectedActor));
   }
 
   @Test
