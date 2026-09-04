@@ -1809,6 +1809,34 @@ class AdminLtftResourceIntegrationTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = "SUBMITTED")
+  void shouldNotUnsubmitLtftAsAdminWhenTransitionRestrictedToTrainee(LifecycleState currentState)
+      throws Exception {
+    LtftForm form = template.insert(createLtftForm(currentState, DBC_1, null));
+
+    mockMvc.perform(put("/api/admin/ltft/{id}/unsubmit", form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .contentType(APPLICATION_JSON)
+            .content("""
+                {
+                  "reason": "test reason"
+                }
+                """))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type", is("about:blank")))
+        .andExpect(jsonPath("$.title", is("Validation failure")))
+        .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
+        .andExpect(
+            jsonPath("$.instance", is("/api/admin/ltft/%s/unsubmit".formatted(form.getId()))))
+        .andExpect(jsonPath("$.properties.errors").isArray())
+        .andExpect(jsonPath("$.properties.errors", hasSize(1)))
+        .andExpect(jsonPath("$.properties.errors[0].pointer", is("#/status/current/state")))
+        .andExpect(jsonPath("$.properties.errors[0].detail",
+            is("can not be transitioned to UNSUBMITTED by this user")));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = "UNDER_REVIEW")
   void shouldNotUnsubmitLtftWhenStateTransitionAllowedButNoReasonGiven(LifecycleState currentState)
       throws Exception {
     LtftForm form = template.insert(createLtftForm(currentState, DBC_1, null));
@@ -1836,7 +1864,7 @@ class AdminLtftResourceIntegrationTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = "SUBMITTED")
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = "UNDER_REVIEW")
   void shouldUnsubmitLtftAndIncrementRevisionWhenStateTransitionAllowedAndReasonGiven(
       LifecycleState currentState) throws Exception {
     LtftForm form = template.insert(createLtftForm(currentState, DBC_1, null));

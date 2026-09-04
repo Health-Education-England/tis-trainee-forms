@@ -679,7 +679,7 @@ class LtftServiceIntegrationTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
+  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED"})
   void shouldAllowTerminalTransitionForPreWorkflowFormWithNoReviewStage(
       LifecycleState targetState) throws MethodArgumentNotValidException {
     adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
@@ -701,7 +701,7 @@ class LtftServiceIntegrationTest {
         .build());
     template.save(form);
 
-    // Provide a reason; required for REJECTED/WITHDRAWN, harmless for APPROVED.
+    // Provide a reason; required for REJECTED, harmless for APPROVED.
     LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("pre-workflow transition", null);
 
     Optional<LtftFormDto> result = service.updateStatusAsAdmin(form.getId(), targetState, detail);
@@ -709,6 +709,35 @@ class LtftServiceIntegrationTest {
     assertThat("Unexpected result presence.", result.isPresent(), is(true));
     assertThat("Unexpected state.", result.get().status().current().state(), is(targetState));
     assertThat("Unexpected review stage after transition.",
+        result.get().status().current().reviewStage(), nullValue());
+  }
+
+  @Test
+  void shouldAllowTraineeWithdrawForPreWorkflowFormWithNoReviewStage() {
+    // Simulate a pre-workflow form: UNDER_REVIEW with no reviewStage. Withdraw is trainee-only.
+    LtftForm form = new LtftForm();
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setContent(LtftContent.builder()
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(DBC_THREE_STAGES)
+            .build())
+        .build());
+    form.setStatus(Status.builder()
+        .current(StatusInfo.builder()
+            .state(LifecycleState.UNDER_REVIEW)
+            .build()) // no reviewStage — submitted before workflow was deployed
+        .history(List.of())
+        .build());
+    template.save(form);
+
+    LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("pre-workflow withdraw", null);
+
+    Optional<LtftFormDto> result = service.withdrawLtftForm(form.getId(), detail);
+
+    assertThat("Unexpected result presence.", result.isPresent(), is(true));
+    assertThat("Unexpected state.", result.get().status().current().state(),
+        is(LifecycleState.WITHDRAWN));
+    assertThat("Unexpected review stage after withdraw.",
         result.get().status().current().reviewStage(), nullValue());
   }
 
@@ -764,11 +793,11 @@ class LtftServiceIntegrationTest {
     LtftFormDto submitted = service.submitLtftForm(draft.id(), null).orElseThrow();
 
     adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
-    // Start the review, advance to stage 1, then unsubmit.
+    // Start the review, advance to stage 1, then unsubmit (admin-only from UNDER_REVIEW).
     service.startReview(submitted.id()).orElseThrow();
     service.advanceReviewStage(submitted.id(), null).orElseThrow();
     LftfStatusInfoDetailDto reason = new LftfStatusInfoDetailDto("reason", "message");
-    service.unsubmitLtftForm(submitted.id(), reason).orElseThrow();
+    service.updateStatusAsAdmin(submitted.id(), LifecycleState.UNSUBMITTED, reason).orElseThrow();
 
     // Re-submit and re-start review: review stage should restart from stage 0.
     service.submitLtftForm(draft.id(), null).orElseThrow();

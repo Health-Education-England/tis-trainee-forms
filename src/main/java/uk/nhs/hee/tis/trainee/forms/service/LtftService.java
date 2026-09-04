@@ -22,7 +22,9 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.VALID;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROVED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.REJECTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNDER_REVIEW;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
@@ -106,6 +108,39 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   private static final String METHOD_ADVANCE_REVIEW_STAGE = "advanceReviewStage";
 
   private static final int MINIMUM_NOTICE_DAYS = 7 * 16; // 16 weeks in days
+
+  /**
+   * The type of user acting on a form. Certain lifecycle transitions are restricted to a single
+   * actor (see {@link #TRANSITION_ACTORS}).
+   */
+  private enum Actor {
+    TRAINEE,
+    ADMIN
+  }
+
+  /**
+   * The single actor permitted to perform particular lifecycle transitions, keyed by source state
+   * then target state. A transition absent from this map is not actor-restricted and is governed
+   * solely by the {@link LifecycleState} graph and review-stage rules. This is the single
+   * declarative source of truth for the actor-dependent transition rules.
+   *
+   * <p>Note: {@code DRAFT -> DELETED} is also trainee-only, but is enforced separately in
+   * {@link #deleteLtftForm(UUID)} (a hard delete that does not pass through {@link #updateStatus}).
+   */
+  private static final Map<LifecycleState, Map<LifecycleState, Actor>> TRANSITION_ACTORS = Map.of(
+      DRAFT, Map.of(SUBMITTED, Actor.TRAINEE),
+      UNSUBMITTED, Map.of(
+          SUBMITTED, Actor.TRAINEE,
+          WITHDRAWN, Actor.TRAINEE),
+      SUBMITTED, Map.of(
+          UNSUBMITTED, Actor.TRAINEE,
+          WITHDRAWN, Actor.TRAINEE,
+          UNDER_REVIEW, Actor.ADMIN),
+      UNDER_REVIEW, Map.of(
+          APPROVED, Actor.ADMIN,
+          REJECTED, Actor.ADMIN,
+          UNSUBMITTED, Actor.ADMIN,
+          WITHDRAWN, Actor.TRAINEE));
 
   private final AdminIdentity adminIdentity;
   private final TraineeIdentity traineeIdentity;
@@ -499,7 +534,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   }
 
   /**
-   * Change the state of the LTFT form with the given id.
+   * Change the state of the LTFT form with the given id, as the trainee who owns it.
    *
    * @param formId      The id of the LTFT form to change.
    * @param detail      The status detail for the change.
@@ -522,7 +557,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
     LtftForm form = formOptional.get();
 
     try {
-      LtftForm updatedForm = updateStatus(form, targetState, traineeIdentity, detail);
+      LtftForm updatedForm = updateStatus(form, targetState, traineeIdentity, Actor.TRAINEE, detail);
       return Optional.of(mapper.toDto(updatedForm));
     } catch (MethodArgumentNotValidException e) {
       return Optional.empty();
@@ -637,7 +672,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
             dbcs);
 
     if (form.isPresent()) {
-      LtftForm updatedForm = updateStatus(form.get(), state, adminIdentity, detail);
+      LtftForm updatedForm = updateStatus(form.get(), state, adminIdentity, Actor.ADMIN, detail);
       return Optional.of(mapper.toDto(updatedForm));
     } else {
       log.warn("Could not update form {} since no form exists with this ID for DBCs [{}]",
@@ -873,15 +908,17 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    * @param form        The form to update the status of.
    * @param targetState The state to change to.
    * @param identity    Who is performing the status change.
+   * @param actor       The type of user performing the status change.
    * @param detail      A detailed reason for the change, may be null.
    * @return The updated LTFT application.
    * @throws MethodArgumentNotValidException If the state transition is not allowed.
    */
   private LtftForm updateStatus(LtftForm form, LifecycleState targetState,
-      UserIdentity identity, @Nullable LftfStatusInfoDetailDto detail)
+      UserIdentity identity, Actor actor, @Nullable LftfStatusInfoDetailDto detail)
       throws MethodArgumentNotValidException {
 
     validateLifecycleTransition(form, targetState);
+    validateActorForTransition(form, targetState, actor);
     validateStatusDetail(form, targetState, detail);
     validateReviewStageTransition(form, targetState);
 
@@ -930,6 +967,34 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
       BeanPropertyBindingResult result = new BeanPropertyBindingResult(form, "form");
       result.addError(new FieldError(FORM_OBJECT_NAME, FORM_ATTRIBUTE_FORM_STATUS,
           "can not be transitioned to %s".formatted(targetState)));
+      throw buildUpdateStatusException(result, 1);
+    }
+  }
+
+  /**
+   * Validate that the given actor is permitted to perform the requested lifecycle transition.
+   *
+   * <p>Only called after {@link #validateLifecycleTransition}, so the current state is non-null and
+   * the transition is structurally valid. Enforces the actor-dependent rules declared in
+   * {@link #TRANSITION_ACTORS}; transitions absent from that map are permitted for either actor.
+   *
+   * @param form        The form being updated.
+   * @param targetState The intended target lifecycle state.
+   * @param actor       The type of user attempting the transition.
+   * @throws MethodArgumentNotValidException If the transition is restricted to a different actor.
+   */
+  private void validateActorForTransition(LtftForm form, LifecycleState targetState, Actor actor)
+      throws MethodArgumentNotValidException {
+    LifecycleState currentState = form.getStatus().current().state();
+    Actor requiredActor = TRANSITION_ACTORS.getOrDefault(currentState, Map.of()).get(targetState);
+
+    if (requiredActor != null && requiredActor != actor) {
+      log.warn("Actor {} may not transition form {} from {} to {}; requires {}.",
+          actor, form.getId(), currentState, targetState, requiredActor);
+
+      BeanPropertyBindingResult result = new BeanPropertyBindingResult(form, "form");
+      result.addError(new FieldError(FORM_OBJECT_NAME, FORM_ATTRIBUTE_FORM_STATUS,
+          "can not be transitioned to %s by this user".formatted(targetState)));
       throw buildUpdateStatusException(result, 1);
     }
   }
@@ -996,7 +1061,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
     try {
       MethodParameter parameter = new MethodParameter(this.getClass()
           .getDeclaredMethod(METHOD_UPDATE_STATUS, LtftForm.class, LifecycleState.class,
-              UserIdentity.class, LftfStatusInfoDetailDto.class), paramIndex);
+              UserIdentity.class, Actor.class, LftfStatusInfoDetailDto.class), paramIndex);
       return new MethodArgumentNotValidException(parameter, result);
     } catch (NoSuchMethodException e) {
       throw new IllegalStateException("Unable to reflect updateStatus method.", e);
