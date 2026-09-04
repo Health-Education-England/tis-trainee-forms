@@ -1741,6 +1741,51 @@ class LtftServiceTest {
   }
 
   @Test
+  void shouldPreserveReviewStageWhenPatchingFormUnderReview() throws IOException {
+    ReviewStageStatus reviewStage = new ReviewStageStatus(1, "Stage Two");
+
+    LtftForm entity = new LtftForm();
+    entity.setId(ID);
+    entity.setContent(LtftContent.builder().build());
+    entity.setRevision(1);
+    entity.setStatus(Status.builder()
+        .current(StatusInfo.builder()
+            .state(UNDER_REVIEW)
+            .revision(1)
+            .reviewStage(reviewStage)
+            .build())
+        .history(List.of())
+        .build());
+
+    when(repository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            any(), any(), any())).thenReturn(Optional.of(entity));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    JsonNode patchNode = jsonMapper.readTree("""
+        [
+          {
+            "op": "replace",
+            "path": "/personalDetails/email",
+            "value": "new@example.com"
+          }
+        ]
+        """);
+    FormPatchDto formPatch
+        = new FormPatchDto(JsonPatch.fromJson(patchNode), "reason1", "message1");
+
+    Optional<LtftFormDto> optionalForm = service.applyAdminPatch(ID, formPatch);
+
+    assertThat("Unexpected form optional.", optionalForm.isPresent(), is(true));
+
+    StatusInfoDto current = optionalForm.get().status().current();
+    assertThat("Unexpected current state.", current.state(), is(UNDER_REVIEW));
+    assertThat("Unexpected preserved review stage.", current.reviewStage(), is(reviewStage));
+
+    verify(repository).save(any());
+  }
+
+  @Test
   void shouldSnapshotPatchedFormWhenFormUnderReview() throws IOException {
     LtftForm entity = new LtftForm();
     entity.setId(ID);

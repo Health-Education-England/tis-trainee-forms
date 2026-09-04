@@ -320,8 +320,15 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
                   .role(adminIdentity.getRole())
                   .build();
               ltft.setRevision(ltft.getRevision() + 1);
+
+              // Preserve the form's active review stage: a patch keeps the form UNDER_REVIEW, so
+              // the 4-arg overload (which clears the review stage) would drop the current workflow
+              // position, breaking stage advancement and terminal transitions.
+              ReviewStageStatus currentReviewStage =
+                  ltft.getStatus() != null && ltft.getStatus().current() != null
+                      ? ltft.getStatus().current().reviewStage() : null;
               ltft.setLifecycleState(ltft.getLifecycleState(), statusDetail, modifiedBy,
-                  ltft.getRevision());
+                  ltft.getRevision(), currentReviewStage);
               ltft = ltftFormRepository.save(ltft);
               ltftSubmissionHistoryService.takeSnapshot(ltft);
 

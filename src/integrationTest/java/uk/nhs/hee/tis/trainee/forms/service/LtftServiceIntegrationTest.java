@@ -31,6 +31,9 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.fge.jsonpatch.JsonPatch;
 import io.awspring.cloud.sns.core.SnsTemplate;
 import java.time.LocalDate;
 import java.util.HashSet;
@@ -64,6 +67,7 @@ import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto.FormFeatures;
 import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto.FormFeatures.LtftFeatures;
+import uk.nhs.hee.tis.trainee.forms.dto.FormPatchDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
@@ -808,6 +812,56 @@ class LtftServiceIntegrationTest {
         current.reviewStage().index(), is(0));
     assertThat("Unexpected review stage label on re-submit.",
         current.reviewStage().label(), is("Stage One"));
+  }
+
+  // -- admin patch review-stage preservation --
+
+  @Test
+  void shouldPreserveReviewStageWhenApplyingAdminPatch() throws Exception {
+    adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
+    adminIdentity.setName("Ad Min");
+    adminIdentity.setEmail("ad.min@test.com");
+
+    // Build a valid UNDER_REVIEW form at the first configured review stage via the normal flow.
+    LtftFormDto dto = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .name("test form")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .designatedBodyCode(DBC_THREE_STAGES)
+            .build())
+        .build();
+    LtftFormDto draft = service.createLtftForm(dto).orElseThrow();
+    LtftFormDto submitted = service.submitLtftForm(draft.id(), null).orElseThrow();
+    LtftFormDto underReview = service.startReview(submitted.id()).orElseThrow();
+    assertThat("Precondition: form should be at review stage 0.",
+        underReview.status().current().reviewStage().index(), is(0));
+
+    // A content-changing admin patch (rename the form).
+    JsonNode patchNode = new ObjectMapper().readTree("""
+        [
+          {
+            "op": "replace",
+            "path": "/name",
+            "value": "patched form"
+          }
+        ]
+        """);
+    FormPatchDto formPatch = new FormPatchDto(JsonPatch.fromJson(patchNode), "reason", "message");
+
+    Optional<LtftFormDto> patched = service.applyAdminPatch(underReview.id(), formPatch);
+
+    assertThat("Unexpected patch result presence.", patched.isPresent(), is(true));
+    StatusInfoDto current = patched.get().status().current();
+    assertThat("Unexpected name after patch.", patched.get().name(), is("patched form"));
+    assertThat("Unexpected state after patch.", current.state(), is(LifecycleState.UNDER_REVIEW));
+    assertThat("Review stage should be preserved by the patch.",
+        current.reviewStage(), is(new ReviewStageStatus(0, "Stage One")));
+
+    // The workflow position is intact, so stage advancement still succeeds.
+    LtftFormDto advanced = service.advanceReviewStage(underReview.id(), null).orElseThrow();
+    assertThat("Unexpected review stage after advancing.",
+        advanced.status().current().reviewStage(), is(new ReviewStageStatus(1, "Stage Two")));
   }
 
   // -- startReview --
