@@ -2098,23 +2098,6 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldReturnEmptyStartingReviewWhenStatusUpdateReturnsEmpty()
-      throws MethodArgumentNotValidException {
-    LtftForm entity = new LtftForm();
-    entity.setLifecycleState(SUBMITTED);
-
-    // The initial lookup finds the form, but the lookup within the status update does not, so the
-    // review can not be started and no self-assignment should occur.
-    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(entity), Optional.empty());
-
-    Optional<LtftFormDto> result = service.startReview(ID);
-
-    assertThat("Unexpected form presence.", result.isPresent(), is(false));
-    verify(repository, never()).save(any());
-  }
-
-  @Test
   void shouldThrowStartingReviewWhenFormHasNoStatus() {
     LtftForm entity = new LtftForm(); // no status set, so getStatus() is null
 

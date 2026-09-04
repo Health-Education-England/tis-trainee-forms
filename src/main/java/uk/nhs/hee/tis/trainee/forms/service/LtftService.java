@@ -718,12 +718,14 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
     boolean adminAlreadyAssigned = form.getStatus() != null && form.getStatus().current() != null
         && form.getStatus().current().assignedAdmin() != null;
 
-    // Transition to UNDER_REVIEW first; this throws if the form is not in a reviewable state,
-    // avoiding an erroneous self-assignment when the review cannot be started.
-    Optional<LtftFormDto> reviewed = updateStatusAsAdmin(formId, UNDER_REVIEW, null);
+    // Transition the already-loaded form to UNDER_REVIEW; this throws if the form is not in a
+    // reviewable state, avoiding an erroneous self-assignment when the review cannot be started.
+    // Reusing the form loaded above avoids a redundant re-read of the same document (and the
+    // check-then-act window that computing adminAlreadyAssigned from a separate read introduces).
+    LtftForm reviewed = updateStatus(form, UNDER_REVIEW, adminIdentity, Actor.ADMIN, null);
 
     // Self-assign the reviewing admin only when no admin was previously assigned.
-    if (reviewed.isPresent() && !adminAlreadyAssigned) {
+    if (!adminAlreadyAssigned) {
       PersonDto self = PersonDto.builder()
           .name(adminIdentity.getName())
           .email(adminIdentity.getEmail())
@@ -732,7 +734,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
       return assignAdmin(formId, self);
     }
 
-    return reviewed;
+    return Optional.of(mapper.toDto(reviewed));
   }
 
   /**
