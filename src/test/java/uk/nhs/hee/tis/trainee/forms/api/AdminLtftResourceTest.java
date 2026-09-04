@@ -501,6 +501,37 @@ class AdminLtftResourceTest {
   }
 
   @Test
+  void shouldThrowExceptionWhenStartReviewNotValid() throws MethodArgumentNotValidException {
+    UUID id = UUID.randomUUID();
+    when(service.startReview(id)).thenThrow(MethodArgumentNotValidException.class);
+
+    assertThrows(MethodArgumentNotValidException.class, () -> controller.startReviewLtft(id));
+  }
+
+  @Test
+  void shouldReturnNotFoundWhenStartReviewFormNotFound() throws MethodArgumentNotValidException {
+    UUID id = UUID.randomUUID();
+    when(service.startReview(id)).thenReturn(Optional.empty());
+
+    ResponseEntity<LtftFormDto> response = controller.startReviewLtft(id);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(NOT_FOUND));
+    assertThat("Unexpected response body.", response.getBody(), nullValue());
+  }
+
+  @Test
+  void shouldReturnFormWhenStartReviewSucceeds() throws MethodArgumentNotValidException {
+    UUID id = UUID.randomUUID();
+    LtftFormDto dto = LtftFormDto.builder().id(id).build();
+    when(service.startReview(id)).thenReturn(Optional.of(dto));
+
+    ResponseEntity<LtftFormDto> response = controller.startReviewLtft(id);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), sameInstance(dto));
+  }
+
+  @Test
   void shouldReturnNotFoundWhenReviewWorkflowFormNotFound() {
     UUID id = UUID.randomUUID();
     when(service.getReviewWorkflow(id)).thenReturn(Optional.empty());

@@ -21,7 +21,7 @@
 
 package uk.nhs.hee.tis.trainee.forms.service;
 
-import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNDER_REVIEW;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
 import jakarta.annotation.Nullable;
@@ -46,10 +46,10 @@ import uk.nhs.hee.tis.trainee.forms.model.ReviewStageStatus;
  * <p>Rules enforced:
  *
  * <ul>
- *   <li>On entering SUBMITTED: set the review stage to the first <em>enabled</em> configured stage
- *       for the form's DBC, or null if no enabled stages are configured.
- *   <li>On leaving SUBMITTED for any reason: clear the review stage to null.
- *   <li>On re-entering SUBMITTED after UNSUBMITTED: restart from the first enabled stage.
+ *   <li>On entering UNDER_REVIEW: set the review stage to the first <em>enabled</em> configured
+ *       stage for the form's DBC, or null if no enabled stages are configured.
+ *   <li>On leaving UNDER_REVIEW for any reason: clear the review stage to null.
+ *   <li>On re-entering UNDER_REVIEW after UNSUBMITTED: restart from the first enabled stage.
  *   <li>Any review stage may UNSUBMIT a form.
  *   <li>A disabled review stage may be advanced or exited as if it were enabled.
  *   <li>Advancing always moves to the next <em>enabled</em> stage, skipping disabled ones.
@@ -80,14 +80,14 @@ public class ReviewStageService {
    * Build the {@link ReviewWorkflowDto} for the given form.
    *
    * <p>The {@code stages} list contains only enabled stages, with one exception: if the form is
-   * currently SUBMITTED and its active review stage is disabled (e.g. the stage was disabled after
-   * the form entered it), that stage is also included at its correct position. When at least one
-   * configured stage is enabled, or the form is currently at a stage in the workflow (in-flight),
-   * an implicit terminal "Review complete" stage is appended.
+   * currently UNDER_REVIEW and its active review stage is disabled (e.g. the stage was disabled
+   * after the form entered it), that stage is also included at its correct position. When at least
+   * one configured stage is enabled, or the form is currently at a stage in the workflow
+   * (in-flight), an implicit terminal "Review complete" stage is appended.
    *
    * <p>The {@code currentStage} field is the zero-based index of the form's current review stage
-   * within the returned {@code stages} list, or {@code null} if the form is not SUBMITTED or has no
-   * active review stage.
+   * within the returned {@code stages} list, or {@code null} if the form is not UNDER_REVIEW or has
+   * no active review stage.
    *
    * @param form The form to inspect.
    * @return The workflow DTO describing the visible stages and the form's current position.
@@ -105,12 +105,12 @@ public class ReviewStageService {
 
   /**
    * Return the label of the form's active review stage, or {@code null} if the form is not
-   * SUBMITTED or has no review stage.
+   * UNDER_REVIEW or has no review stage.
    */
   @Nullable
   private String getActiveReviewLabel(LtftForm form) {
     if (form.getStatus() == null || form.getStatus().current() == null
-        || form.getStatus().current().state() != SUBMITTED) {
+        || form.getStatus().current().state() != UNDER_REVIEW) {
       return null;
     }
     ReviewStageStatus stage = getCurrentReviewStage(form);
@@ -153,9 +153,9 @@ public class ReviewStageService {
   /**
    * Resolve the review stage to apply when transitioning the form to a new lifecycle state.
    *
-   * <p>When entering SUBMITTED the first <em>enabled</em> stage for the form's DBC is returned. If
-   * no enabled stages are configured (or no workflow exists) {@code null} is returned, indicating
-   * the form should behave as if no review workflow is in place.
+   * <p>When entering UNDER_REVIEW the first <em>enabled</em> stage for the form's DBC is returned.
+   * If no enabled stages are configured (or no workflow exists) {@code null} is returned,
+   * indicating the form should behave as if no review workflow is in place.
    *
    * @param form The form being transitioned.
    * @param targetState The lifecycle state being transitioned to.
@@ -164,12 +164,13 @@ public class ReviewStageService {
   @Nullable
   public ReviewStageStatus resolveReviewStageForTransition(
       LtftForm form, LifecycleState targetState) {
-    if (targetState != SUBMITTED) {
-      // Leaving SUBMITTED for any reason (APPROVED, REJECTED, UNSUBMITTED, WITHDRAWN) clears stage.
+    if (targetState != UNDER_REVIEW) {
+      // Leaving UNDER_REVIEW for any reason (APPROVED, REJECTED, UNSUBMITTED, WITHDRAWN) clears
+      // stage.
       return null;
     }
 
-    // Entering (or re-entering) SUBMITTED always starts from the first enabled stage.
+    // Entering (or re-entering) UNDER_REVIEW always starts from the first enabled stage.
     String dbc = getDesignatedBodyCode(form);
     List<StateStage> stages = getConfiguredStages(dbc);
 

@@ -52,6 +52,7 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROV
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.REJECTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNDER_REVIEW;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
 import static uk.nhs.hee.tis.trainee.forms.service.LtftService.FORM_ATTRIBUTE_FORM_STATUS;
@@ -1566,8 +1567,8 @@ class LtftServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = "SUBMITTED")
-  void shouldReturnEmptyPatchedFormWhenFormNotSubmitted(LifecycleState lifecycleState)
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = "UNDER_REVIEW")
+  void shouldReturnEmptyPatchedFormWhenFormNotUnderReview(LifecycleState lifecycleState)
       throws IOException {
     LtftForm entity = new LtftForm();
     entity.setId(ID);
@@ -1600,7 +1601,7 @@ class LtftServiceTest {
     LtftForm entity = new LtftForm();
     entity.setId(ID);
     entity.setContent(LtftContent.builder().build());
-    entity.setLifecycleState(SUBMITTED);
+    entity.setLifecycleState(UNDER_REVIEW);
 
     when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
@@ -1629,7 +1630,7 @@ class LtftServiceTest {
     LtftForm entity = new LtftForm();
     entity.setId(ID);
     entity.setContent(LtftContent.builder().build());
-    entity.setLifecycleState(SUBMITTED);
+    entity.setLifecycleState(UNDER_REVIEW);
 
     when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
@@ -1659,7 +1660,7 @@ class LtftServiceTest {
     LtftForm entity = new LtftForm();
     entity.setId(ID);
     entity.setContent(LtftContent.builder().build());
-    entity.setLifecycleState(SUBMITTED);
+    entity.setLifecycleState(UNDER_REVIEW);
 
     when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
@@ -1684,12 +1685,12 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldReturnPatchedFormWhenFormSubmitted() throws IOException {
+  void shouldReturnPatchedFormWhenFormUnderReview() throws IOException {
     LtftForm entity = new LtftForm();
     entity.setId(ID);
     entity.setContent(LtftContent.builder().build());
     entity.setRevision(1);
-    entity.setLifecycleState(SUBMITTED);
+    entity.setLifecycleState(UNDER_REVIEW);
 
     when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
@@ -1720,19 +1721,19 @@ class LtftServiceTest {
 
     StatusInfoDto current = patchedForm.status().current();
     assertThat("Unexpected current revision.", current.revision(), is(2));
-    assertThat("Unexpected current state.", current.state(), is(SUBMITTED));
+    assertThat("Unexpected current state.", current.state(), is(UNDER_REVIEW));
     assertThat("Unexpected current status reason.", current.detail().reason(), is("reason1"));
     assertThat("Unexpected current status message.", current.detail().message(), is("message1"));
 
     StatusInfoDto history = patchedForm.status().history().get(0);
     assertThat("Unexpected original revision.", history.revision(), is(1));
-    assertThat("Unexpected original state.", history.state(), is(SUBMITTED));
+    assertThat("Unexpected original state.", history.state(), is(UNDER_REVIEW));
     assertThat("Unexpected original status reason.", history.detail().reason(), nullValue());
     assertThat("Unexpected original status message.", history.detail().message(), nullValue());
 
     history = patchedForm.status().history().get(1);
     assertThat("Unexpected latest revision.", history.revision(), is(2));
-    assertThat("Unexpected latest state.", history.state(), is(SUBMITTED));
+    assertThat("Unexpected latest state.", history.state(), is(UNDER_REVIEW));
     assertThat("Unexpected latest status reason.", history.detail().reason(), is("reason1"));
     assertThat("Unexpected latest status message.", history.detail().message(), is("message1"));
 
@@ -1740,12 +1741,57 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldSnapshotPatchedFormWhenFormSubmitted() throws IOException {
+  void shouldPreserveReviewStageWhenPatchingFormUnderReview() throws IOException {
+    ReviewStageStatus reviewStage = new ReviewStageStatus(1, "Stage Two");
+
     LtftForm entity = new LtftForm();
     entity.setId(ID);
     entity.setContent(LtftContent.builder().build());
     entity.setRevision(1);
-    entity.setLifecycleState(SUBMITTED);
+    entity.setStatus(Status.builder()
+        .current(StatusInfo.builder()
+            .state(UNDER_REVIEW)
+            .revision(1)
+            .reviewStage(reviewStage)
+            .build())
+        .history(List.of())
+        .build());
+
+    when(repository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+            any(), any(), any())).thenReturn(Optional.of(entity));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    JsonNode patchNode = jsonMapper.readTree("""
+        [
+          {
+            "op": "replace",
+            "path": "/personalDetails/email",
+            "value": "new@example.com"
+          }
+        ]
+        """);
+    FormPatchDto formPatch
+        = new FormPatchDto(JsonPatch.fromJson(patchNode), "reason1", "message1");
+
+    Optional<LtftFormDto> optionalForm = service.applyAdminPatch(ID, formPatch);
+
+    assertThat("Unexpected form optional.", optionalForm.isPresent(), is(true));
+
+    StatusInfoDto current = optionalForm.get().status().current();
+    assertThat("Unexpected current state.", current.state(), is(UNDER_REVIEW));
+    assertThat("Unexpected preserved review stage.", current.reviewStage(), is(reviewStage));
+
+    verify(repository).save(any());
+  }
+
+  @Test
+  void shouldSnapshotPatchedFormWhenFormUnderReview() throws IOException {
+    LtftForm entity = new LtftForm();
+    entity.setId(ID);
+    entity.setContent(LtftContent.builder().build());
+    entity.setRevision(1);
+    entity.setLifecycleState(UNDER_REVIEW);
 
     when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
@@ -1770,14 +1816,14 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldPublishPatchedFormWhenFormSubmitted() throws IOException {
+  void shouldPublishPatchedFormWhenFormUnderReview() throws IOException {
     LtftForm entity = new LtftForm();
     entity.setId(ID);
     entity.setTraineeTisId(TRAINEE_ID);
     entity.setFormRef("LTFT_123");
     entity.setContent(LtftContent.builder().build());
     entity.setRevision(1);
-    entity.setLifecycleState(SUBMITTED);
+    entity.setLifecycleState(UNDER_REVIEW);
 
     when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
@@ -1809,7 +1855,7 @@ class LtftServiceTest {
     assertThat("Unexpected form reference.", capturedForm.formRef(), is("LTFT_123"));
     assertThat("Unexpected form revision.", capturedForm.revision(), is(2));
     assertThat("Unexpected lifecycle state.", capturedForm.status().current().state(),
-        is(SUBMITTED));
+        is(UNDER_REVIEW));
 
     assertThat("Unexpected trainee email.", capturedForm.personalDetails().email(),
         is("new@example.com"));
@@ -1828,7 +1874,7 @@ class LtftServiceTest {
             .build())
         .build());
     entity.setRevision(1);
-    entity.setLifecycleState(SUBMITTED);
+    entity.setLifecycleState(UNDER_REVIEW);
 
     when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
@@ -1856,13 +1902,13 @@ class LtftServiceTest {
 
     StatusInfoDto current = patchedForm.status().current();
     assertThat("Unexpected current revision.", current.revision(), is(1));
-    assertThat("Unexpected current state.", current.state(), is(SUBMITTED));
+    assertThat("Unexpected current state.", current.state(), is(UNDER_REVIEW));
     assertThat("Unexpected current status reason.", current.detail().reason(), nullValue());
     assertThat("Unexpected current status message.", current.detail().message(), nullValue());
 
     StatusInfoDto history = patchedForm.status().history().get(0);
     assertThat("Unexpected original revision.", history.revision(), is(1));
-    assertThat("Unexpected original state.", history.state(), is(SUBMITTED));
+    assertThat("Unexpected original state.", history.state(), is(UNDER_REVIEW));
     assertThat("Unexpected original status reason.", history.detail().reason(), nullValue());
     assertThat("Unexpected original status message.", history.detail().message(), nullValue());
 
@@ -1967,6 +2013,160 @@ class LtftServiceTest {
     verify(repository, never()).save(any());
   }
 
+  @Test
+  void shouldReturnEmptyStartingReviewWhenFormNotFound()
+      throws MethodArgumentNotValidException {
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.empty());
+
+    Optional<LtftFormDto> form = service.startReview(ID);
+
+    assertThat("Unexpected form presence.", form.isPresent(), is(false));
+    verify(repository, never()).save(any());
+  }
+
+  @Test
+  void shouldThrowStartingReviewWhenTransitionInvalid() {
+    LtftForm form = new LtftForm();
+    form.setLifecycleState(DRAFT);
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+
+    assertThrows(MethodArgumentNotValidException.class, () -> service.startReview(ID));
+
+    verify(repository, never()).save(any());
+  }
+
+  @Test
+  void shouldTransitionToUnderReviewAndSelfAssignWhenStartingReviewWithNoAssignedAdmin()
+      throws MethodArgumentNotValidException {
+    LtftForm entity = new LtftForm();
+    entity.setLifecycleState(SUBMITTED);
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(entity));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> optionalDto = service.startReview(ID);
+
+    assertThat("Unexpected form presence.", optionalDto.isPresent(), is(true));
+
+    StatusInfoDto current = optionalDto.get().status().current();
+    assertThat("Unexpected current state.", current.state(), is(UNDER_REVIEW));
+
+    RedactedPersonDto assignedAdmin = current.assignedAdmin();
+    assertThat("Unexpected assigned admin name.", assignedAdmin.name(), is(ADMIN_NAME));
+    assertThat("Unexpected assigned admin email.", assignedAdmin.email(), is(ADMIN_EMAIL));
+    assertThat("Unexpected assigned admin role.", assignedAdmin.role(), is("ADMIN"));
+
+    // The transition and self-assignment are persisted together in a single save.
+    verify(repository, times(1)).save(any());
+  }
+
+  @Test
+  void shouldTransitionToUnderReviewWithoutReassigningWhenStartingReviewWithAssignedAdmin()
+      throws MethodArgumentNotValidException {
+    LtftForm entity = new LtftForm();
+    entity.setLifecycleState(SUBMITTED);
+    entity.setAssignedAdmin(
+        Person.builder()
+            .name("Existing Admin")
+            .email("existing.admin@example.com")
+            .role("ADMIN")
+            .build(),
+        null);
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(entity));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> optionalDto = service.startReview(ID);
+
+    assertThat("Unexpected form presence.", optionalDto.isPresent(), is(true));
+
+    StatusInfoDto current = optionalDto.get().status().current();
+    assertThat("Unexpected current state.", current.state(), is(UNDER_REVIEW));
+
+    RedactedPersonDto assignedAdmin = current.assignedAdmin();
+    assertThat("Unexpected assigned admin name.", assignedAdmin.name(), is("Existing Admin"));
+    assertThat("Unexpected assigned admin email.", assignedAdmin.email(),
+        is("existing.admin@example.com"));
+
+    // Only the status transition should save; no reassignment occurs.
+    verify(repository, times(1)).save(any());
+  }
+
+  @Test
+  void shouldThrowStartingReviewWhenFormHasNoStatus() {
+    LtftForm entity = new LtftForm(); // no status set, so getStatus() is null
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(entity));
+
+    assertThrows(MethodArgumentNotValidException.class, () -> service.startReview(ID));
+
+    verify(repository, never()).save(any());
+  }
+
+  @Test
+  void shouldThrowStartingReviewWhenFormStatusHasNoCurrent() {
+    LtftForm entity = new LtftForm();
+    entity.setStatus(Status.builder().build()); // status present but current() is null
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(entity));
+
+    assertThrows(MethodArgumentNotValidException.class, () -> service.startReview(ID));
+
+    verify(repository, never()).save(any());
+  }
+
+  @Test
+  void shouldThrowUpdatingStatusWhenFormHasNoStatus() {
+    LtftForm form = new LtftForm(); // no status set, so getStatus() is null
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+
+    MethodArgumentNotValidException exception = assertThrows(MethodArgumentNotValidException.class,
+        () -> service.updateStatusAsAdmin(ID, SUBMITTED, null));
+
+    List<FieldError> fieldErrors = exception.getFieldErrors();
+    assertThat("Unexpected error count.", fieldErrors, hasSize(1));
+
+    FieldError fieldError = fieldErrors.get(0);
+    assertThat("Unexpected object name.", fieldError.getObjectName(), is("LtftForm"));
+    assertThat("Unexpected field.", fieldError.getField(), is("status.current.state"));
+    assertThat("Unexpected message.", fieldError.getDefaultMessage(),
+        is("can not be transitioned to SUBMITTED"));
+
+    verify(repository, never()).save(any());
+  }
+
+  @Test
+  void shouldThrowUpdatingStatusWhenFormStatusHasNoCurrent() {
+    LtftForm form = new LtftForm();
+    form.setStatus(Status.builder().build()); // status present but current() is null
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+
+    MethodArgumentNotValidException exception = assertThrows(MethodArgumentNotValidException.class,
+        () -> service.updateStatusAsAdmin(ID, SUBMITTED, null));
+
+    List<FieldError> fieldErrors = exception.getFieldErrors();
+    assertThat("Unexpected error count.", fieldErrors, hasSize(1));
+
+    FieldError fieldError = fieldErrors.get(0);
+    assertThat("Unexpected object name.", fieldError.getObjectName(), is("LtftForm"));
+    assertThat("Unexpected field.", fieldError.getField(), is("status.current.state"));
+    assertThat("Unexpected message.", fieldError.getDefaultMessage(),
+        is("can not be transitioned to SUBMITTED"));
+
+    verify(repository, never()).save(any());
+  }
+
   @ParameterizedTest
   @EnumSource(LifecycleState.class)
   void shouldReturnEmptyUpdatingStatusWhenFormNotFound(LifecycleState state)
@@ -2004,19 +2204,17 @@ class LtftServiceTest {
     verify(repository, never()).save(any());
   }
 
-  @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = "SUBMITTED")
-  void shouldUpdateStatusWhenTransitionFromDraftValid(
-      LifecycleState targetState) throws MethodArgumentNotValidException {
+  @Test
+  void shouldSubmitFormAsTraineeFromDraft() {
     LtftForm entity = new LtftForm();
+    entity.setId(ID);
     entity.setTraineeTisId(TRAINEE_ID);
     entity.setLifecycleState(DRAFT);
 
-    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(entity));
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(entity));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    Optional<LtftFormDto> optionalDto = service.updateStatusAsAdmin(ID, targetState,
+    Optional<LtftFormDto> optionalDto = service.submitLtftForm(ID,
         LftfStatusInfoDetailDto.builder()
             .reason("detail reason")
             .message("detail message")
@@ -2029,7 +2227,7 @@ class LtftServiceTest {
     assertThat("Unexpected form ref.", dto.formRef(), is("ltft_" + TRAINEE_ID + "_001"));
 
     StatusInfoDto current = dto.status().current();
-    assertThat("Unexpected current state.", current.state(), is(targetState));
+    assertThat("Unexpected current state.", current.state(), is(SUBMITTED));
     assertThat("Unexpected current revision.", current.revision(), is(0));
     assertThat("Unexpected current timestamp.", current.timestamp(), notNullValue());
 
@@ -2038,20 +2236,20 @@ class LtftServiceTest {
     assertThat("Unexpected current message.", detail.message(), is("detail message"));
 
     RedactedPersonDto modifiedBy = current.modifiedBy();
-    assertThat("Unexpected modified name.", modifiedBy.name(), is(ADMIN_NAME));
-    assertThat("Unexpected modified email.", modifiedBy.email(), is(ADMIN_EMAIL));
-    assertThat("Unexpected modified role.", modifiedBy.role(), is("ADMIN"));
+    assertThat("Unexpected modified name.", modifiedBy.name(), is(TRAINEE_NAME));
+    assertThat("Unexpected modified email.", modifiedBy.email(), is(TRAINEE_EMAIL));
+    assertThat("Unexpected modified role.", modifiedBy.role(), is(TRAINEE_ROLE));
 
     List<StatusInfoDto> history = dto.status().history();
     assertThat("Unexpected history count.", history, hasSize(2));
     assertThat("Unexpected history state.", history.get(0).state(), is(DRAFT));
-    assertThat("Unexpected history state.", history.get(1).state(), is(targetState));
+    assertThat("Unexpected history state.", history.get(1).state(), is(SUBMITTED));
 
     verify(ltftSubmissionHistoryService).takeSnapshot(entity);
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = {"APPROVED", "REJECTED",
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = {"UNDER_REVIEW",
       "UNSUBMITTED", "WITHDRAWN"})
   void shouldThrowExceptionUpdatingStatusWhenTransitionFromSubmittedInvalid(
       LifecycleState targetState) {
@@ -2077,9 +2275,8 @@ class LtftServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"APPROVED", "REJECTED",
-      "UNSUBMITTED", "WITHDRAWN"})
-  void shouldUpdateStatusWhenTransitionFromSubmittedValid(
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"UNDER_REVIEW"})
+  void shouldUpdateStatusWhenTransitionFromSubmittedValidForAdmin(
       LifecycleState targetState) throws MethodArgumentNotValidException {
     LtftForm entity = new LtftForm();
     entity.setLifecycleState(SUBMITTED);
@@ -2123,11 +2320,11 @@ class LtftServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"APPROVED", "REJECTED",
-      "UNSUBMITTED", "WITHDRAWN"})
-  void shouldThrowExceptionUpdatingStatusWhenReviewStageTransitionDenied(
+      "UNSUBMITTED"})
+  void shouldThrowExceptionUpdatingStatusWhenReviewStageTransitionDeniedForAdmin(
       LifecycleState targetState) {
     LtftForm form = new LtftForm();
-    form.setLifecycleState(SUBMITTED);
+    form.setLifecycleState(UNDER_REVIEW);
 
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
@@ -2154,18 +2351,19 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldSetReviewStageWhenUpdatingStatusToSubmitted() throws MethodArgumentNotValidException {
+  void shouldSetReviewStageWhenUpdatingStatusToUnderReview()
+      throws MethodArgumentNotValidException {
     LtftForm entity = new LtftForm();
-    entity.setLifecycleState(UNSUBMITTED);
+    entity.setLifecycleState(SUBMITTED);
 
     ReviewStageStatus expectedStage = new ReviewStageStatus(0, "Triage");
-    when(reviewStageService.resolveReviewStageForTransition(any(), eq(SUBMITTED)))
+    when(reviewStageService.resolveReviewStageForTransition(any(), eq(UNDER_REVIEW)))
         .thenReturn(expectedStage);
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(entity));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    Optional<LtftFormDto> optionalDto = service.updateStatusAsAdmin(ID, SUBMITTED, null);
+    Optional<LtftFormDto> optionalDto = service.updateStatusAsAdmin(ID, UNDER_REVIEW, null);
 
     assertThat("Unexpected form presence.", optionalDto.isPresent(), is(true));
     assertThat("Unexpected review stage.", optionalDto.get().status().current().reviewStage(),
@@ -2174,11 +2372,11 @@ class LtftServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"APPROVED", "REJECTED",
-      "UNSUBMITTED", "WITHDRAWN"})
-  void shouldClearReviewStageWhenLeavingSubmitted(
+      "UNSUBMITTED"})
+  void shouldClearReviewStageWhenLeavingUnderReview(
       LifecycleState targetState) throws MethodArgumentNotValidException {
     LtftForm entity = new LtftForm();
-    entity.setLifecycleState(SUBMITTED);
+    entity.setLifecycleState(UNDER_REVIEW);
 
     when(reviewStageService.resolveReviewStageForTransition(any(), eq(targetState)))
         .thenReturn(null);
@@ -2195,6 +2393,150 @@ class LtftServiceTest {
     assertThat("Unexpected form presence.", optionalDto.isPresent(), is(true));
     assertThat("Unexpected review stage.", optionalDto.get().status().current().reviewStage(),
         nullValue());
+  }
+
+  @Test
+  void shouldReturnEmptyUnsubmittingAsAdminWhenFormNotFound()
+      throws MethodArgumentNotValidException {
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.empty());
+
+    Optional<LtftFormDto> result = service.updateStatusAsAdmin(ID, UNSUBMITTED,
+        LftfStatusInfoDetailDto.builder().reason("reason").build());
+
+    assertThat("Unexpected form presence.", result.isPresent(), is(false));
+    verify(repository, never()).save(any());
+  }
+
+  @Test
+  void shouldThrowUnsubmittingAsAdminWhenFormSubmitted() {
+    LtftForm form = new LtftForm();
+    form.setLifecycleState(SUBMITTED);
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+
+    MethodArgumentNotValidException exception = assertThrows(MethodArgumentNotValidException.class,
+        () -> service.updateStatusAsAdmin(ID, UNSUBMITTED,
+            LftfStatusInfoDetailDto.builder().reason("reason").build()));
+
+    List<FieldError> fieldErrors = exception.getFieldErrors();
+    assertThat("Unexpected error count.", fieldErrors, hasSize(1));
+
+    FieldError fieldError = fieldErrors.get(0);
+    assertThat("Unexpected object name.", fieldError.getObjectName(), is("LtftForm"));
+    assertThat("Unexpected field.", fieldError.getField(), is("status.current.state"));
+    assertThat("Unexpected message.", fieldError.getDefaultMessage(),
+        is("can not be transitioned to UNSUBMITTED by this user"));
+
+    verify(repository, never()).save(any());
+  }
+
+  @Test
+  void shouldUnsubmitAsAdminWhenFormUnderReview() throws MethodArgumentNotValidException {
+    LtftForm entity = new LtftForm();
+    entity.setLifecycleState(UNDER_REVIEW);
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(entity));
+    when(reviewStageService.canTransitionToLifecycleState(any(), eq(UNSUBMITTED)))
+        .thenReturn(true);
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> optionalDto = service.updateStatusAsAdmin(ID, UNSUBMITTED,
+        LftfStatusInfoDetailDto.builder()
+            .reason("detail reason")
+            .message("detail message")
+            .build());
+
+    assertThat("Unexpected form presence.", optionalDto.isPresent(), is(true));
+
+    StatusInfoDto current = optionalDto.get().status().current();
+    assertThat("Unexpected current state.", current.state(), is(UNSUBMITTED));
+
+    RedactedPersonDto modifiedBy = current.modifiedBy();
+    assertThat("Unexpected modified name.", modifiedBy.name(), is(ADMIN_NAME));
+    assertThat("Unexpected modified email.", modifiedBy.email(), is(ADMIN_EMAIL));
+    assertThat("Unexpected modified role.", modifiedBy.role(), is("ADMIN"));
+
+    verify(repository).save(entity);
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      DRAFT        | SUBMITTED
+      UNSUBMITTED  | SUBMITTED
+      UNSUBMITTED  | WITHDRAWN
+      SUBMITTED    | UNSUBMITTED
+      SUBMITTED    | WITHDRAWN
+      UNDER_REVIEW | WITHDRAWN
+      """)
+  void shouldThrowWhenAdminAttemptsTraineeOnlyTransition(
+      LifecycleState currentState, LifecycleState targetState) {
+    LtftForm form = new LtftForm();
+    form.setLifecycleState(currentState);
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+
+    MethodArgumentNotValidException exception = assertThrows(MethodArgumentNotValidException.class,
+        () -> service.updateStatusAsAdmin(ID, targetState,
+            LftfStatusInfoDetailDto.builder().reason("reason").build()));
+
+    List<FieldError> fieldErrors = exception.getFieldErrors();
+    assertThat("Unexpected error count.", fieldErrors, hasSize(1));
+
+    FieldError fieldError = fieldErrors.get(0);
+    assertThat("Unexpected object name.", fieldError.getObjectName(), is("LtftForm"));
+    assertThat("Unexpected field.", fieldError.getField(), is("status.current.state"));
+    assertThat("Unexpected message.", fieldError.getDefaultMessage(),
+        is("can not be transitioned to " + targetState.name() + " by this user"));
+
+    verify(repository, never()).save(any());
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      SUBMITTED    | UNDER_REVIEW
+      UNDER_REVIEW | APPROVED
+      UNDER_REVIEW | REJECTED
+      UNDER_REVIEW | UNSUBMITTED
+      """)
+  void shouldNotUpdateWhenTraineeAttemptsAdminOnlyTransition(
+      LifecycleState currentState, LifecycleState targetState) {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(currentState);
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+
+    Optional<LtftFormDto> result = service.changeLtftFormState(ID,
+        LftfStatusInfoDetailDto.builder().reason("reason").build(), targetState);
+
+    assertThat("Unexpected form presence.", result.isPresent(), is(false));
+    verify(repository, never()).save(any());
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
+      DRAFT        | SUBMITTED    | TRAINEE
+      UNSUBMITTED  | SUBMITTED    | TRAINEE
+      UNSUBMITTED  | WITHDRAWN    | TRAINEE
+      SUBMITTED    | UNSUBMITTED  | TRAINEE
+      SUBMITTED    | WITHDRAWN    | TRAINEE
+      UNDER_REVIEW | WITHDRAWN    | TRAINEE
+      SUBMITTED    | UNDER_REVIEW | ADMIN
+      UNDER_REVIEW | APPROVED     | ADMIN
+      UNDER_REVIEW | REJECTED     | ADMIN
+      UNDER_REVIEW | UNSUBMITTED  | ADMIN
+      DRAFT        | WITHDRAWN    |
+      APPROVED     | DRAFT        |
+      """)
+  void shouldResolveRequiredActorForTransition(LifecycleState currentState,
+      LifecycleState targetState, LtftService.Actor expectedActor) {
+    assertThat("Unexpected required actor.",
+        LtftService.requiredActorFor(currentState, targetState), is(expectedActor));
   }
 
   @Test
@@ -2382,7 +2724,7 @@ class LtftServiceTest {
     assertThat("Unexpected object name.", fieldError.getObjectName(), is("LtftForm"));
     assertThat("Unexpected field.", fieldError.getField(), is("status.current.state"));
     assertThat("Unexpected message.", fieldError.getDefaultMessage(),
-        is("review stage can only be advanced when the form is SUBMITTED"));
+        is("review stage can only be advanced when the form is UNDER_REVIEW"));
 
     verify(repository, never()).save(any());
   }
@@ -2405,7 +2747,7 @@ class LtftServiceTest {
     assertThat("Unexpected object name.", fieldError.getObjectName(), is("LtftForm"));
     assertThat("Unexpected field.", fieldError.getField(), is("status.current.state"));
     assertThat("Unexpected message.", fieldError.getDefaultMessage(),
-        is("review stage can only be advanced when the form is SUBMITTED"));
+        is("review stage can only be advanced when the form is UNDER_REVIEW"));
 
     verify(repository, never()).save(any());
   }
@@ -2414,7 +2756,7 @@ class LtftServiceTest {
   void shouldThrowExceptionAdvancingReviewStageWhenNoActiveReviewStage() {
     // Form is SUBMITTED but has no reviewStage — pre-workflow form or missing stage data.
     LtftForm form = new LtftForm();
-    form.setLifecycleState(SUBMITTED);
+    form.setLifecycleState(UNDER_REVIEW);
     // reviewStage is null (setLifecycleState does not set a reviewStage)
 
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
@@ -2443,7 +2785,7 @@ class LtftServiceTest {
     LtftForm form = new LtftForm();
     form.setStatus(Status.builder()
         .current(StatusInfo.builder()
-            .state(SUBMITTED)
+            .state(UNDER_REVIEW)
             .reviewStage(new ReviewStageStatus(3, "Review complete"))
             .build())
         .build());
@@ -2473,7 +2815,7 @@ class LtftServiceTest {
     form.setId(ID);
     form.setStatus(Status.builder()
         .current(StatusInfo.builder()
-            .state(SUBMITTED)
+            .state(UNDER_REVIEW)
             .reviewStage(new ReviewStageStatus(0, "Triage"))
             .build())
         .build());
@@ -2490,7 +2832,7 @@ class LtftServiceTest {
     assertThat("Unexpected form presence.", optionalDto.isPresent(), is(true));
 
     StatusInfoDto current = optionalDto.get().status().current();
-    assertThat("Unexpected current state.", current.state(), is(SUBMITTED));
+    assertThat("Unexpected current state.", current.state(), is(UNDER_REVIEW));
     assertThat("Unexpected current review stage.", current.reviewStage(), is(nextStage));
 
     verify(repository).save(form);
@@ -2504,7 +2846,7 @@ class LtftServiceTest {
     form.setId(ID);
     form.setStatus(Status.builder()
         .current(StatusInfo.builder()
-            .state(SUBMITTED)
+            .state(UNDER_REVIEW)
             .reviewStage(new ReviewStageStatus(0, "Triage"))
             .build())
         .build());
@@ -2527,7 +2869,7 @@ class LtftServiceTest {
     LtftForm form = new LtftForm();
     form.setId(ID);
     StatusInfo initialStatus = StatusInfo.builder()
-        .state(SUBMITTED)
+        .state(UNDER_REVIEW)
         .reviewStage(new ReviewStageStatus(0, "Triage"))
         .build();
     form.setStatus(Status.builder()
@@ -2548,8 +2890,8 @@ class LtftServiceTest {
 
     List<StatusInfoDto> history = optionalDto.get().status().history();
     assertThat("Unexpected history count.", history, hasSize(2));
-    assertThat("Unexpected history state 0.", history.get(0).state(), is(SUBMITTED));
-    assertThat("Unexpected history state 1.", history.get(1).state(), is(SUBMITTED));
+    assertThat("Unexpected history state 0.", history.get(0).state(), is(UNDER_REVIEW));
+    assertThat("Unexpected history state 1.", history.get(1).state(), is(UNDER_REVIEW));
     assertThat("Unexpected history review stage 1.", history.get(1).reviewStage(), is(nextStage));
   }
 
@@ -2560,7 +2902,7 @@ class LtftServiceTest {
     form.setId(ID);
     form.setStatus(Status.builder()
         .current(StatusInfo.builder()
-            .state(SUBMITTED)
+            .state(UNDER_REVIEW)
             .reviewStage(new ReviewStageStatus(0, "Triage"))
             .build())
         .build());
@@ -2587,7 +2929,7 @@ class LtftServiceTest {
     form.setId(ID);
     form.setStatus(Status.builder()
         .current(StatusInfo.builder()
-            .state(SUBMITTED)
+            .state(UNDER_REVIEW)
             .reviewStage(new ReviewStageStatus(0, "Triage"))
             .build())
         .build());
@@ -2613,8 +2955,8 @@ class LtftServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = "SUBMITTED")
-  void shouldThrowExceptionAdvancingReviewStageWhenFormNotSubmitted(LifecycleState currentState) {
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = "UNDER_REVIEW")
+  void shouldThrowExceptionAdvancingReviewStageWhenFormNotUnderReview(LifecycleState currentState) {
     LtftForm form = new LtftForm();
     form.setLifecycleState(currentState);
 
@@ -2631,7 +2973,7 @@ class LtftServiceTest {
     assertThat("Unexpected object name.", fieldError.getObjectName(), is("LtftForm"));
     assertThat("Unexpected field.", fieldError.getField(), is("status.current.state"));
     assertThat("Unexpected message.", fieldError.getDefaultMessage(),
-        is("review stage can only be advanced when the form is SUBMITTED"));
+        is("review stage can only be advanced when the form is UNDER_REVIEW"));
 
     verify(repository, never()).save(any());
   }
@@ -2639,20 +2981,22 @@ class LtftServiceTest {
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"SUBMITTED", "WITHDRAWN"})
   void shouldUpdateStatusWhenTransitionFromUnsubmittedValid(
-      LifecycleState targetState) throws MethodArgumentNotValidException {
+      LifecycleState targetState) {
     LtftForm entity = new LtftForm();
+    entity.setId(ID);
+    entity.setTraineeTisId(TRAINEE_ID);
     entity.setFormRef("formRef_123");
     entity.setLifecycleState(UNSUBMITTED);
 
-    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(entity));
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(entity));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    Optional<LtftFormDto> optionalDto = service.updateStatusAsAdmin(ID, targetState,
+    Optional<LtftFormDto> optionalDto = service.changeLtftFormState(ID,
         LftfStatusInfoDetailDto.builder()
             .reason("detail reason")
             .message("detail message")
-            .build()
+            .build(),
+        targetState
     );
 
     assertThat("Unexpected form presence.", optionalDto.isPresent(), is(true));
@@ -2670,9 +3014,9 @@ class LtftServiceTest {
     assertThat("Unexpected current message.", detail.message(), is("detail message"));
 
     RedactedPersonDto modifiedBy = current.modifiedBy();
-    assertThat("Unexpected modified name.", modifiedBy.name(), is(ADMIN_NAME));
-    assertThat("Unexpected modified email.", modifiedBy.email(), is(ADMIN_EMAIL));
-    assertThat("Unexpected modified role.", modifiedBy.role(), is("ADMIN"));
+    assertThat("Unexpected modified name.", modifiedBy.name(), is(TRAINEE_NAME));
+    assertThat("Unexpected modified email.", modifiedBy.email(), is(TRAINEE_EMAIL));
+    assertThat("Unexpected modified role.", modifiedBy.role(), is(TRAINEE_ROLE));
 
     List<StatusInfoDto> history = dto.status().history();
     assertThat("Unexpected history count.", history, hasSize(2));
@@ -2682,7 +3026,7 @@ class LtftServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = {"DRAFT", "SUBMITTED",
-      "UNSUBMITTED"})
+      "UNSUBMITTED", "UNDER_REVIEW"})
   void shouldThrowExceptionUpdatingStatusWhenTransitionFromFinalState(LifecycleState currentState) {
     LtftForm form = new LtftForm();
     form.setLifecycleState(currentState);
@@ -2714,10 +3058,10 @@ class LtftServiceTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      DRAFT | SUBMITTED
-      SUBMITTED | APPROVED
+      SUBMITTED | UNDER_REVIEW
+      UNDER_REVIEW | APPROVED
       """)
-  void shouldNotThrowExceptionUpdatingStatusWhenOptionalStatusDetailNull(
+  void shouldNotThrowExceptionUpdatingStatusAsAdminWhenOptionalStatusDetailNull(
       LifecycleState currentState, LifecycleState targetState) {
     LtftForm form = new LtftForm();
     form.setLifecycleState(currentState);
@@ -2731,10 +3075,10 @@ class LtftServiceTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      DRAFT | SUBMITTED
-      SUBMITTED | APPROVED
+      SUBMITTED | UNDER_REVIEW
+      UNDER_REVIEW | APPROVED
       """)
-  void shouldNotThrowExceptionUpdatingStatusWhenOptionalStatusDetailReasonNull(
+  void shouldNotThrowExceptionUpdatingStatusAsAdminWhenOptionalStatusDetailReasonNull(
       LifecycleState currentState, LifecycleState targetState) {
     LtftForm form = new LtftForm();
     form.setLifecycleState(currentState);
@@ -2748,11 +3092,11 @@ class LtftServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"REJECTED", "UNSUBMITTED",
-      "WITHDRAWN"})
-  void shouldThrowExceptionUpdatingStatusWhenRequiredStatusDetailNull(LifecycleState targetState) {
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"REJECTED", "UNSUBMITTED"})
+  void shouldThrowExceptionUpdatingStatusAsAdminWhenRequiredStatusDetailNull(
+      LifecycleState targetState) {
     LtftForm form = new LtftForm();
-    form.setLifecycleState(SUBMITTED);
+    form.setLifecycleState(UNDER_REVIEW);
 
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
@@ -2769,16 +3113,19 @@ class LtftServiceTest {
     assertThat("Unexpected message.", fieldError.getDefaultMessage(),
         is("must not be null when transitioning to " + targetState.name()));
 
+    // The detail parameter is index 4 of updateStatus (after the actor parameter).
+    assertThat("Unexpected offending parameter index.",
+        exception.getParameter().getParameterIndex(), is(4));
+
     verify(repository, never()).save(any());
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"REJECTED", "UNSUBMITTED",
-      "WITHDRAWN"})
-  void shouldThrowExceptionUpdatingStatusWhenRequiredStatusDetailReasonNull(
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"REJECTED", "UNSUBMITTED"})
+  void shouldThrowExceptionUpdatingStatusAsAdminWhenRequiredStatusDetailReasonNull(
       LifecycleState targetState) {
     LtftForm form = new LtftForm();
-    form.setLifecycleState(SUBMITTED);
+    form.setLifecycleState(UNDER_REVIEW);
 
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
@@ -2795,6 +3142,10 @@ class LtftServiceTest {
     assertThat("Unexpected field.", fieldError.getField(), is("detail.reason"));
     assertThat("Unexpected message.", fieldError.getDefaultMessage(),
         is("must not be null when transitioning to " + targetState.name()));
+
+    // The detail parameter is index 4 of updateStatus (after the actor parameter).
+    assertThat("Unexpected offending parameter index.",
+        exception.getParameter().getParameterIndex(), is(4));
 
     verify(repository, never()).save(any());
   }
@@ -4135,6 +4486,26 @@ class LtftServiceTest {
     verifyNoInteractions(ltftSubmissionHistoryService);
   }
 
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = {"SUBMITTED"})
+  void shouldNotUnsubmitAsTraineeWhenFormNotSubmitted(LifecycleState currentState) {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(currentState);
+    form.setContent(LtftContent.builder().name("test").build());
+
+    LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+
+    Optional<LtftFormDto> result = service.unsubmitLtftForm(ID, detail);
+
+    assertThat("Unexpected form transition when trainee unsubmitting non-submitted form.",
+        result.isPresent(), is(false));
+    verify(repository, never()).save(any());
+  }
+
   @Test
   void shouldWithdrawFormWithStatusDetail() {
     LtftForm form = new LtftForm();
@@ -4234,14 +4605,14 @@ class LtftServiceTest {
     LtftForm form = new LtftForm();
     form.setId(ID);
     form.setTraineeTisId(TRAINEE_ID);
-    form.setLifecycleState(DRAFT);
+    form.setLifecycleState(SUBMITTED);
     form.setFormRef("LTFT_123");
 
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    service.updateStatusAsAdmin(ID, SUBMITTED, null);
+    service.updateStatusAsAdmin(ID, UNDER_REVIEW, null);
 
     ArgumentCaptor<LtftFormDto> ltftFormCaptor = ArgumentCaptor.captor();
     ArgumentCaptor<String> snsTopicCaptor = ArgumentCaptor.captor();
@@ -4255,7 +4626,7 @@ class LtftServiceTest {
     assertThat("Unexpected trainee ID.", capturedForm.traineeTisId(), is(TRAINEE_ID));
     assertThat("Unexpected form reference.", capturedForm.formRef(), is("LTFT_123"));
     assertThat("Unexpected lifecycle state.", capturedForm.status().current().state(),
-        is(SUBMITTED));
+        is(UNDER_REVIEW));
 
     assertThat("Unexpected message.", messageCaptor.getValue(),
         is(FORM_ATTRIBUTE_FORM_STATUS));
@@ -4337,22 +4708,30 @@ class LtftServiceTest {
   @ParameterizedTest
   @MethodSource("provideValidLtftLifecycleStateTransitions")
   void shouldIncrementRevisionIffTransitionsToStateThatIncrementsRevision(
-      LifecycleState currentState, LifecycleState targetState)
+      LifecycleState currentState, LifecycleState targetState, boolean asAdmin)
       throws MethodArgumentNotValidException {
     LtftForm entity = new LtftForm();
+    entity.setId(ID);
+    entity.setTraineeTisId(TRAINEE_ID);
     entity.setLifecycleState(currentState);
     entity.setRevision(0);
 
-    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(entity));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    Optional<LtftFormDto> optionalDto = service.updateStatusAsAdmin(ID, targetState,
-        LftfStatusInfoDetailDto.builder()
-            .reason("detail reason")
-            .message("detail message")
-            .build()
-    );
+    LftfStatusInfoDetailDto detail = LftfStatusInfoDetailDto.builder()
+        .reason("detail reason")
+        .message("detail message")
+        .build();
+
+    Optional<LtftFormDto> optionalDto;
+    if (asAdmin) {
+      when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+          ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(entity));
+      optionalDto = service.updateStatusAsAdmin(ID, targetState, detail);
+    } else {
+      when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(entity));
+      optionalDto = service.changeLtftFormState(ID, detail, targetState);
+    }
 
     assertThat("Unexpected form presence.", optionalDto.isPresent(), is(true));
 
@@ -4552,24 +4931,26 @@ class LtftServiceTest {
   }
 
   /**
-   * A helper function to provide valid LTFT lifecycle state transitions.
+   * A helper function to provide valid LTFT lifecycle state transitions, along with the actor
+   * permitted to perform each (true = admin, false = trainee).
    *
-   * @return pairs of valid lifecycle state transitions.
+   * @return arguments of valid lifecycle state transitions and their permitted actor.
    */
   private static Stream<Arguments> provideValidLtftLifecycleStateTransitions() {
     return Stream.of(
-        // From DRAFT
-        Arguments.of(DRAFT, SUBMITTED),
+        // Trainee transitions
+        Arguments.of(DRAFT, SUBMITTED, false),
+        Arguments.of(SUBMITTED, UNSUBMITTED, false),
+        Arguments.of(SUBMITTED, WITHDRAWN, false),
+        Arguments.of(UNSUBMITTED, SUBMITTED, false),
+        Arguments.of(UNSUBMITTED, WITHDRAWN, false),
+        Arguments.of(UNDER_REVIEW, WITHDRAWN, false),
 
-        // From SUBMITTED
-        Arguments.of(SUBMITTED, APPROVED),
-        Arguments.of(SUBMITTED, REJECTED),
-        Arguments.of(SUBMITTED, UNSUBMITTED),
-        Arguments.of(SUBMITTED, WITHDRAWN),
-
-        // From UNSUBMITTED
-        Arguments.of(UNSUBMITTED, SUBMITTED),
-        Arguments.of(UNSUBMITTED, WITHDRAWN)
+        // Admin transitions
+        Arguments.of(SUBMITTED, UNDER_REVIEW, true),
+        Arguments.of(UNDER_REVIEW, APPROVED, true),
+        Arguments.of(UNDER_REVIEW, REJECTED, true),
+        Arguments.of(UNDER_REVIEW, UNSUBMITTED, true)
     );
   }
 }

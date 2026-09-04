@@ -252,7 +252,7 @@ public class AdminLtftResource {
    * @param id     The ID of the form to advance.
    * @param detail Optional detail to record alongside the stage change.
    * @return The updated form, or 404 if not found / 400 if advancement is not permitted.
-   * @throws MethodArgumentNotValidException When the form is not SUBMITTED or is at the final
+   * @throws MethodArgumentNotValidException When the form is not UNDER_REVIEW or is at the final
    *                                         review stage.
    */
   @PutMapping("/{id}/review-stage/advance")
@@ -303,6 +303,23 @@ public class AdminLtftResource {
       @RequestBody LftfStatusInfoDetailDto detail)
       throws MethodArgumentNotValidException {
     Optional<LtftFormDto> form = service.updateStatusAsAdmin(id, UNSUBMITTED, detail);
+    return ResponseEntity.of(form);
+  }
+
+  /**
+   * Start a review on the form with the given ID, must be associated with the user's local office.
+   *
+   * <p>Transitions the form to UNDER_REVIEW and self-assigns the requesting admin if no admin is
+   * currently assigned.
+   *
+   * @param id The ID of the form to start reviewing.
+   * @return The form.
+   * @throws MethodArgumentNotValidException When the state transition was not valid.
+   */
+  @PutMapping("/{id}/start-review")
+  ResponseEntity<LtftFormDto> startReviewLtft(@PathVariable UUID id)
+      throws MethodArgumentNotValidException {
+    Optional<LtftFormDto> form = service.startReview(id);
     return ResponseEntity.of(form);
   }
 }
