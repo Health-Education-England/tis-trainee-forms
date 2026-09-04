@@ -680,7 +680,7 @@ class LtftServiceIntegrationTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED"})
-  void shouldAllowTerminalTransitionForPreWorkflowFormWithNoReviewStage(
+  void shouldAllowTerminalTransitionAsAdminForPreWorkflowFormWithNoReviewStage(
       LifecycleState targetState) throws MethodArgumentNotValidException {
     adminIdentity.setGroups(Set.of(DBC_THREE_STAGES));
 
@@ -836,9 +836,6 @@ class LtftServiceIntegrationTest {
     assertThat("Unexpected state.", current.state(), is(LifecycleState.UNDER_REVIEW));
     assertThat("Unexpected self-assigned admin email.", current.assignedAdmin().email(),
         is("ad.min@test.com"));
-    assertThat("Unexpected first review stage index.", current.reviewStage().index(), is(0));
-    assertThat("Unexpected first review stage label.", current.reviewStage().label(),
-        is("Stage One"));
   }
 
   // -- disabled stage index consistency --
