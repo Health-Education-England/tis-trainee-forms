@@ -718,20 +718,34 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
     boolean adminAlreadyAssigned = form.getStatus() != null && form.getStatus().current() != null
         && form.getStatus().current().assignedAdmin() != null;
 
+    // Self-assign the reviewing admin (when none is assigned) on the already-loaded form so the
+    // assignment is carried into the UNDER_REVIEW transition and persisted by a single save. A
+    // second lookup/save could, without a transaction or optimistic lock, overwrite a concurrent
+    // update or return an empty result for a form that is already under review but unassigned.
+    if (!adminAlreadyAssigned) {
+      Person self = Person.builder()
+          .name(adminIdentity.getName())
+          .email(adminIdentity.getEmail())
+          .role("ADMIN")
+          .build();
+      Person modifiedBy = Person.builder()
+          .name(adminIdentity.getName())
+          .email(adminIdentity.getEmail())
+          .role(adminIdentity.getRole())
+          .build();
+      form.setAssignedAdmin(self, modifiedBy);
+    }
+
     // Transition the already-loaded form to UNDER_REVIEW; this throws if the form is not in a
     // reviewable state, avoiding an erroneous self-assignment when the review cannot be started.
     // Reusing the form loaded above avoids a redundant re-read of the same document (and the
     // check-then-act window that computing adminAlreadyAssigned from a separate read introduces).
     LtftForm reviewed = updateStatus(form, UNDER_REVIEW, adminIdentity, Actor.ADMIN, null);
 
-    // Self-assign the reviewing admin only when no admin was previously assigned.
+    // Notify assignment consumers when the reviewing admin was self-assigned as part of this
+    // transition; the status change itself is published by updateStatus above.
     if (!adminAlreadyAssigned) {
-      PersonDto self = PersonDto.builder()
-          .name(adminIdentity.getName())
-          .email(adminIdentity.getEmail())
-          .role(adminIdentity.getRole())
-          .build();
-      return assignAdmin(formId, self);
+      publishUpdateNotification(reviewed, null, ltftAssignmentUpdateTopic);
     }
 
     return Optional.of(mapper.toDto(reviewed));
@@ -1039,7 +1053,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
       String field = detail == null ? "detail" : "detail.reason";
       result.addError(new FieldError("StatusInfo", field,
           "must not be null when transitioning to %s".formatted(targetState)));
-      throw buildUpdateStatusException(result, 3);
+      throw buildUpdateStatusException(result, 4);
     }
   }
 

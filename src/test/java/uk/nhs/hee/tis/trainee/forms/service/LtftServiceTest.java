@@ -2060,8 +2060,8 @@ class LtftServiceTest {
     assertThat("Unexpected assigned admin email.", assignedAdmin.email(), is(ADMIN_EMAIL));
     assertThat("Unexpected assigned admin role.", assignedAdmin.role(), is("ADMIN"));
 
-    // One save for the status transition, one for the self-assignment.
-    verify(repository, times(2)).save(any());
+    // The transition and self-assignment are persisted together in a single save.
+    verify(repository, times(1)).save(any());
   }
 
   @Test
@@ -3113,6 +3113,10 @@ class LtftServiceTest {
     assertThat("Unexpected message.", fieldError.getDefaultMessage(),
         is("must not be null when transitioning to " + targetState.name()));
 
+    // The detail parameter is index 4 of updateStatus (after the actor parameter).
+    assertThat("Unexpected offending parameter index.",
+        exception.getParameter().getParameterIndex(), is(4));
+
     verify(repository, never()).save(any());
   }
 
@@ -3138,6 +3142,10 @@ class LtftServiceTest {
     assertThat("Unexpected field.", fieldError.getField(), is("detail.reason"));
     assertThat("Unexpected message.", fieldError.getDefaultMessage(),
         is("must not be null when transitioning to " + targetState.name()));
+
+    // The detail parameter is index 4 of updateStatus (after the actor parameter).
+    assertThat("Unexpected offending parameter index.",
+        exception.getParameter().getParameterIndex(), is(4));
 
     verify(repository, never()).save(any());
   }
