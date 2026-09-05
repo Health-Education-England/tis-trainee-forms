@@ -117,6 +117,8 @@ class FormRPartAServiceTest {
     adminIdentity.setName("Admin User");
     adminIdentity.setEmail("admin.user@example.com");
     adminIdentity.setGroups(Set.of("group1"));
+    adminIdentity.setRoles(Set.of("role1"));
+    adminIdentity.setProgrammes(Set.of(UUID.randomUUID()));
     traineeIdentity = new TraineeIdentity();
     traineeIdentity.setTraineeId(DEFAULT_TRAINEE_TIS_ID);
     UserIdentityResolver identityResolver = new UserIdentityResolver(adminIdentity,

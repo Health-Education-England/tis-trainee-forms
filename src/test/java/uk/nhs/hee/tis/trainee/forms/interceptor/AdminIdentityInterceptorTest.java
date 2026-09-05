@@ -41,6 +41,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 
+import java.util.UUID;
+
 class AdminIdentityInterceptorTest {
 
   private static final String EMAIL = "ad.min@example.com";
@@ -48,7 +50,11 @@ class AdminIdentityInterceptorTest {
   private static final String FAMILY_NAME = "Min";
   private static final String FULL_NAME = "Ad Min";
   private static final String GROUP_1 = "123456";
-  private static final String GROUP_2 = "ABCDEF";
+  private static final String GROUP_2 = "ABCDEF";;
+  private static final String ROLE_1 = "LTFT_ADMIN";
+  private static final String ROLE_2 = "PROGRAMME_ADMIN";
+  private static final UUID PROGRAMME_1 = UUID.randomUUID();
+  private static final UUID PROGRAMME_2 = UUID.randomUUID();
 
   private AdminIdentityInterceptor interceptor;
   private AdminIdentity adminIdentity;
@@ -82,6 +88,8 @@ class AdminIdentityInterceptorTest {
     assertThat("Unexpected result.", result, is(false));
     assertThat("Unexpected admin email.", adminIdentity.getEmail(), nullValue());
     assertThat("Unexpected admin groups.", adminIdentity.getGroups(), nullValue());
+    assertThat("Unexpected admin roles.", adminIdentity.getRoles(), nullValue());
+    assertThat("Unexpected admin programmes.", adminIdentity.getProgrammes(), nullValue());
   }
 
   @Test
@@ -95,6 +103,8 @@ class AdminIdentityInterceptorTest {
     assertThat("Unexpected result.", result, is(false));
     assertThat("Unexpected admin email.", adminIdentity.getEmail(), nullValue());
     assertThat("Unexpected admin groups.", adminIdentity.getGroups(), nullValue());
+    assertThat("Unexpected admin roles.", adminIdentity.getRoles(), nullValue());
+    assertThat("Unexpected admin programmes.", adminIdentity.getProgrammes(), nullValue());
   }
 
   @Test
@@ -106,9 +116,18 @@ class AdminIdentityInterceptorTest {
           "cognito:groups": [
             "%s",
             "%s"
+          ],
+          "cognito:roles": [
+            "%s",
+            "%s"
+          ],
+          "cognito:programmes": [
+            "%s",
+            "%s"
           ]
         }
-        """.formatted(GIVEN_NAME, FAMILY_NAME, GROUP_1, GROUP_2));
+        """.formatted(GIVEN_NAME, FAMILY_NAME, GROUP_1, GROUP_2, ROLE_1, ROLE_2, PROGRAMME_1,
+        PROGRAMME_2));
     when(auth.getPrincipal()).thenReturn(token);
 
     boolean result = interceptor.preHandle(new MockHttpServletRequest(),
@@ -119,6 +138,11 @@ class AdminIdentityInterceptorTest {
     assertThat("Unexpected admin name.", adminIdentity.getName(), is(FULL_NAME));
     assertThat("Unexpected admin group count.", adminIdentity.getGroups(), hasSize(2));
     assertThat("Unexpected admin groups.", adminIdentity.getGroups(), hasItems(GROUP_1, GROUP_2));
+    assertThat("Unexpected admin role count.", adminIdentity.getRoles(), hasSize(2));
+    assertThat("Unexpected admin roles.", adminIdentity.getRoles(), hasItems(ROLE_1, ROLE_2));
+    assertThat("Unexpected admin programme count.", adminIdentity.getProgrammes(), hasSize(2));
+    assertThat("Unexpected admin programmes.", adminIdentity.getProgrammes(),
+        hasItems(PROGRAMME_1, PROGRAMME_2));
   }
 
   @Test
@@ -130,9 +154,18 @@ class AdminIdentityInterceptorTest {
           "cognito:groups": [
             "%s",
             "%s"
+          ],
+          "cognito:roles": [
+            "%s",
+            "%s"
+          ],
+          "cognito:programmes": [
+            "%s",
+            "%s"
           ]
         }
-        """.formatted(EMAIL, FAMILY_NAME, GROUP_1, GROUP_2));
+        """.formatted(EMAIL, FAMILY_NAME, GROUP_1, GROUP_2, ROLE_1, ROLE_2, PROGRAMME_1,
+        PROGRAMME_2));
     when(auth.getPrincipal()).thenReturn(token);
 
     boolean result = interceptor.preHandle(new MockHttpServletRequest(),
@@ -143,6 +176,11 @@ class AdminIdentityInterceptorTest {
     assertThat("Unexpected admin name.", adminIdentity.getName(), nullValue());
     assertThat("Unexpected admin group count.", adminIdentity.getGroups(), hasSize(2));
     assertThat("Unexpected admin groups.", adminIdentity.getGroups(), hasItems(GROUP_1, GROUP_2));
+    assertThat("Unexpected admin role count.", adminIdentity.getRoles(), hasSize(2));
+    assertThat("Unexpected admin roles.", adminIdentity.getRoles(), hasItems(ROLE_1, ROLE_2));
+    assertThat("Unexpected admin programme count.", adminIdentity.getProgrammes(), hasSize(2));
+    assertThat("Unexpected admin programmes.", adminIdentity.getProgrammes(),
+        hasItems(PROGRAMME_1, PROGRAMME_2));
   }
 
   @Test
@@ -154,9 +192,18 @@ class AdminIdentityInterceptorTest {
           "cognito:groups": [
             "%s",
             "%s"
+          ],
+          "cognito:roles": [
+            "%s",
+            "%s"
+          ],
+          "cognito:programmes": [
+            "%s",
+            "%s"
           ]
         }
-        """.formatted(EMAIL, GIVEN_NAME, GROUP_1, GROUP_2));
+        """.formatted(EMAIL, GIVEN_NAME, GROUP_1, GROUP_2, ROLE_1, ROLE_2, PROGRAMME_1,
+        PROGRAMME_2));
     when(auth.getPrincipal()).thenReturn(token);
 
     boolean result = interceptor.preHandle(new MockHttpServletRequest(),
@@ -167,17 +214,99 @@ class AdminIdentityInterceptorTest {
     assertThat("Unexpected admin name.", adminIdentity.getName(), nullValue());
     assertThat("Unexpected admin group count.", adminIdentity.getGroups(), hasSize(2));
     assertThat("Unexpected admin groups.", adminIdentity.getGroups(), hasItems(GROUP_1, GROUP_2));
+    assertThat("Unexpected admin role count.", adminIdentity.getRoles(), hasSize(2));
+    assertThat("Unexpected admin roles.", adminIdentity.getRoles(), hasItems(ROLE_1, ROLE_2));
+    assertThat("Unexpected admin programme count.", adminIdentity.getProgrammes(), hasSize(2));
+    assertThat("Unexpected admin programmes.", adminIdentity.getProgrammes(),
+        hasItems(PROGRAMME_1, PROGRAMME_2));
   }
 
   @Test
-  void shouldReturnFalseAndPartiallyPopulateIdentityWhenNoGroupsInAuthToken() {
+  void shouldReturnTrueAndPartiallyPopulateIdentityWhenHasProgrammeButNoGroupsInAuthToken() {
     Jwt token = TestJwtUtil.createToken("""
         {
           "email": "%s",
           "given_name": "%s",
-          "family_name": "%s"
+          "family_name": "%s",
+          "cognito:roles": [
+            "%s",
+            "%s"
+          ],
+          "cognito:programmes": [
+            "%s",
+            "%s"
+          ]
         }
-        """.formatted(EMAIL, GIVEN_NAME, FAMILY_NAME));
+        """.formatted(EMAIL, GIVEN_NAME, FAMILY_NAME, ROLE_1, ROLE_2, PROGRAMME_1,
+        PROGRAMME_2));
+    when(auth.getPrincipal()).thenReturn(token);
+
+    boolean result = interceptor.preHandle(new MockHttpServletRequest(),
+        new MockHttpServletResponse(), new Object());
+
+    assertThat("Unexpected result.", result, is(true));
+    assertThat("Unexpected admin email.", adminIdentity.getEmail(), is(EMAIL));
+    assertThat("Unexpected admin name.", adminIdentity.getName(), is(FULL_NAME));
+    assertThat("Unexpected admin groups.", adminIdentity.getGroups(), nullValue());
+    assertThat("Unexpected admin role count.", adminIdentity.getRoles(), hasSize(2));
+    assertThat("Unexpected admin roles.", adminIdentity.getRoles(), hasItems(ROLE_1, ROLE_2));
+    assertThat("Unexpected admin programme count.", adminIdentity.getProgrammes(), hasSize(2));
+    assertThat("Unexpected admin programmes.", adminIdentity.getProgrammes(),
+        hasItems(PROGRAMME_1, PROGRAMME_2));
+  }
+
+  @Test
+  void shouldReturnTrueAndPopulateIdentityWhenAllFieldsAndHasProgrammeWithEmptyGroupsInAuthToken() {
+    Jwt token = TestJwtUtil.createToken("""
+        {
+          "email": "%s",
+          "given_name": "%s",
+          "family_name": "%s",
+          "cognito:groups": [],
+          "cognito:roles": [
+            "%s",
+            "%s"
+          ],
+          "cognito:programmes": [
+            "%s",
+            "%s"
+          ]
+        }
+        """.formatted(EMAIL, GIVEN_NAME, FAMILY_NAME, ROLE_1, ROLE_2, PROGRAMME_1,
+        PROGRAMME_2));
+    when(auth.getPrincipal()).thenReturn(token);
+
+    boolean result = interceptor.preHandle(new MockHttpServletRequest(),
+        new MockHttpServletResponse(), new Object());
+
+    assertThat("Unexpected result.", result, is(true));
+    assertThat("Unexpected admin email.", adminIdentity.getEmail(), is(EMAIL));
+    assertThat("Unexpected admin name.", adminIdentity.getName(), is(FULL_NAME));
+    assertThat("Unexpected admin group count.", adminIdentity.getGroups(), hasSize(0));
+    assertThat("Unexpected admin role count.", adminIdentity.getRoles(), hasSize(2));
+    assertThat("Unexpected admin roles.", adminIdentity.getRoles(), hasItems(ROLE_1, ROLE_2));
+    assertThat("Unexpected admin programme count.", adminIdentity.getProgrammes(), hasSize(2));
+    assertThat("Unexpected admin programmes.", adminIdentity.getProgrammes(),
+        hasItems(PROGRAMME_1, PROGRAMME_2));
+  }
+
+  @Test
+  void shouldReturnFalseAndPartiallyPopulateIdentityWhenNoRolesInAuthToken() {
+    Jwt token = TestJwtUtil.createToken("""
+        {
+          "email": "%s",
+          "given_name": "%s",
+          "family_name": "%s",
+          "cognito:groups": [
+            "%s",
+            "%s"
+          ],
+          "cognito:programmes": [
+            "%s",
+            "%s"
+          ]
+        }
+        """.formatted(EMAIL, GIVEN_NAME, FAMILY_NAME, GROUP_1, GROUP_2, PROGRAMME_1, PROGRAMME_2));
     when(auth.getPrincipal()).thenReturn(token);
 
     boolean result = interceptor.preHandle(new MockHttpServletRequest(),
@@ -186,19 +315,155 @@ class AdminIdentityInterceptorTest {
     assertThat("Unexpected result.", result, is(false));
     assertThat("Unexpected admin email.", adminIdentity.getEmail(), is(EMAIL));
     assertThat("Unexpected admin name.", adminIdentity.getName(), is(FULL_NAME));
-    assertThat("Unexpected admin groups.", adminIdentity.getGroups(), nullValue());
+    assertThat("Unexpected admin group count.", adminIdentity.getGroups(), hasSize(2));
+    assertThat("Unexpected admin groups.", adminIdentity.getGroups(), hasItems(GROUP_1, GROUP_2));
+    assertThat("Unexpected admin role count.", adminIdentity.getRoles(), nullValue());
+    assertThat("Unexpected admin programme count.", adminIdentity.getProgrammes(), hasSize(2));
+    assertThat("Unexpected admin programmes.", adminIdentity.getProgrammes(),
+        hasItems(PROGRAMME_1, PROGRAMME_2));
   }
 
   @Test
-  void shouldReturnFalseAndPopulateIdentityWhenAllFieldsAndEmptyGroupsInAuthToken() {
+  void shouldReturnFalseAndPopulateIdentityWhenAllFieldsAndEmptyRolesInAuthToken() {
     Jwt token = TestJwtUtil.createToken("""
         {
           "email": "%s",
           "given_name": "%s",
           "family_name": "%s",
-          "cognito:groups": []
+          "cognito:groups": [
+            "%s",
+            "%s"
+          ],
+          "cognito:roles": [],
+          "cognito:programmes": [
+            "%s",
+            "%s"
+          ]
         }
-        """.formatted(EMAIL, GIVEN_NAME, FAMILY_NAME));
+        """.formatted(EMAIL, GIVEN_NAME, FAMILY_NAME, GROUP_1, GROUP_2, PROGRAMME_1, PROGRAMME_2));
+    when(auth.getPrincipal()).thenReturn(token);
+
+    boolean result = interceptor.preHandle(new MockHttpServletRequest(),
+        new MockHttpServletResponse(), new Object());
+
+    assertThat("Unexpected result.", result, is(false));
+    assertThat("Unexpected admin email.", adminIdentity.getEmail(), is(EMAIL));
+    assertThat("Unexpected admin name.", adminIdentity.getName(), is(FULL_NAME));
+    assertThat("Unexpected admin group count.", adminIdentity.getGroups(), hasSize(2));
+    assertThat("Unexpected admin groups.", adminIdentity.getGroups(), hasItems(GROUP_1, GROUP_2));
+    assertThat("Unexpected admin role count.", adminIdentity.getRoles(), hasSize(0));
+    assertThat("Unexpected admin programme count.", adminIdentity.getProgrammes(), hasSize(2));
+    assertThat("Unexpected admin programmes.", adminIdentity.getProgrammes(),
+        hasItems(PROGRAMME_1, PROGRAMME_2));
+  }
+
+  @Test
+  void shouldReturnTrueAndPartiallyPopulateIdentityWhenHasGroupsButNoProgrammeInAuthToken() {
+    Jwt token = TestJwtUtil.createToken("""
+        {
+          "email": "%s",
+          "given_name": "%s",
+          "family_name": "%s",
+          "cognito:groups": [
+            "%s",
+            "%s"
+          ],
+          "cognito:roles": [
+            "%s",
+            "%s"
+          ]
+        }
+        """.formatted(EMAIL, GIVEN_NAME, FAMILY_NAME, GROUP_1, GROUP_2, ROLE_1, ROLE_2));
+    when(auth.getPrincipal()).thenReturn(token);
+
+    boolean result = interceptor.preHandle(new MockHttpServletRequest(),
+        new MockHttpServletResponse(), new Object());
+
+    assertThat("Unexpected result.", result, is(true));
+    assertThat("Unexpected admin email.", adminIdentity.getEmail(), is(EMAIL));
+    assertThat("Unexpected admin name.", adminIdentity.getName(), is(FULL_NAME));
+    assertThat("Unexpected admin group count.", adminIdentity.getGroups(), hasSize(2));
+    assertThat("Unexpected admin groups.", adminIdentity.getGroups(), hasItems(GROUP_1, GROUP_2));
+    assertThat("Unexpected admin role count.", adminIdentity.getRoles(), hasSize(2));
+    assertThat("Unexpected admin roles.", adminIdentity.getRoles(), hasItems(ROLE_1, ROLE_2));
+    assertThat("Unexpected admin programme.", adminIdentity.getProgrammes(), nullValue());
+  }
+
+  @Test
+  void shouldReturnTrueAndPopulateIdentityWhenAllFieldsAndHasGroupsWithEmptyProgrammeInAuthToken() {
+    Jwt token = TestJwtUtil.createToken("""
+        {
+          "email": "%s",
+          "given_name": "%s",
+          "family_name": "%s",
+          "cognito:groups": [
+            "%s",
+            "%s"
+          ],
+          "cognito:roles": [
+            "%s",
+            "%s"
+          ],
+          "cognito:programmes": []
+        }
+        """.formatted(EMAIL, GIVEN_NAME, FAMILY_NAME, GROUP_1, GROUP_2, ROLE_1, ROLE_2));
+    when(auth.getPrincipal()).thenReturn(token);
+
+    boolean result = interceptor.preHandle(new MockHttpServletRequest(),
+        new MockHttpServletResponse(), new Object());
+
+    assertThat("Unexpected result.", result, is(true));
+    assertThat("Unexpected admin email.", adminIdentity.getEmail(), is(EMAIL));
+    assertThat("Unexpected admin name.", adminIdentity.getName(), is(FULL_NAME));
+    assertThat("Unexpected admin group count.", adminIdentity.getGroups(), hasSize(2));
+    assertThat("Unexpected admin groups.", adminIdentity.getGroups(), hasItems(GROUP_1, GROUP_2));
+    assertThat("Unexpected admin role count.", adminIdentity.getRoles(), hasSize(2));
+    assertThat("Unexpected admin roles.", adminIdentity.getRoles(), hasItems(ROLE_1, ROLE_2));
+    assertThat("Unexpected admin programme count.", adminIdentity.getProgrammes(), hasSize(0));
+  }
+
+  @Test
+  void shouldReturnFalseAndPopulateIdentityWhenAllFieldsButNoGroupsNorProgrammesInAuthToken() {
+    Jwt token = TestJwtUtil.createToken("""
+        {
+          "email": "%s",
+          "given_name": "%s",
+          "family_name": "%s",
+          "cognito:roles": [
+            "%s",
+            "%s"
+          ]
+        }
+        """.formatted(EMAIL, GIVEN_NAME, FAMILY_NAME, ROLE_1, ROLE_2));
+    when(auth.getPrincipal()).thenReturn(token);
+
+    boolean result = interceptor.preHandle(new MockHttpServletRequest(),
+        new MockHttpServletResponse(), new Object());
+
+    assertThat("Unexpected result.", result, is(false));
+    assertThat("Unexpected admin email.", adminIdentity.getEmail(), is(EMAIL));
+    assertThat("Unexpected admin name.", adminIdentity.getName(), is(FULL_NAME));
+    assertThat("Unexpected admin group.", adminIdentity.getGroups(), nullValue());
+    assertThat("Unexpected admin role count.", adminIdentity.getRoles(), hasSize(2));
+    assertThat("Unexpected admin roles.", adminIdentity.getRoles(), hasItems(ROLE_1, ROLE_2));
+    assertThat("Unexpected admin programme.", adminIdentity.getProgrammes(), nullValue());
+  }
+
+  @Test
+  void shouldReturnFalseAndPopulateIdentityWhenAllFieldsButGroupsAndProgrammesEmptyInAuthToken() {
+    Jwt token = TestJwtUtil.createToken("""
+        {
+          "email": "%s",
+          "given_name": "%s",
+          "family_name": "%s",
+          "cognito:groups": [],
+          "cognito:roles": [
+            "%s",
+            "%s"
+          ],
+          "cognito:programmes": []
+        }
+        """.formatted(EMAIL, GIVEN_NAME, FAMILY_NAME, ROLE_1, ROLE_2));
     when(auth.getPrincipal()).thenReturn(token);
 
     boolean result = interceptor.preHandle(new MockHttpServletRequest(),
@@ -208,6 +473,9 @@ class AdminIdentityInterceptorTest {
     assertThat("Unexpected admin email.", adminIdentity.getEmail(), is(EMAIL));
     assertThat("Unexpected admin name.", adminIdentity.getName(), is(FULL_NAME));
     assertThat("Unexpected admin group count.", adminIdentity.getGroups(), hasSize(0));
+    assertThat("Unexpected admin role count.", adminIdentity.getRoles(), hasSize(2));
+    assertThat("Unexpected admin roles.", adminIdentity.getRoles(), hasItems(ROLE_1, ROLE_2));
+    assertThat("Unexpected admin programme count.", adminIdentity.getProgrammes(), hasSize(0));
   }
 
   @Test
@@ -220,9 +488,18 @@ class AdminIdentityInterceptorTest {
           "cognito:groups": [
             "%s",
             "%s"
+          ],
+          "cognito:roles": [
+            "%s",
+            "%s"
+          ],
+          "cognito:programmes": [
+            "%s",
+            "%s"
           ]
         }
-        """.formatted(EMAIL, GIVEN_NAME, FAMILY_NAME, GROUP_1, GROUP_2));
+        """.formatted(EMAIL, GIVEN_NAME, FAMILY_NAME, GROUP_1, GROUP_2, ROLE_1, ROLE_2, PROGRAMME_1,
+        PROGRAMME_2));
     when(auth.getPrincipal()).thenReturn(token);
 
     boolean result = interceptor.preHandle(new MockHttpServletRequest(),
@@ -233,5 +510,10 @@ class AdminIdentityInterceptorTest {
     assertThat("Unexpected admin name.", adminIdentity.getName(), is(FULL_NAME));
     assertThat("Unexpected admin group count.", adminIdentity.getGroups(), hasSize(2));
     assertThat("Unexpected admin groups.", adminIdentity.getGroups(), hasItems(GROUP_1, GROUP_2));
+    assertThat("Unexpected admin role count.", adminIdentity.getRoles(), hasSize(2));
+    assertThat("Unexpected admin roles.", adminIdentity.getRoles(), hasItems(ROLE_1, ROLE_2));
+    assertThat("Unexpected admin programme count.", adminIdentity.getProgrammes(), hasSize(2));
+    assertThat("Unexpected admin programmes.", adminIdentity.getProgrammes(),
+        hasItems(PROGRAMME_1, PROGRAMME_2));
   }
 }

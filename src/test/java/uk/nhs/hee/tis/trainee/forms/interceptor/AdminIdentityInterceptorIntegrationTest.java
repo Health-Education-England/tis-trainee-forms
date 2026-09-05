@@ -53,6 +53,8 @@ import uk.nhs.hee.tis.trainee.forms.config.InterceptorConfiguration;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 import uk.nhs.hee.tis.trainee.forms.interceptor.AdminIdentityInterceptorIntegrationTest.InterceptorTestController;
 
+import java.util.UUID;
+
 @WebMvcTest(InterceptorTestController.class)
 @Import(InterceptorConfiguration.class)
 class AdminIdentityInterceptorIntegrationTest {
@@ -77,7 +79,9 @@ class AdminIdentityInterceptorIntegrationTest {
     Jwt token = TestJwtUtil.createToken("""
         {
            "email": "%s",
-           "cognito:groups": []
+           "cognito:groups": [],
+           "cognito:roles": [],
+           "cognito:programmes": []
         }
         """.formatted(EMAIL_1));
     mockMvc.perform(get(apiPath)
@@ -97,7 +101,9 @@ class AdminIdentityInterceptorIntegrationTest {
            "email": "%s",
            "given_name": "Ad",
            "family_name": "Min-One",
-           "cognito:groups": []
+           "cognito:groups": [],
+           "cognito:roles": [],
+           "cognito:programmes": []
         }
         """.formatted(EMAIL_1));
     mockMvc.perform(get(apiPath)
@@ -111,7 +117,9 @@ class AdminIdentityInterceptorIntegrationTest {
            "email": "%s",
            "given_name": "Ad",
            "family_name": "Min-Two",
-           "cognito:groups": []
+           "cognito:groups": [],
+           "cognito:roles": [],
+           "cognito:programmes": []
         }
         """.formatted(EMAIL_2));
     mockMvc.perform(get(API_PATH)
@@ -141,9 +149,11 @@ class AdminIdentityInterceptorIntegrationTest {
            "email": "%s",
            "given_name": "Ad",
            "family_name": "Min-One",
-           "cognito:groups": ["123"]
+           "cognito:groups": ["123"],
+           "cognito:roles": ["ROLE"],
+           "cognito:programmes": ["%s"]
         }
-        """.formatted(EMAIL_1));
+        """.formatted(EMAIL_1, UUID.randomUUID()));
     mockMvc.perform(get(API_PATH)
             .with(jwt().jwt(token1)))
         .andExpect(content().string(EMAIL_1));
@@ -153,7 +163,9 @@ class AdminIdentityInterceptorIntegrationTest {
            "email": "%s",
            "given_name": "Ad",
            "family_name": "Min-Two",
-           "cognito:groups": ["321"]
+           "cognito:groups": ["321"],
+           "cognito:roles": ["ROLE"],
+           "cognito:programmes": []
         }
         """.formatted(EMAIL_2));
     mockMvc.perform(get(API_PATH)

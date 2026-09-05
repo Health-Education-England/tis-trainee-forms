@@ -27,6 +27,8 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Set;
+import java.util.UUID;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -54,6 +56,8 @@ class UserIdentityResolverTest {
     adminIdentity.setName("Ad Min");
     adminIdentity.setEmail("ad.min@example.com");
     adminIdentity.setGroups(Set.of("Test Group"));
+    adminIdentity.setRoles(Set.of("Test Role"));
+    adminIdentity.setProgrammes(Set.of(UUID.randomUUID()));
 
     UserIdentity userIdentity = identityResolver.getUserIdentity();
 
@@ -81,6 +85,8 @@ class UserIdentityResolverTest {
     adminIdentity.setName("Ad Min");
     adminIdentity.setEmail("ad.min@example.com");
     adminIdentity.setGroups(Set.of("Test Group"));
+    adminIdentity.setRoles(Set.of("Test Role"));
+    adminIdentity.setProgrammes(Set.of(UUID.randomUUID()));
 
     AdminIdentity requiredIdentity = identityResolver.requireAdminIdentity();
 
@@ -92,6 +98,8 @@ class UserIdentityResolverTest {
     adminIdentity.setName("Ad Min");
     adminIdentity.setEmail("ad.min@example.com");
     adminIdentity.setGroups(Set.of("Test Group"));
+    adminIdentity.setRoles(Set.of("Test Role"));
+    adminIdentity.setProgrammes(Set.of(UUID.randomUUID()));
 
     assertThrows(IllegalArgumentException.class, () -> identityResolver.requireTraineeIdentity());
   }
