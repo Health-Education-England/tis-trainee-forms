@@ -94,6 +94,7 @@ public record LtftContent(
    *
    * @param id                 The ID of the programme membership.
    * @param name               The name of the programme.
+   * @param programmeNumber    The programme number of the associated programme.
    * @param designatedBodyCode The designated body code for the programme.
    * @param startDate          The start date of the programme.
    * @param endDate            The end date of the programme.
@@ -106,6 +107,8 @@ public record LtftContent(
       UUID id,
       @Indexed
       String name,
+      @Indexed
+      String programmeNumber,
       @Indexed(name = "dbc")
       String designatedBodyCode,
       String managingDeanery,

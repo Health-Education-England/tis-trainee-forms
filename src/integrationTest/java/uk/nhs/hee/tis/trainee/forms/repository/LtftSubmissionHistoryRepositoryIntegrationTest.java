@@ -84,24 +84,25 @@ class LtftSubmissionHistoryRepositoryIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
-      _id_                                  | _id
-      traineeTisId                          | traineeTisId
-      formRef                               | formRef
-      content.personalDetails.forenames     | content.personalDetails.forenames
-      content.personalDetails.gdcNumber     | content.personalDetails.gdcNumber
-      content.personalDetails.gmcNumber     | content.personalDetails.gmcNumber
-      content.personalDetails.surname       | content.personalDetails.surname
-      content.programmeMembership.id        | content.programmeMembership.id
-      content.programmeMembership.dbc       | content.programmeMembership.designatedBodyCode
-      content.programmeMembership.name      | content.programmeMembership.name
-      status.current.state                  | status.current.state
-      status.history.state                  | status.history.state
+      _id_                                        | _id
+      traineeTisId                                | traineeTisId
+      formRef                                     | formRef
+      content.personalDetails.forenames           | content.personalDetails.forenames
+      content.personalDetails.gdcNumber           | content.personalDetails.gdcNumber
+      content.personalDetails.gmcNumber           | content.personalDetails.gmcNumber
+      content.personalDetails.surname             | content.personalDetails.surname
+      content.programmeMembership.id              | content.programmeMembership.id
+      content.programmeMembership.dbc             | content.programmeMembership.designatedBodyCode
+      content.programmeMembership.name            | content.programmeMembership.name
+      content.programmeMembership.programmeNumber | content.programmeMembership.programmeNumber
+      status.current.state                        | status.current.state
+      status.history.state                        | status.history.state
       """)
   void shouldCreateSingleFieldIndexes(String indexName, String fieldName) {
     IndexOperations indexOperations = template.indexOps(LtftSubmissionHistory.class);
     List<IndexInfo> indexes = indexOperations.getIndexInfo();
 
-    assertThat("Unexpected index count.", indexes, hasSize(13)); // 12 + 1 compound index
+    assertThat("Unexpected index count.", indexes, hasSize(14)); // 13 + 1 compound index
 
     IndexInfo index = indexes.stream()
         .filter(i -> i.getName().equals(indexName))
@@ -127,7 +128,7 @@ class LtftSubmissionHistoryRepositoryIntegrationTest {
     IndexOperations indexOperations = template.indexOps(LtftSubmissionHistory.class);
     List<IndexInfo> indexes = indexOperations.getIndexInfo();
 
-    assertThat("Unexpected index count.", indexes, hasSize(13));
+    assertThat("Unexpected index count.", indexes, hasSize(14));
 
     IndexInfo index = indexes.stream()
         .filter(i -> i.getName().equals("formRef_1_revision_1"))
