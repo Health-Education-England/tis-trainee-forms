@@ -159,6 +159,7 @@ class LtftServiceTest {
   private static final String ADMIN_NAME = "Ad Min";
   private static final String ADMIN_EMAIL = "ad.min@example.com";
   private static final String ADMIN_GROUP = "abc-123";
+  private static final String ADMIN_PROGRAMME = "P001";
   private static final UUID ID = UUID.randomUUID();
 
   private static final String LTFT_ASSIGNMENT_UPDATE_TOPIC = "update/topic/assignment";
@@ -178,13 +179,16 @@ class LtftServiceTest {
   private EventBroadcastService eventBroadcastService;
   private SubmissionHistoryService<LtftForm> ltftSubmissionHistoryService;
   private ReviewStageService reviewStageService;
+  private AdminIdentity adminIdentity;
 
   @BeforeEach
   void setUp() {
-    AdminIdentity adminIdentity = new AdminIdentity();
+    adminIdentity = new AdminIdentity();
     adminIdentity.setName(ADMIN_NAME);
     adminIdentity.setEmail(ADMIN_EMAIL);
     adminIdentity.setGroups(Set.of(ADMIN_GROUP));
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin"));
+    adminIdentity.setProgrammes(Set.of(ADMIN_PROGRAMME));
 
     TraineeIdentity traineeIdentity = new TraineeIdentity();
     traineeIdentity.setTraineeId(TRAINEE_ID);
@@ -379,6 +383,28 @@ class LtftServiceTest {
     Set<String> filteredDbcs = dbcFilter.get("$in", Set.class);
     assertThat("Unexpected filter value count.", filteredDbcs, hasSize(1));
     assertThat("Unexpected filter value.", filteredDbcs, hasItem(ADMIN_GROUP));
+  }
+
+  @Test
+  void shouldFilterByProgrammeWhenCountingAdminLtfts() {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
+    service.getAdminLtftCount(Map.of());
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
+
+    Query query = queryCaptor.getValue();
+    Document queryObject = query.getQueryObject();
+    assertThat("Unexpected filter count.", queryObject.keySet(), hasSize(2));
+
+    Document programmeFilter = queryObject.get("content.programmeMembership.programmeNumber",
+        Document.class);
+    assertThat("Unexpected filter key count.", programmeFilter.keySet(), hasSize(1));
+    assertThat("Unexpected filter key.", programmeFilter.keySet(), hasItem("$in"));
+
+    Set<String> filteredProgrammes = programmeFilter.get("$in", Set.class);
+    assertThat("Unexpected filter value count.", filteredProgrammes, hasSize(1));
+    assertThat("Unexpected filter value.", filteredProgrammes, hasItem(ADMIN_PROGRAMME));
   }
 
   @ParameterizedTest
@@ -598,6 +624,32 @@ class LtftServiceTest {
       Set<String> filteredDbcs = dbcFilter.get("$in", Set.class);
       assertThat("Unexpected filter value count.", filteredDbcs, hasSize(1));
       assertThat("Unexpected filter value.", filteredDbcs, hasItem(ADMIN_GROUP));
+    });
+  }
+
+  @Test
+  void shouldFilterByProgrammeWhenGettingAdminLtftSummaries() {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
+    adminIdentity.setProgrammes(Set.of(ADMIN_PROGRAMME));
+
+    service.getAdminLtftSummaries(Map.of(), PageRequest.of(1, 1));
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).find(queryCaptor.capture(), eq(LtftForm.class));
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
+
+    queryCaptor.getAllValues().forEach(query -> {
+      Document queryObject = query.getQueryObject();
+      assertThat("Unexpected filter count.", queryObject.keySet(), hasSize(2));
+
+      Document programmeFilter = queryObject.get("content.programmeMembership.programmeNumber",
+          Document.class);
+      assertThat("Unexpected filter key count.", programmeFilter.keySet(), hasSize(1));
+      assertThat("Unexpected filter key.", programmeFilter.keySet(), hasItem("$in"));
+
+      Set<String> filteredProgrammes = programmeFilter.get("$in", Set.class);
+      assertThat("Unexpected filter value count.", filteredProgrammes, hasSize(1));
+      assertThat("Unexpected filter value.", filteredProgrammes, hasItem(ADMIN_PROGRAMME));
     });
   }
 
@@ -834,6 +886,17 @@ class LtftServiceTest {
   }
 
   @Test
+  void shouldGetAdminLtftDetailWithAdminProgrammes() {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
+
+    service.getAdminLtftDetail(ID);
+
+    verify(repository)
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_ProgrammeNumberIn(
+            any(), any(), eq(Set.of(ADMIN_PROGRAMME)));
+  }
+
+  @Test
   void shouldGetEmptyAdminLtftDetailWhenFormNotFound() {
     when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
@@ -1010,6 +1073,46 @@ class LtftServiceTest {
     assertThat("Unexpected PM ID.", programmeMembership.id(), is(pmId));
     assertThat("Unexpected PM name.", programmeMembership.name(), is("Test PM"));
     assertThat("Unexpected PM DBC.", programmeMembership.designatedBodyCode(), is("1-1DBC"));
+    assertThat("Unexpected PM deanery.", programmeMembership.managingDeanery(), is("Test Deanery"));
+    assertThat("Unexpected PM start date.", programmeMembership.startDate(), is(LocalDate.MIN));
+    assertThat("Unexpected PM end date.", programmeMembership.endDate(), is(LocalDate.MAX));
+    assertThat("Unexpected PM wte.", programmeMembership.wte(), is(0.75));
+  }
+
+  @Test
+  void shouldGetAdminLtftProgrammeMembershipDetailWhenFormFoundForProgrammeAdmin() {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
+
+    LtftForm entity = new LtftForm();
+    entity.setId(ID);
+
+    LtftContent content = LtftContent.builder()
+        .programmeMembership(ProgrammeMembership.builder()
+            .id(PM_UUID)
+            .name("Test PM")
+            .programmeNumber("Test Number")
+            .managingDeanery("Test Deanery")
+            .startDate(LocalDate.MIN)
+            .endDate(LocalDate.MAX)
+            .wte(0.75)
+            .build())
+        .build();
+    entity.setContent(content);
+
+    when(repository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_ProgrammeNumberIn(
+            any(), any(), any())).thenReturn(Optional.of(entity));
+
+    Optional<LtftFormDto> optionalDto = service.getAdminLtftDetail(ID);
+
+    assertThat("Unexpected dto presence.", optionalDto.isPresent(), is(true));
+
+    LtftFormDto dto = optionalDto.get();
+    ProgrammeMembershipDto programmeMembership = dto.programmeMembership();
+    assertThat("Unexpected PM ID.", programmeMembership.id(), is(PM_UUID));
+    assertThat("Unexpected PM name.", programmeMembership.name(), is("Test PM"));
+    assertThat("Unexpected Programme number.", programmeMembership.programmeNumber(),
+        is("Test Number"));
     assertThat("Unexpected PM deanery.", programmeMembership.managingDeanery(), is("Test Deanery"));
     assertThat("Unexpected PM start date.", programmeMembership.startDate(), is(LocalDate.MIN));
     assertThat("Unexpected PM end date.", programmeMembership.endDate(), is(LocalDate.MAX));
@@ -2026,6 +2129,31 @@ class LtftServiceTest {
   }
 
   @Test
+  void shouldAllowProgrammeAdminToAssignAdmin() {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
+
+    LtftForm form = new LtftForm();
+    form.setAssignedAdmin(null, null);
+    when(repository.findByIdAndContent_ProgrammeMembership_ProgrammeNumberIn(
+        ID, Set.of(ADMIN_PROGRAMME))).thenReturn(Optional.of(form));
+
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    PersonDto admin = PersonDto.builder()
+        .name("Ad Min")
+        .email("ad.min@example.com")
+        .build();
+
+    Optional<LtftFormDto> optionalForm = service.assignAdmin(ID, admin);
+
+    assertThat("Unexpected form presence.", optionalForm.isPresent(), is(true));
+    RedactedPersonDto assignedAdmin = optionalForm.get().status().current().assignedAdmin();
+    assertThat("Unexpected admin name.", assignedAdmin.name(), is("Ad Min"));
+    assertThat("Unexpected admin email.", assignedAdmin.email(), is("ad.min@example.com"));
+    assertThat("Unexpected admin role.", assignedAdmin.role(), is("ADMIN"));
+  }
+
+  @Test
   void shouldThrowStartingReviewWhenTransitionInvalid() {
     LtftForm form = new LtftForm();
     form.setLifecycleState(DRAFT);
@@ -2319,6 +2447,51 @@ class LtftServiceTest {
   }
 
   @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"UNDER_REVIEW"})
+  void shouldAllowProgrammeAdminToUpdateStatus(
+      LifecycleState targetState) throws MethodArgumentNotValidException {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
+    LtftForm entity = new LtftForm();
+    entity.setLifecycleState(SUBMITTED);
+
+    when(repository.findByIdAndContent_ProgrammeMembership_ProgrammeNumberIn(
+        ID, Set.of(ADMIN_PROGRAMME))).thenReturn(Optional.of(entity));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> optionalDto = service.updateStatusAsAdmin(ID, targetState,
+        LftfStatusInfoDetailDto.builder()
+            .reason("detail reason")
+            .message("detail message")
+            .build()
+    );
+
+    assertThat("Unexpected form presence.", optionalDto.isPresent(), is(true));
+
+    LtftFormDto dto = optionalDto.get();
+    assertThat("Unexpected form ref.", dto.formRef(), nullValue());
+
+    StatusInfoDto current = dto.status().current();
+    assertThat("Unexpected current state.", current.state(), is(targetState));
+    assertThat("Unexpected current timestamp.", current.timestamp(), notNullValue());
+
+    LftfStatusInfoDetailDto detail = current.detail();
+    assertThat("Unexpected current reason.", detail.reason(), is("detail reason"));
+    assertThat("Unexpected current message.", detail.message(), is("detail message"));
+
+    RedactedPersonDto modifiedBy = current.modifiedBy();
+    assertThat("Unexpected modified name.", modifiedBy.name(), is(ADMIN_NAME));
+    assertThat("Unexpected modified email.", modifiedBy.email(), is(ADMIN_EMAIL));
+    assertThat("Unexpected modified role.", modifiedBy.role(), is("ADMIN"));
+
+    List<StatusInfoDto> history = dto.status().history();
+    assertThat("Unexpected history count.", history, hasSize(2));
+    assertThat("Unexpected history state.", history.get(0).state(), is(SUBMITTED));
+    assertThat("Unexpected history state.", history.get(1).state(), is(targetState));
+
+    verifyNoInteractions(ltftSubmissionHistoryService);
+  }
+
+  @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"APPROVED", "REJECTED",
       "UNSUBMITTED"})
   void shouldThrowExceptionUpdatingStatusWhenReviewStageTransitionDeniedForAdmin(
@@ -2562,6 +2735,19 @@ class LtftServiceTest {
   }
 
   @Test
+  void shouldLookUpFormByAdminProgrammesWhenGettingReviewWorkflow() {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
+
+    when(repository.findByIdAndContent_ProgrammeMembership_ProgrammeNumberIn(
+        ID, Set.of(ADMIN_PROGRAMME))).thenReturn(Optional.empty());
+
+    service.getReviewWorkflow(ID);
+
+    verify(repository).findByIdAndContent_ProgrammeMembership_ProgrammeNumberIn(
+        any(), eq(Set.of(ADMIN_PROGRAMME)));
+  }
+
+  @Test
   void shouldReturnEmptyWhenFormNotFoundForReviewWorkflow() {
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.empty());
@@ -2588,6 +2774,30 @@ class LtftServiceTest {
 
   @Test
   void shouldReturnEnabledStageLabelsAndTerminalStageFromReviewStageService() {
+    Set<String> enabledLabels = Set.of("Triage", "Review");
+    List<String> adminDbcs = List.of(ADMIN_GROUP);
+    when(reviewStageService.getEnabledStageLabels(adminDbcs)).thenReturn(enabledLabels);
+    when(reviewStageService.getDisabledStageLabels(adminDbcs)).thenReturn(Set.of());
+
+    Set<String> result = service.getReviewStageLabels();
+
+    assertThat("Unexpected number of labels.", result, hasSize(3));
+    assertThat("Expected Triage label.", result, hasItem("Triage"));
+    assertThat("Expected Review label.", result, hasItem("Review"));
+    assertThat("Expected terminal stage label.", result, hasItem("Review complete"));
+  }
+
+  @Test
+  void shouldReturnEnabledStageLabelsAndTerminalStageFromReviewStageServiceForProgrammeAdmin() {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
+    adminIdentity.setGroups(Set.of());
+    adminIdentity.setProgrammes(Set.of(ADMIN_PROGRAMME));
+
+    List<String> resolvedDbcs = List.of(ADMIN_GROUP);
+    when(mongoTemplate.findDistinct(any(Query.class),
+        eq("content.programmeMembership.designatedBodyCode"), eq(LtftForm.class), eq(String.class)))
+        .thenReturn(resolvedDbcs);
+
     Set<String> enabledLabels = Set.of("Triage", "Review");
     List<String> adminDbcs = List.of(ADMIN_GROUP);
     when(reviewStageService.getEnabledStageLabels(adminDbcs)).thenReturn(enabledLabels);
@@ -2692,6 +2902,20 @@ class LtftServiceTest {
 
     verify(repository).findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         any(), eq(Set.of(ADMIN_GROUP)));
+  }
+
+  @Test
+  void shouldLookUpFormByAdminProgrammesWhenAdvancingReviewStage()
+      throws MethodArgumentNotValidException {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
+
+    when(repository.findByIdAndContent_ProgrammeMembership_ProgrammeNumberIn(
+        ID, Set.of(ADMIN_PROGRAMME))).thenReturn(Optional.empty());
+
+    service.advanceReviewStage(ID);
+
+    verify(repository).findByIdAndContent_ProgrammeMembership_ProgrammeNumberIn(
+        any(), eq(Set.of(ADMIN_PROGRAMME)));
   }
 
   @Test
@@ -3226,7 +3450,6 @@ class LtftServiceTest {
 
   @Test
   void shouldNotSaveIfNewLtftFormForTraineeIfNoFeaturesSet() {
-    AdminIdentity adminIdentity = new AdminIdentity();
     adminIdentity.setName(ADMIN_NAME);
     adminIdentity.setEmail(ADMIN_EMAIL);
     adminIdentity.setGroups(Set.of(ADMIN_GROUP));
@@ -3256,7 +3479,6 @@ class LtftServiceTest {
 
   @Test
   void shouldNotSaveIfNewLtftFormForTraineeIfFeaturesLtftNotTrue() {
-    AdminIdentity adminIdentity = new AdminIdentity();
     adminIdentity.setName(ADMIN_NAME);
     adminIdentity.setEmail(ADMIN_EMAIL);
     adminIdentity.setGroups(Set.of(ADMIN_GROUP));
@@ -3294,7 +3516,6 @@ class LtftServiceTest {
 
   @Test
   void shouldNotSaveIfNewLtftFormForTraineeIfNoFeatureLtftProgrammes() {
-    AdminIdentity adminIdentity = new AdminIdentity();
     adminIdentity.setName(ADMIN_NAME);
     adminIdentity.setEmail(ADMIN_EMAIL);
     adminIdentity.setGroups(Set.of(ADMIN_GROUP));
