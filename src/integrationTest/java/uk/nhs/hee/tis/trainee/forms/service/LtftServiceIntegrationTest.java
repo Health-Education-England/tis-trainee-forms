@@ -31,9 +31,6 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.fge.jsonpatch.JsonPatch;
 import io.awspring.cloud.sns.core.SnsTemplate;
 import java.time.LocalDate;
 import java.util.HashSet;
@@ -67,7 +64,6 @@ import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto.FormFeatures;
 import uk.nhs.hee.tis.trainee.forms.dto.FeaturesDto.FormFeatures.LtftFeatures;
-import uk.nhs.hee.tis.trainee.forms.dto.FormPatchDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
@@ -100,6 +96,7 @@ class LtftServiceIntegrationTest {
 
   private static final String TRAINEE_ID = "47165";
   private static final UUID PM_UUID = UUID.randomUUID();
+  private static final String PM_NUM = "Programme Number";
 
   @Container
   @ServiceConnection
@@ -389,6 +386,7 @@ class LtftServiceIntegrationTest {
     LtftForm form = new LtftForm();
     form.setContent(LtftContent.builder()
         .programmeMembership(ProgrammeMembership.builder()
+            .programmeNumber(programmeNumber)
             .designatedBodyCode(dbc)
             .build())
         .build());
@@ -449,6 +447,48 @@ class LtftServiceIntegrationTest {
         "Stage Three",
         "Review complete"));
     assertThat("Unexpected current stage.", result.get().currentStage(), nullValue());
+  }
+
+  @Test
+  void shouldReturnConfiguredStageLabelsToProgrammeAdminForKnownDbc() {
+    String programme = "P001";
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
+    adminIdentity.setProgrammes(Set.of(programme));
+
+    LtftForm form = new LtftForm();
+    form.setContent(LtftContent.builder()
+        .programmeMembership(ProgrammeMembership.builder()
+            .programmeNumber(programme)
+            .designatedBodyCode(DBC_THREE_STAGES)
+            .build())
+        .build());
+    template.save(form); // not submitted, no review stage
+
+    Optional<ReviewWorkflowDto> result = service.getReviewWorkflow(form.getId());
+
+    assertThat("Unexpected result presence.", result.isPresent(), is(true));
+    assertThat("Unexpected stages.", result.get().stages(), contains(
+        "Stage One",
+        "Stage Two",
+        "Stage Three",
+        "Review complete"));
+    assertThat("Unexpected current stage.", result.get().currentStage(), nullValue());
+  }
+
+  @Test
+  void shouldReturnCurrentStageIndexToProgrammeAdminWhenFormIsSubmittedWithReviewStage() {
+    String programme = "P001";
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
+    adminIdentity.setProgrammes(Set.of(programme));
+
+    // Form is at stage 1 (Stage Two), visible position is 1.
+    LtftForm form = savedSubmittedFormWithReviewStage(programme,
+        DBC_THREE_STAGES, 1, "Stage Two");
+
+    Optional<ReviewWorkflowDto> result = service.getReviewWorkflow(form.getId());
+
+    assertThat("Unexpected result presence.", result.isPresent(), is(true));
+    assertThat("Unexpected current stage.", result.get().currentStage(), is(1));
   }
 
   @Test
