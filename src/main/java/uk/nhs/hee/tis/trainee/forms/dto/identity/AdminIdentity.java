@@ -35,6 +35,8 @@ public class AdminIdentity extends UserIdentity {
   private static final String ROLE = "ADMIN";
 
   private Set<String> groups;
+  private Set<String> roles;
+  private Set<String> programmes;
 
   /**
    * Whether the admin identity is considered complete based on the populated fields.
@@ -43,7 +45,10 @@ public class AdminIdentity extends UserIdentity {
    */
   @Override
   public boolean isComplete() {
-    return getEmail() != null && getName() != null && groups != null && !groups.isEmpty();
+    boolean hasRoles = roles != null && !roles.isEmpty();
+    boolean hasGroups = groups != null && !groups.isEmpty();
+    boolean hasProgrammes = programmes != null && !programmes.isEmpty();
+    return getEmail() != null && getName() != null && hasRoles && (hasGroups || hasProgrammes);
   }
 
   @Override

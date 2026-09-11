@@ -91,8 +91,20 @@ public interface LtftFormRepository extends BaseAuditedFormRepository<LtftForm> 
    * @return The found LTFT form, empty if not found.
    */
   Optional<LtftForm>
-  findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
-      UUID id, Set<LifecycleState> states, Set<String> dbcs);
+      findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+          UUID id, Set<LifecycleState> states, Set<String> dbcs);
+
+  /**
+   * Find the LTFT form with the given ID and one of the given programmes.
+   *
+   * @param id     The ID of the form to find.
+   * @param states The states to exclude from the search.
+   * @param programmes   The programme numbers to include in the search.
+   * @return The found LTFT form, empty if not found.
+   */
+  Optional<LtftForm>
+      findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_ProgrammeNumberIn(
+          UUID id, Set<LifecycleState> states, Set<String> programmes);
 
   /**
    * Find the LTFT form with the given ID associated with one of the given DBCs.
@@ -103,6 +115,16 @@ public interface LtftFormRepository extends BaseAuditedFormRepository<LtftForm> 
    */
   Optional<LtftForm> findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(UUID id,
       Set<String> dbcs);
+
+  /**
+   * Find the LTFT form with the given ID associated with one of the given programme IDs.
+   *
+   * @param id   The ID of the form.
+   * @param programmes The programme numbers to include in the search.
+   * @return The LTFT form, or optional empty if ID not found or did not match programmes.
+   */
+  Optional<LtftForm> findByIdAndContent_ProgrammeMembership_ProgrammeNumberIn(UUID id,
+       Set<String> programmes);
 
   /**
    * Find LTFT forms in one of the given DBCs and one of the given review stage labels.
