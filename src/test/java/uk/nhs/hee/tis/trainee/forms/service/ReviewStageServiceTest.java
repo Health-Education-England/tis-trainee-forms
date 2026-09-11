@@ -30,7 +30,7 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROVED;
-import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNDER_REVIEW;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.service.ReviewStageService.TERMINAL_STAGE_LABEL;
 
@@ -92,7 +92,7 @@ class ReviewStageServiceTest {
     LtftForm form = formWithDbc(dbc);
     form.setStatus(Status.builder()
         .current(StatusInfo.builder()
-            .state(SUBMITTED)
+            .state(UNDER_REVIEW)
             .reviewStage(new ReviewStageStatus(index, label))
             .build())
         .build());
@@ -111,7 +111,7 @@ class ReviewStageServiceTest {
   void shouldReturnNullReviewStageWhenNoWorkflowConfiguredAndEnteringSubmitted() {
     LtftForm form = formWithDbc(DBC);
 
-    ReviewStageStatus result = service.resolveReviewStageForTransition(form, SUBMITTED);
+    ReviewStageStatus result = service.resolveReviewStageForTransition(form, UNDER_REVIEW);
 
     assertThat("Unexpected review stage.", result, nullValue());
   }
@@ -122,7 +122,7 @@ class ReviewStageServiceTest {
         stage("Triage"), stage("Manager Review"), stage("Dean Approval"))));
 
     LtftForm form = formWithDbc(DBC);
-    ReviewStageStatus result = service.resolveReviewStageForTransition(form, SUBMITTED);
+    ReviewStageStatus result = service.resolveReviewStageForTransition(form, UNDER_REVIEW);
 
     assertThat("Unexpected stage index.", result.index(), is(0));
     assertThat("Unexpected stage label.", result.label(), is("Triage"));
@@ -135,14 +135,14 @@ class ReviewStageServiceTest {
 
     // Form was previously at stage 1 before being unsubmitted; re-submit goes back to 0.
     LtftForm form = formAtReviewStage(DBC, 1, "Manager Review");
-    ReviewStageStatus result = service.resolveReviewStageForTransition(form, SUBMITTED);
+    ReviewStageStatus result = service.resolveReviewStageForTransition(form, UNDER_REVIEW);
 
     assertThat("Unexpected stage index on re-submit.", result.index(), is(0));
     assertThat("Unexpected stage label on re-submit.", result.label(), is("Triage"));
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = {"SUBMITTED"})
+  @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = {"UNDER_REVIEW"})
   void shouldReturnNullReviewStageWhenLeavingSubmitted(LifecycleState targetState) {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
         stage("Triage"), stage("Manager Review"))));
@@ -150,14 +150,14 @@ class ReviewStageServiceTest {
     LtftForm form = formAtReviewStage(DBC, 0, "Triage");
     ReviewStageStatus result = service.resolveReviewStageForTransition(form, targetState);
 
-    assertThat("Unexpected review stage when leaving SUBMITTED.", result, nullValue());
+    assertThat("Unexpected review stage when leaving UNDER_REVIEW.", result, nullValue());
   }
 
   @Test
   void shouldReturnNullWhenDbcHasNoContent() {
     LtftForm form = new LtftForm(); // no content set
 
-    ReviewStageStatus result = service.resolveReviewStageForTransition(form, SUBMITTED);
+    ReviewStageStatus result = service.resolveReviewStageForTransition(form, UNDER_REVIEW);
 
     assertThat("Unexpected review stage for form with no content.", result, nullValue());
   }
@@ -168,7 +168,7 @@ class ReviewStageServiceTest {
         disabledStage("Triage"), stage("Manager Review"), stage("Dean Approval"))));
 
     LtftForm form = formWithDbc(DBC);
-    ReviewStageStatus result = service.resolveReviewStageForTransition(form, SUBMITTED);
+    ReviewStageStatus result = service.resolveReviewStageForTransition(form, UNDER_REVIEW);
 
     assertThat("Unexpected stage index.", result.index(), is(0));
     assertThat("Unexpected stage label.", result.label(), is("Manager Review"));
@@ -180,7 +180,7 @@ class ReviewStageServiceTest {
         disabledStage("Triage"), disabledStage("Manager Review"))));
 
     LtftForm form = formWithDbc(DBC);
-    ReviewStageStatus result = service.resolveReviewStageForTransition(form, SUBMITTED);
+    ReviewStageStatus result = service.resolveReviewStageForTransition(form, UNDER_REVIEW);
 
     assertThat("Unexpected review stage when all stages disabled.", result, nullValue());
   }
@@ -192,7 +192,7 @@ class ReviewStageServiceTest {
         disabledStage("Triage"), disabledStage("Manager Review"))));
 
     LtftForm form = formAtReviewStage(DBC, 1, "Manager Review");
-    ReviewStageStatus result = service.resolveReviewStageForTransition(form, SUBMITTED);
+    ReviewStageStatus result = service.resolveReviewStageForTransition(form, UNDER_REVIEW);
 
     assertThat("Unexpected review stage when all stages disabled on re-submit.", result,
         nullValue());
@@ -203,7 +203,7 @@ class ReviewStageServiceTest {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(stage("Triage"))));
 
     LtftForm form = formWithNoProgrammeMembership();
-    ReviewStageStatus result = service.resolveReviewStageForTransition(form, SUBMITTED);
+    ReviewStageStatus result = service.resolveReviewStageForTransition(form, UNDER_REVIEW);
 
     assertThat("Unexpected review stage when no programme membership.", result, nullValue());
   }
@@ -580,7 +580,7 @@ class ReviewStageServiceTest {
     // Form has content + DBC but no reviewStage in current status — pre-workflow form.
     LtftForm form = formWithDbc(DBC);
     form.setStatus(Status.builder()
-        .current(StatusInfo.builder().state(SUBMITTED).build()) // reviewStage is null
+        .current(StatusInfo.builder().state(UNDER_REVIEW).build()) // reviewStage is null
         .build());
 
     assertTrue(service.canTransitionToLifecycleState(form, targetState),
@@ -778,7 +778,7 @@ class ReviewStageServiceTest {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
         stage("Triage"), disabledStage("Middle"), stage("Dean Approval"))));
 
-    LtftForm form = formWithDbc(DBC); // not SUBMITTED
+    LtftForm form = formWithDbc(DBC); // not UNDER_REVIEW
 
     ReviewWorkflowDto dto = service.getWorkflowDto(form);
 
@@ -803,7 +803,7 @@ class ReviewStageServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = "SUBMITTED")
+  @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = "UNDER_REVIEW")
   void shouldReturnNullCurrentStageForNonSubmittedStates(LifecycleState state) {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(stage("Triage"))));
 
@@ -885,7 +885,7 @@ class ReviewStageServiceTest {
 
     LtftForm form = formWithDbc(DBC);
     form.setStatus(Status.builder()
-        .current(StatusInfo.builder().state(SUBMITTED).build()) // no reviewStage
+        .current(StatusInfo.builder().state(UNDER_REVIEW).build()) // no reviewStage
         .build());
 
     ReviewWorkflowDto dto = service.getWorkflowDto(form);
@@ -999,12 +999,12 @@ class ReviewStageServiceTest {
         disabledStage("Triage"), stage("Education Team Review"), stage("APD Approval"))));
 
     LtftForm form = formWithDbc(DBC);
-    ReviewStageStatus reviewStage = service.resolveReviewStageForTransition(form, SUBMITTED);
+    ReviewStageStatus reviewStage = service.resolveReviewStageForTransition(form, UNDER_REVIEW);
 
     // Simulate the form having been submitted with this review stage.
     form.setStatus(Status.builder()
         .current(StatusInfo.builder()
-            .state(SUBMITTED)
+            .state(UNDER_REVIEW)
             .reviewStage(reviewStage)
             .build())
         .build());

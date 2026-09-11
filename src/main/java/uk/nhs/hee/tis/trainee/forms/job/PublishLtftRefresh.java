@@ -25,6 +25,7 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROV
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DELETED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.REJECTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNDER_REVIEW;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
 
@@ -85,8 +86,8 @@ public class PublishLtftRefresh extends AbstractPublishRefresh<LtftForm> {
 
   @Override
   public Stream<LtftForm> streamForms(Optional<LocalDate> cutoffDate) {
-    Set<LifecycleState> states = Set.of(APPROVED, DELETED, REJECTED, SUBMITTED, UNSUBMITTED,
-        WITHDRAWN);
+    Set<LifecycleState> states = Set.of(APPROVED, DELETED, REJECTED, SUBMITTED, UNDER_REVIEW,
+        UNSUBMITTED, WITHDRAWN);
     // Listing allowed (non-DRAFT) states avoids any accidental inclusions of future states.
     if (cutoffDate.isPresent()) {
       Instant cutoff = cutoffDate.get().atStartOfDay(ZoneOffset.UTC).toInstant();

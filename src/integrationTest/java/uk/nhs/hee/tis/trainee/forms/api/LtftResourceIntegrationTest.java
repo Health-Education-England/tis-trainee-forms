@@ -1182,7 +1182,8 @@ class LtftResourceIntegrationTest {
 
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = {"SUBMITTED", "UNSUBMITTED"})
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = {"SUBMITTED", "UNSUBMITTED",
+      "UNDER_REVIEW"})
   void shouldReturnBadRequestWhenWithdrawingLtftFormInInvalidState(LifecycleState state)
       throws Exception {
     LtftForm ltft = new LtftForm();

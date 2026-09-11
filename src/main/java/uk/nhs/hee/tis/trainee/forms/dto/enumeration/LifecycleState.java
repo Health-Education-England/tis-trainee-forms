@@ -33,6 +33,7 @@ public enum LifecycleState {
   DRAFT,
   REJECTED,
   SUBMITTED,
+  UNDER_REVIEW,
   UNSUBMITTED,
   WITHDRAWN;
 
@@ -68,10 +69,15 @@ public enum LifecycleState {
     REJECTED.requiresDetails = true;
     REJECTED.incrementsRevision = false;
 
-    SUBMITTED.allowedTransitions = Set.of(APPROVED, DELETED, REJECTED, UNSUBMITTED, WITHDRAWN);
+    SUBMITTED.allowedTransitions = Set.of(DELETED, UNDER_REVIEW, UNSUBMITTED, WITHDRAWN);
     SUBMITTED.allowedFormTypes = Set.of(AbstractForm.class);
     SUBMITTED.requiresDetails = false;
     SUBMITTED.incrementsRevision = false;
+
+    UNDER_REVIEW.allowedTransitions = Set.of(APPROVED, REJECTED, UNSUBMITTED, WITHDRAWN);
+    UNDER_REVIEW.allowedFormTypes = Set.of(LtftForm.class);
+    UNDER_REVIEW.requiresDetails = false;
+    UNDER_REVIEW.incrementsRevision = false;
 
     UNSUBMITTED.allowedTransitions = Set.of(SUBMITTED, WITHDRAWN);
     UNSUBMITTED.allowedFormTypes = Set.of(AbstractForm.class);

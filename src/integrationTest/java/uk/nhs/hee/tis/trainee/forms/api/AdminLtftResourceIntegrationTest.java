@@ -49,6 +49,7 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROV
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.REJECTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNDER_REVIEW;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
 import io.awspring.cloud.sns.core.SnsTemplate;
@@ -156,6 +157,7 @@ class AdminLtftResourceIntegrationTest {
       GET | /api/admin/ltft/count
       GET | /api/admin/ltft/123/review-workflow
       PUT | /api/admin/ltft/123/review-stage/advance
+      PUT | /api/admin/ltft/123/start-review
       """)
   void shouldReturnForbiddenWhenNoToken(HttpMethod method, URI uri) throws Exception {
     mockMvc.perform(request(method, uri))
@@ -182,6 +184,7 @@ class AdminLtftResourceIntegrationTest {
       GET   | /api/admin/ltft/count
       GET   | /api/admin/ltft/123/review-workflow
       PUT   | /api/admin/ltft/123/review-stage/advance
+      PUT   | /api/admin/ltft/123/start-review
       """)
   void shouldReturnForbiddenWhenEmptyToken(HttpMethod method, URI uri) throws Exception {
     Jwt token = TestJwtUtil.createToken("{}");
@@ -202,6 +205,7 @@ class AdminLtftResourceIntegrationTest {
       GET   | /api/admin/ltft/count
       GET   | /api/admin/ltft/123/review-workflow
       PUT   | /api/admin/ltft/123/review-stage/advance
+      PUT   | /api/admin/ltft/123/start-review
       """)
   void shouldReturnForbiddenWhenNoGroupsInToken(HttpMethod method, URI uri) throws Exception {
     mockMvc.perform(request(method, uri)
@@ -219,6 +223,7 @@ class AdminLtftResourceIntegrationTest {
       PUT   | /api/admin/ltft/123/unsubmit
       GET   | /api/admin/ltft/123/review-workflow
       PUT   | /api/admin/ltft/123/review-stage/advance
+      PUT   | /api/admin/ltft/123/start-review
       """)
   void shouldReturnBadRequestWhenInvalidFormId(HttpMethod method, URI uri) throws Exception {
     mockMvc.perform(request(method, uri)
@@ -417,7 +422,7 @@ class AdminLtftResourceIntegrationTest {
 
   @Test
   void shouldReturnBadRequestPatchingWhenPatchedFormFailsValidation() throws Exception {
-    LtftForm form = createLtftForm(SUBMITTED, DBC_1, null);
+    LtftForm form = createLtftForm(UNDER_REVIEW, DBC_1, null);
     form = template.save(form);
 
     String formPatch = """
@@ -451,7 +456,7 @@ class AdminLtftResourceIntegrationTest {
 
   @Test
   void shouldReturnPatchedFormWhenLtftDoesMatchDbc() throws Exception {
-    LtftForm form = createLtftForm(SUBMITTED, DBC_1, null);
+    LtftForm form = createLtftForm(UNDER_REVIEW, DBC_1, null);
     form = template.save(form);
 
     String formPatch = """
@@ -478,7 +483,7 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.revision", is(1)))
         .andExpect(jsonPath("$.change.startDate", is("1970-01-01")))
         .andExpect(jsonPath("$.change.wte", is(0.5)))
-        .andExpect(jsonPath("$.status.current.state", is(SUBMITTED.toString())))
+        .andExpect(jsonPath("$.status.current.state", is(UNDER_REVIEW.toString())))
         .andExpect(jsonPath("$.status.current.detail.reason", is("reason1")))
         .andExpect(jsonPath("$.status.current.detail.message", is("message1")));
   }
@@ -737,7 +742,7 @@ class AdminLtftResourceIntegrationTest {
 
   @Test
   void shouldReturnReviewStageLabelInSummaryWhenFormHasReviewStage() throws Exception {
-    LtftForm form = createSubmittedFormWithReviewStage(DBC_1, 1, "Manager Review");
+    LtftForm form = createUnderReviewFormWithReviewStage(DBC_1, 1, "Manager Review");
     template.insert(form);
 
     mockMvc.perform(get("/api/admin/ltft")
@@ -747,7 +752,7 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.content").isArray())
         .andExpect(jsonPath("$.content", hasSize(1)))
         .andExpect(jsonPath("$.content[0].id", is(form.getId().toString())))
-        .andExpect(jsonPath("$.content[0].status", is(SUBMITTED.name())))
+        .andExpect(jsonPath("$.content[0].status", is(UNDER_REVIEW.name())))
         .andExpect(jsonPath("$.content[0].reviewStage", is("Manager Review")));
   }
 
@@ -889,10 +894,10 @@ class AdminLtftResourceIntegrationTest {
 
   @Test
   void shouldCountOnlyLtftsWithMatchingReviewStageFilter() throws Exception {
-    template.insert(createSubmittedFormWithReviewStage(DBC_1, 0, "Stage One"));
-    template.insert(createSubmittedFormWithReviewStage(DBC_1, 1, "Stage Two"));
-    template.insert(createSubmittedFormWithReviewStage(DBC_1, 0, "Stage One"));
-    template.insert(createSubmittedFormWithReviewStage(DBC_1, 2, "Stage Three"));
+    template.insert(createUnderReviewFormWithReviewStage(DBC_1, 0, "Stage One"));
+    template.insert(createUnderReviewFormWithReviewStage(DBC_1, 1, "Stage Two"));
+    template.insert(createUnderReviewFormWithReviewStage(DBC_1, 0, "Stage One"));
+    template.insert(createUnderReviewFormWithReviewStage(DBC_1, 2, "Stage Three"));
 
     mockMvc.perform(get("/api/admin/ltft/count")
             .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
@@ -904,9 +909,9 @@ class AdminLtftResourceIntegrationTest {
 
   @Test
   void shouldCountLtftsWithMultipleReviewStageFilters() throws Exception {
-    template.insert(createSubmittedFormWithReviewStage(DBC_1, 0, "Stage One"));
-    template.insert(createSubmittedFormWithReviewStage(DBC_1, 1, "Stage Two"));
-    template.insert(createSubmittedFormWithReviewStage(DBC_1, 2, "Stage Three"));
+    template.insert(createUnderReviewFormWithReviewStage(DBC_1, 0, "Stage One"));
+    template.insert(createUnderReviewFormWithReviewStage(DBC_1, 1, "Stage Two"));
+    template.insert(createUnderReviewFormWithReviewStage(DBC_1, 2, "Stage Three"));
 
     mockMvc.perform(get("/api/admin/ltft/count")
             .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
@@ -918,10 +923,10 @@ class AdminLtftResourceIntegrationTest {
 
   @Test
   void shouldReturnSummariesWithMatchingReviewStageFilter() throws Exception {
-    LtftForm stageOneForm = createSubmittedFormWithReviewStage(DBC_1, 0, "Stage One");
+    LtftForm stageOneForm = createUnderReviewFormWithReviewStage(DBC_1, 0, "Stage One");
     template.insert(stageOneForm);
-    template.insert(createSubmittedFormWithReviewStage(DBC_1, 1, "Stage Two"));
-    template.insert(createSubmittedFormWithReviewStage(DBC_1, 2, "Stage Three"));
+    template.insert(createUnderReviewFormWithReviewStage(DBC_1, 1, "Stage Two"));
+    template.insert(createUnderReviewFormWithReviewStage(DBC_1, 2, "Stage Three"));
 
     mockMvc.perform(get("/api/admin/ltft")
             .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
@@ -935,9 +940,9 @@ class AdminLtftResourceIntegrationTest {
 
   @Test
   void shouldReturnSummariesWithMultipleReviewStageFilters() throws Exception {
-    template.insert(createSubmittedFormWithReviewStage(DBC_1, 0, "Stage One"));
-    template.insert(createSubmittedFormWithReviewStage(DBC_1, 1, "Stage Two"));
-    template.insert(createSubmittedFormWithReviewStage(DBC_1, 2, "Stage Three"));
+    template.insert(createUnderReviewFormWithReviewStage(DBC_1, 0, "Stage One"));
+    template.insert(createUnderReviewFormWithReviewStage(DBC_1, 1, "Stage Two"));
+    template.insert(createUnderReviewFormWithReviewStage(DBC_1, 2, "Stage Three"));
 
     mockMvc.perform(get("/api/admin/ltft")
             .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
@@ -1639,7 +1644,7 @@ class AdminLtftResourceIntegrationTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = "SUBMITTED")
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = "UNDER_REVIEW")
   void shouldNotApproveLtftWhenStateTransitionNotAllowed(LifecycleState currentState)
       throws Exception {
     LtftForm form = template.insert(createLtftForm(currentState, DBC_1, null));
@@ -1660,7 +1665,7 @@ class AdminLtftResourceIntegrationTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = "SUBMITTED")
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = "UNDER_REVIEW")
   void shouldApproveLtftWhenStateTransitionAllowed(LifecycleState currentState) throws Exception {
     LtftForm form = template.insert(createLtftForm(currentState, DBC_1, null));
 
@@ -1685,7 +1690,7 @@ class AdminLtftResourceIntegrationTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = "SUBMITTED")
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = "UNDER_REVIEW")
   void shouldNotRejectLtftWhenStateTransitionNotAllowed(LifecycleState currentState)
       throws Exception {
     LtftForm form = template.insert(createLtftForm(currentState, DBC_1, null));
@@ -1713,7 +1718,7 @@ class AdminLtftResourceIntegrationTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = "SUBMITTED")
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = "UNDER_REVIEW")
   void shouldNotRejectLtftWhenStateTransitionAllowedButNoReasonGiven(LifecycleState currentState)
       throws Exception {
     LtftForm form = template.insert(createLtftForm(currentState, DBC_1, null));
@@ -1741,7 +1746,7 @@ class AdminLtftResourceIntegrationTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = "SUBMITTED")
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = "UNDER_REVIEW")
   void shouldRejectLtftWhenStateTransitionAllowedAndReasonGiven(
       LifecycleState currentState) throws Exception {
     LtftForm form = template.insert(createLtftForm(currentState, DBC_1, null));
@@ -1775,7 +1780,7 @@ class AdminLtftResourceIntegrationTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = "SUBMITTED")
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = {"SUBMITTED", "UNDER_REVIEW"})
   void shouldNotUnsubmitLtftWhenStateTransitionNotAllowed(LifecycleState currentState)
       throws Exception {
     LtftForm form = template.insert(createLtftForm(currentState, DBC_1, null));
@@ -1804,6 +1809,34 @@ class AdminLtftResourceIntegrationTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = "SUBMITTED")
+  void shouldNotUnsubmitLtftAsAdminWhenTransitionRestrictedToTrainee(LifecycleState currentState)
+      throws Exception {
+    LtftForm form = template.insert(createLtftForm(currentState, DBC_1, null));
+
+    mockMvc.perform(put("/api/admin/ltft/{id}/unsubmit", form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .contentType(APPLICATION_JSON)
+            .content("""
+                {
+                  "reason": "test reason"
+                }
+                """))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type", is("about:blank")))
+        .andExpect(jsonPath("$.title", is("Validation failure")))
+        .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
+        .andExpect(
+            jsonPath("$.instance", is("/api/admin/ltft/%s/unsubmit".formatted(form.getId()))))
+        .andExpect(jsonPath("$.properties.errors").isArray())
+        .andExpect(jsonPath("$.properties.errors", hasSize(1)))
+        .andExpect(jsonPath("$.properties.errors[0].pointer", is("#/status/current/state")))
+        .andExpect(jsonPath("$.properties.errors[0].detail",
+            is("can not be transitioned to UNSUBMITTED by this user")));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = "UNDER_REVIEW")
   void shouldNotUnsubmitLtftWhenStateTransitionAllowedButNoReasonGiven(LifecycleState currentState)
       throws Exception {
     LtftForm form = template.insert(createLtftForm(currentState, DBC_1, null));
@@ -1831,7 +1864,7 @@ class AdminLtftResourceIntegrationTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = "SUBMITTED")
+  @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = "UNDER_REVIEW")
   void shouldUnsubmitLtftAndIncrementRevisionWhenStateTransitionAllowedAndReasonGiven(
       LifecycleState currentState) throws Exception {
     LtftForm form = template.insert(createLtftForm(currentState, DBC_1, null));
@@ -1890,7 +1923,7 @@ class AdminLtftResourceIntegrationTest {
   @Test
   void shouldRetainReviewStageWhenAssigningAdmin() throws Exception {
     LtftForm form = template.insert(
-        createSubmittedFormWithReviewStage(DBC_1, 1, "Manager Review"));
+        createUnderReviewFormWithReviewStage(DBC_1, 1, "Manager Review"));
 
     mockMvc.perform(put("/api/admin/ltft/{id}/assign", form.getId())
             .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
@@ -1903,7 +1936,7 @@ class AdminLtftResourceIntegrationTest {
                 }
                 """))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status.current.state", is(SUBMITTED.toString())))
+        .andExpect(jsonPath("$.status.current.state", is(UNDER_REVIEW.toString())))
         .andExpect(jsonPath("$.status.current.assignedAdmin.name", is("Ad min")))
         .andExpect(jsonPath("$.status.current.reviewStage.index", is(1)))
         .andExpect(jsonPath("$.status.current.reviewStage.label", is("Manager Review")))
@@ -1949,7 +1982,7 @@ class AdminLtftResourceIntegrationTest {
       throws Exception {
     // Form at stage index 1 (Stage Two)
     LtftForm form = template.insert(
-        createSubmittedFormWithReviewStage(DBC_THREE_STAGES, 1, "Stage Two"));
+        createUnderReviewFormWithReviewStage(DBC_THREE_STAGES, 1, "Stage Two"));
 
     mockMvc.perform(get("/api/admin/ltft/{id}/review-workflow", form.getId())
             .with(TestJwtUtil.createAdminToken(List.of(DBC_THREE_STAGES), REQUIRED_ROLES)))
@@ -1983,14 +2016,14 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.properties.errors", hasSize(1)))
         .andExpect(jsonPath("$.properties.errors[0].pointer", is("#/status/current/state")))
         .andExpect(jsonPath("$.properties.errors[0].detail",
-            is("review stage can only be advanced when the form is SUBMITTED")));
+            is("review stage can only be advanced when the form is UNDER_REVIEW")));
   }
 
   @Test
   void shouldReturnBadRequestWhenAdvancingReviewStageAndAtFinalStage() throws Exception {
     // DBC_ONE_STAGE has one stage (index 0), so final stage is index 1.
     LtftForm form = template.insert(
-        createSubmittedFormWithReviewStage(DBC_ONE_STAGE, 1, "Review complete"));
+        createUnderReviewFormWithReviewStage(DBC_ONE_STAGE, 1, "Review complete"));
 
     mockMvc.perform(put("/api/admin/ltft/{id}/review-stage/advance", form.getId())
             .with(TestJwtUtil.createAdminToken(List.of(DBC_ONE_STAGE), REQUIRED_ROLES)))
@@ -2012,12 +2045,12 @@ class AdminLtftResourceIntegrationTest {
   void shouldAdvanceReviewStageWhenFormIsSubmittedAndNotAtFinalStage() throws Exception {
     // Form at stage 0, can advance to stage 1 (Stage Two)
     LtftForm form = template.insert(
-        createSubmittedFormWithReviewStage(DBC_THREE_STAGES, 0, "Stage One"));
+        createUnderReviewFormWithReviewStage(DBC_THREE_STAGES, 0, "Stage One"));
 
     mockMvc.perform(put("/api/admin/ltft/{id}/review-stage/advance", form.getId())
             .with(TestJwtUtil.createAdminToken(List.of(DBC_THREE_STAGES), REQUIRED_ROLES)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status.current.state", is(SUBMITTED.toString())))
+        .andExpect(jsonPath("$.status.current.state", is(UNDER_REVIEW.toString())))
         .andExpect(jsonPath("$.status.current.reviewStage.index", is(1)))
         .andExpect(jsonPath("$.status.current.reviewStage.label", is("Stage Two")))
         .andExpect(jsonPath("$.status.current.modifiedBy.name", is("Ad Min")))
@@ -2029,7 +2062,7 @@ class AdminLtftResourceIntegrationTest {
   @Test
   void shouldAdvanceReviewStageAndRecordDetailWhenDetailProvided() throws Exception {
     LtftForm form = template.insert(
-        createSubmittedFormWithReviewStage(DBC_THREE_STAGES, 0, "Stage One"));
+        createUnderReviewFormWithReviewStage(DBC_THREE_STAGES, 0, "Stage One"));
 
     mockMvc.perform(put("/api/admin/ltft/{id}/review-stage/advance", form.getId())
             .with(TestJwtUtil.createAdminToken(List.of(DBC_THREE_STAGES), REQUIRED_ROLES))
@@ -2041,7 +2074,7 @@ class AdminLtftResourceIntegrationTest {
                 }
                 """))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status.current.state", is(SUBMITTED.toString())))
+        .andExpect(jsonPath("$.status.current.state", is(UNDER_REVIEW.toString())))
         .andExpect(jsonPath("$.status.current.reviewStage.index", is(1)))
         .andExpect(jsonPath("$.status.current.reviewStage.label", is("Stage Two")))
         .andExpect(jsonPath("$.status.current.detail.reason", is("Triage complete")))
@@ -2115,7 +2148,7 @@ class AdminLtftResourceIntegrationTest {
   @Test
   void shouldIncludeDisabledStageLabelsWhenFormsExistInThem() throws Exception {
     // Create a form that is SUBMITTED and in the disabled review stage for DBC_DISABLED
-    LtftForm form = createSubmittedFormWithReviewStage(DBC_DISABLED, 0, "Disabled Stage");
+    LtftForm form = createUnderReviewFormWithReviewStage(DBC_DISABLED, 0, "Disabled Stage");
     template.insert(form);
 
     mockMvc.perform(get("/api/admin/ltft/review-stages")
@@ -2130,7 +2163,7 @@ class AdminLtftResourceIntegrationTest {
   @Test
   void shouldIncludeBothEnabledAndInUseDisabledLabelsAcrossDbcs() throws Exception {
     // Create a form in the disabled stage for DBC_DISABLED
-    LtftForm form = createSubmittedFormWithReviewStage(DBC_DISABLED, 0, "Disabled Stage");
+    LtftForm form = createUnderReviewFormWithReviewStage(DBC_DISABLED, 0, "Disabled Stage");
     template.insert(form);
 
     // Admin token has DBC_ONE_STAGE (enabled: Single Review) + DBC_DISABLED (disabled: Disabled Stage)
@@ -2195,10 +2228,10 @@ class AdminLtftResourceIntegrationTest {
   }
 
   /**
-   * Save a SUBMITTED form with the given DBC and review stage directly to MongoDB, bypassing the
+   * Save an UNDER_REVIEW form with the given DBC and review stage directly to MongoDB, bypassing the
    * service layer to allow precise state control.
    */
-  private LtftForm createSubmittedFormWithReviewStage(String dbc, int stageIndex,
+  private LtftForm createUnderReviewFormWithReviewStage(String dbc, int stageIndex,
       String stageLabel) {
     LtftForm form = new LtftForm();
     form.setContent(LtftContent.builder()
@@ -2208,7 +2241,7 @@ class AdminLtftResourceIntegrationTest {
         .build());
     form.setStatus(Status.builder()
         .current(StatusInfo.builder()
-            .state(SUBMITTED)
+            .state(UNDER_REVIEW)
             .reviewStage(new ReviewStageStatus(stageIndex, stageLabel))
             .build())
         .submitted(Instant.now())

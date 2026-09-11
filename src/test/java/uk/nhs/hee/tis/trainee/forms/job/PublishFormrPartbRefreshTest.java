@@ -101,7 +101,7 @@ class PublishFormrPartbRefreshTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = {"APPROVED", "DRAFT",
-      "REJECTED", "WITHDRAWN"})
+      "REJECTED", "UNDER_REVIEW", "WITHDRAWN"})
   void shouldNotPublishDraftFormrPartbs(LifecycleState state) {
     ArgumentCaptor<Set<LifecycleState>> statesCaptor = ArgumentCaptor.captor();
     when(repository.streamByLifecycleStateIn(statesCaptor.capture())).thenReturn(Stream.of());
@@ -115,7 +115,7 @@ class PublishFormrPartbRefreshTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = Mode.EXCLUDE, names = {"APPROVED", "DRAFT",
-      "REJECTED", "WITHDRAWN"})
+      "REJECTED", "UNDER_REVIEW", "WITHDRAWN"})
   void shouldNotPublishDraftFormrPartbsWithCutoffDate(LifecycleState state) {
     LocalDate since = LocalDate.of(2025, Month.JANUARY, 1);
     ArgumentCaptor<Set<LifecycleState>> statesCaptor = ArgumentCaptor.captor();
