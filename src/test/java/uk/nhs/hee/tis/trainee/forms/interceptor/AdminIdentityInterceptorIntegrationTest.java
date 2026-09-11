@@ -141,7 +141,9 @@ class AdminIdentityInterceptorIntegrationTest {
            "email": "%s",
            "given_name": "Ad",
            "family_name": "Min-One",
-           "cognito:groups": ["123"]
+           "cognito:groups": ["123"],
+           "cognito:roles": ["ROLE"],
+           "user_programmes": ["P001"]
         }
         """.formatted(EMAIL_1));
     mockMvc.perform(get(API_PATH)
@@ -153,7 +155,9 @@ class AdminIdentityInterceptorIntegrationTest {
            "email": "%s",
            "given_name": "Ad",
            "family_name": "Min-Two",
-           "cognito:groups": ["321"]
+           "cognito:groups": ["321"],
+           "cognito:roles": ["ROLE"],
+           "user_programmes": []
         }
         """.formatted(EMAIL_2));
     mockMvc.perform(get(API_PATH)
