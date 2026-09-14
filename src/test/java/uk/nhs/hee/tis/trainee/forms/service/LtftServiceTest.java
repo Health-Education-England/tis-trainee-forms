@@ -1844,6 +1844,63 @@ class LtftServiceTest {
   }
 
   @Test
+  void shouldAllowProgrammeAdminToAppluAdminPatch() throws IOException {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
+    LtftForm entity = new LtftForm();
+    entity.setId(ID);
+    entity.setContent(LtftContent.builder().build());
+    entity.setRevision(1);
+    entity.setLifecycleState(UNDER_REVIEW);
+
+    when(repository
+        .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_ProgrammeNumberIn(
+            any(), any(), any())).thenReturn(Optional.of(entity));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    JsonNode patchNode = jsonMapper.readTree("""
+        [
+          {
+            "op": "replace",
+            "path": "/personalDetails/email",
+            "value": "new@example.com"
+          }
+        ]
+        """);
+    FormPatchDto formPatch = new FormPatchDto(JsonPatch.fromJson(patchNode), "reason1", "message1");
+
+    Optional<LtftFormDto> optionalForm = service.applyAdminPatch(ID, formPatch);
+
+    assertThat("Unexpected form optional.", optionalForm.isPresent(), is(true));
+
+    LtftFormDto patchedForm = optionalForm.get();
+    assertThat("Unexpected form ID.", patchedForm.id(), is(ID));
+    assertThat("Unexpected revision.", patchedForm.revision(), is(2));
+    assertThat("Unexpected email.", patchedForm.personalDetails().email(),
+        is("new@example.com"));
+    assertThat("Unexpected status history count.", patchedForm.status().history(), hasSize(2));
+
+    StatusInfoDto current = patchedForm.status().current();
+    assertThat("Unexpected current revision.", current.revision(), is(2));
+    assertThat("Unexpected current state.", current.state(), is(UNDER_REVIEW));
+    assertThat("Unexpected current status reason.", current.detail().reason(), is("reason1"));
+    assertThat("Unexpected current status message.", current.detail().message(), is("message1"));
+
+    StatusInfoDto history = patchedForm.status().history().get(0);
+    assertThat("Unexpected original revision.", history.revision(), is(1));
+    assertThat("Unexpected original state.", history.state(), is(UNDER_REVIEW));
+    assertThat("Unexpected original status reason.", history.detail().reason(), nullValue());
+    assertThat("Unexpected original status message.", history.detail().message(), nullValue());
+
+    history = patchedForm.status().history().get(1);
+    assertThat("Unexpected latest revision.", history.revision(), is(2));
+    assertThat("Unexpected latest state.", history.state(), is(UNDER_REVIEW));
+    assertThat("Unexpected latest status reason.", history.detail().reason(), is("reason1"));
+    assertThat("Unexpected latest status message.", history.detail().message(), is("message1"));
+
+    verify(repository).save(any());
+  }
+
+  @Test
   void shouldPreserveReviewStageWhenPatchingFormUnderReview() throws IOException {
     ReviewStageStatus reviewStage = new ReviewStageStatus(1, "Stage Two");
 

@@ -289,7 +289,7 @@ class AdminIdentityInterceptorTest {
   }
 
   @Test
-  void shouldReturnFalseAndPartiallyPopulateIdentityWhenNoRolesInAuthToken() {
+  void shouldReturnTrueAndPartiallyPopulateIdentityWhenNoRolesInAuthToken() {
     Jwt token = TestJwtUtil.createToken("""
         {
           "email": "%s",
@@ -310,7 +310,7 @@ class AdminIdentityInterceptorTest {
     boolean result = interceptor.preHandle(new MockHttpServletRequest(),
         new MockHttpServletResponse(), new Object());
 
-    assertThat("Unexpected result.", result, is(false));
+    assertThat("Unexpected result.", result, is(true));
     assertThat("Unexpected admin email.", adminIdentity.getEmail(), is(EMAIL));
     assertThat("Unexpected admin name.", adminIdentity.getName(), is(FULL_NAME));
     assertThat("Unexpected admin group count.", adminIdentity.getGroups(), hasSize(2));
@@ -322,7 +322,7 @@ class AdminIdentityInterceptorTest {
   }
 
   @Test
-  void shouldReturnFalseAndPopulateIdentityWhenAllFieldsAndEmptyRolesInAuthToken() {
+  void shouldReturnTrueAndPopulateIdentityWhenAllFieldsAndEmptyRolesInAuthToken() {
     Jwt token = TestJwtUtil.createToken("""
         {
           "email": "%s",
@@ -344,7 +344,7 @@ class AdminIdentityInterceptorTest {
     boolean result = interceptor.preHandle(new MockHttpServletRequest(),
         new MockHttpServletResponse(), new Object());
 
-    assertThat("Unexpected result.", result, is(false));
+    assertThat("Unexpected result.", result, is(true));
     assertThat("Unexpected admin email.", adminIdentity.getEmail(), is(EMAIL));
     assertThat("Unexpected admin name.", adminIdentity.getName(), is(FULL_NAME));
     assertThat("Unexpected admin group count.", adminIdentity.getGroups(), hasSize(2));

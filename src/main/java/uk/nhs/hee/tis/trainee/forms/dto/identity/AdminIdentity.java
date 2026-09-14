@@ -45,10 +45,9 @@ public class AdminIdentity extends UserIdentity {
    */
   @Override
   public boolean isComplete() {
-    boolean hasRoles = roles != null && !roles.isEmpty();
     boolean hasGroups = groups != null && !groups.isEmpty();
     boolean hasProgrammes = programmes != null && !programmes.isEmpty();
-    return getEmail() != null && getName() != null && hasRoles && (hasGroups || hasProgrammes);
+    return getEmail() != null && getName() != null && (hasGroups || hasProgrammes);
   }
 
   @Override

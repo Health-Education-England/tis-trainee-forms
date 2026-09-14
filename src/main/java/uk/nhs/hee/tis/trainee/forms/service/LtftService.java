@@ -785,7 +785,8 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
     List<String> filteredDbcs;
     if (isProgrammeAdmin()) {
       Query query = new Query(
-          Criteria.where("content.programmeMembership.id").in(adminIdentity.getProgrammes()));
+          Criteria.where("content.programmeMembership.programmeNumber").in(
+              adminIdentity.getProgrammes()));
       filteredDbcs = mongoTemplate.findDistinct(
           query, "content.programmeMembership.designatedBodyCode",
           LtftForm.class, String.class);
@@ -1388,7 +1389,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    *
    * @return The admin's programmes if a programme admin, otherwise their DBC groups.
    */
-  private Object filterScopeValue() {
+  private Set<String> filterScopeValue() {
     return isProgrammeAdmin() ? adminIdentity.getProgrammes() : adminIdentity.getGroups();
   }
 }

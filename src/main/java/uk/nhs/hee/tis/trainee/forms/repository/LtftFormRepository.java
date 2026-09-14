@@ -83,7 +83,8 @@ public interface LtftFormRepository extends BaseAuditedFormRepository<LtftForm> 
       Set<LifecycleState> states, Instant lastModifiedCutoff);
 
   /**
-   * Find the LTFT form with the given ID and one of the given DBCs.
+   * Find the current LTFT form not in any provided state, base on the given ID and one of the
+   * given DBCs.
    *
    * @param id     The ID of the form to find.
    * @param states The states to exclude from the search.
@@ -95,7 +96,8 @@ public interface LtftFormRepository extends BaseAuditedFormRepository<LtftForm> 
       UUID id, Set<LifecycleState> states, Set<String> dbcs);
 
   /**
-   * Find the LTFT form with the given ID and one of the given programmes.
+   * Find the current LTFT form not in any provided state, base on the given ID and one of the
+   * given programmes.
    *
    * @param id     The ID of the form to find.
    * @param states The states to exclude from the search.
