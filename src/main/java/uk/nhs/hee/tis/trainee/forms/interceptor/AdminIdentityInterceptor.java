@@ -43,6 +43,8 @@ public class AdminIdentityInterceptor implements HandlerInterceptor {
   private static final String GIVEN_NAME_ATTRIBUTE = "given_name";
   private static final String FAMILY_NAME_ATTRIBUTE = "family_name";
   private static final String GROUPS_ATTRIBUTE = "cognito:groups";
+  private static final String ROLES_ATTRIBUTE = "cognito:roles";
+  private static final String PROGRAMMES_ATTRIBUTE = "user_programmes";
 
   private final AdminIdentity adminIdentity;
 
@@ -62,6 +64,16 @@ public class AdminIdentityInterceptor implements HandlerInterceptor {
       List<String> adminGroups = authToken.getClaimAsStringList(GROUPS_ATTRIBUTE);
       if (adminGroups != null) {
         adminIdentity.setGroups(new HashSet<>(adminGroups));
+      }
+
+      List<String> adminRoles = authToken.getClaimAsStringList(ROLES_ATTRIBUTE);
+      if (adminRoles != null) {
+        adminIdentity.setRoles(new HashSet<>(adminRoles));
+      }
+
+      List<String> adminProgrammes = authToken.getClaimAsStringList(PROGRAMMES_ATTRIBUTE);
+      if (adminProgrammes != null) {
+        adminIdentity.setProgrammes(new HashSet<>(adminProgrammes));
       }
 
       String givenName = authToken.getClaimAsString(GIVEN_NAME_ATTRIBUTE);

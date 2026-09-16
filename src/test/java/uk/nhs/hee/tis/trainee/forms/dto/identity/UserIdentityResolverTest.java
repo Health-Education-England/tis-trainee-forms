@@ -54,6 +54,8 @@ class UserIdentityResolverTest {
     adminIdentity.setName("Ad Min");
     adminIdentity.setEmail("ad.min@example.com");
     adminIdentity.setGroups(Set.of("Test Group"));
+    adminIdentity.setRoles(Set.of("Test Role"));
+    adminIdentity.setProgrammes(Set.of("Test Programme"));
 
     UserIdentity userIdentity = identityResolver.getUserIdentity();
 
@@ -81,6 +83,8 @@ class UserIdentityResolverTest {
     adminIdentity.setName("Ad Min");
     adminIdentity.setEmail("ad.min@example.com");
     adminIdentity.setGroups(Set.of("Test Group"));
+    adminIdentity.setRoles(Set.of("Test Role"));
+    adminIdentity.setProgrammes(Set.of("Test Programme"));
 
     AdminIdentity requiredIdentity = identityResolver.requireAdminIdentity();
 
@@ -92,6 +96,8 @@ class UserIdentityResolverTest {
     adminIdentity.setName("Ad Min");
     adminIdentity.setEmail("ad.min@example.com");
     adminIdentity.setGroups(Set.of("Test Group"));
+    adminIdentity.setRoles(Set.of("Test Role"));
+    adminIdentity.setProgrammes(Set.of("Test Programme"));
 
     assertThrows(IllegalArgumentException.class, () -> identityResolver.requireTraineeIdentity());
   }

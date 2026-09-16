@@ -38,6 +38,9 @@ class JwtAuthoritiesConverterTest {
 
   private static final String ROLES_ATTRIBUTE = "cognito:roles";
   private static final String GROUPS_ATTRIBUTE = "cognito:groups";
+  private static final String PROGRAMMES_ATTRIBUTE = "user_programmes";
+  private static final String PROGRAMME1 = "P001";
+  private static final String PROGRAMME2 = "P002";
 
   private JwtAuthoritiesConverter converter;
 
@@ -93,6 +96,25 @@ class JwtAuthoritiesConverterTest {
   }
 
   @Test
+  void shouldConvertProgrammeClaims() {
+    Jwt source = Jwt.withTokenValue("mock-token")
+        .header("sub", UUID.randomUUID())
+        .claim(PROGRAMMES_ATTRIBUTE, List.of(PROGRAMME1, PROGRAMME2))
+        .build();
+
+    Collection<GrantedAuthority> grantedAuthorities = converter.convert(source);
+
+    assertThat("Unexpected authority count.", grantedAuthorities, hasSize(2));
+
+    Collection<String> authorities = grantedAuthorities.stream()
+        .map(GrantedAuthority::getAuthority)
+        .toList();
+    assertThat("Unexpected authorities.", authorities, hasItems(
+        "ROLE_P001",
+        "ROLE_P002"));
+  }
+
+  @Test
   void shouldCombineConvertedRoleAndGroupClaims() {
     Jwt source = Jwt.withTokenValue("mock-token")
         .header("sub", UUID.randomUUID())
@@ -108,5 +130,25 @@ class JwtAuthoritiesConverterTest {
         .map(GrantedAuthority::getAuthority)
         .toList();
     assertThat("Unexpected authorities.", authorities, hasItems("ROLE_role1", "ROLE_group1"));
+  }
+
+  @Test
+  void shouldCombineConvertedRoleGroupAndProgrammeClaims() {
+    Jwt source = Jwt.withTokenValue("mock-token")
+        .header("sub", UUID.randomUUID())
+        .claim(ROLES_ATTRIBUTE, List.of("role1"))
+        .claim(GROUPS_ATTRIBUTE, List.of("group1"))
+        .claim(PROGRAMMES_ATTRIBUTE, List.of(PROGRAMME1))
+        .build();
+
+    Collection<GrantedAuthority> grantedAuthorities = converter.convert(source);
+
+    assertThat("Unexpected authority count.", grantedAuthorities, hasSize(3));
+
+    Collection<String> authorities = grantedAuthorities.stream()
+        .map(GrantedAuthority::getAuthority)
+        .toList();
+    assertThat("Unexpected authorities.", authorities, hasItems(
+        "ROLE_role1", "ROLE_group1", "ROLE_P001"));
   }
 }
