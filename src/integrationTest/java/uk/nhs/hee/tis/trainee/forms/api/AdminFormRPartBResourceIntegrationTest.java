@@ -191,6 +191,7 @@ class AdminFormRPartBResourceIntegrationTest {
       PUT    | /api/admin/formr-partb/{formId}/unsubmit | HEE Admin Revalidation
       PUT    | /api/admin/formr-partb/{formId}/unsubmit | HEE Admin Sensitive
       PUT    | /api/admin/formr-partb/{formId}/unsubmit | HEE TIS Admin
+      PUT    | /api/admin/formr-partb/{formId}/unsubmit | HEE Programme Admin
       DELETE | /api/admin/formr-partb/{formId}          | TSS Support Admin
       """)
   void shouldReturnNotFoundWhenHasRequiredPermissionAndFormMissing(HttpMethod method,
@@ -206,6 +207,7 @@ class AdminFormRPartBResourceIntegrationTest {
       PUT    | /api/admin/formr-partb/{formId}/unsubmit | HEE Admin Revalidation
       PUT    | /api/admin/formr-partb/{formId}/unsubmit | HEE Admin Sensitive
       PUT    | /api/admin/formr-partb/{formId}/unsubmit | HEE TIS Admin
+      PUT    | /api/admin/formr-partb/{formId}/unsubmit | HEE Programme Admin
       DELETE | /api/admin/formr-partb/{formId}          | TSS Support Admin
       """)
   void shouldReturnOkWhenHasRequiredPermissionAndFormFound(HttpMethod method, String uriTemplate,
@@ -230,6 +232,7 @@ class AdminFormRPartBResourceIntegrationTest {
       GET    | /api/admin/formr-partb/{formId}          | HEE Admin Revalidation
       GET    | /api/admin/formr-partb/{formId}          | HEE Admin Sensitive
       GET    | /api/admin/formr-partb/{formId}          | HEE TIS Admin
+      GET    | /api/admin/formr-partb/{formId}          | HEE Programme Admin
       """)
   void shouldReturnOkWhenFormFound(HttpMethod method, String uriTemplate,
       String role) throws Exception {
