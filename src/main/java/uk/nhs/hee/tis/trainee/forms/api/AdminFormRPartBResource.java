@@ -67,7 +67,8 @@ public class AdminFormRPartBResource {
         'HEE_Admin',
         'HEE_Admin_Revalidation',
         'HEE_Admin_Sensitive',
-        'HEE_TIS_Admin')
+        'HEE_TIS_Admin',
+        'HEE_Programme_Admin')
       """)
   @PutMapping("/{formId}/unsubmit")
   public ResponseEntity<FormRPartBDto> unsubmitFormRPartB(@PathVariable UUID formId)

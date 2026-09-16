@@ -66,7 +66,8 @@ public class AdminFormRPartAResource {
         'HEE_Admin',
         'HEE_Admin_Revalidation',
         'HEE_Admin_Sensitive',
-        'HEE_TIS_Admin')
+        'HEE_TIS_Admin',
+        'HEE_Programme_Admin')
       """)
   // TODO: review permission requirements.
   @PutMapping("/{formId}/unsubmit")
