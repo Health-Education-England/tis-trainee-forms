@@ -73,6 +73,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -386,6 +387,44 @@ class LtftServiceTest {
   }
 
   @Test
+  void shouldFilterByEmptyDbcCriteriaWhenLtftAdminHasNoGroups() {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin"));
+    adminIdentity.setGroups(Set.of());
+
+    service.getAdminLtftCount(Map.of());
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
+
+    Query query = queryCaptor.getValue();
+    Document queryObject = query.getQueryObject();
+    Document dbcFilter = queryObject.get("content.programmeMembership.designatedBodyCode",
+        Document.class);
+
+    Set<String> filteredDbcs = dbcFilter.get("$in", Set.class);
+    assertThat("Expected no DBCs to match.", filteredDbcs, is(Collections.emptySet()));
+  }
+
+  @Test
+  void shouldFilterByEmptyDbcCriteriaWhenLtftAdminHasNullGroups() {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin"));
+    adminIdentity.setGroups(null);
+
+    service.getAdminLtftCount(Map.of());
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
+
+    Query query = queryCaptor.getValue();
+    Document queryObject = query.getQueryObject();
+    Document dbcFilter = queryObject.get("content.programmeMembership.designatedBodyCode",
+        Document.class);
+
+    Set<String> filteredDbcs = dbcFilter.get("$in", Set.class);
+    assertThat("Expected no DBCs to match.", filteredDbcs, is(Collections.emptySet()));
+  }
+
+  @Test
   void shouldFilterByProgrammeWhenCountingAdminLtfts() {
     adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
     service.getAdminLtftCount(Map.of());
@@ -405,6 +444,48 @@ class LtftServiceTest {
     Set<String> filteredProgrammes = programmeFilter.get("$in", Set.class);
     assertThat("Unexpected filter value count.", filteredProgrammes, hasSize(1));
     assertThat("Unexpected filter value.", filteredProgrammes, hasItem(ADMIN_PROGRAMME));
+  }
+
+  @Test
+  void shouldFilterByEmptyProgrammeCriteriaWhenProgrammeAdminHasNullProgrammes() {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
+    adminIdentity.setProgrammes(null);
+
+    service.getAdminLtftCount(Map.of());
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
+
+    Query query = queryCaptor.getValue();
+    Document queryObject = query.getQueryObject();
+    Document programmeFilter = queryObject.get("content.programmeMembership.programmeNumber",
+        Document.class);
+
+    Set<String> filteredProgrammes = programmeFilter.get("$in", Set.class);
+    assertThat("Expected no programmes to match.", filteredProgrammes, is(Collections.emptySet()));
+  }
+
+  @Test
+  void shouldFilterByEmptyProgrammeCriteriaWhenProgrammeAdminHasNoProgrammes() {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
+    adminIdentity.setProgrammes(Set.of());
+
+    service.getAdminLtftCount(Map.of());
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
+
+    Query query = queryCaptor.getValue();
+    Document queryObject = query.getQueryObject();
+    assertThat("Unexpected filter count.", queryObject.keySet(), hasSize(2));
+
+    Document programmeFilter = queryObject.get("content.programmeMembership.programmeNumber",
+        Document.class);
+    assertThat("Unexpected filter key count.", programmeFilter.keySet(), hasSize(1));
+    assertThat("Unexpected filter key.", programmeFilter.keySet(), hasItem("$in"));
+
+    Set<String> filteredProgrammes = programmeFilter.get("$in", Set.class);
+    assertThat("Expected no programmes to match.", filteredProgrammes, is(Collections.emptySet()));
   }
 
   @ParameterizedTest
@@ -2842,6 +2923,24 @@ class LtftServiceTest {
     assertThat("Expected Triage label.", result, hasItem("Triage"));
     assertThat("Expected Review label.", result, hasItem("Review"));
     assertThat("Expected terminal stage label.", result, hasItem("Review complete"));
+  }
+
+  @Test
+  void shouldReturnNoLabelsWhenProgrammeAdminHasNoProgrammes() {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
+    adminIdentity.setProgrammes(Set.of());
+
+    when(mongoTemplate.findDistinct(any(Query.class),
+        eq("content.programmeMembership.designatedBodyCode"), eq(LtftForm.class), eq(String.class)))
+        .thenReturn(List.of());
+
+    when(reviewStageService.getEnabledStageLabels(List.of())).thenReturn(Set.of());
+    when(reviewStageService.getDisabledStageLabels(List.of())).thenReturn(Set.of());
+
+    Set<String> result = service.getReviewStageLabels();
+
+    assertThat("Expected no labels when no programmes are assigned.", result,
+        is(Collections.emptySet()));
   }
 
   @Test

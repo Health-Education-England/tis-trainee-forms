@@ -43,6 +43,7 @@ import jakarta.validation.Validator;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.AbstractMap.SimpleEntry;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -784,9 +785,17 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   public Set<String> getReviewStageLabels() {
     List<String> filteredDbcs;
     if (isProgrammeAdmin()) {
+      Set<String> programmes = adminIdentity.getProgrammes();
+      log.info("Filtering DBCs by programme for HEE Programme Admin {}: {}",
+          adminIdentity.getEmail(), programmes);
+
+      if (programmes == null || programmes.isEmpty()) {
+        programmes = Collections.emptySet();
+        log.warn("HEE Programme Admin {} has no programmes assigned.",
+            adminIdentity.getEmail());
+      }
       Query query = new Query(
-          Criteria.where("content.programmeMembership.programmeNumber").in(
-              adminIdentity.getProgrammes()));
+          Criteria.where("content.programmeMembership.programmeNumber").in(programmes));
       filteredDbcs = mongoTemplate.findDistinct(
           query, "content.programmeMembership.designatedBodyCode",
           LtftForm.class, String.class);
@@ -1332,16 +1341,28 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    */
   private Criteria buildAdminAccessCriteria() {
     if (isProgrammeAdmin()) {
+      Set<String> programmes = adminIdentity.getProgrammes();
       log.info("Restricting LTFT access by programme for HEE Programme Admin {}: {}",
-          adminIdentity.getEmail(), adminIdentity.getProgrammes());
-      return Criteria.where("content.programmeMembership.programmeNumber")
-          .in(adminIdentity.getProgrammes());
+          adminIdentity.getEmail(), programmes);
+
+      if (programmes == null || programmes.isEmpty()) {
+        programmes = Collections.emptySet();
+        log.warn("HEE Programme Admin {} has no programmes assigned, denying access.",
+            adminIdentity.getEmail());
+      }
+      return Criteria.where("content.programmeMembership.programmeNumber").in(programmes);
     }
 
+    Set<String> dbcs = adminIdentity.getGroups();
     log.info("Restricting LTFT access by DBC for NHSE LTFT Admin {}: {}",
-        adminIdentity.getEmail(), adminIdentity.getGroups());
-    return Criteria.where("content.programmeMembership.designatedBodyCode")
-        .in(adminIdentity.getGroups());
+        adminIdentity.getEmail(), dbcs);
+
+    if (dbcs == null || dbcs.isEmpty()) {
+      dbcs = Collections.emptySet();
+      log.warn("NHSE LTFT Admin {} has no DBC assigned, denying access.",
+          adminIdentity.getEmail());
+    }
+    return Criteria.where("content.programmeMembership.designatedBodyCode").in(dbcs);
   }
 
   /**
