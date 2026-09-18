@@ -279,7 +279,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    * @return The found form, empty if the form does not exist or does not match the admin's DBCs.
    */
   private Optional<LtftForm> getLtftForAdmin(UUID formId) {
-    if (hasAssignedProgrammes()) {
+    if (isFilteredByProgramme()) {
       Set<String> programmes = adminIdentity.getProgrammes();
       log.info("Getting LTFT form {} for admin {} with programmes [{}]",
           formId, adminIdentity.getEmail(), programmes);
@@ -784,7 +784,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    */
   public Set<String> getReviewStageLabels() {
     List<String> filteredDbcs;
-    if (hasAssignedProgrammes()) {
+    if (isFilteredByProgramme()) {
       Set<String> programmes = adminIdentity.getProgrammes();
       log.info("Filtering DBCs by programme for HEE Programme Admin {}: {}",
           adminIdentity.getEmail(), programmes);
@@ -1330,12 +1330,12 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   }
 
   /**
-   * Build criteria to restrict LTFT access based on roles.
+   * Build criteria to restrict LTFT access based on roles and assigned Programmes and DBCs.
    *
    * @return a Criteria for the query.
    */
   private Criteria buildAdminAccessCriteria() {
-    if (hasAssignedProgrammes()) {
+    if (isFilteredByProgramme()) {
       Set<String> programmes = adminIdentity.getProgrammes();
       log.info("Restricting LTFT access by programme for Programme Admin {}: {}",
           adminIdentity.getEmail(), programmes);
@@ -1361,7 +1361,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    * @return the form with the form ID, empty if not exist or is not accessible to the admin.
    */
   private Optional<LtftForm> findFormForAdmin(UUID formId) {
-    if (hasAssignedProgrammes()) {
+    if (isFilteredByProgramme()) {
       Set<String> programmes = adminIdentity.getProgrammes();
       log.info("Finding LTFT form {} for admin {} by programmes {}", formId,
           adminIdentity.getEmail(), programmes);
@@ -1377,6 +1377,16 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   }
 
   /**
+   * Determine if the user is a HEE Programme Admin.
+   *
+   * @return true if the roles contain HEE Programme Admin.
+   */
+  private boolean isProgrammeAdmin() {
+    return adminIdentity.getRoles() != null
+        && adminIdentity.getRoles().contains("HEE Programme Admin");
+  }
+
+  /**
    * Determine if the user has one or more programmes assigned.
    *
    * @return true if the user's assigned programme is not null or empty.
@@ -1386,12 +1396,21 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   }
 
   /**
+   * Determine if LTFT access should be filtered by Programme or DBC.
+   *
+   * @return true access should be filtered by Programme.
+   */
+  private boolean isFilteredByProgramme() {
+    return isProgrammeAdmin() && hasAssignedProgrammes();
+  }
+
+  /**
    * The label describing which type of scope the calling admin's access is filtered by.
    *
    * @return Programmes or DBCs.
    */
   private String filterTypeLabel() {
-    return hasAssignedProgrammes() ? "Programmes" : "DBCs";
+    return isFilteredByProgramme() ? "Programmes" : "DBCs";
   }
 
   /**
@@ -1400,6 +1419,6 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    * @return The admin's programmes if a programme admin, otherwise their DBC groups.
    */
   private Set<String> filterScopeValue() {
-    return hasAssignedProgrammes() ? adminIdentity.getProgrammes() : adminIdentity.getGroups();
+    return isFilteredByProgramme() ? adminIdentity.getProgrammes() : adminIdentity.getGroups();
   }
 }
