@@ -424,7 +424,8 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldFilterByEmptyProgrammeCriteriaWhenAdminHasBothProgrammesAndDbcAssigned() {
+  void shouldFilterByProgrammeCriteriaWhenAdminHasBothProgrammesAndDbcAssigned() {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
     adminIdentity.setProgrammes(Set.of(ADMIN_PROGRAMME));
     adminIdentity.setGroups(Set.of(ADMIN_GROUP));
     service.getAdminLtftCount(Map.of());
@@ -447,8 +448,33 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldFilterByEmptyProgrammeCriteriaWhenAdminHasNoProgrammesAssigned() {
-    adminIdentity.setProgrammes(Set.of());
+  void shouldFilterByDbcForCountingWhenProgrammeAdminHasNoProgrammesAssigned() {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
+    adminIdentity.setProgrammes(null);
+
+    service.getAdminLtftCount(Map.of());
+
+    ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
+    verify(mongoTemplate).count(queryCaptor.capture(), eq(LtftForm.class));
+
+    Query query = queryCaptor.getValue();
+    Document queryObject = query.getQueryObject();
+    assertThat("Unexpected filter count.", queryObject.keySet(), hasSize(2));
+
+    Document dbcFilter = queryObject.get("content.programmeMembership.designatedBodyCode",
+        Document.class);
+    assertThat("Unexpected filter key count.", dbcFilter.keySet(), hasSize(1));
+    assertThat("Unexpected filter key.", dbcFilter.keySet(), hasItem("$in"));
+
+    Set<String> filteredDbcs = dbcFilter.get("$in", Set.class);
+    assertThat("Unexpected filter value count.", filteredDbcs, hasSize(1));
+    assertThat("Unexpected filter value.", filteredDbcs, hasItem(ADMIN_GROUP));
+  }
+
+  @Test
+  void shouldFilterByDbcForCountingWhenProgrammesAssignedWithoutProgrammeRole() {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin"));
+    adminIdentity.setProgrammes(Set.of(ADMIN_PROGRAMME));
 
     service.getAdminLtftCount(Map.of());
 
@@ -691,6 +717,7 @@ class LtftServiceTest {
 
   @Test
   void shouldFilterByProgrammeWhenGettingAdminLtftSummaries() {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
     adminIdentity.setProgrammes(Set.of(ADMIN_PROGRAMME));
 
     service.getAdminLtftSummaries(Map.of(), PageRequest.of(1, 1));
@@ -948,6 +975,7 @@ class LtftServiceTest {
 
   @Test
   void shouldGetAdminLtftDetailWithAdminProgrammes() {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
     adminIdentity.setProgrammes(Set.of(ADMIN_PROGRAMME));
 
     service.getAdminLtftDetail(ID);
@@ -1142,6 +1170,7 @@ class LtftServiceTest {
 
   @Test
   void shouldGetAdminLtftProgrammeMembershipDetailWhenFormFoundForProgrammeAdmin() {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
     adminIdentity.setProgrammes(Set.of(ADMIN_PROGRAMME));
 
     LtftForm entity = new LtftForm();
@@ -1906,6 +1935,7 @@ class LtftServiceTest {
 
   @Test
   void shouldAllowProgrammeAdminToAppluAdminPatch() throws IOException {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
     adminIdentity.setProgrammes(Set.of(ADMIN_PROGRAMME));
     LtftForm entity = new LtftForm();
     entity.setId(ID);
@@ -2248,6 +2278,7 @@ class LtftServiceTest {
 
   @Test
   void shouldAllowProgrammeAdminToAssignAdmin() {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
     adminIdentity.setProgrammes(Set.of(ADMIN_PROGRAMME));
 
     LtftForm form = new LtftForm();
@@ -2568,6 +2599,7 @@ class LtftServiceTest {
   @EnumSource(value = LifecycleState.class, mode = INCLUDE, names = {"UNDER_REVIEW"})
   void shouldAllowProgrammeAdminToUpdateStatus(
       LifecycleState targetState) throws MethodArgumentNotValidException {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
     adminIdentity.setProgrammes(Set.of(ADMIN_PROGRAMME));
     LtftForm entity = new LtftForm();
     entity.setLifecycleState(SUBMITTED);
@@ -2854,6 +2886,7 @@ class LtftServiceTest {
 
   @Test
   void shouldLookUpFormByAdminProgrammesWhenGettingReviewWorkflow() {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
     adminIdentity.setProgrammes(Set.of(ADMIN_PROGRAMME));
 
     when(repository.findByIdAndContent_ProgrammeMembership_ProgrammeNumberIn(
@@ -2907,6 +2940,7 @@ class LtftServiceTest {
 
   @Test
   void shouldFilterReviewStageLabelsByDbcWhenAdminHasNoProgrammesAssigned() {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
     adminIdentity.setProgrammes(Set.of());
 
     List<String> adminDbcs = List.of(ADMIN_GROUP);
@@ -2923,6 +2957,7 @@ class LtftServiceTest {
 
   @Test
   void shouldReturnEnabledStageLabelsAndTerminalStageFromReviewStageServiceForProgrammeAdmin() {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
     adminIdentity.setGroups(Set.of());
     adminIdentity.setProgrammes(Set.of(ADMIN_PROGRAMME));
 
@@ -3040,6 +3075,7 @@ class LtftServiceTest {
   @Test
   void shouldLookUpFormByAdminProgrammesWhenAdvancingReviewStage()
       throws MethodArgumentNotValidException {
+    adminIdentity.setRoles(Set.of("NHSE LTFT Admin", "HEE Programme Admin"));
     adminIdentity.setProgrammes(Set.of(ADMIN_PROGRAMME));
 
     when(repository.findByIdAndContent_ProgrammeMembership_ProgrammeNumberIn(
