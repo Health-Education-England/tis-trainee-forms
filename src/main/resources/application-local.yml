@@ -1,3 +1,46 @@
+# ==============================================================================
+# Local Testing — Combined Admin + Trainee Token
+# ==============================================================================
+# Use the following JWT as the Authorization header to authenticate as a local
+# user with BOTH admin and trainee access:
+#
+#   Admin role:  NHSE_LTFT_Admin
+#   Admin groups (DBCs): NW London (1-1RUZV6H), North Central and East London
+#                        (1-1RUZV4H), South London (1-1RSSQ5L), South West (1-1RUZUVB)
+#   Trainee ID:  47165
+#   LTFT feature: enabled (qualifying programme: f1e1270f-3697-4801-910e-04645bb80198)
+#
+# Authorization header value:
+#   eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJsb2NhbC1hZG1pbi11c2VyIiwiY3VzdG9tOnRpc0lkIjoiNDcxNjUiLCJlbWFpbCI6ImFkbWluQGxvY2FsLm5ocy51ayIsImdpdmVuX25hbWUiOiJMb2NhbCIsImZhbWlseV9uYW1lIjoiQWRtaW4iLCJjb2duaXRvOnJvbGVzIjpbIk5IU0UgTFRGVCBBZG1pbiJdLCJjb2duaXRvOmdyb3VwcyI6WyIxLTFSVVpWNkgiLCIxLTFSVVpWNEgiLCIxLTFSU1NRNUwiLCIxLTFSVVpVVkIiXSwiZmVhdHVyZXMiOnsiZm9ybXMiOnsibHRmdCI6eyJlbmFibGVkIjp0cnVlLCJxdWFsaWZ5aW5nUHJvZ3JhbW1lcyI6WyJmMWUxMjcwZi0zNjk3LTQ4MDEtOTEwZS0wNDY0NWJiODAxOTgiXX19fX0.bG9jYWwtZGV2LWR1bW15LXNpZ25hdHVyZS12YWx1ZQ
+#
+# Decoded payload:
+#   {
+#     "sub": "local-admin-user",
+#     "custom:tisId": "47165",
+#     "email": "admin@local.nhs.uk",
+#     "given_name": "Local",
+#     "family_name": "Admin",
+#     "cognito:roles": ["NHSE LTFT Admin"],
+#     "cognito:groups": ["1-1RUZV6H", "1-1RUZV4H", "1-1RSSQ5L", "1-1RUZUVB"],
+#     "features": {
+#       "forms": {
+#         "ltft": {
+#           "enabled": true,
+#           "qualifyingProgrammes": ["f1e1270f-3697-4801-910e-04645bb80198"]
+#         }
+#       }
+#     }
+#   }
+#
+# Example curl (admin endpoint):
+#   curl -H "Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJsb2NhbC1hZG1pbi11c2VyIiwiY3VzdG9tOnRpc0lkIjoiNDcxNjUiLCJlbWFpbCI6ImFkbWluQGxvY2FsLm5ocy51ayIsImdpdmVuX25hbWUiOiJMb2NhbCIsImZhbWlseV9uYW1lIjoiQWRtaW4iLCJjb2duaXRvOnJvbGVzIjpbIk5IU0UgTFRGVCBBZG1pbiJdLCJjb2duaXRvOmdyb3VwcyI6WyIxLTFSVVpWNkgiLCIxLTFSVVpWNEgiLCIxLTFSU1NRNUwiLCIxLTFSVVpVVkIiXSwiZmVhdHVyZXMiOnsiZm9ybXMiOnsibHRmdCI6eyJlbmFibGVkIjp0cnVlLCJxdWFsaWZ5aW5nUHJvZ3JhbW1lcyI6WyJmMWUxMjcwZi0zNjk3LTQ4MDEtOTEwZS0wNDY0NWJiODAxOTgiXX19fX0.bG9jYWwtZGV2LWR1bW15LXNpZ25hdHVyZS12YWx1ZQ" \
+#        http://localhost:8207/forms/api/admin/ltft
+#
+# Example curl (trainee endpoint — submit LTFT):
+#   curl -X PUT -H "Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJsb2NhbC1hZG1pbi11c2VyIiwiY3VzdG9tOnRpc0lkIjoiNDcxNjUiLCJlbWFpbCI6ImFkbWluQGxvY2FsLm5ocy51ayIsImdpdmVuX25hbWUiOiJMb2NhbCIsImZhbWlseV9uYW1lIjoiQWRtaW4iLCJjb2duaXRvOnJvbGVzIjpbIk5IU0UgTFRGVCBBZG1pbiJdLCJjb2duaXRvOmdyb3VwcyI6WyIxLTFSVVpWNkgiLCIxLTFSVVpWNEgiLCIxLTFSU1NRNUwiLCIxLTFSVVpVVkIiXSwiZmVhdHVyZXMiOnsiZm9ybXMiOnsibHRmdCI6eyJlbmFibGVkIjp0cnVlLCJxdWFsaWZ5aW5nUHJvZ3JhbW1lcyI6WyJmMWUxMjcwZi0zNjk3LTQ4MDEtOTEwZS0wNDY0NWJiODAxOTgiXX19fX0.bG9jYWwtZGV2LWR1bW15LXNpZ25hdHVyZS12YWx1ZQ" \
+#        http://localhost:8207/forms/api/ltft/{id}/submit
+# ==============================================================================
+
 application:
   environment: local
   file-store:
@@ -13,6 +56,27 @@ application:
       coj-received: ${local.sqs-path}/tis-trainee-forms-local-coj-received
       notification-event: ${local.sqs-path}/tis-trainee-forms-local-notification-event
       profile-move: ${local.sqs-path}/tis-trainee-forms-local-profile-move
+  review-workflows:
+    "1-1RUZV6H": # NW London
+      - label: "Programme/Education Team Triage"
+        enabled: true
+      - label: "Programme Manager Review"
+        enabled: true
+      - label: "Associate Dean Approval"
+        enabled: true
+    "1-1RUZV4H": # North Central and East London
+      - label: "Programme/Education Team Triage"
+        enabled: false
+      - label: "Education Team Review"
+        enabled: true
+      - label: "APD Approval"
+        enabled: true
+    "1-1RSSQ5L": # South London
+      - label: "Completeness checks"
+        enabled: true
+    "1-1RUZUVB": # South West (legacy, no longer active)
+      - label: "Programme/Education Team Triage"
+        enabled: false
   schedules:
     publish-all-formr-partas: "-"
     publish-all-formr-partbs: "-"

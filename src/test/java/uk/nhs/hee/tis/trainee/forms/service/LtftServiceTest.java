@@ -56,6 +56,8 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNDER_
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
 import static uk.nhs.hee.tis.trainee.forms.service.LtftService.FORM_ATTRIBUTE_FORM_STATUS;
+import static uk.nhs.hee.tis.trainee.forms.service.LtftService.FORM_ATTRIBUTE_PRE_APPROVAL;
+import static uk.nhs.hee.tis.trainee.forms.service.LtftService.FORM_ATTRIBUTE_REVIEW_STAGE;
 import static uk.nhs.hee.tis.trainee.forms.service.LtftService.FORM_ATTRIBUTE_TPD_STATUS;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -145,6 +147,7 @@ import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Declarations;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Discussions;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ExceptionalReasons;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.PersonalDetails;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.PreApproval;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ProgrammeMembership;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Reasons;
 import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
@@ -5282,6 +5285,243 @@ class LtftServiceTest {
     service.moveLtftForms(fromTraineeId, fromTraineeId);
 
     verifyNoInteractions(repository);
+  }
+
+  @Test
+  void shouldReturnEmptyPreApprovingWhenFormNotFound() throws MethodArgumentNotValidException {
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.empty());
+
+    Optional<LtftFormDto> result = service.preApprove(ID);
+
+    assertThat("Unexpected form presence.", result.isPresent(), is(false));
+    verify(repository, never()).save(any());
+    verifyNoInteractions(eventBroadcastService);
+  }
+
+  @Test
+  void shouldFindFormByProgrammePreApprovingWhenAdminHasProgrammes()
+      throws MethodArgumentNotValidException {
+    adminIdentity.setProgrammes(Set.of(ADMIN_PROGRAMME));
+    when(repository.findByIdAndContent_ProgrammeMembership_ProgrammeNumberIn(
+        ID, Set.of(ADMIN_PROGRAMME))).thenReturn(Optional.empty());
+
+    Optional<LtftFormDto> result = service.preApprove(ID);
+
+    assertThat("Unexpected form presence.", result.isPresent(), is(false));
+    verify(repository).findByIdAndContent_ProgrammeMembership_ProgrammeNumberIn(
+        ID, Set.of(ADMIN_PROGRAMME));
+    verify(repository, never()).findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        any(), any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = "UNDER_REVIEW")
+  void shouldThrowPreApprovingWhenFormNotUnderReview(LifecycleState state) {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setLifecycleState(state);
+    form.setContent(LtftContent.builder().build());
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+
+    MethodArgumentNotValidException exception = assertThrows(MethodArgumentNotValidException.class,
+        () -> service.preApprove(ID));
+
+    List<FieldError> fieldErrors = exception.getFieldErrors();
+    assertThat("Unexpected error count.", fieldErrors, hasSize(1));
+
+    FieldError fieldError = fieldErrors.get(0);
+    assertThat("Unexpected object name.", fieldError.getObjectName(), is("LtftForm"));
+    assertThat("Unexpected field.", fieldError.getField(), is(FORM_ATTRIBUTE_FORM_STATUS));
+    assertThat("Unexpected message.", fieldError.getDefaultMessage(),
+        is("can not be pre-approved from " + state));
+
+    verify(repository, never()).save(any());
+    verifyNoInteractions(eventBroadcastService);
+  }
+
+  @Test
+  void shouldThrowPreApprovingWhenFormAlreadyPreApproved() {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setLifecycleState(UNDER_REVIEW);
+    form.setContent(LtftContent.builder()
+        .preApproval(PreApproval.builder()
+            .who(new Person("Other Admin", "other@example.com", "ADMIN"))
+            .when(LocalDate.now())
+            .build())
+        .build());
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+
+    MethodArgumentNotValidException exception = assertThrows(MethodArgumentNotValidException.class,
+        () -> service.preApprove(ID));
+
+    List<FieldError> fieldErrors = exception.getFieldErrors();
+    assertThat("Unexpected error count.", fieldErrors, hasSize(1));
+
+    FieldError fieldError = fieldErrors.get(0);
+    assertThat("Unexpected object name.", fieldError.getObjectName(), is("LtftForm"));
+    assertThat("Unexpected field.", fieldError.getField(), is(FORM_ATTRIBUTE_PRE_APPROVAL));
+    assertThat("Unexpected message.", fieldError.getDefaultMessage(),
+        is("has already been pre-approved"));
+
+    verify(repository, never()).save(any());
+    verifyNoInteractions(eventBroadcastService);
+  }
+
+  @Test
+  void shouldThrowPreApprovingWhenFormHasReviewStage() {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setLifecycleState(UNDER_REVIEW, null, null, 1, new ReviewStageStatus(0, "Triage"));
+    form.setContent(LtftContent.builder().build());
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+
+    MethodArgumentNotValidException exception = assertThrows(MethodArgumentNotValidException.class,
+        () -> service.preApprove(ID));
+
+    List<FieldError> fieldErrors = exception.getFieldErrors();
+    assertThat("Unexpected error count.", fieldErrors, hasSize(1));
+
+    FieldError fieldError = fieldErrors.get(0);
+    assertThat("Unexpected object name.", fieldError.getObjectName(), is("LtftForm"));
+    assertThat("Unexpected field.", fieldError.getField(), is(FORM_ATTRIBUTE_REVIEW_STAGE));
+    assertThat("Unexpected message.", fieldError.getDefaultMessage(),
+        is("can not be pre-approved when review stages are enabled"));
+
+    verify(repository, never()).save(any());
+    verifyNoInteractions(eventBroadcastService);
+  }
+
+  @Test
+  void shouldPreApproveWhenFormUnderReviewWithoutReviewStage()
+      throws MethodArgumentNotValidException {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setRevision(1);
+    form.setLifecycleState(UNDER_REVIEW);
+    form.setContent(LtftContent.builder().name("test").build());
+    int historySize = form.getStatus().history().size();
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> result = service.preApprove(ID);
+
+    assertThat("Unexpected form presence.", result.isPresent(), is(true));
+
+    ArgumentCaptor<LtftForm> formCaptor = ArgumentCaptor.captor();
+    verify(repository).save(formCaptor.capture());
+    LtftForm savedForm = formCaptor.getValue();
+
+    PreApproval preApproval = savedForm.getContent().preApproval();
+    assertThat("Unexpected pre-approval.", preApproval, notNullValue());
+    assertThat("Unexpected pre-approver.", preApproval.who(),
+        is(new Person(ADMIN_NAME, ADMIN_EMAIL, "ADMIN")));
+    assertThat("Unexpected pre-approval date.", preApproval.when(), is(LocalDate.now(TIMEZONE)));
+    assertThat("Unexpected content name.", savedForm.getContent().name(), is("test"));
+
+    assertThat("Unexpected state.", savedForm.getLifecycleState(), is(UNDER_REVIEW));
+    assertThat("Unexpected revision.", savedForm.getRevision(), is(1));
+    assertThat("Unexpected history size.", savedForm.getStatus().history(), hasSize(historySize));
+
+    LtftFormDto.PreApprovalDto preApprovalDto = result.get().preApproval();
+    assertThat("Unexpected pre-approver name.", preApprovalDto.who().name(), is(ADMIN_NAME));
+    assertThat("Unexpected pre-approver email.", preApprovalDto.who().email(), is(ADMIN_EMAIL));
+    assertThat("Unexpected pre-approver role.", preApprovalDto.who().role(), is("ADMIN"));
+    assertThat("Unexpected pre-approval date.", preApprovalDto.when(),
+        is(LocalDate.now(TIMEZONE)));
+
+    verify(eventBroadcastService).publishLtftFormUpdateEvent(result.get(), null,
+        LTFT_STATUS_CONTENT_TOPIC);
+    verifyNoInteractions(ltftSubmissionHistoryService);
+  }
+
+  @Test
+  void shouldRemovePreApprovalWhenUnsubmittedByAdmin() throws MethodArgumentNotValidException {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setLifecycleState(UNDER_REVIEW);
+    form.setContent(LtftContent.builder()
+        .name("test")
+        .preApproval(PreApproval.builder()
+            .who(new Person(ADMIN_NAME, ADMIN_EMAIL, "ADMIN"))
+            .when(LocalDate.now())
+            .build())
+        .build());
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> result = service.updateStatusAsAdmin(ID, UNSUBMITTED,
+        LftfStatusInfoDetailDto.builder().reason("reason").build());
+
+    assertThat("Unexpected form presence.", result.isPresent(), is(true));
+    assertThat("Unexpected pre-approval.", result.get().preApproval(), nullValue());
+
+    ArgumentCaptor<LtftForm> formCaptor = ArgumentCaptor.captor();
+    verify(repository).save(formCaptor.capture());
+    assertThat("Unexpected pre-approval.", formCaptor.getValue().getContent().preApproval(),
+        nullValue());
+    assertThat("Unexpected content name.", formCaptor.getValue().getContent().name(),
+        is("test"));
+  }
+
+  @Test
+  void shouldRemovePreApprovalWhenUnsubmittedByTrainee() {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(SUBMITTED);
+    form.setContent(LtftContent.builder()
+        .name("test")
+        .preApproval(PreApproval.builder()
+            .who(new Person(ADMIN_NAME, ADMIN_EMAIL, "ADMIN"))
+            .when(LocalDate.now())
+            .build())
+        .build());
+
+    when(repository.findByTraineeTisIdAndId(TRAINEE_ID, ID)).thenReturn(Optional.of(form));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> result = service.unsubmitLtftForm(ID,
+        new LftfStatusInfoDetailDto("reason", "message"));
+
+    assertThat("Unexpected form presence.", result.isPresent(), is(true));
+    assertThat("Unexpected pre-approval.", result.get().preApproval(), nullValue());
+    assertThat("Unexpected pre-approval.", form.getContent().preApproval(), nullValue());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED"})
+  void shouldNotRemovePreApprovalWhenNotUnsubmitted(LifecycleState targetState)
+      throws MethodArgumentNotValidException {
+    PreApproval preApproval = PreApproval.builder()
+        .who(new Person(ADMIN_NAME, ADMIN_EMAIL, "ADMIN"))
+        .when(LocalDate.now())
+        .build();
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setLifecycleState(UNDER_REVIEW);
+    form.setContent(LtftContent.builder().preApproval(preApproval).build());
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    Optional<LtftFormDto> result = service.updateStatusAsAdmin(ID, targetState,
+        LftfStatusInfoDetailDto.builder().reason("reason").build());
+
+    assertThat("Unexpected form presence.", result.isPresent(), is(true));
+    assertThat("Unexpected pre-approval.", form.getContent().preApproval(), is(preApproval));
   }
 
   /**

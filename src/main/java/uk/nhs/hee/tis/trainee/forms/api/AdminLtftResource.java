@@ -322,4 +322,21 @@ public class AdminLtftResource {
     Optional<LtftFormDto> form = service.startReview(id);
     return ResponseEntity.of(form);
   }
+
+  /**
+   * Pre-approve the form with the given ID, must be associated with the user's local office.
+   *
+   * <p>The requesting admin is recorded as the pre-approver.
+   *
+   * @param id The ID of the form to pre-approve.
+   * @return The pre-approved form.
+   * @throws MethodArgumentNotValidException When the form is not UNDER_REVIEW, is already
+   *                                         pre-approved or has review stages enabled.
+   */
+  @PutMapping("/{id}/pre-approve")
+  ResponseEntity<LtftFormDto> preApproveLtft(@PathVariable UUID id)
+      throws MethodArgumentNotValidException {
+    Optional<LtftFormDto> form = service.preApprove(id);
+    return ResponseEntity.of(form);
+  }
 }

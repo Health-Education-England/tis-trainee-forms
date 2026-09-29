@@ -116,6 +116,7 @@ import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Declarations;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Discussions;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ExceptionalReasons;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.PersonalDetails;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.PreApproval;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ProgrammeMembership;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Reasons;
 
@@ -1180,6 +1181,96 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.history[0].modifiedBy.email").doesNotExist());
   }
 
+
+  @Test
+  void shouldRemovePreApprovalWhenLtftFormUnsubmitted() throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setId(ID);
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setLifecycleState(SUBMITTED);
+    ltft.setContent(LtftContent.builder()
+        .name("test")
+        .preApproval(PreApproval.builder()
+            .who(Person.builder().name("Ad Min").email("ad.min@example.com").role("ADMIN").build())
+            .when(LocalDate.now())
+            .build())
+        .build());
+    ltft.setRevision(0);
+    template.insert(ltft);
+
+    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail
+        = new LtftFormDto.StatusDto.LftfStatusInfoDetailDto("reason", "message");
+    String detailJson = mapper.writeValueAsString(detail);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID, "email", "given", "family");
+    mockMvc.perform(put("/api/ltft/{id}/unsubmit", ID)
+            .with(jwt().jwt(token))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(detailJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status.current.state").value(UNSUBMITTED.name()))
+        .andExpect(jsonPath("$.preApproval").doesNotExist());
+
+    LtftForm savedForm = template.findById(ID, LtftForm.class);
+    assertThat("Unexpected saved form.", savedForm, notNullValue());
+    assertThat("Unexpected pre-approval.", savedForm.getContent().preApproval(), nullValue());
+    assertThat("Unexpected content name.", savedForm.getContent().name(), is("test"));
+  }
+
+  @Test
+  void shouldExcludePreApproverDetailsWhenLtftFormFound() throws Exception {
+    LocalDate preApprovalDate = LocalDate.now();
+    LtftForm ltft = new LtftForm();
+    ltft.setId(ID);
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setLifecycleState(LifecycleState.UNDER_REVIEW);
+    ltft.setContent(LtftContent.builder()
+        .name("test")
+        .preApproval(PreApproval.builder()
+            .who(Person.builder().name("Ad Min").email("ad.min@example.com").role("ADMIN").build())
+            .when(preApprovalDate)
+            .build())
+        .build());
+    template.insert(ltft);
+
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
+    mockMvc.perform(get("/api/ltft/{id}", ID)
+            .with(jwt().jwt(token)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.preApproval.who.name").doesNotExist())
+        .andExpect(jsonPath("$.preApproval.who.email").doesNotExist())
+        .andExpect(jsonPath("$.preApproval.who.role").value("ADMIN"))
+        .andExpect(jsonPath("$.preApproval.when").value(preApprovalDate.toString()));
+  }
+
+  @Test
+  void shouldIgnorePreApprovalWhenCreatingLtftFormForTrainee() throws Exception {
+    LtftFormDto formToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .name("test")
+        .preApproval(LtftFormDto.PreApprovalDto.builder()
+            .who(RedactedPersonDto.builder().name("Me").email("me@example.com").role("ADMIN")
+                .build())
+            .when(LocalDate.now())
+            .build())
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
+        .build();
+    String formToSaveJson = mapper.writeValueAsString(formToSave);
+
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
+    mockMvc.perform(post("/api/ltft")
+            .with(jwt().jwt(token))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToSaveJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.preApproval").doesNotExist());
+
+    List<LtftForm> savedRecords = template.find(new Query(), LtftForm.class);
+    assertThat("Unexpected saved record count.", savedRecords, hasSize(1));
+    assertThat("Unexpected pre-approval.", savedRecords.get(0).getContent().preApproval(),
+        nullValue());
+  }
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = {"SUBMITTED", "UNSUBMITTED",

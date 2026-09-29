@@ -53,6 +53,7 @@ import uk.nhs.hee.tis.trainee.forms.model.content.CctChangeType;
  * @param discussions         Discussions which took place as part of the LTFT process.
  * @param change              The calculated LTFT change.
  * @param reasons             The reasons for applying for LTFT.
+ * @param preApproval         The pre-approval of the LTFT application, read-only.
  * @param status              The status of the LTFT application, both current and audit history.
  * @param created             When the LTFT application was first created.
  * @param lastModified        When the LTFT application was last modified.
@@ -79,6 +80,11 @@ public record LtftFormDto(
     CctChangeDto change,
     ReasonsDto reasons,
     ExceptionalReasonsDto exceptionalReasons,
+
+    @JsonView(ReadOnly.class)
+    @Null(groups = {Create.class, Update.class})
+    PreApprovalDto preApproval,
+
     @JsonView(ReadOnly.class)
     @Null(groups = {Create.class, Update.class})
     EmailValidityType tpdEmailStatus,
@@ -186,6 +192,19 @@ public record LtftFormDto(
       Boolean exceptional,
       String supportingInformation,
       LocalDate startDate) {
+
+  }
+
+  /**
+   * Preapproval information for the application.
+   *
+   * @param who  The person who preapproved the application.
+   * @param when The date when the application was preapproved.
+   */
+  @Builder
+  public record PreApprovalDto(
+      RedactedPersonDto who,
+      LocalDate when) {
 
   }
 

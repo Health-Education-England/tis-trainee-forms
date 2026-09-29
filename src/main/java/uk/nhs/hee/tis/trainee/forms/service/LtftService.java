@@ -91,6 +91,7 @@ import uk.nhs.hee.tis.trainee.forms.model.ReviewStageStatus;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ExceptionalReasons;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.PreApproval;
 import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 
 /**
@@ -103,10 +104,13 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
 
   protected static final String FORM_ATTRIBUTE_FORM_STATUS = "status.current.state";
   protected static final String FORM_ATTRIBUTE_TPD_STATUS = "content.discussions.tpdStatus";
+  protected static final String FORM_ATTRIBUTE_PRE_APPROVAL = "preApproval";
+  protected static final String FORM_ATTRIBUTE_REVIEW_STAGE = "status.current.reviewStage";
 
   private static final String FORM_OBJECT_NAME = "LtftForm";
   private static final String METHOD_UPDATE_STATUS = "updateStatus";
   private static final String METHOD_ADVANCE_REVIEW_STAGE = "advanceReviewStage";
+  private static final String METHOD_PRE_APPROVE = "preApprove";
 
   private static final int MINIMUM_NOTICE_DAYS = 7 * 16; // 16 weeks in days
 
@@ -753,6 +757,80 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   }
 
   /**
+   * Pre-approve an LTFT form as the calling admin, the form must be associated with the admin's
+   * local office.
+   *
+   * <p>Pre-approval is only permitted when the form is UNDER_REVIEW, has not already been
+   * pre-approved and does not have an active review stage. The pre-approval is recorded against
+   * the form content and does not change the lifecycle state or revision.
+   *
+   * @param formId The ID of the form to pre-approve.
+   * @return The updated LTFT application, empty if the form did not exist or did not belong to the
+   *     admin's local office.
+   * @throws MethodArgumentNotValidException If the form can not be pre-approved.
+   */
+  public Optional<LtftFormDto> preApprove(UUID formId) throws MethodArgumentNotValidException {
+    log.info("Pre-approving LTFT form {} as admin [{}]", formId, adminIdentity.getEmail());
+
+    Optional<LtftForm> optForm = findFormForAdmin(formId);
+
+    if (optForm.isEmpty()) {
+      log.warn("Could not pre-approve form {} since no form exists with this ID for {} [{}]",
+          formId, filterTypeLabel(), filterScopeValue());
+      return Optional.empty();
+    }
+
+    LtftForm form = optForm.get();
+    validatePreApproval(form);
+
+    Person preApprover = Person.builder()
+        .name(adminIdentity.getName())
+        .email(adminIdentity.getEmail())
+        .role(adminIdentity.getRole())
+        .build();
+    PreApproval preApproval = PreApproval.builder()
+        .who(preApprover)
+        .when(LocalDate.now(timezone))
+        .build();
+    form.setContent(form.getContent().withPreApproval(preApproval));
+
+    LtftForm savedForm = ltftFormRepository.save(form);
+    publishUpdateNotification(savedForm, null, ltftContentUpdateTopic);
+    return Optional.of(mapper.toDto(savedForm));
+  }
+
+  /**
+   * Validate that the form is eligible for pre-approval.
+   *
+   * @param form The form to be pre-approved.
+   * @throws MethodArgumentNotValidException If the form is not UNDER_REVIEW, is already
+   *                                         pre-approved or has an active review stage.
+   */
+  private void validatePreApproval(LtftForm form) throws MethodArgumentNotValidException {
+    LifecycleState currentState = form.getLifecycleState();
+    BeanPropertyBindingResult result = new BeanPropertyBindingResult(form, "form");
+
+    if (currentState != UNDER_REVIEW) {
+      log.warn("Could not pre-approve form {}, invalid lifecycle state {}.", form.getId(),
+          currentState);
+      result.addError(new FieldError(FORM_OBJECT_NAME, FORM_ATTRIBUTE_FORM_STATUS,
+          "can not be pre-approved from %s".formatted(currentState)));
+    } else if (form.getContent() != null && form.getContent().preApproval() != null) {
+      log.warn("Could not pre-approve form {}, already pre-approved.", form.getId());
+      result.addError(new FieldError(FORM_OBJECT_NAME, FORM_ATTRIBUTE_PRE_APPROVAL,
+          "has already been pre-approved"));
+    } else if (form.getStatus().current().reviewStage() != null) {
+      log.warn("Could not pre-approve form {}, review stages are enabled.", form.getId());
+      result.addError(new FieldError(FORM_OBJECT_NAME, FORM_ATTRIBUTE_REVIEW_STAGE,
+          "can not be pre-approved when review stages are enabled"));
+    }
+
+    if (result.hasErrors()) {
+      throw buildMethodArgumentNotValidException(result, 0, METHOD_PRE_APPROVE, UUID.class);
+    }
+  }
+
+  /**
    * Get the review workflow state for an LTFT form associated with the calling admin's local
    * office.
    *
@@ -972,6 +1050,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
 
     assignFormRefIfNew(form, targetState);
     calculateNonExceptionalStartDate(form, targetState);
+    clearPreApprovalIfUnsubmitted(form, targetState);
 
     LtftForm savedForm = ltftFormRepository.save(form);
     if (targetState == SUBMITTED) {
@@ -1104,13 +1183,46 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    */
   private MethodArgumentNotValidException buildUpdateStatusException(
       BindingResult result, int paramIndex) {
+    return buildMethodArgumentNotValidException(result, paramIndex, METHOD_UPDATE_STATUS,
+        LtftForm.class, LifecycleState.class, UserIdentity.class, Actor.class,
+        LftfStatusInfoDetailDto.class);
+  }
+
+  /**
+   * Build a {@link MethodArgumentNotValidException} whose {@link MethodParameter} refers to the
+   * given method of this service.
+   *
+   * @param result         The binding result containing the validation errors.
+   * @param paramIndex     The zero-based index of the offending parameter.
+   * @param methodName     The name of the method to reference.
+   * @param parameterTypes The parameter types of the method to reference.
+   * @return The constructed exception, ready to be thrown.
+   * @throws IllegalStateException If the method cannot be found via reflection.
+   */
+  private MethodArgumentNotValidException buildMethodArgumentNotValidException(
+      BindingResult result, int paramIndex, String methodName, Class<?>... parameterTypes) {
     try {
-      MethodParameter parameter = new MethodParameter(this.getClass()
-          .getDeclaredMethod(METHOD_UPDATE_STATUS, LtftForm.class, LifecycleState.class,
-              UserIdentity.class, Actor.class, LftfStatusInfoDetailDto.class), paramIndex);
+      MethodParameter parameter = new MethodParameter(
+          this.getClass().getDeclaredMethod(methodName, parameterTypes), paramIndex);
       return new MethodArgumentNotValidException(parameter, result);
     } catch (NoSuchMethodException e) {
-      throw new IllegalStateException("Unable to reflect updateStatus method.", e);
+      throw new IllegalStateException("Unable to reflect %s method.".formatted(methodName), e);
+    }
+  }
+
+  /**
+   * Remove any pre-approval from the form if it is being unsubmitted, so that pre-approval can be
+   * applied again once the form is resubmitted.
+   *
+   * @param form        The form being updated.
+   * @param targetState The target lifecycle state.
+   */
+  private void clearPreApprovalIfUnsubmitted(LtftForm form, LifecycleState targetState) {
+    LtftContent content = form.getContent();
+
+    if (targetState == UNSUBMITTED && content != null && content.preApproval() != null) {
+      log.info("Removing pre-approval from unsubmitted LTFT {}", form.getId());
+      form.setContent(content.withPreApproval(null));
     }
   }
 
