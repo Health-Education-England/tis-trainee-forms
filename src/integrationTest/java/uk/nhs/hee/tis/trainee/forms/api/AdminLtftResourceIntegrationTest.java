@@ -105,6 +105,7 @@ import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Declarations;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Discussions;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.PersonalDetails;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.PreApproval;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ProgrammeMembership;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Reasons;
 import uk.nhs.hee.tis.trainee.forms.model.ReviewStageStatus;
@@ -158,6 +159,7 @@ class AdminLtftResourceIntegrationTest {
       GET | /api/admin/ltft/123/review-workflow
       PUT | /api/admin/ltft/123/review-stage/advance
       PUT | /api/admin/ltft/123/start-review
+      PUT | /api/admin/ltft/123/pre-approve
       """)
   void shouldReturnForbiddenWhenNoToken(HttpMethod method, URI uri) throws Exception {
     mockMvc.perform(request(method, uri))
@@ -185,6 +187,7 @@ class AdminLtftResourceIntegrationTest {
       GET   | /api/admin/ltft/123/review-workflow
       PUT   | /api/admin/ltft/123/review-stage/advance
       PUT   | /api/admin/ltft/123/start-review
+      PUT   | /api/admin/ltft/123/pre-approve
       """)
   void shouldReturnForbiddenWhenEmptyToken(HttpMethod method, URI uri) throws Exception {
     Jwt token = TestJwtUtil.createToken("{}");
@@ -206,6 +209,7 @@ class AdminLtftResourceIntegrationTest {
       GET   | /api/admin/ltft/123/review-workflow
       PUT   | /api/admin/ltft/123/review-stage/advance
       PUT   | /api/admin/ltft/123/start-review
+      PUT   | /api/admin/ltft/123/pre-approve
       """)
   void shouldReturnForbiddenWhenNoGroupsInToken(HttpMethod method, URI uri) throws Exception {
     mockMvc.perform(request(method, uri)
@@ -224,6 +228,7 @@ class AdminLtftResourceIntegrationTest {
       GET   | /api/admin/ltft/123/review-workflow
       PUT   | /api/admin/ltft/123/review-stage/advance
       PUT   | /api/admin/ltft/123/start-review
+      PUT   | /api/admin/ltft/123/pre-approve
       """)
   void shouldReturnBadRequestWhenInvalidFormId(HttpMethod method, URI uri) throws Exception {
     mockMvc.perform(request(method, uri)
@@ -346,6 +351,7 @@ class AdminLtftResourceIntegrationTest {
       PUT | /api/admin/ltft/{id}/unsubmit
       GET | /api/admin/ltft/{id}/review-workflow
       PUT | /api/admin/ltft/{id}/review-stage/advance
+      PUT | /api/admin/ltft/{id}/pre-approve
       """)
   void shouldReturnNotFoundWhenFormIdNotFound(HttpMethod method, String uriTemplate)
       throws Exception {
@@ -384,6 +390,7 @@ class AdminLtftResourceIntegrationTest {
       PUT | /api/admin/ltft/{id}/unsubmit
       GET | /api/admin/ltft/{id}/review-workflow
       PUT | /api/admin/ltft/{id}/review-stage/advance
+      PUT | /api/admin/ltft/{id}/pre-approve
       """)
   void shouldReturnNotFoundWhenLtftDoesNotMatchDbc(HttpMethod method, String uriTemplate)
       throws Exception {
@@ -754,6 +761,25 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.content[0].id", is(form.getId().toString())))
         .andExpect(jsonPath("$.content[0].status", is(UNDER_REVIEW.name())))
         .andExpect(jsonPath("$.content[0].reviewStage", is("Manager Review")));
+  }
+
+  @Test
+  void shouldReturnPreApprovalDateInSummaryWhenFormPreApproved() throws Exception {
+    LocalDate preApprovalDate = LocalDate.of(2026, 9, 1);
+    LtftForm form = createLtftForm(UNDER_REVIEW, DBC_1, null);
+    form.setContent(form.getContent().withPreApproval(PreApproval.builder()
+        .who(Person.builder().name("Ad Min").email("ad.min@example.com").role("ADMIN").build())
+        .when(preApprovalDate)
+        .build()));
+    form = template.insert(form);
+
+    mockMvc.perform(get("/api/admin/ltft")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.content", hasSize(1)))
+        .andExpect(jsonPath("$.content[0].id", is(form.getId().toString())))
+        .andExpect(jsonPath("$.content[0].preApprovalDate", is(preApprovalDate.toString())));
   }
 
   @ParameterizedTest
@@ -1942,6 +1968,136 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.current.reviewStage.label", is("Manager Review")))
         .andExpect(jsonPath("$.status.history[0].reviewStage.index", is(1)))
         .andExpect(jsonPath("$.status.history[0].reviewStage.label", is("Manager Review")));
+  }
+
+  // -- PUT /{id}/pre-approve --
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = "UNDER_REVIEW")
+  void shouldNotPreApproveLtftWhenNotUnderReview(LifecycleState currentState) throws Exception {
+    LtftForm form = template.insert(createLtftForm(currentState, DBC_1, null));
+
+    mockMvc.perform(put("/api/admin/ltft/{id}/pre-approve", form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES)))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.type", is("about:blank")))
+        .andExpect(jsonPath("$.title", is("Validation failure")))
+        .andExpect(jsonPath("$.status", is(HttpStatus.BAD_REQUEST.value())))
+        .andExpect(jsonPath("$.instance",
+            is("/api/admin/ltft/%s/pre-approve".formatted(form.getId()))))
+        .andExpect(jsonPath("$.properties.errors").isArray())
+        .andExpect(jsonPath("$.properties.errors", hasSize(1)))
+        .andExpect(jsonPath("$.properties.errors[0].pointer", is("#/status/current/state")))
+        .andExpect(jsonPath("$.properties.errors[0].detail",
+            is("can not be pre-approved from " + currentState)));
+
+    LtftForm savedForm = template.findById(form.getId(), LtftForm.class);
+    assertThat("Unexpected saved form.", savedForm, notNullValue());
+    assertThat("Unexpected pre-approval.", savedForm.getContent().preApproval(), nullValue());
+  }
+
+  @Test
+  void shouldNotPreApproveLtftWhenAlreadyPreApproved() throws Exception {
+    LtftForm form = createLtftForm(UNDER_REVIEW, DBC_1, null);
+    PreApproval existing = PreApproval.builder()
+        .who(Person.builder().name("Other Admin").email("other@example.com").role("ADMIN").build())
+        .when(LocalDate.of(2026, 1, 1))
+        .build();
+    form.setContent(form.getContent().withPreApproval(existing));
+    form = template.insert(form);
+
+    mockMvc.perform(put("/api/admin/ltft/{id}/pre-approve", form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES)))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.title", is("Validation failure")))
+        .andExpect(jsonPath("$.properties.errors", hasSize(1)))
+        .andExpect(jsonPath("$.properties.errors[0].pointer", is("#/preApproval")))
+        .andExpect(jsonPath("$.properties.errors[0].detail",
+            is("has already been pre-approved")));
+
+    LtftForm savedForm = template.findById(form.getId(), LtftForm.class);
+    assertThat("Unexpected saved form.", savedForm, notNullValue());
+    assertThat("Unexpected pre-approval.", savedForm.getContent().preApproval(), is(existing));
+  }
+
+  @Test
+  void shouldNotPreApproveLtftWhenReviewStagesEnabled() throws Exception {
+    LtftForm form = template.insert(
+        createUnderReviewFormWithReviewStage(DBC_THREE_STAGES, 0, "Stage One"));
+
+    mockMvc.perform(put("/api/admin/ltft/{id}/pre-approve", form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_THREE_STAGES), REQUIRED_ROLES)))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.title", is("Validation failure")))
+        .andExpect(jsonPath("$.properties.errors", hasSize(1)))
+        .andExpect(jsonPath("$.properties.errors[0].pointer",
+            is("#/status/current/reviewStage")))
+        .andExpect(jsonPath("$.properties.errors[0].detail",
+            is("can not be pre-approved when review stages are enabled")));
+
+    LtftForm savedForm = template.findById(form.getId(), LtftForm.class);
+    assertThat("Unexpected saved form.", savedForm, notNullValue());
+    assertThat("Unexpected pre-approval.", savedForm.getContent().preApproval(), nullValue());
+  }
+
+  @Test
+  void shouldPreApproveLtftWhenUnderReviewWithoutReviewStages() throws Exception {
+    LtftForm form = template.insert(createLtftForm(UNDER_REVIEW, DBC_1, null));
+    LocalDate today = LocalDate.now(timezone);
+
+    mockMvc.perform(put("/api/admin/ltft/{id}/pre-approve", form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.preApproval.who.name", is("Ad Min")))
+        .andExpect(jsonPath("$.preApproval.who.email", is("ad.min@example.com")))
+        .andExpect(jsonPath("$.preApproval.who.role", is("ADMIN")))
+        .andExpect(jsonPath("$.preApproval.when", is(today.toString())))
+        .andExpect(jsonPath("$.status.current.state", is(UNDER_REVIEW.toString())))
+        .andExpect(jsonPath("$.status.current.revision", is(0)))
+        .andExpect(jsonPath("$.status.history", hasSize(1)));
+
+    LtftForm savedForm = template.findById(form.getId(), LtftForm.class);
+    assertThat("Unexpected saved form.", savedForm, notNullValue());
+
+    PreApproval preApproval = savedForm.getContent().preApproval();
+    assertThat("Unexpected pre-approval.", preApproval, notNullValue());
+    assertThat("Unexpected pre-approver.", preApproval.who(), is(Person.builder()
+        .name("Ad Min")
+        .email("ad.min@example.com")
+        .role("ADMIN")
+        .build()));
+    assertThat("Unexpected pre-approval date.", preApproval.when(), is(today));
+    assertThat("Unexpected revision.", savedForm.getRevision(), is(0));
+    assertThat("Unexpected state.", savedForm.getLifecycleState(), is(UNDER_REVIEW));
+  }
+
+  @Test
+  void shouldRemovePreApprovalWhenAdminUnsubmitsLtft() throws Exception {
+    LtftForm form = template.insert(createLtftForm(UNDER_REVIEW, DBC_1, null));
+
+    mockMvc.perform(put("/api/admin/ltft/{id}/pre-approve", form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.preApproval", notNullValue()));
+
+    mockMvc.perform(put("/api/admin/ltft/{id}/unsubmit", form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .contentType(APPLICATION_JSON)
+            .content("""
+                {
+                  "reason": "test reason"
+                }
+                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status.current.state", is(UNSUBMITTED.toString())))
+        .andExpect(jsonPath("$.preApproval").doesNotExist());
+
+    LtftForm savedForm = template.findById(form.getId(), LtftForm.class);
+    assertThat("Unexpected saved form.", savedForm, notNullValue());
+    assertThat("Unexpected pre-approval.", savedForm.getContent().preApproval(), nullValue());
   }
 
   // -- GET /{id}/review-workflow --

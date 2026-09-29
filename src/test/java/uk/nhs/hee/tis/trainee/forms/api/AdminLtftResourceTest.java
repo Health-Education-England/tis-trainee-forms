@@ -431,6 +431,38 @@ class AdminLtftResourceTest {
   }
 
   @Test
+  void shouldThrowExceptionWhenPreApprovalNotValid() throws MethodArgumentNotValidException {
+    UUID id = UUID.randomUUID();
+    when(service.preApprove(id)).thenThrow(MethodArgumentNotValidException.class);
+
+    assertThrows(MethodArgumentNotValidException.class, () -> controller.preApproveLtft(id));
+  }
+
+  @Test
+  void shouldReturnNotFoundWhenPreApprovalFormNotFound() throws MethodArgumentNotValidException {
+    UUID id = UUID.randomUUID();
+    when(service.preApprove(id)).thenReturn(Optional.empty());
+
+    ResponseEntity<LtftFormDto> response = controller.preApproveLtft(id);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(NOT_FOUND));
+    assertThat("Unexpected response body.", response.getBody(), nullValue());
+  }
+
+  @Test
+  void shouldReturnPreApprovedFormWhenFormPreApproved() throws MethodArgumentNotValidException {
+    UUID id = UUID.randomUUID();
+    LtftFormDto dto = LtftFormDto.builder().id(id).build();
+    when(service.preApprove(id)).thenReturn(Optional.of(dto));
+
+    ResponseEntity<LtftFormDto> response = controller.preApproveLtft(id);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), sameInstance(dto));
+    verify(service).preApprove(id);
+  }
+
+  @Test
   void shouldThrowExceptionWhenRejectNotValid() throws MethodArgumentNotValidException {
     UUID id = UUID.randomUUID();
     LftfStatusInfoDetailDto detail = LftfStatusInfoDetailDto.builder().reason("reason").build();

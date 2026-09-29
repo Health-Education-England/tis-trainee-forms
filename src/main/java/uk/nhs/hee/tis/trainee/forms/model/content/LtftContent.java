@@ -42,6 +42,7 @@ import uk.nhs.hee.tis.trainee.forms.model.Person;
  * @param change              The calculated LTFT change.
  * @param reasons             The reasons for applying for LTFT.
  * @param exceptionalReasons  Additional reasons for exceptional applications.
+ * @param preApproval         Pre-approval information for the LTFT application.
  * @param tpdEmailValidity    The validity of the email address for the TPD, if applicable.
  */
 @Builder
@@ -55,6 +56,8 @@ public record LtftContent(
     CctChange change,
     Reasons reasons,
     ExceptionalReasons exceptionalReasons,
+    @With
+    PreApproval preApproval,
     @With
     EmailValidityType tpdEmailValidity) implements FormContent {
 
@@ -175,6 +178,19 @@ public record LtftContent(
       Boolean exceptional,
       String supportingInformation,
       LocalDate startDate) {
+
+  }
+
+  /**
+   * Pre-approval information for the LTFT application.
+   *
+   * @param who  The person who pre-approved the application.
+   * @param when The date the application was pre-approved.
+   */
+  @Builder
+  public record PreApproval(
+      Person who,
+      LocalDate when) {
 
   }
 }

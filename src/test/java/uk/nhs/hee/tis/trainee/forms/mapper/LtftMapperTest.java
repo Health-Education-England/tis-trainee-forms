@@ -39,13 +39,16 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
+import uk.nhs.hee.tis.trainee.forms.model.Person;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.PreApproval;
 
 class LtftMapperTest {
 
@@ -337,5 +340,85 @@ class LtftMapperTest {
     EmailValidityType emailValidity = mapper.toEmailValidity("unknown status");
 
     assertThat("Unexpected email validity.", emailValidity, is(INVALID));
+  }
+
+  @Test
+  void shouldMapPreApprovalToDto() {
+    LocalDate when = LocalDate.of(2026, Month.SEPTEMBER, 29);
+    LtftForm entity = new LtftForm();
+    entity.setContent(LtftContent.builder()
+        .preApproval(PreApproval.builder()
+            .who(new Person("Ad Min", "ad.min@example.com", "ADMIN"))
+            .when(when)
+            .build())
+        .build());
+
+    LtftFormDto dto = mapper.toDto(entity);
+
+    assertThat("Unexpected pre-approver name.", dto.preApproval().who().name(), is("Ad Min"));
+    assertThat("Unexpected pre-approver email.", dto.preApproval().who().email(),
+        is("ad.min@example.com"));
+    assertThat("Unexpected pre-approver role.", dto.preApproval().who().role(), is("ADMIN"));
+    assertThat("Unexpected pre-approval date.", dto.preApproval().when(), is(when));
+  }
+
+  @Test
+  void shouldRoundTripPreApprovalToEntity() {
+    LocalDate when = LocalDate.of(2026, Month.SEPTEMBER, 29);
+    LtftForm entity = new LtftForm();
+    entity.setContent(LtftContent.builder()
+        .preApproval(PreApproval.builder()
+            .who(new Person("Ad Min", "ad.min@example.com", "ADMIN"))
+            .when(when)
+            .build())
+        .build());
+
+    LtftFormDto dto = mapper.toDto(entity);
+    LtftForm roundTripped = mapper.toEntity(dto);
+
+    assertThat("Unexpected pre-approval.", roundTripped.getContent().preApproval(),
+        is(entity.getContent().preApproval()));
+  }
+
+  @Test
+  void shouldMapPreApprovalDateToAdminSummaryDto() {
+    LocalDate when = LocalDate.of(2026, Month.SEPTEMBER, 29);
+    LtftForm entity = new LtftForm();
+    entity.setStatus(Status.builder()
+        .current(StatusInfo.builder().build())
+        .build());
+    entity.setContent(LtftContent.builder()
+        .preApproval(PreApproval.builder()
+            .who(new Person("Ad Min", "ad.min@example.com", "ADMIN"))
+            .when(when)
+            .build())
+        .build());
+
+    LtftAdminSummaryDto dto = mapper.toAdminSummaryDto(entity);
+
+    assertThat("Unexpected pre-approval date.", dto.preApprovalDate(), is(when));
+  }
+
+  @Test
+  void shouldMapNullPreApprovalDateToAdminSummaryDtoWhenNotPreApproved() {
+    LtftForm entity = new LtftForm();
+    entity.setStatus(Status.builder()
+        .current(StatusInfo.builder().build())
+        .build());
+    entity.setContent(LtftContent.builder().build());
+
+    LtftAdminSummaryDto dto = mapper.toAdminSummaryDto(entity);
+
+    assertThat("Unexpected pre-approval date.", dto.preApprovalDate(), nullValue());
+  }
+
+  @Test
+  void shouldMapNullPreApprovalToDto() {
+    LtftForm entity = new LtftForm();
+    entity.setContent(LtftContent.builder().build());
+
+    LtftFormDto dto = mapper.toDto(entity);
+
+    assertThat("Unexpected pre-approval.", dto.preApproval(), nullValue());
   }
 }

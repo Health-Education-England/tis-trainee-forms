@@ -82,6 +82,7 @@ public abstract class LtftMapper implements FormMapper<LtftForm, LtftFormDto>,
   @Mapping(target = "proposedStartDate", source = "content.change.startDate")
   @Mapping(target = "altStartDate", source = "content.change.altStartDate")
   @Mapping(target = "submissionDate", source = "status.submitted")
+  @Mapping(target = "preApprovalDate", source = "content.preApproval.when")
   @Mapping(target = "reason", source = "content.reasons.selected",
       qualifiedByName = "JoinWithComma")
   @Mapping(target = "daysToStart", source = "content.change.startDate",
@@ -157,6 +158,7 @@ public abstract class LtftMapper implements FormMapper<LtftForm, LtftFormDto>,
   @Mapping(target = "tpdEmailStatus", source = "content.tpdEmailValidity")
   @Mapping(target = "shortNotice", source = "entity", qualifiedByName = "isShortNotice")
   @Mapping(target = "exceptionalReasons", source = "content.exceptionalReasons")
+  @Mapping(target = "preApproval", source = "content.preApproval")
   public abstract LtftFormDto toDto(LtftForm entity);
 
   /**

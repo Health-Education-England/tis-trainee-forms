@@ -36,6 +36,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
  * @param proposedStartDate The proposed start date of the LTFT change.
  * @param altStartDate      The alternate start date if the proposed start date is short-dated.
  * @param submissionDate    The date the LTFT application was submitted.
+ * @param preApprovalDate   The date the LTFT application was pre-approved, or null if not.
  * @param reason            The reason given for applying for LTFT.
  * @param daysToStart       How many days until the start of the LTFT change.
  * @param shortNotice       Whether the LTFT application was submitted at short notice.
@@ -54,6 +55,7 @@ public record LtftAdminSummaryDto(
     LocalDate proposedStartDate,
     LocalDate altStartDate,
     LocalDate submissionDate,
+    LocalDate preApprovalDate,
     String reason,
     Integer daysToStart,
     Boolean shortNotice,
