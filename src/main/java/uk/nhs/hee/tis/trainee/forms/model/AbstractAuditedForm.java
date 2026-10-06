@@ -39,6 +39,7 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo.StatusInfoBuilder;
 import uk.nhs.hee.tis.trainee.forms.model.content.FormContent;
 
 /**
@@ -91,17 +92,48 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
    * @param modifiedBy The Person who assigned the new admin.
    */
   public void setAssignedAdmin(Person admin, Person modifiedBy) {
-    StatusInfo statusInfo = StatusInfo.builder()
-        .state(getLifecycleState())
-        .detail(status == null || status.current == null ? null : status.current.detail)
+    StatusInfo statusInfo = getAssigneeBuilder(modifiedBy)
         .assignedAdmin(admin)
-        .modifiedBy(modifiedBy)
-        .timestamp(Instant.now())
-        .revision(status == null || status.current == null ? null : status.current.revision)
-        .reviewStage(status == null || status.current == null ? null : status.current.reviewStage)
         .build();
 
     updateStatusInfo(statusInfo, false);
+  }
+
+  /**
+   * Assign a reviewer to the form, appending to the status history.
+   *
+   * @param reviewer   The new assigned reviewer.
+   * @param modifiedBy The Person who assigned the reviewer.
+   */
+  public void setAssignedReviewer(Person reviewer, Person modifiedBy) {
+    StatusInfo statusInfo = getAssigneeBuilder(modifiedBy)
+        .assignedReviewer(reviewer)
+        .build();
+
+    updateStatusInfo(statusInfo, false);
+  }
+
+  /**
+   * Get a {@link StatusInfoBuilder} with the current state, detail, assigned admin and assigned
+   * reviewer, and the provided modifiedBy and timestamp. This is used to create a new  status
+   * history entry when assigning an admin or reviewer.
+   *
+   * @param modifiedBy The Person who made this status change.
+   * @return A {@link StatusInfoBuilder} initialized with the current status information and the
+   *     provided modifiedBy and timestamp.
+   */
+  private StatusInfoBuilder getAssigneeBuilder(Person modifiedBy) {
+    return StatusInfo.builder()
+        .state(getLifecycleState())
+        .detail(status == null || status.current == null ? null : status.current.detail)
+        .assignedAdmin(
+            status == null || status.current == null ? null : status.current.assignedAdmin)
+        .assignedReviewer(
+            status == null || status.current == null ? null : status.current.assignedReviewer)
+        .modifiedBy(modifiedBy)
+        .timestamp(Instant.now())
+        .revision(status == null || status.current == null ? null : status.current.revision)
+        .reviewStage(status == null || status.current == null ? null : status.current.reviewStage);
   }
 
   /**
@@ -146,6 +178,8 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
         .detail(detail)
         .assignedAdmin(
             status == null || status.current == null ? null : status.current.assignedAdmin)
+        .assignedReviewer(
+            status == null || status.current == null ? null : status.current.assignedReviewer)
         .modifiedBy(modifiedBy)
         .timestamp(Instant.now())
         .revision(revision)
@@ -184,6 +218,8 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
         .detail(detail)
         .assignedAdmin(
             status == null || status.current == null ? null : status.current.assignedAdmin)
+        .assignedReviewer(
+            status == null || status.current == null ? null : status.current.assignedReviewer)
         .modifiedBy(modifiedBy)
         .timestamp(Instant.now())
         .revision(status == null || status.current == null ? null : status.current.revision)
@@ -242,13 +278,14 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
     /**
      * Form status information.
      *
-     * @param state         The lifecycle state of the form.
-     * @param detail        Any status reason detail.
-     * @param assignedAdmin The admin who is assigned to process the form.
-     * @param modifiedBy    The Person who made this status change.
-     * @param timestamp     The timestamp of the status change.
-     * @param revision      The revision number associated with this status change.
-     * @param reviewStage   The review stage associated with this status change, if any.
+     * @param state            The lifecycle state of the form.
+     * @param detail           Any status reason detail.
+     * @param assignedAdmin    The admin who is assigned to process the form.
+     * @param assignedReviewer The reviewer who is assigned to review the form.
+     * @param modifiedBy       The Person who made this status change.
+     * @param timestamp        The timestamp of the status change.
+     * @param revision         The revision number associated with this status change.
+     * @param reviewStage      The review stage associated with this status change, if any.
      */
     @Builder
     public record StatusInfo(
@@ -257,6 +294,7 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
         LifecycleState state,
         StatusDetail detail,
         Person assignedAdmin,
+        Person assignedReviewer,
         Person modifiedBy,
         Instant timestamp,
         Integer revision,

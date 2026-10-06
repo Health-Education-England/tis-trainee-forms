@@ -182,6 +182,30 @@ class LtftServiceTest {
   private ReviewStageService reviewStageService;
   private AdminIdentity adminIdentity;
 
+  /**
+   * A helper function to provide valid LTFT lifecycle state transitions, along with the actor
+   * permitted to perform each (true = admin, false = trainee).
+   *
+   * @return arguments of valid lifecycle state transitions and their permitted actor.
+   */
+  private static Stream<Arguments> provideValidLtftLifecycleStateTransitions() {
+    return Stream.of(
+        // Trainee transitions
+        Arguments.of(DRAFT, SUBMITTED, false),
+        Arguments.of(SUBMITTED, UNSUBMITTED, false),
+        Arguments.of(SUBMITTED, WITHDRAWN, false),
+        Arguments.of(UNSUBMITTED, SUBMITTED, false),
+        Arguments.of(UNSUBMITTED, WITHDRAWN, false),
+        Arguments.of(UNDER_REVIEW, WITHDRAWN, false),
+
+        // Admin transitions
+        Arguments.of(SUBMITTED, UNDER_REVIEW, true),
+        Arguments.of(UNDER_REVIEW, APPROVED, true),
+        Arguments.of(UNDER_REVIEW, REJECTED, true),
+        Arguments.of(UNDER_REVIEW, UNSUBMITTED, true)
+    );
+  }
+
   @BeforeEach
   void setUp() {
     adminIdentity = new AdminIdentity();
@@ -525,7 +549,7 @@ class LtftServiceTest {
     assertThat("Unexpected filter key count.", userFilter.keySet(), hasSize(1));
     assertThat("Unexpected filter key.", userFilter.keySet(), hasItem("$in"));
 
-    List<String> filteredDbcs = userFilter.get("$in", List.class);
+    List<String> filteredDbcs = userFilter.getList("$in", String.class);
     assertThat("Unexpected filter value count.", filteredDbcs, hasSize(2));
     assertThat("Unexpected filter value.", filteredDbcs, hasItems("filterValue1", "filterValue2"));
   }
@@ -777,7 +801,7 @@ class LtftServiceTest {
       assertThat("Unexpected filter key count.", userFilter.keySet(), hasSize(1));
       assertThat("Unexpected filter key.", userFilter.keySet(), hasItem("$in"));
 
-      List<String> filteredDbcs = userFilter.get("$in", List.class);
+      List<String> filteredDbcs = userFilter.getList("$in", String.class);
       assertThat("Unexpected filter value count.", filteredDbcs, hasSize(2));
       assertThat("Unexpected filter value.", filteredDbcs,
           hasItems("filterValue1", "filterValue2"));
@@ -2235,6 +2259,104 @@ class LtftServiceTest {
   }
 
   @Test
+  void shouldReturnEmptyAssigningReviewerWhenFormNotFound() {
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.empty());
+
+    Optional<LtftFormDto> form = service.assignReviewer(ID, PersonDto.builder().build());
+
+    assertThat("Unexpected form presence.", form.isPresent(), is(false));
+    verify(repository, never()).save(any());
+  }
+
+  @Test
+  void shouldReturnAssignedFormWhenFormFoundAndNoPreviousReviewer() {
+    LtftForm form = new LtftForm();
+    form.setAssignedReviewer(null, null);
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    PersonDto reviewer = PersonDto.builder()
+        .name("Re Viewer")
+        .email("re.viewer@example.com")
+        .build();
+
+    Optional<LtftFormDto> optionalForm = service.assignReviewer(ID, reviewer);
+
+    assertThat("Unexpected form presence.", optionalForm.isPresent(), is(true));
+
+    RedactedPersonDto assignedReviewer = optionalForm.get().status().current().assignedReviewer();
+    assertThat("Unexpected reviewer name.", assignedReviewer.name(), is("Re Viewer"));
+    assertThat("Unexpected reviewer email.", assignedReviewer.email(), is("re.viewer@example.com"));
+    assertThat("Unexpected reviewer role.", assignedReviewer.role(), is("REVIEWER"));
+  }
+
+  @Test
+  void shouldReturnAssignedFormWhenFormFoundAndHasPreviousReviewer() {
+    LtftForm form = new LtftForm();
+    form.setAssignedReviewer(
+        Person.builder()
+            .name("Old Reviewer")
+            .email("old.reviewer@example.com")
+            .role("REVIEWER")
+            .build(),
+        null
+    );
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    PersonDto reviewer = PersonDto.builder()
+        .name("new reviewer")
+        .email("new.reviewer@example.com")
+        .role("new role")
+        .build();
+
+    Optional<LtftFormDto> optionalForm = service.assignReviewer(ID, reviewer);
+
+    assertThat("Unexpected form presence.", optionalForm.isPresent(), is(true));
+
+    RedactedPersonDto assignedReviewer = optionalForm.get().status().current().assignedReviewer();
+    assertThat("Unexpected reviewer name.", assignedReviewer.name(), is("new reviewer"));
+    assertThat("Unexpected reviewer email.", assignedReviewer.email(),
+        is("new.reviewer@example.com"));
+    assertThat("Unexpected reviewer role.", assignedReviewer.role(), is("REVIEWER"));
+  }
+
+  @Test
+  void shouldReturnExistingFormWhenFormFoundAndReviewerAlreadyAssigned() {
+    LtftForm form = new LtftForm();
+    form.setAssignedReviewer(
+        Person.builder()
+            .name("Re Viewer")
+            .email("re.viewer@example.com")
+            .role("REVIEWER")
+            .build(),
+        null
+    );
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+
+    PersonDto reviewer = PersonDto.builder()
+        .name("Re Viewer")
+        .email("re.viewer@example.com")
+        .role("REVIEWER")
+        .build();
+
+    Optional<LtftFormDto> optionalForm = service.assignReviewer(ID, reviewer);
+
+    assertThat("Unexpected form presence.", optionalForm.isPresent(), is(true));
+
+    RedactedPersonDto assignedReviewer = optionalForm.get().status().current().assignedReviewer();
+    assertThat("Unexpected reviewer name.", assignedReviewer.name(), is("Re Viewer"));
+    assertThat("Unexpected reviewer email.", assignedReviewer.email(), is("re.viewer@example.com"));
+    assertThat("Unexpected reviewer role.", assignedReviewer.role(), is("REVIEWER"));
+
+    verify(repository, never()).save(any());
+  }
+
+  @Test
   void shouldReturnEmptyStartingReviewWhenFormNotFound()
       throws MethodArgumentNotValidException {
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
@@ -2269,6 +2391,30 @@ class LtftServiceTest {
     assertThat("Unexpected admin name.", assignedAdmin.name(), is("Ad Min"));
     assertThat("Unexpected admin email.", assignedAdmin.email(), is("ad.min@example.com"));
     assertThat("Unexpected admin role.", assignedAdmin.role(), is("ADMIN"));
+  }
+
+  @Test
+  void shouldAllowProgrammeAdminToAssignReviewer() {
+    adminIdentity.setProgrammes(Set.of(ADMIN_PROGRAMME));
+
+    LtftForm form = new LtftForm();
+    form.setAssignedReviewer(null, null);
+    when(repository.findByIdAndContent_ProgrammeMembership_ProgrammeNumberIn(
+        ID, Set.of(ADMIN_PROGRAMME))).thenReturn(Optional.of(form));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    PersonDto reviewer = PersonDto.builder()
+        .name("Re Viewer")
+        .email("re.viewer@example.com")
+        .build();
+
+    Optional<LtftFormDto> optionalForm = service.assignReviewer(ID, reviewer);
+
+    assertThat("Unexpected form presence.", optionalForm.isPresent(), is(true));
+    RedactedPersonDto assignedReviewer = optionalForm.get().status().current().assignedReviewer();
+    assertThat("Unexpected reviewer name.", assignedReviewer.name(), is("Re Viewer"));
+    assertThat("Unexpected reviewer email.", assignedReviewer.email(), is("re.viewer@example.com"));
+    assertThat("Unexpected reviewer role.", assignedReviewer.role(), is("REVIEWER"));
   }
 
   @Test
@@ -4955,6 +5101,69 @@ class LtftServiceTest {
   }
 
   @Test
+  void shouldPublishNotificationWhenAssignedReviewerUpdated() {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(SUBMITTED);
+    form.setFormRef("LTFT_123");
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    PersonDto reviewer = PersonDto.builder().name("Re Viewer").email("re.viewer@example.com")
+        .role("REVIEWER").build();
+
+    service.assignReviewer(ID, reviewer);
+
+    ArgumentCaptor<LtftFormDto> ltftFormCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<String> snsTopicCaptor = ArgumentCaptor.captor();
+    verify(eventBroadcastService).publishLtftFormUpdateEvent(ltftFormCaptor.capture(),
+        any(), snsTopicCaptor.capture());
+
+    LtftFormDto capturedForm = ltftFormCaptor.getValue();
+
+    assertThat("Unexpected form ID.", capturedForm.id(), is(ID));
+    assertThat("Unexpected trainee ID.", capturedForm.traineeTisId(), is(TRAINEE_ID));
+    assertThat("Unexpected form reference.", capturedForm.formRef(), is("LTFT_123"));
+    assertThat("Unexpected lifecycle state.", capturedForm.status().current().state(),
+        is(SUBMITTED));
+
+    RedactedPersonDto payloadReviewer = capturedForm.status().current().assignedReviewer();
+    assertThat("Unexpected assigned reviewer name.", payloadReviewer.name(), is("Re Viewer"));
+    assertThat("Unexpected assigned reviewer email.", payloadReviewer.email(),
+        is("re.viewer@example.com"));
+    assertThat("Unexpected assigned reviewer role.", payloadReviewer.role(), is("REVIEWER"));
+
+    assertThat("Unexpected group ID.", snsTopicCaptor.getValue(),
+        is(LTFT_ASSIGNMENT_UPDATE_TOPIC));
+    verifyNoMoreInteractions(eventBroadcastService);
+  }
+
+  @Test
+  void shouldNotPublishNotificationWhenAssignReviewerUpdateFails() {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(SUBMITTED);
+    form.setFormRef("LTFT_123");
+
+    Person reviewer = Person.builder().name("Re Viewer").email("re.viewer@example.com")
+        .role("REVIEWER").build();
+    form.setAssignedReviewer(reviewer, null);
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(any(), any()))
+        .thenReturn(Optional.of(form));
+
+    PersonDto reviewerDto = PersonDto.builder().name("Re Viewer").email("re.viewer@example.com")
+        .role("REVIEWER").build();
+    service.assignReviewer(ID, reviewerDto);
+
+    verifyNoInteractions(eventBroadcastService);
+  }
+
+  @Test
   void shouldPublishNotificationWhenStatusUpdatedAsAdmin() throws MethodArgumentNotValidException {
     LtftForm form = new LtftForm();
     form.setId(ID);
@@ -5282,29 +5491,5 @@ class LtftServiceTest {
     service.moveLtftForms(fromTraineeId, fromTraineeId);
 
     verifyNoInteractions(repository);
-  }
-
-  /**
-   * A helper function to provide valid LTFT lifecycle state transitions, along with the actor
-   * permitted to perform each (true = admin, false = trainee).
-   *
-   * @return arguments of valid lifecycle state transitions and their permitted actor.
-   */
-  private static Stream<Arguments> provideValidLtftLifecycleStateTransitions() {
-    return Stream.of(
-        // Trainee transitions
-        Arguments.of(DRAFT, SUBMITTED, false),
-        Arguments.of(SUBMITTED, UNSUBMITTED, false),
-        Arguments.of(SUBMITTED, WITHDRAWN, false),
-        Arguments.of(UNSUBMITTED, SUBMITTED, false),
-        Arguments.of(UNSUBMITTED, WITHDRAWN, false),
-        Arguments.of(UNDER_REVIEW, WITHDRAWN, false),
-
-        // Admin transitions
-        Arguments.of(SUBMITTED, UNDER_REVIEW, true),
-        Arguments.of(UNDER_REVIEW, APPROVED, true),
-        Arguments.of(UNDER_REVIEW, REJECTED, true),
-        Arguments.of(UNDER_REVIEW, UNSUBMITTED, true)
-    );
   }
 }

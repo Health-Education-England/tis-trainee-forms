@@ -100,6 +100,7 @@ import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
+import uk.nhs.hee.tis.trainee.forms.model.ReviewStageStatus;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Declarations;
@@ -107,7 +108,6 @@ import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Discussions;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.PersonalDetails;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ProgrammeMembership;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Reasons;
-import uk.nhs.hee.tis.trainee.forms.model.ReviewStageStatus;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -1386,7 +1386,6 @@ class AdminLtftResourceIntegrationTest {
     LocalDate startDate = LocalDate.now();
     LocalDate endDate = startDate.plusYears(1);
     LocalDate altStartDate = startDate.plusMonths(6);
-    LocalDate cctDate = endDate.plusYears(1);
 
     LtftContent content = LtftContent.builder()
         .personalDetails(PersonalDetails.builder().build())
@@ -1897,12 +1896,29 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.history[1].timestamp", notNullValue()));
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"/assign", "/assign-admin"})
+  void shouldSupportBothAssignEndpointsForAdmin(String endpoint) throws Exception {
+    LtftForm form = template.insert(createLtftForm(SUBMITTED, DBC_1, null));
+
+    mockMvc.perform(put("/api/admin/ltft/{id}" + endpoint, form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .contentType(APPLICATION_JSON)
+            .content("""
+                {
+                  "name": "Ad min",
+                  "email": "ad.min@example.com"
+                }
+                """))
+        .andExpect(status().isOk());
+  }
+
   @Test
   void shouldNotUpdateSubmittedWhenAssigningAdmin() throws Exception {
     LtftForm form = template.insert(createLtftForm(SUBMITTED, DBC_1, null));
     Instant originalSubmitted = form.getStatus().submitted();
 
-    mockMvc.perform(put("/api/admin/ltft/{id}/assign", form.getId())
+    mockMvc.perform(put("/api/admin/ltft/{id}/assign-admin", form.getId())
             .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
             .contentType(APPLICATION_JSON)
             .content("""
@@ -1925,7 +1941,7 @@ class AdminLtftResourceIntegrationTest {
     LtftForm form = template.insert(
         createUnderReviewFormWithReviewStage(DBC_1, 1, "Manager Review"));
 
-    mockMvc.perform(put("/api/admin/ltft/{id}/assign", form.getId())
+    mockMvc.perform(put("/api/admin/ltft/{id}/assign-admin", form.getId())
             .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
             .contentType(APPLICATION_JSON)
             .content("""
@@ -1944,6 +1960,56 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.history[0].reviewStage.label", is("Manager Review")));
   }
 
+  @Test
+  void shouldNotUpdateSubmittedWhenAssigningReviewer() throws Exception {
+    LtftForm form = template.insert(createLtftForm(SUBMITTED, DBC_1, null));
+    Instant originalSubmitted = form.getStatus().submitted();
+
+    mockMvc.perform(put("/api/admin/ltft/{id}/assign-reviewer", form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .contentType(APPLICATION_JSON)
+            .content("""
+                {
+                  "name": "Re Viewer",
+                  "email": "re.viewer@example.com",
+                  "role": "REVIEWER"
+                }
+                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status.current.state", is(SUBMITTED.toString())))
+        .andExpect(jsonPath("$.status.current.revision", is(0)))
+        .andExpect(jsonPath("$.status.current.timestamp", notNullValue()))
+        .andExpect(jsonPath("$.status.current.assignedReviewer.name", is("Re Viewer")))
+        .andExpect(jsonPath("$.status.current.assignedReviewer.email",
+            is("re.viewer@example.com")))
+        .andExpect(jsonPath("$.status.current.assignedReviewer.role", is("REVIEWER")))
+        .andExpect(jsonPath("$.status.submitted",
+            is(originalSubmitted.truncatedTo(ChronoUnit.MILLIS).toString())));
+  }
+
+  @Test
+  void shouldRetainReviewStageWhenAssigningReviewer() throws Exception {
+    LtftForm form = template.insert(
+        createUnderReviewFormWithReviewStage(DBC_1, 1, "Manager Review"));
+
+    mockMvc.perform(put("/api/admin/ltft/{id}/assign-reviewer", form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .contentType(APPLICATION_JSON)
+            .content("""
+                {
+                  "name": "Re Viewer",
+                  "email": "re.viewer@example.com",
+                  "role": "REVIEWER"
+                }
+                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status.current.state", is(UNDER_REVIEW.toString())))
+        .andExpect(jsonPath("$.status.current.assignedReviewer.name", is("Re Viewer")))
+        .andExpect(jsonPath("$.status.current.reviewStage.index", is(1)))
+        .andExpect(jsonPath("$.status.current.reviewStage.label", is("Manager Review")))
+        .andExpect(jsonPath("$.status.history[0].reviewStage.index", is(1)))
+        .andExpect(jsonPath("$.status.history[0].reviewStage.label", is("Manager Review")));
+  }
   // -- GET /{id}/review-workflow --
 
   @Test
@@ -2228,8 +2294,8 @@ class AdminLtftResourceIntegrationTest {
   }
 
   /**
-   * Save an UNDER_REVIEW form with the given DBC and review stage directly to MongoDB, bypassing the
-   * service layer to allow precise state control.
+   * Save an UNDER_REVIEW form with the given DBC and review stage directly to MongoDB, bypassing
+   * the service layer to allow precise state control.
    */
   private LtftForm createUnderReviewFormWithReviewStage(String dbc, int stageIndex,
       String stageLabel) {

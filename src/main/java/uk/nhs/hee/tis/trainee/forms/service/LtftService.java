@@ -627,6 +627,50 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   }
 
   /**
+   * Assign a reviewer to the LTFT application.
+   *
+   * @param formId The ID of the LTFT application.
+   * @param reviewer  The reviewer to assign to the application.
+   * @return The updated LTFT, empty if the form did not exist or did not belong to the reviewer's
+   *     local office.
+   */
+  public Optional<LtftFormDto> assignReviewer(UUID formId, PersonDto reviewer) {
+    log.info("Assigning reviewer {} to LTFT form {}", reviewer.email(), formId);
+
+    Optional<LtftForm> form = findFormForAdmin(formId);
+
+    if (form.isPresent()) {
+      LtftForm ltftForm = form.get();
+
+      Person assignedReviewer = mapper.toEntity(reviewer).withRole("REVIEWER");
+
+      if (ltftForm.getStatus() != null && ltftForm.getStatus().current() != null
+          && Objects.equals(ltftForm.getStatus().current().assignedReviewer(), assignedReviewer)) {
+        log.info("Skipping assigning reviewer {} to LTFT form {}, as they are already assigned.",
+            reviewer.email(), formId);
+        return Optional.of(mapper.toDto(ltftForm));
+      }
+
+      Person modifiedBy = Person.builder()
+          .name(adminIdentity.getName())
+          .email(adminIdentity.getEmail())
+          .role(adminIdentity.getRole())
+          .build();
+
+      ltftForm.setAssignedReviewer(assignedReviewer, modifiedBy);
+      LtftForm updatedForm = ltftFormRepository.save(ltftForm);
+
+      publishUpdateNotification(updatedForm, null, ltftAssignmentUpdateTopic);
+
+      return Optional.of(mapper.toDto(updatedForm));
+    } else {
+      log.warn("Could not assign reviewer to form {} since no form exists with this ID for {} [{}]",
+          formId, filterTypeLabel(), filterScopeValue());
+      return Optional.empty();
+    }
+  }
+
+  /**
    * Update the TPD notification status of an LTFT form.
    *
    * @param formId The ID of the LTFT form to update.

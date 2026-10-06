@@ -229,9 +229,16 @@ public class AdminLtftResource {
     return ResponseEntity.of(patchedForm);
   }
 
-  @PutMapping("/{id}/assign")
+  @PutMapping(path = {"/{id}/assign", "/{id}/assign-admin"})
   ResponseEntity<LtftFormDto> assignAdmin(@PathVariable UUID id, @RequestBody PersonDto admin) {
     Optional<LtftFormDto> form = service.assignAdmin(id, admin);
+    return ResponseEntity.of(form);
+  }
+
+  @PutMapping("/{id}/assign-reviewer")
+  ResponseEntity<LtftFormDto> assignReviewer(@PathVariable UUID id,
+      @RequestBody PersonDto reviewer) {
+    Optional<LtftFormDto> form = service.assignReviewer(id, reviewer);
     return ResponseEntity.of(form);
   }
 

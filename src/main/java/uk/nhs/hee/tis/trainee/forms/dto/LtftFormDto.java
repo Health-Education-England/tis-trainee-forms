@@ -206,13 +206,14 @@ public record LtftFormDto(
     /**
      * Form status information.
      *
-     * @param state         The lifecycle state of the form.
-     * @param detail        Status reason detail.
-     * @param assignedAdmin The admin who is assigned to process the form.
-     * @param modifiedBy    The Person who made this status change.
-     * @param timestamp     The timestamp of the status change.
-     * @param revision      The revision number associated with this status change.
-     * @param reviewStage   The review stage associated with this status change, if any.
+     * @param state            The lifecycle state of the form.
+     * @param detail           Status reason detail.
+     * @param assignedAdmin    The admin who is assigned to process the form.
+     * @param assignedReviewer The reviewer who is assigned to review the form.
+     * @param modifiedBy       The Person who made this status change.
+     * @param timestamp        The timestamp of the status change.
+     * @param revision         The revision number associated with this status change.
+     * @param reviewStage      The review stage associated with this status change, if any.
      */
     @Builder
     public record StatusInfoDto(
@@ -221,6 +222,8 @@ public record LtftFormDto(
         LftfStatusInfoDetailDto detail,
         @JsonView(Admin.Read.class)
         RedactedPersonDto assignedAdmin,
+        @JsonView(Admin.Read.class)
+        RedactedPersonDto assignedReviewer,
         RedactedPersonDto modifiedBy,
         Instant timestamp,
         Integer revision,

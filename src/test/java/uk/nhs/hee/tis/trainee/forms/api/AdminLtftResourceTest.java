@@ -399,6 +399,33 @@ class AdminLtftResourceTest {
   }
 
   @Test
+  void shouldReturnNotFoundWhenAssignReviewerFormNotFound() {
+    UUID id = UUID.randomUUID();
+    PersonDto reviewer = PersonDto.builder().name("Re Viewer").email("re.viewer@example.com")
+        .build();
+    when(service.assignReviewer(id, reviewer)).thenReturn(Optional.empty());
+
+    ResponseEntity<LtftFormDto> response = controller.assignReviewer(id, reviewer);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(NOT_FOUND));
+    assertThat("Unexpected response body.", response.getBody(), nullValue());
+  }
+
+  @Test
+  void shouldReturnAssignedFormWhenFormReviewerAssigned() {
+    UUID id = UUID.randomUUID();
+    PersonDto reviewer = PersonDto.builder().name("Re Viewer").email("re.viewer@example.com")
+        .build();
+    LtftFormDto dto = LtftFormDto.builder().id(id).build();
+    when(service.assignReviewer(id, reviewer)).thenReturn(Optional.of(dto));
+
+    ResponseEntity<LtftFormDto> response = controller.assignReviewer(id, reviewer);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), sameInstance(dto));
+  }
+
+  @Test
   void shouldThrowExceptionWhenApprovalNotValid() throws MethodArgumentNotValidException {
     UUID id = UUID.randomUUID();
     when(service.updateStatusAsAdmin(id, APPROVED, null)).thenThrow(
