@@ -321,7 +321,149 @@ class AbstractAuditedFormTest {
   }
 
   @Test
-  void shouldRetainLifecycleStateWhenSettingAssignedAdmin() {
+  void shouldRetainAssignedReviewerWhenSettingLifecycleState() {
+    StatusInfo assignedStatus = StatusInfo.builder()
+        .state(SUBMITTED)
+        .assignedReviewer(Person.builder()
+            .name("Re Viewer")
+            .email("re.viewer@example.com")
+            .role("REVIEWER")
+            .build())
+        .build();
+
+    form.setStatus(Status.builder()
+        .current(assignedStatus)
+        .history(List.of(assignedStatus))
+        .build());
+
+    form.setLifecycleState(APPROVED);
+
+    Person approvedReviewer = form.getStatus().current().assignedReviewer();
+    assertThat("Unexpected assigned reviewer name.", approvedReviewer.name(), is("Re Viewer"));
+    assertThat("Unexpected assigned reviewer email.", approvedReviewer.email(),
+        is("re.viewer@example.com"));
+    assertThat("Unexpected assigned reviewer role.", approvedReviewer.role(), is("REVIEWER"));
+
+    Person historyReviewer1 = form.getStatus().history().get(0).assignedReviewer();
+    assertThat("Unexpected historical assigned reviewer.", historyReviewer1, is(approvedReviewer));
+
+    Person historyReviewer2 = form.getStatus().history().get(1).assignedReviewer();
+    assertThat("Unexpected historical assigned reviewer.", historyReviewer2, is(approvedReviewer));
+  }
+
+  @Test
+  void shouldSetAssignedReviewer() {
+    form.setRevision(1);
+    form.setStatus(null);
+    form.setAssignedReviewer(
+        Person.builder().name("Re Viewer").email("re.viewer@example.com").role("REVIEWER").build(),
+        Person.builder().name("Mo Defy").email("mo.defy@example.com").role("ADMIN").build()
+    );
+
+    Person assignedReviewer = form.getStatus().current().assignedReviewer();
+    assertThat("Unexpected assigned reviewer name.", assignedReviewer.name(), is("Re Viewer"));
+    assertThat("Unexpected assigned reviewer email.", assignedReviewer.email(),
+        is("re.viewer@example.com"));
+    assertThat("Unexpected assigned reviewer role.", assignedReviewer.role(), is("REVIEWER"));
+
+    Person modifiedBy = form.getStatus().current().modifiedBy();
+    assertThat("Unexpected modified by name.", modifiedBy.name(), is("Mo Defy"));
+    assertThat("Unexpected modified by email.", modifiedBy.email(), is("mo.defy@example.com"));
+    assertThat("Unexpected modified by role.", modifiedBy.role(), is("ADMIN"));
+
+    List<StatusInfo> history = form.getStatus().history();
+    assertThat("Unexpected history count.", history, hasSize(1));
+
+    StatusInfo historicalStatus = history.get(0);
+    assertThat("Unexpected assigned reviewer history.", historicalStatus.assignedReviewer(),
+        is(assignedReviewer));
+    assertThat("Unexpected modified by history.", historicalStatus.modifiedBy(), is(modifiedBy));
+  }
+
+  @Test
+  void shouldSetAssignedReviewerIfCurrentIsMissing() {
+    form.setStatus(Status.builder().build());
+    form.setAssignedReviewer(Person.builder()
+            .name("Re Viewer").email("re.viewer@example.com").role("REVIEWER").build(),
+        Person.builder().name("Mo Defy").email("mo.defy@example.com").role("ADMIN").build()
+    );
+
+    Person assignedReviewer = form.getStatus().current().assignedReviewer();
+    assertThat("Unexpected assigned reviewer name.", assignedReviewer.name(), is("Re Viewer"));
+    assertThat("Unexpected assigned reviewer email.", assignedReviewer.email(),
+        is("re.viewer@example.com"));
+    assertThat("Unexpected assigned reviewer role.", assignedReviewer.role(), is("REVIEWER"));
+
+    Person modifiedBy = form.getStatus().current().modifiedBy();
+    assertThat("Unexpected modified by name.", modifiedBy.name(), is("Mo Defy"));
+    assertThat("Unexpected modified by email.", modifiedBy.email(), is("mo.defy@example.com"));
+    assertThat("Unexpected modified by role.", modifiedBy.role(), is("ADMIN"));
+
+    List<StatusInfo> history = form.getStatus().history();
+    assertThat("Unexpected history count.", history, hasSize(1));
+
+    StatusInfo historicalStatus = history.get(0);
+    assertThat("Unexpected assigned reviewer history.", historicalStatus.assignedReviewer(),
+        is(assignedReviewer));
+    assertThat("Unexpected modified by history.", historicalStatus.modifiedBy(), is(modifiedBy));
+  }
+
+  @Test
+  void shouldOverwriteExistingAssignedReviewer() {
+    form.setAssignedReviewer(Person.builder().build(), null);
+    form.setAssignedReviewer(Person.builder()
+            .name("Re Viewer").email("re.viewer@example.com").role("REVIEWER").build(),
+        Person.builder().name("Mo Defy").email("mo.defy@example.com").role("ADMIN").build()
+    );
+
+    Person assignedReviewer = form.getStatus().current().assignedReviewer();
+    assertThat("Unexpected assigned admin name.", assignedReviewer.name(), is("Re Viewer"));
+    assertThat("Unexpected assigned admin email.", assignedReviewer.email(),
+        is("re.viewer@example.com"));
+    assertThat("Unexpected assigned admin role.", assignedReviewer.role(), is("REVIEWER"));
+
+    Person modifiedBy = form.getStatus().current().modifiedBy();
+    assertThat("Unexpected modified by name.", modifiedBy.name(), is("Mo Defy"));
+    assertThat("Unexpected modified by email.", modifiedBy.email(), is("mo.defy@example.com"));
+    assertThat("Unexpected modified by role.", modifiedBy.role(), is("ADMIN"));
+
+    List<StatusInfo> history = form.getStatus().history();
+    assertThat("Unexpected history count.", history, hasSize(2));
+
+    StatusInfo historicalStatus1 = history.get(0);
+    assertThat("Unexpected assigned reviewer history.", historicalStatus1.assignedReviewer(), is(
+        Person.builder().build()));
+    assertThat("Unexpected modified by history.", historicalStatus1.modifiedBy(), nullValue());
+
+    StatusInfo historicalStatus2 = history.get(1);
+    assertThat("Unexpected assigned reviewer history.", historicalStatus2.assignedReviewer(),
+        is(assignedReviewer));
+    assertThat("Unexpected modified by history.", historicalStatus2.modifiedBy(), is(modifiedBy));
+  }
+
+  @Test
+  void shouldHandleNullAssignedReviewer() {
+    form.setAssignedReviewer(null, null);
+
+    assertThat("Unexpected assigned reviewer.", form.getStatus().current().assignedReviewer(),
+        nullValue());
+  }
+
+  @Test
+  void shouldAddAssignedReviewerToHistory() {
+    form.setAssignedReviewer(Person.builder().name("First Reviewer").build(), null);
+    form.setAssignedReviewer(Person.builder().name("Second Reviewer").build(), null);
+
+    assertThat("Unexpected assigned admin history items.",
+        form.getStatus().history().stream()
+            .map(StatusInfo::assignedReviewer)
+            .map(Person::name)
+            .toList(),
+        is(List.of("First Reviewer", "Second Reviewer")));
+  }
+
+  @Test
+  void shouldRetainLifecycleStateWhenSettingAssignees() {
     StatusInfo submittedStatus = StatusInfo.builder()
         .state(SUBMITTED)
         .detail(StatusDetail.builder()
@@ -341,6 +483,11 @@ class AbstractAuditedFormTest {
         Person.builder().name("Mo Defy").email("mo.defy@example.com").role("ADMIN").build()
     );
 
+    form.setAssignedReviewer(
+        Person.builder().name("Re Viewer").email("re.viewer@example.com").role("REVIEWER").build(),
+        Person.builder().name("Mo Defy").email("mo.defy@example.com").role("ADMIN").build()
+    );
+
     assertThat("Unexpected lifecycle state.", form.getLifecycleState(), is(SUBMITTED));
     assertThat("Unexpected revision.", form.getStatus().current().revision(), is(2));
     assertThat("Unexpected status detail reason.", form.getStatus().current().detail().reason(),
@@ -350,7 +497,7 @@ class AbstractAuditedFormTest {
   }
 
   @Test
-  void shouldRetainReviewStageWhenSettingAssignedAdmin() {
+  void shouldRetainReviewStageWhenSettingAssignees() {
     ReviewStageStatus reviewStage = new ReviewStageStatus(1, "Manager Review");
     StatusInfo submittedStatus = StatusInfo.builder()
         .state(SUBMITTED)
@@ -368,6 +515,11 @@ class AbstractAuditedFormTest {
         Person.builder().name("Mo Defy").email("mo.defy@example.com").role("ADMIN").build()
     );
 
+    form.setAssignedReviewer(
+        Person.builder().name("Re Viewer").email("re.viewer@example.com").role("REVIEWER").build(),
+        Person.builder().name("Mo Defy").email("mo.defy@example.com").role("ADMIN").build()
+    );
+
     assertThat("Unexpected current review stage.", form.getStatus().current().reviewStage(),
         is(reviewStage));
 
@@ -379,7 +531,7 @@ class AbstractAuditedFormTest {
   @ParameterizedTest
   @NullSource
   @ValueSource(strings = "2024-01-01T10:00:00Z")
-  void shouldRetainPreviousSubmittedTimestampWhenSettingAssignedAdmin(String instantStr) {
+  void shouldRetainPreviousSubmittedTimestampWhenSettingAssignees(String instantStr) {
     Instant submittedTime = instantStr == null ? null : Instant.parse(instantStr);
     StatusInfo submittedStatus = StatusInfo.builder()
         .state(SUBMITTED)
@@ -399,6 +551,11 @@ class AbstractAuditedFormTest {
 
     form.setAssignedAdmin(
         Person.builder().name("Ad Min").email("ad.min@example.com").role("ADMIN").build(),
+        Person.builder().name("Mo Defy").email("mo.defy@example.com").role("ADMIN").build()
+    );
+
+    form.setAssignedReviewer(
+        Person.builder().name("Re Viewer").email("re.viewer@example.com").role("REVIEWER").build(),
         Person.builder().name("Mo Defy").email("mo.defy@example.com").role("ADMIN").build()
     );
 
@@ -438,7 +595,7 @@ class AbstractAuditedFormTest {
     Instant submitted = form.getStatus().submitted();
     assertThat("Unexpected submitted timestamp.", submitted, notNullValue());
     assertThat("Unexpected submitted timestamp.", (double) submitted.getEpochSecond(),
-        closeTo(Instant.now().getEpochSecond(), 1));
+        closeTo((double) Instant.now().getEpochSecond(), 1));
 
   }
 
@@ -452,7 +609,7 @@ class AbstractAuditedFormTest {
     Instant submitted = form.getStatus().submitted();
     assertThat("Unexpected submitted timestamp.", submitted, notNullValue());
     assertThat("Unexpected submitted timestamp.", (double) submitted.getEpochSecond(),
-        closeTo(Instant.now().getEpochSecond(), 1));
+        closeTo((double) Instant.now().getEpochSecond(), 1));
 
   }
 
@@ -552,14 +709,22 @@ class AbstractAuditedFormTest {
   }
 
   @Test
-  void shouldRetainAssignedAdminWhenSettingReviewStage() {
+  void shouldRetainAssigneesWhenSettingReviewStage() {
     Person admin = Person.builder()
         .name("Ad Min")
         .email("ad.min@example.com")
         .role("ADMIN")
         .build();
+    Person reviewer = Person.builder()
+        .name("Re Viewer")
+        .email("re.viewer@example.com")
+        .role("REVIEWER")
+        .build();
     form.setStatus(Status.builder()
-        .current(StatusInfo.builder().state(SUBMITTED).assignedAdmin(admin).build())
+        .current(StatusInfo.builder().state(SUBMITTED)
+            .assignedAdmin(admin)
+            .assignedReviewer(reviewer)
+            .build())
         .history(List.of())
         .build());
 
@@ -567,6 +732,8 @@ class AbstractAuditedFormTest {
 
     assertThat("Unexpected assigned admin.", form.getStatus().current().assignedAdmin(),
         is(admin));
+    assertThat("Unexpected assigned reviewer.", form.getStatus().current().assignedReviewer(),
+        is(reviewer));
   }
 
   @Test

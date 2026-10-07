@@ -126,7 +126,8 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    * declarative source of truth for the actor-dependent transition rules.
    *
    * <p>Note: {@code DRAFT -> DELETED} is also trainee-only, but is enforced separately in
-   * {@link #deleteLtftForm(UUID)} (a hard delete that does not pass through {@link #updateStatus}).
+   * {@link #deleteLtftForm(UUID)} (a hard delete that does not pass through
+   * {@link #updateStatus}).
    */
   private static final Map<LifecycleState, Map<LifecycleState, Actor>> TRANSITION_ACTORS = Map.of(
       DRAFT, Map.of(SUBMITTED, Actor.TRAINEE),
@@ -493,7 +494,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    *
    * @param formId The id of the LTFT form to delete.
    * @return Optional empty if the form was not found, true if the form was deleted, or false if it
-   * was not in a permitted state to delete.
+   *     was not in a permitted state to delete.
    */
   public Optional<Boolean> deleteLtftForm(UUID formId) {
     String traineeId = traineeIdentity.getTraineeId();
@@ -505,7 +506,9 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
     }
 
     LtftForm form = formOptional.get();
-    if (!form.getLifecycleState().equals(DRAFT)) {
+    LifecycleState state = form.getLifecycleState();
+
+    if (state != null && state != DRAFT) {
       log.info("Form {} was not in a permitted state to delete [{}]", formId,
           form.getLifecycleState());
       return Optional.of(false);
@@ -533,7 +536,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    * @param formId The id of the LTFT form to unsubmit.
    * @param detail The status detail for the unsubmission.
    * @return The DTO of the unsubmitted form, or empty if form not found or could not be
-   * unsubmitted.
+   *     unsubmitted.
    */
   public Optional<LtftFormDto> unsubmitLtftForm(UUID formId, LftfStatusInfoDetailDto detail) {
     return changeLtftFormState(formId, detail, UNSUBMITTED);
@@ -557,7 +560,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    * @param detail      The status detail for the change.
    * @param targetState The state to change to.
    * @return The DTO of the form after the state change, or empty if form not found or could not be
-   * changed to the target state.
+   *     changed to the target state.
    */
   protected Optional<LtftFormDto> changeLtftFormState(UUID formId, LftfStatusInfoDetailDto detail,
       LifecycleState targetState) {
@@ -588,7 +591,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    * @param formId The ID of the LTFT application.
    * @param admin  The admin to assign to the application.
    * @return The updated LTFT, empty if the form did not exist or did not belong to the admin's
-   * local office.
+   *     local office.
    */
   public Optional<LtftFormDto> assignAdmin(UUID formId, PersonDto admin) {
     log.info("Assigning admin {} to LTFT form {}", admin.email(), formId);
@@ -621,6 +624,50 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
       return Optional.of(mapper.toDto(updatedForm));
     } else {
       log.warn("Could not assign admin to form {} since no form exists with this ID for {} [{}]",
+          formId, filterTypeLabel(), filterScopeValue());
+      return Optional.empty();
+    }
+  }
+
+  /**
+   * Assign a reviewer to the LTFT application.
+   *
+   * @param formId   The ID of the LTFT application.
+   * @param reviewer The reviewer to assign to the application.
+   * @return The updated LTFT, empty if the form did not exist or did not belong to the reviewer's
+   *     local office.
+   */
+  public Optional<LtftFormDto> assignReviewer(UUID formId, PersonDto reviewer) {
+    log.info("Assigning reviewer {} to LTFT form {}", reviewer.email(), formId);
+
+    Optional<LtftForm> form = findFormForAdmin(formId);
+
+    if (form.isPresent()) {
+      LtftForm ltftForm = form.get();
+
+      Person assignedReviewer = mapper.toEntity(reviewer).withRole("REVIEWER");
+
+      if (ltftForm.getStatus() != null && ltftForm.getStatus().current() != null
+          && Objects.equals(ltftForm.getStatus().current().assignedReviewer(), assignedReviewer)) {
+        log.info("Skipping assigning reviewer {} to LTFT form {}, as they are already assigned.",
+            reviewer.email(), formId);
+        return Optional.of(mapper.toDto(ltftForm));
+      }
+
+      Person modifiedBy = Person.builder()
+          .name(adminIdentity.getName())
+          .email(adminIdentity.getEmail())
+          .role(adminIdentity.getRole())
+          .build();
+
+      ltftForm.setAssignedReviewer(assignedReviewer, modifiedBy);
+      LtftForm updatedForm = ltftFormRepository.save(ltftForm);
+
+      publishUpdateNotification(updatedForm, null, ltftAssignmentUpdateTopic);
+
+      return Optional.of(mapper.toDto(updatedForm));
+    } else {
+      log.warn("Could not assign reviewer to form {} since no form exists with this ID for {} [{}]",
           formId, filterTypeLabel(), filterScopeValue());
       return Optional.empty();
     }
@@ -673,7 +720,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    * @param state  The new state.
    * @param detail A detailed reason for the change, may be null.
    * @return The updated LTFT application, empty if the form did not exist or did not belong to the
-   * admin's local office.
+   *     admin's local office.
    * @throws MethodArgumentNotValidException If the state transition is not allowed.
    */
   public Optional<LtftFormDto> updateStatusAsAdmin(UUID formId, LifecycleState state,
@@ -1020,7 +1067,8 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   /**
    * Validate that the given actor is permitted to perform the requested lifecycle transition.
    *
-   * <p>Only called after {@link #validateLifecycleTransition}, so the current state is non-null and
+   * <p>Only called after {@link #validateLifecycleTransition}, so the current state is non-null
+   * and
    * the transition is structurally valid. Enforces the actor-dependent rules declared in
    * {@link #TRANSITION_ACTORS}; transitions absent from that map are permitted for either actor.
    *
@@ -1158,8 +1206,8 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   }
 
   /**
-   * Build a filtered query for admin users, which excludes DRAFT results
-   * and applies DBC/programme filters.
+   * Build a filtered query for admin users, which excludes DRAFT results and applies DBC/programme
+   * filters.
    *
    * @param filterParams The user-supplied filters to apply, unsupported fields will be dropped.
    * @param pageable     The paging and sorting to apply to the query.
