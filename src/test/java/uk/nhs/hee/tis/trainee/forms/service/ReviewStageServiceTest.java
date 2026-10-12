@@ -32,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROVED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNDER_REVIEW;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
 import static uk.nhs.hee.tis.trainee.forms.service.ReviewStageService.TERMINAL_STAGE_LABEL;
 
 import java.util.HashMap;
@@ -42,6 +43,7 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.EnumSource.Mode;
 import uk.nhs.hee.tis.trainee.forms.config.ReviewWorkflowProperties;
@@ -520,7 +522,7 @@ class ReviewStageServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
+  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED"})
   void shouldDenyTerminalTransitionFromNonFinalStageWhenWorkflowConfigured(
       LifecycleState targetState) {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
@@ -533,7 +535,7 @@ class ReviewStageServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
+  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED"})
   void shouldDenyTerminalTransitionFromFinalConfiguredStageWhenWorkflowConfigured(
       LifecycleState targetState) {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
@@ -652,7 +654,7 @@ class ReviewStageServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
+  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED"})
   void shouldDenyTerminalTransitionWhenAllStagesDisabledButFormIsAtDisabledStage(
       LifecycleState targetState) {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
@@ -667,7 +669,7 @@ class ReviewStageServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
+  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED"})
   void shouldDenyTerminalTransitionFromEnabledStageWhenAllSubsequentStagesDisabled(
       LifecycleState targetState) {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
@@ -682,7 +684,7 @@ class ReviewStageServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
+  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED"})
   void shouldDenyTerminalTransitionFromEnabledStageWhenEnabledStagesFollowIt(
       LifecycleState targetState) {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
@@ -695,7 +697,7 @@ class ReviewStageServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
+  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED"})
   void shouldDenyTerminalTransitionFromDisabledStageWhenNoEnabledStagesFollowIt(
       LifecycleState targetState) {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
@@ -710,7 +712,7 @@ class ReviewStageServiceTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
+  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED"})
   void shouldDenyTerminalTransitionFromDisabledStageWhenEnabledStagesFollowIt(
       LifecycleState targetState) {
     workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
@@ -731,6 +733,34 @@ class ReviewStageServiceTest {
 
     assertTrue(service.canTransitionToLifecycleState(form, UNSUBMITTED),
         "Expected UNSUBMIT to be allowed from a disabled stage.");
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+      "0, Triage",
+      "1, Manager Review",
+      "2, Dean Approval",
+      "3, " + TERMINAL_STAGE_LABEL
+  })
+  void shouldAllowWithdrawFromAnyReviewStage(int index, String label) {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        stage("Triage"), stage("Manager Review"), stage("Dean Approval"))));
+
+    LtftForm form = formAtReviewStage(DBC, index, label);
+
+    assertTrue(service.canTransitionToLifecycleState(form, WITHDRAWN),
+        "Expected WITHDRAW to be allowed from review stage '" + label + "'.");
+  }
+
+  @Test
+  void shouldAllowWithdrawFromDisabledStage() {
+    workflowProperties.setReviewWorkflows(Map.of(DBC, List.of(
+        stage("Triage"), disabledStage("Manager Review"), stage("Dean Approval"))));
+
+    LtftForm form = formAtReviewStage(DBC, 1, "Manager Review");
+
+    assertTrue(service.canTransitionToLifecycleState(form, WITHDRAWN),
+        "Expected WITHDRAW to be allowed from a disabled stage.");
   }
 
   @ParameterizedTest
