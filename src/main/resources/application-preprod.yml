@@ -23,4 +23,25 @@ application:
     "1-1RUZUVB": # South West (legacy, no longer active)
       - label: "Programme/Education Team Triage"
         enabled: false
+    "1-1RUZV1D": # Kent Surrey, Sussex
+      - label: "Application Check"
+        enabled: true
+      - label: "Eligibility Review"
+        enabled: true
+      - label: "Programme Team Review"
+        enabled: true
+    "1-1RSSQ6R": # Thames Valley
+      - label: "Application Check"
+        enabled: true
+      - label: "Eligibility Review"
+        enabled: true
+      - label: "Programme Team Review"
+        enabled: true
+    "1-1RUZUSF": # Wessex
+      - label: "Application Check"
+        enabled: true
+      - label: "Eligibility Review"
+        enabled: true
+      - label: "Programme Team Review"
+        enabled: true
 
