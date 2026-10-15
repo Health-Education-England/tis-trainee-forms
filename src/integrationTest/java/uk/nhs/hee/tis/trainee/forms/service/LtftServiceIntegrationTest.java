@@ -46,6 +46,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -745,6 +746,30 @@ class LtftServiceIntegrationTest {
         result.get().status().current().reviewStage(), nullValue());
   }
 
+  @ParameterizedTest
+  @CsvSource({
+      "0, Stage One",
+      "1, Stage Two",
+      "2, Stage Three",
+      "3, Review complete"
+  })
+  void shouldAllowTraineeWithdrawFromAnyReviewStageAndClearReviewStage(int stageIndex,
+      String stageLabel) {
+    LtftForm form = savedUnderReviewFormWithReviewStage(DBC_THREE_STAGES, stageIndex, stageLabel);
+    form.setTraineeTisId(TRAINEE_ID);
+    template.save(form);
+
+    LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("changed my mind", null);
+
+    Optional<LtftFormDto> result = service.withdrawLtftForm(form.getId(), detail);
+
+    assertThat("Unexpected result presence.", result.isPresent(), is(true));
+    assertThat("Unexpected state.", result.get().status().current().state(),
+        is(LifecycleState.WITHDRAWN));
+    assertThat("Unexpected review stage after withdraw.",
+        result.get().status().current().reviewStage(), nullValue());
+  }
+
   @Test
   void shouldClearReviewStageWhenFormTransitionsOutOfSubmitted()
       throws MethodArgumentNotValidException {
@@ -1084,7 +1109,7 @@ class LtftServiceIntegrationTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
+  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED"})
   void shouldDenyTerminalTransitionWhenFormIsAtDisabledStageInAllDisabledDbc(
       LifecycleState targetState) {
     // Form is in-flight at the disabled stage — must advance to "Review complete" first.

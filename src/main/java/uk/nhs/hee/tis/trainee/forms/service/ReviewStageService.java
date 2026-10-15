@@ -23,6 +23,7 @@ package uk.nhs.hee.tis.trainee.forms.service;
 
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNDER_REVIEW;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
 
 import jakarta.annotation.Nullable;
 import java.util.ArrayList;
@@ -50,11 +51,10 @@ import uk.nhs.hee.tis.trainee.forms.model.ReviewStageStatus;
  *       stage for the form's DBC, or null if no enabled stages are configured.
  *   <li>On leaving UNDER_REVIEW for any reason: clear the review stage to null.
  *   <li>On re-entering UNDER_REVIEW after UNSUBMITTED: restart from the first enabled stage.
- *   <li>Any review stage may UNSUBMIT a form.
+ *   <li>Any review stage may UNSUBMIT or WITHDRAW a form.
  *   <li>A disabled review stage may be advanced or exited as if it were enabled.
  *   <li>Advancing always moves to the next <em>enabled</em> stage, skipping disabled ones.
- *   <li>Only the <em>effective</em> final stage (the stage after which no further enabled stages
- *       exist) may approve, reject, or otherwise terminate a form.
+ *   <li>Only the implicit terminal stage (after all enabled stages) may approve or reject a form.
  *   <li>If no enabled stages are configured for a DBC, that DBC is treated as having no review
  *       workflow at all.
  * </ul>
@@ -66,7 +66,7 @@ public class ReviewStageService {
   /**
    * The label for the implicit terminal review stage that is appended after all configured stages.
    * This stage allows admins to record a reason for completing the final review before
-   * transitioning the form to APPROVED, REJECTED, or WITHDRAWN.
+   * transitioning the form to APPROVED or REJECTED.
    */
   static final String TERMINAL_STAGE_LABEL = "Review complete";
 
@@ -266,9 +266,9 @@ public class ReviewStageService {
    * Determine whether the form's current review stage permits a transition to the given lifecycle
    * state.
    *
-   * <p>UNSUBMITTED is always permitted from any review stage. All other lifecycle states (APPROVED,
-   * REJECTED, WITHDRAWN) require the form to be at the implicit terminal stage, i.e. past all
-   * configured stages.
+   * <p>UNSUBMITTED and WITHDRAWN are always permitted from any review stage. All other lifecycle
+   * states (APPROVED, REJECTED) require the form to be at the implicit terminal stage, i.e. past
+   * all configured stages.
    *
    * <p>If no workflow is configured for the form's DBC, or the form has no current review stage
    * (e.g. it was submitted after all stages were disabled), the transition is always permitted.
@@ -278,7 +278,7 @@ public class ReviewStageService {
    * @return {@code true} if the transition is permitted, {@code false} otherwise.
    */
   public boolean canTransitionToLifecycleState(LtftForm form, LifecycleState targetState) {
-    if (targetState == UNSUBMITTED) {
+    if (targetState == UNSUBMITTED || targetState == WITHDRAWN) {
       return true;
     }
 
@@ -299,7 +299,7 @@ public class ReviewStageService {
       return true;
     }
 
-    // Terminal transitions (APPROVED, REJECTED, WITHDRAWN) are only permitted from the implicit
+    // Terminal transitions (APPROVED, REJECTED) are only permitted from the implicit
     // terminal stage, i.e. after all configured review stages have been completed.
     boolean atTerminalStage = TERMINAL_STAGE_LABEL.equals(currentReviewStage.label());
     if (!atTerminalStage) {
