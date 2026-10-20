@@ -24,6 +24,7 @@ package uk.nhs.hee.tis.trainee.forms.config;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -36,11 +37,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 class ReviewWorkflowPropertiesTest {
 
-  private static final String DBC_1 = "1-1RSSQ6R";
-  private static final String DBC_2 = "1-1RUZUSF";
+  private static final String DBC_TV = "1-1RSSQ6R";
+  private static final String DBC_WESSEX = "1-1RUZUSF";
+  private static final String DBC_KSS = "1-1RUZV1D";
 
   private ReviewWorkflowProperties properties;
 
@@ -70,10 +75,10 @@ class ReviewWorkflowPropertiesTest {
         stage("Stage Two", false),
         stage("Stage Three", true)
     );
-    properties.setReviewWorkflows(Map.of(DBC_1, stages));
+    properties.setReviewWorkflows(Map.of(DBC_TV, stages));
 
-    assertThat("Unexpected DBC.", properties.getReviewWorkflows(), hasKey(DBC_1));
-    List<StateStage> result = properties.getReviewWorkflows().get(DBC_1);
+    assertThat("Unexpected DBC.", properties.getReviewWorkflows(), hasKey(DBC_TV));
+    List<StateStage> result = properties.getReviewWorkflows().get(DBC_TV);
     assertThat("Unexpected stage count.", result.size(), is(3));
     assertThat("Unexpected label.", result.get(0).label(), is("Stage One"));
     assertThat("Unexpected enabled.", result.get(0).enabled(), is(true));
@@ -86,18 +91,18 @@ class ReviewWorkflowPropertiesTest {
   @Test
   void shouldPopulateReviewWorkflowsForMultipleDbcs() {
     Map<String, List<StateStage>> workflows = Map.of(
-        DBC_1, List.of(stage("Triage", true), stage("Manager Review", true),
+        DBC_TV, List.of(stage("Triage", true), stage("Manager Review", true),
             stage("Dean Approval", false)),
-        DBC_2, List.of(stage("Completeness checks", true))
+        DBC_WESSEX, List.of(stage("Completeness checks", true))
     );
     properties.setReviewWorkflows(workflows);
 
-    assertThat("Unexpected DBC 1.", properties.getReviewWorkflows(), hasKey(DBC_1));
-    assertThat("Unexpected DBC 2.", properties.getReviewWorkflows(), hasKey(DBC_2));
+    assertThat("Unexpected DBC 1.", properties.getReviewWorkflows(), hasKey(DBC_TV));
+    assertThat("Unexpected DBC 2.", properties.getReviewWorkflows(), hasKey(DBC_WESSEX));
     assertThat("Unexpected stage count for DBC 1.",
-        properties.getReviewWorkflows().get(DBC_1).size(), is(3));
+        properties.getReviewWorkflows().get(DBC_TV).size(), is(3));
     assertThat("Unexpected stage count for DBC 2.",
-        properties.getReviewWorkflows().get(DBC_2).size(), is(1));
+        properties.getReviewWorkflows().get(DBC_WESSEX).size(), is(1));
   }
 
   @Test
@@ -106,16 +111,16 @@ class ReviewWorkflowPropertiesTest {
         stage("Active Stage", true),
         stage("Inactive Stage", false)
     );
-    properties.setReviewWorkflows(Map.of(DBC_1, stages));
+    properties.setReviewWorkflows(Map.of(DBC_TV, stages));
 
-    List<StateStage> result = properties.getReviewWorkflows().get(DBC_1);
+    List<StateStage> result = properties.getReviewWorkflows().get(DBC_TV);
     assertThat("Unexpected enabled for stage 0.", result.get(0).enabled(), is(true));
     assertThat("Unexpected enabled for stage 1.", result.get(1).enabled(), is(false));
   }
 
   @Test
   void shouldAllowSingleStageWorkflow() {
-    properties.setReviewWorkflows(Map.of(DBC_1, List.of(stage("Only Stage", true))));
+    properties.setReviewWorkflows(Map.of(DBC_TV, List.of(stage("Only Stage", true))));
 
     assertDoesNotThrow(() -> properties.validate());
   }
@@ -123,8 +128,8 @@ class ReviewWorkflowPropertiesTest {
   @Test
   void shouldAllowDuplicateStageLabelsBetweenDbcs() {
     Map<String, List<StateStage>> workflows = Map.of(
-        DBC_1, List.of(stage("Triage", true), stage("Manager Review", false)),
-        DBC_2, List.of(stage("Triage", true), stage("APD Approval", true))
+        DBC_TV, List.of(stage("Triage", true), stage("Manager Review", false)),
+        DBC_WESSEX, List.of(stage("Triage", true), stage("APD Approval", true))
     );
     properties.setReviewWorkflows(workflows);
 
@@ -134,7 +139,7 @@ class ReviewWorkflowPropertiesTest {
   @Test
   void shouldThrowWhenDuplicateStageLabelsWithinSameDbc() {
     properties.setReviewWorkflows(
-        Map.of(DBC_1, List.of(stage("Review", true), stage("Review", false),
+        Map.of(DBC_TV, List.of(stage("Review", true), stage("Review", false),
             stage("Final Review", true))));
 
     assertThrows(IllegalStateException.class, () -> properties.validate());
@@ -143,9 +148,9 @@ class ReviewWorkflowPropertiesTest {
   @Test
   void shouldNotThrowWhenAllStageLabelsAreValid() {
     Map<String, List<StateStage>> workflows = Map.of(
-        DBC_1, List.of(stage("Programme/Education Team Triage", true),
+        DBC_TV, List.of(stage("Programme/Education Team Triage", true),
             stage("Programme Manager Review", true), stage("Associate Dean Approval", false)),
-        DBC_2, List.of(stage("Education Team Review", true), stage("APD Approval", false))
+        DBC_WESSEX, List.of(stage("Education Team Review", true), stage("APD Approval", false))
     );
     properties.setReviewWorkflows(workflows);
 
@@ -155,7 +160,7 @@ class ReviewWorkflowPropertiesTest {
   @Test
   void shouldNotThrowWhenAllStagesAreDisabled() {
     properties.setReviewWorkflows(
-        Map.of(DBC_1, List.of(stage("Stage One", false), stage("Stage Two", false))));
+        Map.of(DBC_TV, List.of(stage("Stage One", false), stage("Stage Two", false))));
 
     assertDoesNotThrow(() -> properties.validate());
   }
@@ -165,7 +170,7 @@ class ReviewWorkflowPropertiesTest {
   @ValueSource(strings = {" ", "\t", "\n", ""})
   void shouldThrowWhenStageLabelIsBlankOrEmpty(String blankLabel) {
     StateStage bad = stage(blankLabel, true);
-    properties.setReviewWorkflows(Map.of(DBC_1, List.of(stage("Valid Stage", true), bad)));
+    properties.setReviewWorkflows(Map.of(DBC_TV, List.of(stage("Valid Stage", true), bad)));
 
     assertThrows(IllegalStateException.class, () -> properties.validate());
   }
@@ -175,7 +180,7 @@ class ReviewWorkflowPropertiesTest {
     List<StateStage> stages = new ArrayList<>();
     stages.add(stage("", false));
     stages.add(stage("Stage Two", true));
-    properties.setReviewWorkflows(Map.of(DBC_1, stages));
+    properties.setReviewWorkflows(Map.of(DBC_TV, stages));
 
     assertThrows(IllegalStateException.class, () -> properties.validate());
   }
@@ -183,11 +188,12 @@ class ReviewWorkflowPropertiesTest {
   @Test
   void shouldThrowWhenBlankLabelAppearsInSecondDbc() {
     Map<String, List<StateStage>> workflows = new HashMap<>();
-    workflows.put(DBC_1, List.of(stage("Valid Stage One", true), stage("Valid Stage Two", false)));
+    workflows.put(DBC_TV,
+        List.of(stage("Valid Stage One", true), stage("Valid Stage Two", false)));
     List<StateStage> invalidStages = new ArrayList<>();
     invalidStages.add(stage("Valid Stage", true));
     invalidStages.add(stage(" ", false));
-    workflows.put(DBC_2, invalidStages);
+    workflows.put(DBC_WESSEX, invalidStages);
     properties.setReviewWorkflows(workflows);
 
     assertThrows(IllegalStateException.class, () -> properties.validate());
@@ -196,8 +202,34 @@ class ReviewWorkflowPropertiesTest {
   @Test
   void shouldThrowWhenDisabledStageLabelIsBlank() {
     StateStage bad = stage("", false);
-    properties.setReviewWorkflows(Map.of(DBC_1, List.of(stage("Valid Stage", true), bad)));
+    properties.setReviewWorkflows(Map.of(DBC_TV, List.of(stage("Valid Stage", true), bad)));
 
     assertThrows(IllegalStateException.class, () -> properties.validate());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"default", "preprod"})
+  void shouldNotConfigureKentSurreySussexReviewWorkflow(String profile) {
+    ApplicationContextRunner runner = new ApplicationContextRunner()
+        .withInitializer(new ConfigDataApplicationContextInitializer())
+        .withUserConfiguration(PropertiesConfiguration.class)
+        .withPropertyValues("spring.profiles.active=" + profile);
+
+    runner.run(context -> {
+      Map<String, List<StateStage>> workflows =
+          context.getBean(ReviewWorkflowProperties.class).getReviewWorkflows();
+      assertThat("Unexpected Thames Valley workflow.", workflows, hasKey(DBC_TV));
+      assertThat("Unexpected Wessex workflow.", workflows, hasKey(DBC_WESSEX));
+      assertThat("Unexpected Kent, Surrey and Sussex workflow.", workflows,
+          not(hasKey(DBC_KSS)));
+    });
+  }
+
+  /**
+   * Minimal configuration to bind and validate {@link ReviewWorkflowProperties}.
+   */
+  @EnableConfigurationProperties(ReviewWorkflowProperties.class)
+  static class PropertiesConfiguration {
+
   }
 }

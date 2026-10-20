@@ -17,13 +17,6 @@ application:
       notification-event: ${NOTIFICATION_EVENT_QUEUE:}
       profile-move: ${PROFILE_MOVE_QUEUE:}
   review-workflows:
-    "1-1RUZV1D": # Kent Surrey, Sussex
-      - label: "Application Check"
-        enabled: true
-      - label: "Eligibility Review"
-        enabled: true
-      - label: "Programme Team Review"
-        enabled: true
     "1-1RSSQ6R": # Thames Valley
       - label: "Application Check"
         enabled: true
