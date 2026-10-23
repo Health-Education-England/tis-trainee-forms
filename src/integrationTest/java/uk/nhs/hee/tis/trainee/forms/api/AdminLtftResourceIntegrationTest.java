@@ -694,6 +694,9 @@ class AdminLtftResourceIntegrationTest {
         .state(SUBMITTED)
         .assignedAdmin(
             Person.builder().name("Ad Min").email("ad.min@example.com").role("ADMIN").build())
+        .assignedReviewer(
+            Person.builder().name("Re Viewer").email("re.viewer@example.com").role("REVIEWER")
+                .build())
         .timestamp(Instant.now())
         .build();
     form.setStatus(Status.builder()
@@ -733,6 +736,9 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.content[0].assignedAdmin.name", is("Ad Min")))
         .andExpect(jsonPath("$.content[0].assignedAdmin.email", is("ad.min@example.com")))
         .andExpect(jsonPath("$.content[0].assignedAdmin.role").doesNotExist())
+        .andExpect(jsonPath("$.content[0].assignedReviewer.name", is("Re Viewer")))
+        .andExpect(jsonPath("$.content[0].assignedReviewer.email", is("re.viewer@example.com")))
+        .andExpect(jsonPath("$.content[0].assignedReviewer.role").doesNotExist())
         .andExpect(jsonPath("$.page", aMapWithSize(4)))
         .andExpect(jsonPath("$.page.size", is(2000)))
         .andExpect(jsonPath("$.page.number", is(0)))
@@ -1120,6 +1126,9 @@ class AdminLtftResourceIntegrationTest {
         .state(SUBMITTED)
         .assignedAdmin(
             Person.builder().name("Ad Min").email("ad.min@example.com").role("ADMIN").build())
+        .assignedReviewer(
+            Person.builder().name("Re Viewer").email("re.viewer@example.com").role("REVIEWER")
+                .build())
         .timestamp(Instant.now())
         .build();
     form.setStatus(Status.builder()
@@ -1152,7 +1161,10 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.current.state", is(SUBMITTED.name())))
         .andExpect(jsonPath("$.status.current.assignedAdmin.name", is("Ad Min")))
         .andExpect(jsonPath("$.status.current.assignedAdmin.email", is("ad.min@example.com")))
-        .andExpect(jsonPath("$.status.current.assignedAdmin.role", is("ADMIN")));
+        .andExpect(jsonPath("$.status.current.assignedAdmin.role", is("ADMIN")))
+        .andExpect(jsonPath("$.status.current.assignedReviewer.name", is("Re Viewer")))
+        .andExpect(jsonPath("$.status.current.assignedReviewer.email", is("re.viewer@example.com")))
+        .andExpect(jsonPath("$.status.current.assignedReviewer.role", is("REVIEWER")));
   }
 
   @Test

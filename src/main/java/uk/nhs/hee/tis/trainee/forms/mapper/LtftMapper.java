@@ -95,6 +95,9 @@ public abstract class LtftMapper implements FormMapper<LtftForm, LtftFormDto>,
   @Mapping(target = "assignedAdmin.name", source = "status.current.assignedAdmin.name")
   @Mapping(target = "assignedAdmin.email", source = "status.current.assignedAdmin.email")
   @Mapping(target = "assignedAdmin.role", ignore = true)
+  @Mapping(target = "assignedReviewer.name", source = "status.current.assignedReviewer.name")
+  @Mapping(target = "assignedReviewer.email", source = "status.current.assignedReviewer.email")
+  @Mapping(target = "assignedReviewer.role", ignore = true)
   public abstract LtftAdminSummaryDto toAdminSummaryDto(LtftForm entity);
 
   /**

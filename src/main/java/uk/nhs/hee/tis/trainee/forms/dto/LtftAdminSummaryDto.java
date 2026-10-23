@@ -44,6 +44,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
  * @param status            The current status of the LTFT application.
  * @param reviewStage       The current review stage label, or null if no review stage is active.
  * @param assignedAdmin     The admin assigned to process the LTFT application.
+ * @param assignedReviewer  The reviewer assigned to review the LTFT application.
  */
 @Builder
 public record LtftAdminSummaryDto(
@@ -61,7 +62,8 @@ public record LtftAdminSummaryDto(
     LtftAdminNotificationDto tpd,
     LifecycleState status,
     String reviewStage,
-    PersonDto assignedAdmin) {
+    PersonDto assignedAdmin,
+    PersonDto assignedReviewer) {
 
   /**
    * Trainee personal details for the admin view.
