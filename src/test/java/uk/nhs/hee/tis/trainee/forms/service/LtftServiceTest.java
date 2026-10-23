@@ -1564,7 +1564,7 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldGetAdminLtftAssignedAdminDetailWhenFormFound() {
+  void shouldGetAdminLtftAssigneesDetailWhenFormFound() {
     LtftForm entity = new LtftForm();
     entity.setId(ID);
     entity.setAssignedAdmin(
@@ -1572,6 +1572,14 @@ class LtftServiceTest {
             .name(ADMIN_NAME)
             .email(ADMIN_EMAIL)
             .role("ADMIN")
+            .build(),
+        Person.builder().build()
+    );
+    entity.setAssignedReviewer(
+        Person.builder()
+            .name("Re Viewer")
+            .email("re.viewer@example.com")
+            .role("REVIEWER")
             .build(),
         Person.builder().build()
     );
@@ -1586,16 +1594,21 @@ class LtftServiceTest {
 
     LtftFormDto dto = optionalDto.get();
     RedactedPersonDto assignedAdmin = dto.status().current().assignedAdmin();
+    RedactedPersonDto assignedReviewer = dto.status().current().assignedReviewer();
     assertThat("Unexpected admin name.", assignedAdmin.name(), is(ADMIN_NAME));
     assertThat("Unexpected admin email.", assignedAdmin.email(), is(ADMIN_EMAIL));
     assertThat("Unexpected admin role.", assignedAdmin.role(), is("ADMIN"));
+    assertThat("Unexpected reviewer name.", assignedReviewer.name(), is("Re Viewer"));
+    assertThat("Unexpected reviewer email.", assignedReviewer.email(), is("re.viewer@example.com"));
+    assertThat("Unexpected reviewer role.", assignedReviewer.role(), is("REVIEWER"));
   }
 
   @Test
-  void shouldGetAdminLtftAssignedAdminDetailWithDefaultValuesWhenFormFoundWithNullValues() {
+  void shouldGetAdminLtftAssigneesDetailWithDefaultValuesWhenFormFoundWithNullValues() {
     LtftForm entity = new LtftForm();
     entity.setId(ID);
     entity.setAssignedAdmin(Person.builder().build(), null);
+    entity.setAssignedReviewer(Person.builder().build(), null);
 
     when(repository
         .findByIdAndStatus_Current_StateNotInAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
@@ -1607,9 +1620,13 @@ class LtftServiceTest {
 
     LtftFormDto dto = optionalDto.get();
     RedactedPersonDto assignedAdmin = dto.status().current().assignedAdmin();
+    RedactedPersonDto assignedReviewer = dto.status().current().assignedReviewer();
     assertThat("Unexpected admin name.", assignedAdmin.name(), nullValue());
     assertThat("Unexpected admin email.", assignedAdmin.email(), nullValue());
     assertThat("Unexpected admin role.", assignedAdmin.role(), nullValue());
+    assertThat("Unexpected reviewer name.", assignedReviewer.name(), nullValue());
+    assertThat("Unexpected reviewer email.", assignedReviewer.email(), nullValue());
+    assertThat("Unexpected reviewer role.", assignedReviewer.role(), nullValue());
   }
 
   @Test
