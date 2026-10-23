@@ -22,9 +22,11 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.sameInstance;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -41,6 +43,7 @@ import io.awspring.cloud.sns.core.SnsTemplate;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Locale;
@@ -56,6 +59,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.core.io.Resource;
 import org.thymeleaf.TemplateEngine;
@@ -722,5 +726,39 @@ class PdfServiceTest {
     Resource resource = service.generateFormRPartB(request, false);
 
     assertThat("Unexpected content.", resource.getContentAsByteArray(), is(contentBytes));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"Łukasz", "Józef Wiśniewski", "Erdős", "Ağaoğlu Şahin", "Ćosić Čapek",
+      "Dvořák Kněžek", "Țepeș Ștefan", "Zoë Muñoz Óscar"})
+  void shouldRenderLatinExtendedCharactersUsingFallbackFont(String name) throws IOException {
+    when(templateEngine.process(any(TemplateSpec.class), any())).thenReturn(
+        "<html><body style=\"font-family: 'Frutiger W01', Arial, sans-serif;\">" + name
+            + "</body></html>");
+
+    byte[] bytes = service.generatePdf(new FormRPartADto());
+
+    PDDocument pdf = Loader.loadPDF(bytes);
+    String pdfText = new PDFTextStripper().getText(pdf);
+    assertThat("Unexpected content.", pdfText, is(name + System.lineSeparator()));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"/fonts/noto/NotoSans-Regular.ttf", "/fonts/noto/NotoSans-Bold.ttf"})
+  void shouldLoadFontWhenFoundOnClasspath(String path) throws IOException {
+    try (InputStream is = PdfService.loadFont(path)) {
+      assertThat("Unexpected font stream.", is, notNullValue());
+    }
+  }
+
+  @Test
+  void shouldThrowExceptionWhenFontNotFoundOnClasspath() {
+    String path = "/fonts/missing.ttf";
+
+    IllegalStateException exception = assertThrows(IllegalStateException.class,
+        () -> PdfService.loadFont(path));
+
+    assertThat("Unexpected exception message.", exception.getMessage(),
+        is("Font not found on classpath: " + path));
   }
 }

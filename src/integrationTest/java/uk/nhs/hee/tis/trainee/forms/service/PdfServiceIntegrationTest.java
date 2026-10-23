@@ -22,7 +22,9 @@
 package uk.nhs.hee.tis.trainee.forms.service;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 
 import com.openhtmltopdf.pdfboxout.visualtester.PdfVisualTester;
 import com.openhtmltopdf.pdfboxout.visualtester.PdfVisualTester.PdfCompareResult;
@@ -40,8 +42,13 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.imageio.ImageIO;
+import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.io.IOUtils;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -478,6 +485,76 @@ class PdfServiceIntegrationTest {
     assertThat("Unexpected PDF comparison problem count.", problems, is(0));
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"admin", "trainee"})
+  void shouldMatchLtftPdfWithExtendedCharactersWhenNamesNotSupportedByPrimaryFont(
+      String template) throws IOException {
+    LtftFormDto dto = LtftFormDto.builder()
+        .formRef("ltft_47165_040")
+        .created(LocalDate.of(2021, 2, 3).atTime(4, 5)
+            .atZone(zoneId).toInstant())
+        .lastModified(LocalDate.of(2026, 7, 8).atTime(9, 10)
+            .atZone(zoneId).toInstant())
+        .status(StatusDto.builder()
+            .current(StatusInfoDto.builder()
+                .state(LifecycleState.SUBMITTED)
+                .build())
+            .build())
+        .personalDetails(PersonalDetailsDto.builder()
+            .title("Dr")
+            // Latin Extended characters not in the NHS Frutiger fonts, rendered using the fallback
+            // font. Polish (Ł), Romanian (Ș comma-below), Turkish (Ş cedilla, ğ), Latin-1 (ë).
+            .forenames("Łukasz Ștefan Şahin Ağaoğlu Zoë")
+            // Polish (ś), Czech (ř, ě, ž), Hungarian (ő), Croatian (ć), Romanian (ț, ș).
+            .surname("Wiśniewski-Dvořák-Erdős-Ćosić-Țepeș-Kněžek")
+            .email("lukasz.wisniewski@example.com")
+            .gmcNumber("0000000")
+            .skilledWorkerVisaHolder(false)
+            .build())
+        .programmeMembership(ProgrammeMembershipDto.builder()
+            .name("General Practice")
+            .startDate(LocalDate.of(2024, 3, 1))
+            .endDate(LocalDate.of(2027, 3, 1))
+            .wte(0.8)
+            .build())
+        .change(CctChangeDto.builder()
+            .wte(0.6)
+            .startDate(LocalDate.of(2026, 3, 1))
+            .endDate(LocalDate.of(2027, 3, 1))
+            .build())
+        .reasons(ReasonsDto.builder()
+            .selected(List.of("Caring Responsibilities"))
+            .build())
+        .discussions(DiscussionsDto.builder()
+            .tpdName("Józef Kowalczyk")
+            .tpdEmail("tpd@example.com")
+            .other(List.of(
+                PersonDto.builder()
+                    .name("Ioana Ștefănescu")
+                    .email("ed.super@example.com")
+                    .role("Educational Supervisor")
+                    .build()
+            ))
+            .build())
+        .declarations(DeclarationsDto.builder()
+            .informationIsCorrect(true)
+            .discussedWithTpd(true)
+            .notGuaranteed(true)
+            .build())
+        .build();
+
+    byte[] generatedBytes = service.generatePdf(dto, template);
+
+    try (PDDocument document = Loader.loadPDF(generatedBytes)) {
+      String pdfText = new PDFTextStripper().getText(document);
+      assertThat("Unexpected replacement character.", pdfText, not(containsString("#")));
+    }
+
+    int problems = compareGeneratedPdf("ltft-" + template + "-extended-characters",
+        generatedBytes);
+    assertThat("Unexpected PDF comparison problem count.", problems, is(0));
+  }
+
   @Test
   void shouldMatchEmptyFormRPartAPdfWhenDtoEmpty() throws IOException {
     FormRPartADto dto = new FormRPartADto();
@@ -560,6 +637,31 @@ class PdfServiceIntegrationTest {
     byte[] pdf = service.generatePdf(dto);
 
     int problems = compareGeneratedPdf("formr-parta", pdf);
+    assertThat("Unexpected PDF comparison problem count.", problems, is(0));
+  }
+
+  @Test
+  void shouldMatchFormRPartAPdfWithExtendedCharactersWhenNamesNotSupportedByPrimaryFont()
+      throws IOException {
+    FormrPartaContentDto content = new FormrPartaContentDto();
+    // Latin Extended characters not in the NHS Frutiger fonts, rendered using the fallback font.
+    // Polish (Ł), Romanian (Ș comma-below), Turkish (Ş cedilla, ğ), Latin-1 (ë, ó) for comparison.
+    content.setForename("Łukasz Ștefan Şahin Ağaoğlu Zoë");
+    // Polish (ś), Czech (ř, ě, ž), Hungarian (ő), Croatian (ć), Romanian (ț, ș comma-below).
+    content.setSurname("Wiśniewski-Dvořák-Erdős-Ćosić-Țepeș-Kněžek");
+    content.setGmcNumber("0000000");
+
+    FormRPartADto dto = new FormRPartADto();
+    dto.setContent(content);
+
+    byte[] pdf = service.generatePdf(dto);
+
+    try (PDDocument document = Loader.loadPDF(pdf)) {
+      String pdfText = new PDFTextStripper().getText(document);
+      assertThat("Unexpected replacement character.", pdfText, not(containsString("#")));
+    }
+
+    int problems = compareGeneratedPdf("formr-parta-extended-characters", pdf);
     assertThat("Unexpected PDF comparison problem count.", problems, is(0));
   }
 
