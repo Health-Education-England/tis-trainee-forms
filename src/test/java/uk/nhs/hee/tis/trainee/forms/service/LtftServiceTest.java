@@ -55,6 +55,7 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMIT
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNDER_REVIEW;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
+import static uk.nhs.hee.tis.trainee.forms.model.ReviewOutcome.Outcome.RECOMMEND_REJECTION;
 import static uk.nhs.hee.tis.trainee.forms.service.LtftService.FORM_ATTRIBUTE_FORM_STATUS;
 import static uk.nhs.hee.tis.trainee.forms.service.LtftService.FORM_ATTRIBUTE_TPD_STATUS;
 
@@ -119,6 +120,8 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.ReasonsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftReviewOutcomeDetailsDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftReviewOutcomeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
@@ -135,8 +138,10 @@ import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
+import uk.nhs.hee.tis.trainee.forms.model.LtftApprovalType;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
+import uk.nhs.hee.tis.trainee.forms.model.ReviewOutcome.Outcome;
 import uk.nhs.hee.tis.trainee.forms.model.ReviewStageStatus;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChangeType;
@@ -2371,6 +2376,62 @@ class LtftServiceTest {
     assertThat("Unexpected reviewer role.", assignedReviewer.role(), is("REVIEWER"));
 
     verify(repository, never()).save(any());
+  }
+
+  @Test
+  void shouldReturnEmptyRecordingReviewOutcomeWhenFormNotFound() {
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.empty());
+
+    LtftReviewOutcomeDto outcome = LtftReviewOutcomeDto.builder()
+        .outcome(RECOMMEND_REJECTION)
+        .outcomeComments("Does not meet the criteria")
+        .build();
+
+    Optional<LtftFormDto> optionalForm = service.recordReviewOutcome(ID, outcome);
+
+    assertThat("Unexpected form presence.", optionalForm.isPresent(), is(false));
+    verify(repository, never()).save(any());
+  }
+
+  @Test
+  void shouldRecordReviewOutcomeWhenRecommendingApproval() {
+    LtftForm form = new LtftForm();
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    LtftReviewOutcomeDetailsDto data = new LtftReviewOutcomeDetailsDto(LtftApprovalType.EXCEPTIONAL,
+        LocalDate.of(2027, 11, 2));
+    LtftReviewOutcomeDto outcome = LtftReviewOutcomeDto.builder()
+        .outcome(Outcome.RECOMMEND_APPROVAL).outcomeDetails(data).outcomeComments("Comment")
+        .build();
+
+    Optional<LtftFormDto> optionalForm = service.recordReviewOutcome(ID, outcome);
+
+    assertThat("Unexpected form presence.", optionalForm.isPresent(), is(true));
+    assertThat("Unexpected review outcome.", optionalForm.get().status().current().reviewOutcome(),
+        is(outcome));
+    assertThat("Unexpected history size.", form.getStatus().history().size(), is(1));
+  }
+
+  @Test
+  void shouldRecordReviewOutcomeWhenRecommendingRejectionWithoutData() {
+    LtftForm form = new LtftForm();
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    LtftReviewOutcomeDto outcome = LtftReviewOutcomeDto.builder()
+        .outcome(RECOMMEND_REJECTION)
+        .outcomeComments("Does not meet the criteria")
+        .build();
+
+    Optional<LtftFormDto> optionalForm = service.recordReviewOutcome(ID, outcome);
+
+    assertThat("Unexpected form presence.", optionalForm.isPresent(), is(true));
+    assertThat("Unexpected review outcome.", optionalForm.get().status().current().reviewOutcome(),
+        is(outcome));
   }
 
   @Test
@@ -5176,6 +5237,59 @@ class LtftServiceTest {
     PersonDto reviewerDto = PersonDto.builder().name("Re Viewer").email("re.viewer@example.com")
         .role("REVIEWER").build();
     service.assignReviewer(ID, reviewerDto);
+
+    verifyNoInteractions(eventBroadcastService);
+  }
+
+  @Test
+  void shouldPublishNotificationWhenReviewOutcomeRecorded() {
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(SUBMITTED);
+    form.setFormRef("LTFT_123");
+
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+    when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    service.recordReviewOutcome(ID, LtftReviewOutcomeDto.builder()
+        .outcome(RECOMMEND_REJECTION)
+        .outcomeComments("Does not meet the criteria")
+        .build());
+
+    ArgumentCaptor<LtftFormDto> ltftFormCaptor = ArgumentCaptor.captor();
+    ArgumentCaptor<String> snsTopicCaptor = ArgumentCaptor.captor();
+    verify(eventBroadcastService).publishLtftFormUpdateEvent(ltftFormCaptor.capture(),
+        any(), snsTopicCaptor.capture());
+
+    LtftFormDto capturedForm = ltftFormCaptor.getValue();
+
+    assertThat("Unexpected form ID.", capturedForm.id(), is(ID));
+    assertThat("Unexpected trainee ID.", capturedForm.traineeTisId(), is(TRAINEE_ID));
+    assertThat("Unexpected form reference.", capturedForm.formRef(), is("LTFT_123"));
+    assertThat("Unexpected lifecycle state.", capturedForm.status().current().state(),
+        is(SUBMITTED));
+
+    LtftReviewOutcomeDto payloadReviewOutcome = capturedForm.status().current().reviewOutcome();
+    assertThat("Unexpected review outcome.", payloadReviewOutcome.outcome(),
+        is(RECOMMEND_REJECTION));
+    assertThat("Unexpected review outcome comments.", payloadReviewOutcome.outcomeComments(),
+        is("Does not meet the criteria"));
+
+    assertThat("Unexpected group ID.", snsTopicCaptor.getValue(), is(LTFT_ASSIGNMENT_UPDATE_TOPIC));
+    verifyNoMoreInteractions(eventBroadcastService);
+  }
+
+  @Test
+  void shouldNotPublishNotificationWhenRecordReviewOutcomeFails() {
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(any(), any()))
+        .thenReturn(Optional.empty());
+
+    service.recordReviewOutcome(ID, LtftReviewOutcomeDto.builder()
+        .outcome(RECOMMEND_REJECTION)
+        .outcomeComments("Does not meet the criteria")
+        .build());
 
     verifyNoInteractions(eventBroadcastService);
   }

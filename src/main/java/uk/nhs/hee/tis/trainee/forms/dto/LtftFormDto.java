@@ -214,6 +214,7 @@ public record LtftFormDto(
      * @param timestamp        The timestamp of the status change.
      * @param revision         The revision number associated with this status change.
      * @param reviewStage      The review stage associated with this status change, if any.
+     * @param reviewOutcome    The review outcome recorded by the reviewer, if any.
      */
     @Builder
     public record StatusInfoDto(
@@ -227,7 +228,9 @@ public record LtftFormDto(
         RedactedPersonDto modifiedBy,
         Instant timestamp,
         Integer revision,
-        ReviewStageStatus reviewStage
+        ReviewStageStatus reviewStage,
+        @JsonView(Admin.Read.class)
+        LtftReviewOutcomeDto reviewOutcome
     ) {
 
     }

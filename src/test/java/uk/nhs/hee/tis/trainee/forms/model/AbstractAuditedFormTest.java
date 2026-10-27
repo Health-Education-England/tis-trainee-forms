@@ -34,6 +34,7 @@ import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROVED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.model.ReviewOutcome.Outcome.RECOMMEND_APPROVAL;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -734,6 +735,67 @@ class AbstractAuditedFormTest {
         is(admin));
     assertThat("Unexpected assigned reviewer.", form.getStatus().current().assignedReviewer(),
         is(reviewer));
+  }
+
+  @Test
+  void shouldSetReviewOutcomeAndAddItToHistory() {
+    form.setLifecycleState(SUBMITTED);
+    ReviewOutcome reviewOutcome = ReviewOutcome.builder()
+        .outcome(RECOMMEND_APPROVAL)
+        .outcomeComments("Reviewed")
+        .build();
+    Person modifiedBy = Person.builder()
+        .name("Ad Min")
+        .email("admin@example.com")
+        .role("ADMIN")
+        .build();
+
+    form.setReviewOutcome(reviewOutcome, modifiedBy);
+
+    assertThat("Unexpected lifecycle state.", form.getLifecycleState(), is(SUBMITTED));
+    assertThat("Unexpected current review outcome.",
+        form.getStatus().current().reviewOutcome(), is(reviewOutcome));
+    assertThat("Unexpected modified by.", form.getStatus().current().modifiedBy(), is(modifiedBy));
+    assertThat("Unexpected history count.", form.getStatus().history(), hasSize(2));
+    assertThat("Unexpected previous review outcome.",
+        form.getStatus().history().get(0).reviewOutcome(), nullValue());
+    assertThat("Unexpected review outcome in history.",
+        form.getStatus().history().get(1).reviewOutcome(), is(reviewOutcome));
+  }
+
+  @Test
+  void shouldRetainReviewOutcomeWhenUpdatingStatus() {
+    ReviewOutcome reviewOutcome = ReviewOutcome.builder()
+        .outcome(RECOMMEND_APPROVAL)
+        .outcomeComments("Reviewed")
+        .build();
+    StatusInfo submittedStatus = StatusInfo.builder()
+        .state(SUBMITTED)
+        .reviewOutcome(reviewOutcome)
+        .build();
+    form.setStatus(Status.builder()
+        .current(submittedStatus)
+        .history(List.of(submittedStatus))
+        .build());
+
+    form.setLifecycleState(APPROVED);
+    assertThat("Unexpected review outcome after lifecycle update.",
+        form.getStatus().current().reviewOutcome(), is(reviewOutcome));
+
+    form.setAssignedAdmin(Person.builder().name("Ad Min").build(), null);
+    assertThat("Unexpected review outcome after admin assignment.",
+        form.getStatus().current().reviewOutcome(), is(reviewOutcome));
+
+    form.setAssignedReviewer(Person.builder().name("Re Viewer").build(), null);
+    assertThat("Unexpected review outcome after reviewer assignment.",
+        form.getStatus().current().reviewOutcome(), is(reviewOutcome));
+
+    form.setReviewStage(new ReviewStageStatus(0, "Triage"));
+    assertThat("Unexpected review outcome after review stage update.",
+        form.getStatus().current().reviewOutcome(), is(reviewOutcome));
+    assertThat("Unexpected review outcome in status history.",
+        form.getStatus().history().stream().map(StatusInfo::reviewOutcome).toList(),
+        is(List.of(reviewOutcome, reviewOutcome, reviewOutcome, reviewOutcome, reviewOutcome)));
   }
 
   @Test

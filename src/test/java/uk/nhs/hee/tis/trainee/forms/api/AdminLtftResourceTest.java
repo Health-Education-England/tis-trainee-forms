@@ -66,8 +66,10 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormPatchDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftReviewOutcomeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.ReviewWorkflowDto;
+import uk.nhs.hee.tis.trainee.forms.model.ReviewOutcome.Outcome;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
@@ -556,6 +558,38 @@ class AdminLtftResourceTest {
 
     assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
     assertThat("Unexpected response body.", response.getBody(), sameInstance(dto));
+  }
+
+  @Test
+  void shouldReturnReviewedFormWhenRecordingReviewOutcome() {
+    UUID id = UUID.randomUUID();
+    LtftReviewOutcomeDto reviewOutcome = LtftReviewOutcomeDto.builder()
+        .outcome(Outcome.RECOMMEND_REJECTION)
+        .outcomeComments("Does not meet the criteria")
+        .build();
+    LtftFormDto dto = LtftFormDto.builder().id(id).build();
+    when(service.recordReviewOutcome(id, reviewOutcome)).thenReturn(Optional.of(dto));
+
+    ResponseEntity<LtftFormDto> response = controller.reviewLtft(id, reviewOutcome);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(OK));
+    assertThat("Unexpected response body.", response.getBody(), sameInstance(dto));
+    verify(service).recordReviewOutcome(id, reviewOutcome);
+  }
+
+  @Test
+  void shouldReturnNotFoundWhenReviewOutcomeFormNotFound() {
+    UUID id = UUID.randomUUID();
+    LtftReviewOutcomeDto reviewOutcome = LtftReviewOutcomeDto.builder()
+        .outcome(Outcome.RECOMMEND_REJECTION)
+        .outcomeComments("Does not meet the criteria")
+        .build();
+    when(service.recordReviewOutcome(id, reviewOutcome)).thenReturn(Optional.empty());
+
+    ResponseEntity<LtftFormDto> response = controller.reviewLtft(id, reviewOutcome);
+
+    assertThat("Unexpected response code.", response.getStatusCode(), is(NOT_FOUND));
+    assertThat("Unexpected response body.", response.getBody(), nullValue());
   }
 
   @Test

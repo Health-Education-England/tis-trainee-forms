@@ -54,6 +54,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -63,6 +64,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormPatchDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftReviewOutcomeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.ReviewWorkflowDto;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
@@ -240,6 +242,19 @@ public class AdminLtftResource {
       @RequestBody PersonDto reviewer) {
     Optional<LtftFormDto> form = service.assignReviewer(id, reviewer);
     return ResponseEntity.of(form);
+  }
+
+  /**
+   * Record the review outcome of the form with the given ID.
+   *
+   * @param id            The ID of the form.
+   * @param reviewOutcome The review outcome to record.
+   * @return The updated form, or 404 if not found.
+   */
+  @PostMapping("/{id}/review")
+  ResponseEntity<LtftFormDto> reviewLtft(@PathVariable UUID id,
+      @Valid @RequestBody LtftReviewOutcomeDto reviewOutcome) {
+    return ResponseEntity.of(service.recordReviewOutcome(id, reviewOutcome));
   }
 
   /**

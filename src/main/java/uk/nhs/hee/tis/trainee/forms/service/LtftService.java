@@ -75,6 +75,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormPatchResultDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftReviewOutcomeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.ReviewWorkflowDto;
@@ -671,6 +672,37 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
           formId, filterTypeLabel(), filterScopeValue());
       return Optional.empty();
     }
+  }
+
+  /**
+   * Record the review outcome of the LTFT application.
+   *
+   * @param formId        The ID of the LTFT application.
+   * @param reviewOutcome The review outcome to record.
+   * @return The updated LTFT, empty if the form did not exist or did not belong to the admin's
+   * local office or programme.
+   */
+  public Optional<LtftFormDto> recordReviewOutcome(UUID formId, LtftReviewOutcomeDto reviewOutcome) {
+    log.info("Recording review outcome for LTFT form {}", formId);
+    Optional<LtftForm> form = findFormForAdmin(formId);
+
+    if (form.isEmpty()) {
+      log.warn("Could not record review outcome for form {} since no form exists with this ID "
+          + "for {} [{}]", formId, filterTypeLabel(), filterScopeValue());
+      return Optional.empty();
+    }
+
+    LtftForm ltftForm = form.get();
+    Person modifiedBy = Person.builder()
+        .name(adminIdentity.getName())
+        .email(adminIdentity.getEmail())
+        .role(adminIdentity.getRole())
+        .build();
+
+    ltftForm.setReviewOutcome(mapper.toReviewOutcome(reviewOutcome), modifiedBy);
+    LtftForm updatedForm = ltftFormRepository.save(ltftForm);
+    publishUpdateNotification(updatedForm, null, ltftAssignmentUpdateTopic);
+    return Optional.of(mapper.toDto(updatedForm));
   }
 
   /**

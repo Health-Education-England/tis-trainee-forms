@@ -39,6 +39,7 @@ import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.http.MediaType.APPLICATION_PDF;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -158,6 +159,7 @@ class AdminLtftResourceIntegrationTest {
       GET | /api/admin/ltft/123/review-workflow
       PUT | /api/admin/ltft/123/review-stage/advance
       PUT | /api/admin/ltft/123/start-review
+      POST | /api/admin/ltft/123/review
       """)
   void shouldReturnForbiddenWhenNoToken(HttpMethod method, URI uri) throws Exception {
     mockMvc.perform(request(method, uri))
@@ -185,6 +187,7 @@ class AdminLtftResourceIntegrationTest {
       GET   | /api/admin/ltft/123/review-workflow
       PUT   | /api/admin/ltft/123/review-stage/advance
       PUT   | /api/admin/ltft/123/start-review
+      POST  | /api/admin/ltft/123/review
       """)
   void shouldReturnForbiddenWhenEmptyToken(HttpMethod method, URI uri) throws Exception {
     Jwt token = TestJwtUtil.createToken("{}");
@@ -206,6 +209,7 @@ class AdminLtftResourceIntegrationTest {
       GET   | /api/admin/ltft/123/review-workflow
       PUT   | /api/admin/ltft/123/review-stage/advance
       PUT   | /api/admin/ltft/123/start-review
+      POST  | /api/admin/ltft/123/review
       """)
   void shouldReturnForbiddenWhenNoGroupsInToken(HttpMethod method, URI uri) throws Exception {
     mockMvc.perform(request(method, uri)
@@ -224,6 +228,7 @@ class AdminLtftResourceIntegrationTest {
       GET   | /api/admin/ltft/123/review-workflow
       PUT   | /api/admin/ltft/123/review-stage/advance
       PUT   | /api/admin/ltft/123/start-review
+      POST  | /api/admin/ltft/123/review
       """)
   void shouldReturnBadRequestWhenInvalidFormId(HttpMethod method, URI uri) throws Exception {
     mockMvc.perform(request(method, uri)
@@ -2266,6 +2271,35 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$").isArray())
         .andExpect(jsonPath("$", hasSize(2)))
         .andExpect(jsonPath("$", containsInAnyOrder("Single Review", "Review complete")));
+  }
+
+  @Test
+  void shouldRecordReviewOutcome() throws Exception {
+    LtftForm form = template.insert(createLtftForm(SUBMITTED, DBC_1, null));
+
+    mockMvc.perform(post("/api/admin/ltft/{id}/review", form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .contentType(APPLICATION_JSON)
+            .content("""
+              {
+                "outcome": "RECOMMEND_APPROVAL",
+                "outcomeDetails": {
+                  "approvalType": "EXCEPTIONAL",
+                  "approvedDate": "2027-11-02"
+                },
+                "outcomeComments": "Meets the approval criteria"
+              }
+              """))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.status.current.reviewOutcome.outcome",
+            is("RECOMMEND_APPROVAL")))
+        .andExpect(jsonPath("$.status.current.reviewOutcome.outcomeDetails.approvalType",
+            is("EXCEPTIONAL")))
+        .andExpect(jsonPath("$.status.current.reviewOutcome.outcomeDetails.approvedDate",
+            is("2027-11-02")))
+        .andExpect(jsonPath("$.status.current.reviewOutcome.outcomeComments",
+            is("Meets the approval criteria")));
   }
 
   /**
