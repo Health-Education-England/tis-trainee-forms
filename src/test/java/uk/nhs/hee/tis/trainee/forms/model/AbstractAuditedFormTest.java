@@ -34,11 +34,13 @@ import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROVED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNDER_REVIEW;
 import static uk.nhs.hee.tis.trainee.forms.model.ReviewOutcome.Outcome.RECOMMEND_APPROVAL;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,6 +49,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.ResponsibleRole;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
@@ -898,6 +901,90 @@ class AbstractAuditedFormTest {
     assertThat("Unexpected submitted timestamp.", form.getStatus().submitted(), is(submittedTime));
   }
 
+  @ParameterizedTest
+  @EnumSource(LifecycleState.class)
+  @NullSource
+  void shouldResolveNullResponsibleRoleByDefault(LifecycleState state) {
+    StatusInfo statusInfo = StatusInfo.builder().state(state).build();
+
+    assertThat("Unexpected responsible role.", form.resolveResponsibleRole(statusInfo),
+        nullValue());
+  }
+
+  @Test
+  void shouldResolveResponsibleRoleFromNewStatusEntryWhenSettingLifecycleState() {
+    RoleResolvingForm roleForm = new RoleResolvingForm();
+    Person modifiedBy = Person.builder().name("Ad Min").build();
+
+    roleForm.setLifecycleState(SUBMITTED, null, modifiedBy, 2);
+
+    StatusInfo resolved = roleForm.resolvedFrom.get(0);
+    assertThat("Unexpected resolved state.", resolved.state(), is(SUBMITTED));
+    assertThat("Unexpected resolved modifiedBy.", resolved.modifiedBy(), is(modifiedBy));
+    assertThat("Unexpected resolved revision.", resolved.revision(), is(2));
+    assertThat("Unexpected current responsible role.",
+        roleForm.getStatus().current().responsibleRole(), is(ResponsibleRole.ADMIN));
+  }
+
+  @Test
+  void shouldResolveResponsibleRoleFromNewStatusEntryWhenSettingAssignees() {
+    RoleResolvingForm roleForm = new RoleResolvingForm();
+    roleForm.setLifecycleState(SUBMITTED);
+    Person admin = Person.builder().name("Ad Min").build();
+    Person reviewer = Person.builder().name("Re Viewer").build();
+
+    roleForm.setAssignedAdmin(admin, admin);
+    roleForm.setAssignedReviewer(reviewer, admin);
+
+    assertThat("Unexpected resolution count.", roleForm.resolvedFrom.size(), is(3));
+    assertThat("Unexpected resolved admin.", roleForm.resolvedFrom.get(1).assignedAdmin(),
+        is(admin));
+    assertThat("Unexpected resolved reviewer.", roleForm.resolvedFrom.get(2).assignedReviewer(),
+        is(reviewer));
+    roleForm.getStatus().history().forEach(info ->
+        assertThat("Unexpected history responsible role.", info.responsibleRole(),
+            is(ResponsibleRole.ADMIN)));
+  }
+
+  @Test
+  void shouldResolveResponsibleRoleFromNewStatusEntryWhenSettingReviewStage() {
+    RoleResolvingForm roleForm = new RoleResolvingForm();
+    roleForm.setLifecycleState(UNDER_REVIEW);
+    ReviewStageStatus reviewStage = new ReviewStageStatus(1, "Stage 2");
+
+    roleForm.setReviewStage(reviewStage);
+
+    assertThat("Unexpected resolution count.", roleForm.resolvedFrom.size(), is(2));
+    assertThat("Unexpected resolved review stage.", roleForm.resolvedFrom.get(1).reviewStage(),
+        is(reviewStage));
+    assertThat("Unexpected current responsible role.",
+        roleForm.getStatus().current().responsibleRole(), is(ResponsibleRole.ADMIN));
+  }
+
+  @ParameterizedTest
+  @EnumSource(LifecycleState.class)
+  void shouldRecordNullResponsibleRoleByDefaultWhenSettingLifecycleState(LifecycleState state) {
+    form.setLifecycleState(state);
+
+    assertThat("Unexpected current responsible role.",
+        form.getStatus().current().responsibleRole(), nullValue());
+    assertThat("Unexpected history responsible role.",
+        form.getStatus().history().get(0).responsibleRole(), nullValue());
+  }
+
+  @Test
+  void shouldRecordNullResponsibleRoleByDefaultWhenSettingAssigneesAndReviewStage() {
+    form.setLifecycleState(SUBMITTED);
+    Person person = Person.builder().name("Ad Min").build();
+
+    form.setAssignedAdmin(person, person);
+    form.setAssignedReviewer(person, person);
+    form.setReviewStage(new ReviewStageStatus(0, "Stage 1"));
+
+    form.getStatus().history().forEach(info ->
+        assertThat("Unexpected history responsible role.", info.responsibleRole(), nullValue()));
+  }
+
   /**
    * A stub for testing the behaviour of the AbstractForm event listener.
    */
@@ -911,6 +998,20 @@ class AbstractAuditedFormTest {
     @Override
     public String getFormReferencePrefix() {
       return null;
+    }
+  }
+
+  /**
+   * A stub which records each status entry the responsible role was resolved from.
+   */
+  private static class RoleResolvingForm extends StubForm {
+
+    private final List<StatusInfo> resolvedFrom = new ArrayList<>();
+
+    @Override
+    public ResponsibleRole resolveResponsibleRole(StatusInfo statusInfo) {
+      resolvedFrom.add(statusInfo);
+      return ResponsibleRole.ADMIN;
     }
   }
 }

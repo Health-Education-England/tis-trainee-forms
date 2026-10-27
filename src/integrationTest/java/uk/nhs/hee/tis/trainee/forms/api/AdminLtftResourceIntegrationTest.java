@@ -69,6 +69,7 @@ import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -97,6 +98,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.ResponsibleRole;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
@@ -609,6 +611,52 @@ class AdminLtftResourceIntegrationTest {
   }
 
   @ParameterizedTest
+  @CsvSource(textBlock = """
+      ADMIN, 2
+      TRAINEE, 1
+      REVIEWER, 0
+      'ADMIN,TRAINEE', 3
+      """)
+  void shouldCountMatchingLtftsWhenResponsibleRoleFilter(String roleFilter, int expectedCount)
+      throws Exception {
+    List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
+        .map(s -> createLtftForm(s, DBC_1, null))
+        .toList();
+    template.insertAll(ltfts);
+
+    // Not visible to the admin, should never be counted.
+    template.insert(createLtftForm(SUBMITTED, DBC_2, null));
+
+    mockMvc.perform(get("/api/admin/ltft/count")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .param("responsibleRole", roleFilter))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.TEXT_PLAIN))
+        .andExpect(content().string(String.valueOf(expectedCount)));
+  }
+
+  @Test
+  void shouldReturnMatchingSummariesWhenResponsibleRoleFilter() throws Exception {
+    List<LtftForm> ltfts = Arrays.stream(LifecycleState.values())
+        .map(s -> createLtftForm(s, DBC_1, null))
+        .toList();
+    template.insertAll(ltfts);
+
+    mockMvc.perform(get("/api/admin/ltft")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .param("responsibleRole", ResponsibleRole.TRAINEE.name()))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.content", hasSize(1)))
+        .andExpect(jsonPath("$.content[0].status", is(UNSUBMITTED.name())))
+        .andExpect(jsonPath("$.content[0].responsibleRole", is(ResponsibleRole.TRAINEE.name())))
+        .andExpect(jsonPath("$.page.totalElements", is(1)));
+  }
+
+  // TODO: pre-approver - add integration tests that assigning a pre-approver results in a REVIEWER
+  //  responsible role and that recording a reviewOutcome returns it to ADMIN.
+
+  @ParameterizedTest
   @NullAndEmptySource
   void shouldReturnNoSummariesWhenNoLtfts(String statusFilter) throws Exception {
     mockMvc.perform(get("/api/admin/ltft")
@@ -703,6 +751,7 @@ class AdminLtftResourceIntegrationTest {
             Person.builder().name("Re Viewer").email("re.viewer@example.com").role("REVIEWER")
                 .build())
         .timestamp(Instant.now())
+        .responsibleRole(ResponsibleRole.ADMIN)
         .build();
     form.setStatus(Status.builder()
         .current(statusInfo)
@@ -744,6 +793,7 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.content[0].assignedReviewer.name", is("Re Viewer")))
         .andExpect(jsonPath("$.content[0].assignedReviewer.email", is("re.viewer@example.com")))
         .andExpect(jsonPath("$.content[0].assignedReviewer.role").doesNotExist())
+        .andExpect(jsonPath("$.content[0].responsibleRole", is(ResponsibleRole.ADMIN.name())))
         .andExpect(jsonPath("$.page", aMapWithSize(4)))
         .andExpect(jsonPath("$.page.size", is(2000)))
         .andExpect(jsonPath("$.page.number", is(0)))
@@ -1170,6 +1220,38 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.current.assignedReviewer.name", is("Re Viewer")))
         .andExpect(jsonPath("$.status.current.assignedReviewer.email", is("re.viewer@example.com")))
         .andExpect(jsonPath("$.status.current.assignedReviewer.role", is("REVIEWER")));
+  }
+
+  @Test
+  void shouldIncludeResponsibleRoleInDetailJson() throws Exception {
+    LtftForm form = createLtftForm(SUBMITTED, DBC_1, null);
+    form.setLifecycleState(UNSUBMITTED);
+    form = template.insert(form);
+
+    mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.status.current.responsibleRole",
+            is(ResponsibleRole.TRAINEE.name())))
+        .andExpect(jsonPath("$.status.history", hasSize(2)))
+        .andExpect(jsonPath("$.status.history[0].responsibleRole",
+            is(ResponsibleRole.ADMIN.name())))
+        .andExpect(jsonPath("$.status.history[1].responsibleRole",
+            is(ResponsibleRole.TRAINEE.name())));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
+  void shouldReturnNullResponsibleRoleInDetailJsonWhenFinalState(LifecycleState state)
+      throws Exception {
+    LtftForm form = template.insert(createLtftForm(state, DBC_1, null));
+
+    mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status.current.state", is(state.name())))
+        .andExpect(jsonPath("$.status.current.responsibleRole", nullValue()));
   }
 
   @Test
@@ -1913,6 +1995,87 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.history[1].timestamp", notNullValue()));
   }
 
+  @Test
+  void shouldUpdateResponsibleRoleToTraineeWhenAdminUnsubmits() throws Exception {
+    LtftForm form = template.insert(createLtftForm(UNDER_REVIEW, DBC_1, null));
+    assertThat("Unexpected initial responsible role.",
+        form.getStatus().current().responsibleRole(), is(ResponsibleRole.ADMIN));
+
+    mockMvc.perform(put("/api/admin/ltft/{id}/unsubmit", form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .contentType(APPLICATION_JSON)
+            .content("""
+                {
+                  "reason": "test reason"
+                }
+                """))
+        .andExpect(status().isOk());
+
+    LtftForm updatedForm = template.findById(form.getId(), LtftForm.class);
+    assertThat("Unexpected responsible role.",
+        updatedForm.getStatus().current().responsibleRole(), is(ResponsibleRole.TRAINEE));
+
+    List<StatusInfo> history = updatedForm.getStatus().history();
+    assertThat("Unexpected history size.", history, hasSize(2));
+    assertThat("Unexpected previous responsible role.", history.get(0).responsibleRole(),
+        is(ResponsibleRole.ADMIN));
+    assertThat("Unexpected latest responsible role.", history.get(1).responsibleRole(),
+        is(ResponsibleRole.TRAINEE));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"SUBMITTED", "UNDER_REVIEW"})
+  void shouldKeepAdminResponsibleRoleWhenAssigningReviewer(LifecycleState state)
+      throws Exception {
+    LtftForm form = template.insert(createLtftForm(state, DBC_1, null));
+
+    mockMvc.perform(put("/api/admin/ltft/{id}/assign-reviewer", form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .contentType(APPLICATION_JSON)
+            .content("""
+                {
+                  "name": "Re Viewer",
+                  "email": "re.viewer@example.com",
+                  "role": "REVIEWER"
+                }
+                """))
+        .andExpect(status().isOk());
+
+    // The assigned reviewer is distinct from the pre-approver, so does not affect the role.
+    LtftForm updatedForm = template.findById(form.getId(), LtftForm.class);
+    assertThat("Unexpected responsible role.",
+        updatedForm.getStatus().current().responsibleRole(), is(ResponsibleRole.ADMIN));
+    assertThat("Unexpected history size.", updatedForm.getStatus().history(), hasSize(2));
+    assertThat("Unexpected latest history responsible role.",
+        updatedForm.getStatus().history().get(1).responsibleRole(), is(ResponsibleRole.ADMIN));
+  }
+
+  @ParameterizedTest
+  @CsvSource(textBlock = """
+      approve, APPROVED
+      reject, REJECTED
+      """)
+  void shouldClearResponsibleRoleWhenAdminCompletesReview(String action, LifecycleState state)
+      throws Exception {
+    LtftForm form = template.insert(createLtftForm(UNDER_REVIEW, DBC_1, null));
+
+    mockMvc.perform(put("/api/admin/ltft/{id}/{action}", form.getId(), action)
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .contentType(APPLICATION_JSON)
+            .content("""
+                {
+                  "reason": "test reason"
+                }
+                """))
+        .andExpect(status().isOk());
+
+    LtftForm updatedForm = template.findById(form.getId(), LtftForm.class);
+    Assertions.assertNotNull(updatedForm);
+    assertThat("Unexpected state.", updatedForm.getLifecycleState(), is(state));
+    assertThat("Unexpected responsible role.",
+        updatedForm.getStatus().current().responsibleRole(), nullValue());
+  }
+
   @ParameterizedTest
   @ValueSource(strings = {"/assign", "/assign-admin"})
   void shouldSupportBothAssignEndpointsForAdmin(String endpoint) throws Exception {
@@ -2349,6 +2512,7 @@ class AdminLtftResourceIntegrationTest {
         .timestamp(Instant.now())
         .revision(0)
         .build();
+    statusInfo = statusInfo.withResponsibleRole(ltft.resolveResponsibleRole(statusInfo));
     ltft.setStatus(Status.builder()
         .current(statusInfo)
         .submitted(state != DRAFT ? Instant.now() : null)
