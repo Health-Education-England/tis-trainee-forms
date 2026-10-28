@@ -1778,6 +1778,32 @@ class LtftServiceTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = "UNDER_REVIEW")
+  void shouldRejectRecordingReviewOutcomeWhenFormNotUnderReview(LifecycleState state) {
+    LtftForm form = new LtftForm();
+    form.setLifecycleState(state);
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
+        ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+
+    LtftReviewOutcomeDto outcome = LtftReviewOutcomeDto.builder()
+        .outcome(RECOMMEND_REJECTION)
+        .outcomeComments("Does not meet the criteria")
+        .build();
+
+    MethodArgumentNotValidException exception = assertThrows(MethodArgumentNotValidException.class,
+        () -> service.recordReviewOutcome(ID, outcome));
+
+    List<FieldError> fieldErrors = exception.getFieldErrors();
+    assertThat("Unexpected error count.", fieldErrors, hasSize(1));
+    FieldError fieldError = fieldErrors.get(0);
+    assertThat("Unexpected object name.", fieldError.getObjectName(), is("LtftForm"));
+    assertThat("Unexpected field.", fieldError.getField(), is("status.current.state"));
+    assertThat("Unexpected message.", fieldError.getDefaultMessage(),
+        is("review outcome can only be recorded when the form is UNDER_REVIEW"));
+    verify(repository, never()).save(any());
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = "UNDER_REVIEW")
   void shouldReturnEmptyPatchedFormWhenFormNotUnderReview(LifecycleState lifecycleState)
       throws IOException {
     LtftForm entity = new LtftForm();
@@ -2379,7 +2405,8 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldReturnEmptyRecordingReviewOutcomeWhenFormNotFound() {
+  void shouldReturnEmptyRecordingReviewOutcomeWhenFormNotFound()
+      throws MethodArgumentNotValidException {
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.empty());
 
@@ -2395,8 +2422,10 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldRecordReviewOutcomeWhenRecommendingApproval() {
+  void shouldRecordReviewOutcomeWhenRecommendingApproval()
+      throws MethodArgumentNotValidException {
     LtftForm form = new LtftForm();
+    form.setLifecycleState(UNDER_REVIEW);
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -2412,12 +2441,14 @@ class LtftServiceTest {
     assertThat("Unexpected form presence.", optionalForm.isPresent(), is(true));
     assertThat("Unexpected review outcome.", optionalForm.get().status().current().reviewOutcome(),
         is(outcome));
-    assertThat("Unexpected history size.", form.getStatus().history().size(), is(1));
+    assertThat("Unexpected history size.", form.getStatus().history().size(), is(2));
   }
 
   @Test
-  void shouldRecordReviewOutcomeWhenRecommendingRejectionWithoutData() {
+  void shouldRecordReviewOutcomeWhenRecommendingRejectionWithoutData()
+      throws MethodArgumentNotValidException {
     LtftForm form = new LtftForm();
+    form.setLifecycleState(UNDER_REVIEW);
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
         ID, Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -5242,11 +5273,12 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldPublishNotificationWhenReviewOutcomeRecorded() {
+  void shouldPublishNotificationWhenReviewOutcomeRecorded()
+      throws MethodArgumentNotValidException {
     LtftForm form = new LtftForm();
     form.setId(ID);
     form.setTraineeTisId(TRAINEE_ID);
-    form.setLifecycleState(SUBMITTED);
+    form.setLifecycleState(UNDER_REVIEW);
     form.setFormRef("LTFT_123");
 
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(
@@ -5269,7 +5301,7 @@ class LtftServiceTest {
     assertThat("Unexpected trainee ID.", capturedForm.traineeTisId(), is(TRAINEE_ID));
     assertThat("Unexpected form reference.", capturedForm.formRef(), is("LTFT_123"));
     assertThat("Unexpected lifecycle state.", capturedForm.status().current().state(),
-        is(SUBMITTED));
+        is(UNDER_REVIEW));
 
     LtftReviewOutcomeDto payloadReviewOutcome = capturedForm.status().current().reviewOutcome();
     assertThat("Unexpected review outcome.", payloadReviewOutcome.outcome(),
@@ -5282,7 +5314,8 @@ class LtftServiceTest {
   }
 
   @Test
-  void shouldNotPublishNotificationWhenRecordReviewOutcomeFails() {
+  void shouldNotPublishNotificationWhenRecordReviewOutcomeFails()
+      throws MethodArgumentNotValidException {
     when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(any(), any()))
         .thenReturn(Optional.empty());
 

@@ -561,7 +561,8 @@ class AdminLtftResourceTest {
   }
 
   @Test
-  void shouldReturnReviewedFormWhenRecordingReviewOutcome() {
+  void shouldReturnReviewedFormWhenRecordingReviewOutcome()
+      throws MethodArgumentNotValidException {
     UUID id = UUID.randomUUID();
     LtftReviewOutcomeDto reviewOutcome = LtftReviewOutcomeDto.builder()
         .outcome(Outcome.RECOMMEND_REJECTION)
@@ -578,7 +579,8 @@ class AdminLtftResourceTest {
   }
 
   @Test
-  void shouldReturnNotFoundWhenReviewOutcomeFormNotFound() {
+  void shouldReturnNotFoundWhenReviewOutcomeFormNotFound()
+      throws MethodArgumentNotValidException {
     UUID id = UUID.randomUUID();
     LtftReviewOutcomeDto reviewOutcome = LtftReviewOutcomeDto.builder()
         .outcome(Outcome.RECOMMEND_REJECTION)

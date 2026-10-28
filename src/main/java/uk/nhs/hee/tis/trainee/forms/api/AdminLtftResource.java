@@ -253,7 +253,8 @@ public class AdminLtftResource {
    */
   @PostMapping("/{id}/review")
   ResponseEntity<LtftFormDto> reviewLtft(@PathVariable UUID id,
-      @Valid @RequestBody LtftReviewOutcomeDto reviewOutcome) {
+      @Valid @RequestBody LtftReviewOutcomeDto reviewOutcome)
+      throws MethodArgumentNotValidException {
     return ResponseEntity.of(service.recordReviewOutcome(id, reviewOutcome));
   }
 

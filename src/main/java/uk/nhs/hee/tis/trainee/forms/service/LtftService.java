@@ -108,6 +108,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   private static final String FORM_OBJECT_NAME = "LtftForm";
   private static final String METHOD_UPDATE_STATUS = "updateStatus";
   private static final String METHOD_ADVANCE_REVIEW_STAGE = "advanceReviewStage";
+  private static final String METHOD_RECORD_REVIEW_OUTCOME = "recordReviewOutcome";
 
   private static final int MINIMUM_NOTICE_DAYS = 7 * 16; // 16 weeks in days
 
@@ -681,8 +682,10 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    * @param reviewOutcome The review outcome to record.
    * @return The updated LTFT, empty if the form did not exist or did not belong to the admin's
    * local office or programme.
+   * @throws MethodArgumentNotValidException If the form is not currently UNDER_REVIEW.
    */
-  public Optional<LtftFormDto> recordReviewOutcome(UUID formId, LtftReviewOutcomeDto reviewOutcome) {
+  public Optional<LtftFormDto> recordReviewOutcome(UUID formId, LtftReviewOutcomeDto reviewOutcome)
+      throws MethodArgumentNotValidException {
     log.info("Recording review outcome for LTFT form {}", formId);
     Optional<LtftForm> form = findFormForAdmin(formId);
 
@@ -693,6 +696,22 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
     }
 
     LtftForm ltftForm = form.get();
+    if (ltftForm.getLifecycleState() != UNDER_REVIEW) {
+      log.warn("Cannot record review outcome for form {} as it is not currently UNDER_REVIEW.",
+          formId);
+      BeanPropertyBindingResult result = new BeanPropertyBindingResult(ltftForm, "form");
+      result.addError(new FieldError(FORM_OBJECT_NAME, FORM_ATTRIBUTE_FORM_STATUS,
+          "review outcome can only be recorded when the form is UNDER_REVIEW"));
+      try {
+        MethodParameter parameter = new MethodParameter(
+            this.getClass().getDeclaredMethod(METHOD_RECORD_REVIEW_OUTCOME, UUID.class,
+                LtftReviewOutcomeDto.class), 0);
+        throw new MethodArgumentNotValidException(parameter, result);
+      } catch (NoSuchMethodException e) {
+        throw new IllegalStateException("Unable to reflect recordReviewOutcome method.", e);
+      }
+    }
+
     Person modifiedBy = Person.builder()
         .name(adminIdentity.getName())
         .email(adminIdentity.getEmail())

@@ -2275,21 +2275,21 @@ class AdminLtftResourceIntegrationTest {
 
   @Test
   void shouldRecordReviewOutcome() throws Exception {
-    LtftForm form = template.insert(createLtftForm(SUBMITTED, DBC_1, null));
+    LtftForm form = template.insert(createLtftForm(UNDER_REVIEW, DBC_1, null));
 
     mockMvc.perform(post("/api/admin/ltft/{id}/review", form.getId())
             .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
             .contentType(APPLICATION_JSON)
             .content("""
-              {
-                "outcome": "RECOMMEND_APPROVAL",
-                "outcomeDetails": {
-                  "approvalType": "EXCEPTIONAL",
-                  "approvedDate": "2027-11-02"
-                },
-                "outcomeComments": "Meets the approval criteria"
-              }
-              """))
+                {
+                  "outcome": "RECOMMEND_APPROVAL",
+                  "outcomeDetails": {
+                    "approvalType": "EXCEPTIONAL",
+                    "approvedDate": "2027-11-02"
+                  },
+                  "outcomeComments": "Meets the approval criteria"
+                }
+                """))
         .andExpect(status().isOk())
         .andExpect(content().contentType(APPLICATION_JSON))
         .andExpect(jsonPath("$.status.current.reviewOutcome.outcome",
@@ -2300,6 +2300,26 @@ class AdminLtftResourceIntegrationTest {
             is("2027-11-02")))
         .andExpect(jsonPath("$.status.current.reviewOutcome.outcomeComments",
             is("Meets the approval criteria")));
+  }
+
+  @Test
+  void shouldRejectReviewOutcomeWhenFormIsNotUnderReview() throws Exception {
+    LtftForm form = template.insert(createLtftForm(SUBMITTED, DBC_1, null));
+
+    mockMvc.perform(post("/api/admin/ltft/{id}/review", form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .contentType(APPLICATION_JSON)
+            .content("""
+                {
+                  "outcome": "RECOMMEND_REJECTION",
+                  "outcomeComments": "Does not meet the approval criteria"
+                }
+                """))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.properties.errors[0].pointer", is("#/status/current/state")))
+        .andExpect(jsonPath("$.properties.errors[0].detail",
+            is("review outcome can only be recorded when the form is UNDER_REVIEW")));
   }
 
   /**
