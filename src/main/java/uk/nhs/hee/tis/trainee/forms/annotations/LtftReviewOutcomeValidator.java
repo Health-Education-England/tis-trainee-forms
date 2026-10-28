@@ -65,8 +65,9 @@ public class LtftReviewOutcomeValidator
 
   /**
    * Add a field violation to the validation context.
+   *
    * @param context The validation context.
-   * @param field The field name.
+   * @param field   The field name.
    * @param message The violation message.
    */
   private void addFieldViolation(ConstraintValidatorContext context, String field, String message) {

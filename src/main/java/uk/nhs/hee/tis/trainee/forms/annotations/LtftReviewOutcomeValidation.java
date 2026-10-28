@@ -40,9 +40,24 @@ import java.lang.annotation.Target;
 @Documented
 public @interface LtftReviewOutcomeValidation {
 
+  /**
+   * The default violation message.
+   *
+   * @return The message.
+   */
   String message() default "Invalid review outcome";
 
+  /**
+   * The validation groups this constraint belongs to.
+   *
+   * @return The groups.
+   */
   Class<?>[] groups() default {};
 
+  /**
+   * The payload associated with this constraint.
+   *
+   * @return The payload.
+   */
   Class<? extends Payload>[] payload() default {};
 }

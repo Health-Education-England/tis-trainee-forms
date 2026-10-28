@@ -681,7 +681,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    * @param formId        The ID of the LTFT application.
    * @param reviewOutcome The review outcome to record.
    * @return The updated LTFT, empty if the form did not exist or did not belong to the admin's
-   * local office or programme.
+   *     local office or programme.
    * @throws MethodArgumentNotValidException If the form is not currently UNDER_REVIEW.
    */
   public Optional<LtftFormDto> recordReviewOutcome(UUID formId, LtftReviewOutcomeDto reviewOutcome)

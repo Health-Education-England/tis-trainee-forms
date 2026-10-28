@@ -2431,7 +2431,7 @@ class LtftServiceTest {
     when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     LtftReviewOutcomeDetailsDto data = new LtftReviewOutcomeDetailsDto(LtftApprovalType.EXCEPTIONAL,
-        LocalDate.of(2027, 11, 2));
+        LocalDate.now());
     LtftReviewOutcomeDto outcome = LtftReviewOutcomeDto.builder()
         .outcome(Outcome.RECOMMEND_APPROVAL).outcomeDetails(data).outcomeComments("Comment")
         .build();
