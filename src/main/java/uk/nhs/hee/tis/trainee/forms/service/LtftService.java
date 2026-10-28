@@ -75,6 +75,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormPatchResultDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftReviewOutcomeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.ReviewWorkflowDto;
@@ -107,6 +108,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
   private static final String FORM_OBJECT_NAME = "LtftForm";
   private static final String METHOD_UPDATE_STATUS = "updateStatus";
   private static final String METHOD_ADVANCE_REVIEW_STAGE = "advanceReviewStage";
+  private static final String METHOD_RECORD_REVIEW_OUTCOME = "recordReviewOutcome";
 
   private static final int MINIMUM_NOTICE_DAYS = 7 * 16; // 16 weeks in days
 
@@ -671,6 +673,55 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
           formId, filterTypeLabel(), filterScopeValue());
       return Optional.empty();
     }
+  }
+
+  /**
+   * Record the review outcome of the LTFT application.
+   *
+   * @param formId        The ID of the LTFT application.
+   * @param reviewOutcome The review outcome to record.
+   * @return The updated LTFT, empty if the form did not exist or did not belong to the admin's
+   *     local office or programme.
+   * @throws MethodArgumentNotValidException If the form is not currently UNDER_REVIEW.
+   */
+  public Optional<LtftFormDto> recordReviewOutcome(UUID formId, LtftReviewOutcomeDto reviewOutcome)
+      throws MethodArgumentNotValidException {
+    log.info("Recording review outcome for LTFT form {}", formId);
+    Optional<LtftForm> form = findFormForAdmin(formId);
+
+    if (form.isEmpty()) {
+      log.warn("Could not record review outcome for form {} since no form exists with this ID "
+          + "for {} [{}]", formId, filterTypeLabel(), filterScopeValue());
+      return Optional.empty();
+    }
+
+    LtftForm ltftForm = form.get();
+    if (ltftForm.getLifecycleState() != UNDER_REVIEW) {
+      log.warn("Cannot record review outcome for form {} as it is not currently UNDER_REVIEW.",
+          formId);
+      BeanPropertyBindingResult result = new BeanPropertyBindingResult(ltftForm, "form");
+      result.addError(new FieldError(FORM_OBJECT_NAME, FORM_ATTRIBUTE_FORM_STATUS,
+          "review outcome can only be recorded when the form is UNDER_REVIEW"));
+      try {
+        MethodParameter parameter = new MethodParameter(
+            this.getClass().getDeclaredMethod(METHOD_RECORD_REVIEW_OUTCOME, UUID.class,
+                LtftReviewOutcomeDto.class), 0);
+        throw new MethodArgumentNotValidException(parameter, result);
+      } catch (NoSuchMethodException e) {
+        throw new IllegalStateException("Unable to reflect recordReviewOutcome method.", e);
+      }
+    }
+
+    Person modifiedBy = Person.builder()
+        .name(adminIdentity.getName())
+        .email(adminIdentity.getEmail())
+        .role(adminIdentity.getRole())
+        .build();
+
+    ltftForm.setReviewOutcome(mapper.toReviewOutcome(reviewOutcome), modifiedBy);
+    LtftForm updatedForm = ltftFormRepository.save(ltftForm);
+    publishUpdateNotification(updatedForm, null, ltftAssignmentUpdateTopic);
+    return Optional.of(mapper.toDto(updatedForm));
   }
 
   /**

@@ -114,6 +114,20 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
   }
 
   /**
+   * Record the reviewer's review outcome for the form, appending to the status history.
+   *
+   * @param reviewOutcome The review outcome.
+   * @param modifiedBy    The Person who recorded the outcome.
+   */
+  public void setReviewOutcome(ReviewOutcome reviewOutcome, Person modifiedBy) {
+    StatusInfo statusInfo = getAssigneeBuilder(modifiedBy)
+        .reviewOutcome(reviewOutcome)
+        .build();
+
+    updateStatusInfo(statusInfo, false);
+  }
+
+  /**
    * Get a {@link StatusInfoBuilder} with the current state, detail, assigned admin and assigned
    * reviewer, and the provided modifiedBy and timestamp. This is used to create a new  status
    * history entry when assigning an admin or reviewer.
@@ -130,6 +144,8 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
             status == null || status.current == null ? null : status.current.assignedAdmin)
         .assignedReviewer(
             status == null || status.current == null ? null : status.current.assignedReviewer)
+        .reviewOutcome(
+            status == null || status.current == null ? null : status.current.reviewOutcome)
         .modifiedBy(modifiedBy)
         .timestamp(Instant.now())
         .revision(status == null || status.current == null ? null : status.current.revision)
@@ -180,6 +196,8 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
             status == null || status.current == null ? null : status.current.assignedAdmin)
         .assignedReviewer(
             status == null || status.current == null ? null : status.current.assignedReviewer)
+        .reviewOutcome(
+            status == null || status.current == null ? null : status.current.reviewOutcome)
         .modifiedBy(modifiedBy)
         .timestamp(Instant.now())
         .revision(revision)
@@ -220,6 +238,8 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
             status == null || status.current == null ? null : status.current.assignedAdmin)
         .assignedReviewer(
             status == null || status.current == null ? null : status.current.assignedReviewer)
+        .reviewOutcome(
+            status == null || status.current == null ? null : status.current.reviewOutcome)
         .modifiedBy(modifiedBy)
         .timestamp(Instant.now())
         .revision(status == null || status.current == null ? null : status.current.revision)
@@ -286,6 +306,7 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
      * @param timestamp        The timestamp of the status change.
      * @param revision         The revision number associated with this status change.
      * @param reviewStage      The review stage associated with this status change, if any.
+     * @param reviewOutcome    The review outcome recorded by the reviewer, if any.
      */
     @Builder
     public record StatusInfo(
@@ -298,7 +319,8 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
         Person modifiedBy,
         Instant timestamp,
         Integer revision,
-        ReviewStageStatus reviewStage
+        ReviewStageStatus reviewStage,
+        ReviewOutcome reviewOutcome
     ) {
 
     }

@@ -46,6 +46,8 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto.LtftAdminPersonalDetailsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftReviewOutcomeDetailsDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftReviewOutcomeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.PersonalDetailsDto;
@@ -53,8 +55,11 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
+import uk.nhs.hee.tis.trainee.forms.model.LtftReviewOutcomeDetails;
 import uk.nhs.hee.tis.trainee.forms.model.LtftSubmissionHistory;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
+import uk.nhs.hee.tis.trainee.forms.model.ReviewOutcome;
+import uk.nhs.hee.tis.trainee.forms.model.ReviewOutcomeDetails;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 
@@ -202,6 +207,46 @@ public abstract class LtftMapper implements FormMapper<LtftForm, LtftFormDto>,
         .reason(detail.reason())
         .message(detail.message())
         .build();
+  }
+
+  /**
+   * Convert a {@link LtftReviewOutcomeDto} to a {@link ReviewOutcome}.
+   *
+   * @param dto The DTO to convert.
+   * @return The equivalent review outcome, or null if input is null.
+   */
+  public abstract ReviewOutcome toReviewOutcome(LtftReviewOutcomeDto dto);
+
+  /**
+   * Convert LTFT review outcome details from a DTO to the model representation.
+   *
+   * @param details The DTO to convert.
+   * @return The equivalent model details, or null if input is null.
+   */
+  public abstract LtftReviewOutcomeDetails toReviewOutcomeDetails(
+      LtftReviewOutcomeDetailsDto details);
+
+  /**
+   * Convert LTFT review outcome details to a DTO.
+   *
+   * @param details The LTFT review outcome details to convert.
+   * @return The equivalent DTO, or null if input is null.
+   */
+  public abstract LtftReviewOutcomeDetailsDto toReviewOutcomeDetailsDto(
+      LtftReviewOutcomeDetails details);
+
+  /**
+   * Convert LTFT review outcome details to a DTO.
+   *
+   * @param details The review outcome details to convert.
+   * @return The equivalent DTO, or null if input is null or not LTFT-specific.
+   */
+  public LtftReviewOutcomeDetailsDto toReviewOutcomeDetailsDto(ReviewOutcomeDetails details) {
+    if (details instanceof LtftReviewOutcomeDetails ltftDetails) {
+      return toReviewOutcomeDetailsDto(ltftDetails);
+    }
+
+    return null;
   }
 
   /**

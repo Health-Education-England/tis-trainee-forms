@@ -48,6 +48,7 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType.VAL
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.model.LtftApprovalType.EXCEPTIONAL;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.sns.core.SnsTemplate;
@@ -107,8 +108,11 @@ import uk.nhs.hee.tis.trainee.forms.dto.RedactedPersonDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
+import uk.nhs.hee.tis.trainee.forms.model.LtftReviewOutcomeDetails;
 import uk.nhs.hee.tis.trainee.forms.model.LtftSubmissionHistory;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
+import uk.nhs.hee.tis.trainee.forms.model.ReviewOutcome;
+import uk.nhs.hee.tis.trainee.forms.model.ReviewOutcome.Outcome;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChangeType;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
@@ -366,6 +370,66 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.history[0].modifiedBy.email").doesNotExist())
         .andExpect(jsonPath("$.status.history[0].modifiedBy.role")
             .value("ADMIN"));
+  }
+
+  @Test
+  void shouldExcludeReviewerDetailsWhenLtftFormFound() throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setId(ID);
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setContent(LtftContent.builder().name("name").build());
+
+    Person reviewer = Person.builder()
+        .name("assigned reviewer")
+        .email("assigned.reviewer@example.com")
+        .role("REVIEWER")
+        .build();
+    ltft.setAssignedReviewer(reviewer, reviewer);
+    template.insert(ltft);
+
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
+    mockMvc.perform(get("/api/ltft/" + ID)
+            .with(jwt().jwt(token)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.id", is(ID.toString())))
+        .andExpect(jsonPath("$.status.current.assignedReviewer").doesNotExist())
+        .andExpect(jsonPath("$.status.history[0].assignedReviewer").doesNotExist());
+  }
+
+  @Test
+  void shouldExcludeReviewOutcomeWhenLtftFormFound() throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setId(ID);
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setContent(LtftContent.builder().name("name").build());
+
+    Person admin = Person.builder()
+        .name("assigned admin")
+        .email("assigned.admin@example.com")
+        .role("ADMIN")
+        .build();
+    ReviewOutcome reviewOutcome = ReviewOutcome.builder()
+        .outcome(Outcome.RECOMMEND_APPROVAL)
+        .outcomeDetails(new LtftReviewOutcomeDetails(EXCEPTIONAL, LocalDate.now()))
+        .outcomeComments("Confidential reviewer comments")
+        .build();
+    ltft.setReviewOutcome(reviewOutcome, admin);
+    // A later status change carries the outcome forward, so every history entry has one.
+    ltft.setAssignedAdmin(admin, admin);
+    template.insert(ltft);
+
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
+    mockMvc.perform(get("/api/ltft/" + ID)
+            .with(jwt().jwt(token)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.id", is(ID.toString())))
+        .andExpect(jsonPath("$.status.current.reviewOutcome").doesNotExist())
+        .andExpect(jsonPath("$.status.history", hasSize(2)))
+        .andExpect(jsonPath("$.status.history[0].reviewOutcome").doesNotExist())
+        .andExpect(jsonPath("$.status.history[1].reviewOutcome").doesNotExist())
+        .andExpect(content().string(not(containsString("Confidential reviewer comments"))));
   }
 
   @Test
