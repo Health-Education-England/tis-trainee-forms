@@ -40,8 +40,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
+import uk.nhs.hee.tis.trainee.forms.model.LtftApprovalType;
 
 class LtftReviewOutcomeDtoTest {
 
@@ -97,6 +99,39 @@ class LtftReviewOutcomeDtoTest {
 
     Set<String> fields = fieldsWithViolations(violations);
     assertThat("Unexpected violation fields.", fields, containsInAnyOrder("outcomeDetails"));
+  }
+
+  @Test
+  void shouldRequireApprovalTypeForApproval() {
+    LtftReviewOutcomeDto dto = LtftReviewOutcomeDto.builder()
+        .outcome(RECOMMEND_APPROVAL)
+        .outcomeDetails(LtftReviewOutcomeDetailsDto.builder()
+            .approvedDate(LocalDate.now())
+            .build())
+        .build();
+
+    Set<ConstraintViolation<LtftReviewOutcomeDto>> violations = validator.validate(dto);
+
+    Set<String> fields = fieldsWithViolations(violations);
+    assertThat("Unexpected violation fields.", fields,
+        containsInAnyOrder("outcomeDetails.approvalType"));
+  }
+
+  @ParameterizedTest
+  @EnumSource(LtftApprovalType.class)
+  void shouldRequireApprovedDateForApproval(LtftApprovalType approvalType) {
+    LtftReviewOutcomeDto dto = LtftReviewOutcomeDto.builder()
+        .outcome(RECOMMEND_APPROVAL)
+        .outcomeDetails(LtftReviewOutcomeDetailsDto.builder()
+            .approvalType(approvalType)
+            .build())
+        .build();
+
+    Set<ConstraintViolation<LtftReviewOutcomeDto>> violations = validator.validate(dto);
+
+    Set<String> fields = fieldsWithViolations(violations);
+    assertThat("Unexpected violation fields.", fields,
+        containsInAnyOrder("outcomeDetails.approvedDate"));
   }
 
   @ParameterizedTest
