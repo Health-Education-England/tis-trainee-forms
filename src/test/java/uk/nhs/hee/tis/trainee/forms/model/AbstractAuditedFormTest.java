@@ -941,9 +941,17 @@ class AbstractAuditedFormTest {
         is(admin));
     assertThat("Unexpected resolved reviewer.", roleForm.resolvedFrom.get(2).assignedReviewer(),
         is(reviewer));
-    roleForm.getStatus().history().forEach(info ->
-        assertThat("Unexpected history responsible role.", info.responsibleRole(),
-            is(ResponsibleRole.ADMIN)));
+
+    List<StatusInfo> history = roleForm.getStatus().history();
+    assertThat("Unexpected history size.", history.size(), is(3));
+    assertThat("Unexpected lifecycle entry responsible role.", history.get(0).responsibleRole(),
+        is(ResponsibleRole.ADMIN));
+    assertThat("Unexpected admin entry responsible role.", history.get(1).responsibleRole(),
+        is(ResponsibleRole.ADMIN));
+    assertThat("Unexpected reviewer entry responsible role.", history.get(2).responsibleRole(),
+        is(ResponsibleRole.REVIEWER));
+    assertThat("Unexpected current responsible role.",
+        roleForm.getStatus().current().responsibleRole(), is(ResponsibleRole.REVIEWER));
   }
 
   @Test
@@ -1002,7 +1010,9 @@ class AbstractAuditedFormTest {
   }
 
   /**
-   * A stub which records each status entry the responsible role was resolved from.
+   * A stub which records each status entry the responsible role was resolved from. The resolved
+   * role is derived from the entry (REVIEWER when a reviewer is assigned, otherwise ADMIN) so that
+   * tests can verify each entry is resolved independently.
    */
   private static class RoleResolvingForm extends StubForm {
 
@@ -1011,7 +1021,9 @@ class AbstractAuditedFormTest {
     @Override
     public ResponsibleRole resolveResponsibleRole(StatusInfo statusInfo) {
       resolvedFrom.add(statusInfo);
-      return ResponsibleRole.ADMIN;
+      return statusInfo.assignedReviewer() != null
+          ? ResponsibleRole.REVIEWER
+          : ResponsibleRole.ADMIN;
     }
   }
 }
