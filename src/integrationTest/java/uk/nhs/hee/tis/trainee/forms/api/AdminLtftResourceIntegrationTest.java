@@ -904,6 +904,63 @@ class AdminLtftResourceIntegrationTest {
   }
 
   @Test
+  void shouldCountOnlyLtftsWithMatchingAssignedReviewerEmailFilter() throws Exception {
+    template.insert(createFormWithAssignedReviewer(DBC_1, "Re Viewer", "re.viewer@example.com"));
+    template.insert(createFormWithAssignedReviewer(DBC_1, "Re Viewer", "re.viewer@example.com"));
+    template.insert(createFormWithAssignedReviewer(DBC_1, "Other One", "other.one@example.com"));
+    template.insert(createFormWithAssignedReviewer(DBC_1, null, null));
+
+    mockMvc.perform(get("/api/admin/ltft/count")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .param("assignedReviewer.email", "re.viewer@example.com"))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.TEXT_PLAIN))
+        .andExpect(content().string("2"));
+  }
+
+  @Test
+  void shouldReturnOnlyLtftsWithMatchingAssignedReviewerEmailFilter() throws Exception {
+    LtftForm match = template.insert(
+        createFormWithAssignedReviewer(DBC_1, "Re Viewer", "re.viewer@example.com"));
+    template.insert(createFormWithAssignedReviewer(DBC_1, "Other One", "other.one@example.com"));
+    template.insert(createFormWithAssignedReviewer(DBC_1, null, null));
+
+    mockMvc.perform(get("/api/admin/ltft")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .param("assignedReviewer.email", "re.viewer@example.com"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content", hasSize(1)))
+        .andExpect(jsonPath("$.content[0].id", is(match.getId().toString())))
+        .andExpect(jsonPath("$.content[0].assignedReviewer.name", is("Re Viewer")))
+        .andExpect(jsonPath("$.content[0].assignedReviewer.email", is("re.viewer@example.com")));
+  }
+
+  @Test
+  void shouldCountLtftsWithMultipleAssignedReviewerEmailFilters() throws Exception {
+    template.insert(createFormWithAssignedReviewer(DBC_1, "Re Viewer", "re.viewer@example.com"));
+    template.insert(createFormWithAssignedReviewer(DBC_1, "Other One", "other.one@example.com"));
+    template.insert(createFormWithAssignedReviewer(DBC_1, "Third One", "third.one@example.com"));
+
+    mockMvc.perform(get("/api/admin/ltft/count")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .param("assignedReviewer.email", "re.viewer@example.com,third.one@example.com"))
+        .andExpect(status().isOk())
+        .andExpect(content().string("2"));
+  }
+
+  @Test
+  void shouldNotReturnLtftsForOtherDbcsWhenFilteringByAssignedReviewer() throws Exception {
+    template.insert(createFormWithAssignedReviewer(DBC_1, "Re Viewer", "re.viewer@example.com"));
+    template.insert(createFormWithAssignedReviewer(DBC_2, "Re Viewer", "re.viewer@example.com"));
+
+    mockMvc.perform(get("/api/admin/ltft/count")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .param("assignedReviewer.email", "re.viewer@example.com"))
+        .andExpect(status().isOk())
+        .andExpect(content().string("1"));
+  }
+
+  @Test
   void shouldCountOnlyLtftsWithMatchingReviewStageFilter() throws Exception {
     template.insert(createUnderReviewFormWithReviewStage(DBC_1, 0, "Stage One"));
     template.insert(createUnderReviewFormWithReviewStage(DBC_1, 1, "Stage Two"));
@@ -2375,6 +2432,26 @@ class AdminLtftResourceIntegrationTest {
         .current(StatusInfo.builder()
             .state(UNDER_REVIEW)
             .reviewStage(new ReviewStageStatus(stageIndex, stageLabel))
+            .build())
+        .submitted(Instant.now())
+        .history(List.of())
+        .build());
+    return form;
+  }
+
+  private LtftForm createFormWithAssignedReviewer(String dbc, String name, String email) {
+    LtftForm form = new LtftForm();
+    form.setContent(LtftContent.builder()
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(dbc)
+            .build())
+        .build());
+    Person reviewer = email == null ? null
+        : Person.builder().name(name).email(email).role("REVIEWER").build();
+    form.setStatus(Status.builder()
+        .current(StatusInfo.builder()
+            .state(SUBMITTED)
+            .assignedReviewer(reviewer)
             .build())
         .submitted(Instant.now())
         .history(List.of())

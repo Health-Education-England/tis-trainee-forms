@@ -503,6 +503,8 @@ class LtftServiceTest {
       formRef | formRef
       assignedAdmin.name | status.current.assignedAdmin.name
       assignedAdmin.email | status.current.assignedAdmin.email
+      assignedReviewer.name | status.current.assignedReviewer.name
+      assignedReviewer.email | status.current.assignedReviewer.email
       personalDetails.forenames | content.personalDetails.forenames
       personalDetails.gdcNumber | content.personalDetails.gdcNumber
       personalDetails.gmcNumber | content.personalDetails.gmcNumber
@@ -531,6 +533,8 @@ class LtftServiceTest {
       formRef | formRef
       assignedAdmin.name | status.current.assignedAdmin.name
       assignedAdmin.email | status.current.assignedAdmin.email
+      assignedReviewer.name | status.current.assignedReviewer.name
+      assignedReviewer.email | status.current.assignedReviewer.email
       personalDetails.forenames | content.personalDetails.forenames
       personalDetails.gdcNumber | content.personalDetails.gdcNumber
       personalDetails.gmcNumber | content.personalDetails.gmcNumber
@@ -748,6 +752,8 @@ class LtftServiceTest {
       formRef | formRef
       assignedAdmin.name | status.current.assignedAdmin.name
       assignedAdmin.email | status.current.assignedAdmin.email
+      assignedReviewer.name | status.current.assignedReviewer.name
+      assignedReviewer.email | status.current.assignedReviewer.email
       personalDetails.forenames | content.personalDetails.forenames
       personalDetails.gdcNumber | content.personalDetails.gdcNumber
       personalDetails.gmcNumber | content.personalDetails.gmcNumber
@@ -779,6 +785,8 @@ class LtftServiceTest {
       formRef | formRef
       assignedAdmin.name | status.current.assignedAdmin.name
       assignedAdmin.email | status.current.assignedAdmin.email
+      assignedReviewer.name | status.current.assignedReviewer.name
+      assignedReviewer.email | status.current.assignedReviewer.email
       personalDetails.forenames | content.personalDetails.forenames
       personalDetails.gdcNumber | content.personalDetails.gdcNumber
       personalDetails.gmcNumber | content.personalDetails.gmcNumber
