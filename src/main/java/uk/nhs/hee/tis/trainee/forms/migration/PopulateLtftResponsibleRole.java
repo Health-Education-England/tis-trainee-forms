@@ -24,12 +24,14 @@ package uk.nhs.hee.tis.trainee.forms.migration;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNDER_REVIEW;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.ResponsibleRole.ADMIN;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.ResponsibleRole.REVIEWER;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.ResponsibleRole.TRAINEE;
 
 import io.mongock.api.annotations.ChangeUnit;
 import io.mongock.api.annotations.Execution;
 import io.mongock.api.annotations.RollbackExecution;
 import java.util.List;
-import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -42,12 +44,17 @@ import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
  * Populate the responsible role for the current status and every status history entry of
  * existing LTFT forms.
  *
- * <p>The role is derived from each entry's own lifecycle state using a fixed copy of the rule as
- * it stood when this migration was written, deliberately not delegating to
- * {@link LtftForm#resolveResponsibleRole}. Pre-approvers and review outcomes did not exist before
- * this migration (the assigned reviewer is a distinct concept and does not affect the role), so
- * state alone is an exact derivation for historical entries, whereas later pre-approval dependent
- * rules must never be applied retrospectively.
+ * <p>The role is derived from each entry's own lifecycle state, assigned reviewer and review
+ * outcome using a fixed copy of the rule as it stood when this migration was written, deliberately
+ * not delegating to {@link LtftForm#resolveResponsibleRole} so that any later rule changes are
+ * never applied retrospectively.
+ * <ul>
+ *   <li>UNSUBMITTED: TRAINEE.</li>
+ *   <li>SUBMITTED or UNDER_REVIEW, with an assigned reviewer and no review outcome: REVIEWER.</li>
+ *   <li>SUBMITTED or UNDER_REVIEW, otherwise: ADMIN.</li>
+ *   <li>Any other state: no responsible role.</li>
+ * </ul>
+ * The criteria for each role are mutually exclusive, so the order of the updates does not matter.
  *
  * <p>Only entries without a responsible role are updated, so values recorded by the application
  * are never overwritten and the migration is safe to re-run. Bulk partial updates are used, which
@@ -60,15 +67,18 @@ import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 public class PopulateLtftResponsibleRole {
 
   /**
-   * The lifecycle states associated with each responsible role at the time of this migration.
+   * The responsible roles populated by this migration.
    */
-  static final Map<ResponsibleRole, List<String>> ROLE_STATES = Map.of(
-      ResponsibleRole.ADMIN, List.of(SUBMITTED.name(), UNDER_REVIEW.name()),
-      ResponsibleRole.TRAINEE, List.of(UNSUBMITTED.name()));
+  static final List<ResponsibleRole> ROLES = List.of(TRAINEE, REVIEWER, ADMIN);
 
-  private static final String CURRENT_FIELD = "status.current";
+  private static final List<String> REVIEWABLE_STATES = List.of(SUBMITTED.name(),
+      UNDER_REVIEW.name());
+
+  private static final String CURRENT_PREFIX = "status.current.";
   private static final String HISTORY_FIELD = "status.history";
   private static final String STATE_FIELD = "state";
+  private static final String ASSIGNED_REVIEWER_FIELD = "assignedReviewer";
+  private static final String REVIEW_OUTCOME_FIELD = "reviewOutcome";
   private static final String ROLE_FIELD = "responsibleRole";
   private static final String ELEMENT_IDENTIFIER = "entry";
 
@@ -83,9 +93,9 @@ public class PopulateLtftResponsibleRole {
    */
   @Execution
   public void migrate() {
-    ROLE_STATES.forEach((role, states) -> {
-      long currentCount = populateCurrent(role, states);
-      long historyCount = populateHistory(role, states);
+    ROLES.forEach(role -> {
+      long currentCount = populateCurrent(role);
+      long historyCount = populateHistory(role);
       log.info("Populated responsible role {} for {} current statuses and the status history of "
           + "{} LTFT forms.", role, currentCount, historyCount);
     });
@@ -94,36 +104,53 @@ public class PopulateLtftResponsibleRole {
   /**
    * Populate the responsible role of the current status, where not already set.
    *
-   * @param role   The responsible role to set.
-   * @param states The lifecycle states associated with the role.
+   * @param role The responsible role to set.
    * @return The number of modified forms.
    */
-  private long populateCurrent(ResponsibleRole role, List<String> states) {
-    Query query = Query.query(Criteria.where(CURRENT_FIELD + "." + STATE_FIELD).in(states)
-        .and(CURRENT_FIELD + "." + ROLE_FIELD).exists(false));
-    Update update = new Update().set(CURRENT_FIELD + "." + ROLE_FIELD, role.name());
+  private long populateCurrent(ResponsibleRole role) {
+    Query query = Query.query(entryCriteria(role, CURRENT_PREFIX));
+    Update update = new Update().set(CURRENT_PREFIX + ROLE_FIELD, role.name());
     return mongoTemplate.updateMulti(query, update, LtftForm.class).getModifiedCount();
   }
 
   /**
    * Populate the responsible role of every matching status history entry, where not already set.
    *
-   * @param role   The responsible role to set.
-   * @param states The lifecycle states associated with the role.
+   * @param role The responsible role to set.
    * @return The number of modified forms.
    */
-  private long populateHistory(ResponsibleRole role, List<String> states) {
+  private long populateHistory(ResponsibleRole role) {
     // Restricting to forms with a matching entry is required, as array filters error if the
     // array path does not exist on a document.
-    Query query = Query.query(Criteria.where(HISTORY_FIELD).elemMatch(
-        Criteria.where(STATE_FIELD).in(states).and(ROLE_FIELD).exists(false)));
+    Query query = Query.query(Criteria.where(HISTORY_FIELD).elemMatch(entryCriteria(role, "")));
 
-    String element = ELEMENT_IDENTIFIER + ".";
     Update update = new Update()
         .set(HISTORY_FIELD + ".$[" + ELEMENT_IDENTIFIER + "]." + ROLE_FIELD, role.name())
-        .filterArray(Criteria.where(element + STATE_FIELD).in(states)
-            .and(element + ROLE_FIELD).exists(false));
+        .filterArray(entryCriteria(role, ELEMENT_IDENTIFIER + "."));
     return mongoTemplate.updateMulti(query, update, LtftForm.class).getModifiedCount();
+  }
+
+  /**
+   * Build the criteria matching a status entry, without a responsible role, which should be
+   * populated with the given role.
+   *
+   * @param role   The responsible role to match entries for.
+   * @param prefix The prefix of the status entry's fields, empty for relative fields.
+   * @return The built criteria.
+   */
+  static Criteria entryCriteria(ResponsibleRole role, String prefix) {
+    Criteria criteria = Criteria.where(prefix + ROLE_FIELD).exists(false);
+
+    return switch (role) {
+      case TRAINEE -> criteria.and(prefix + STATE_FIELD).is(UNSUBMITTED.name());
+      case REVIEWER -> criteria.and(prefix + STATE_FIELD).in(REVIEWABLE_STATES)
+          .and(prefix + ASSIGNED_REVIEWER_FIELD).ne(null)
+          .and(prefix + REVIEW_OUTCOME_FIELD).is(null);
+      case ADMIN -> criteria.and(prefix + STATE_FIELD).in(REVIEWABLE_STATES)
+          .orOperator(
+              Criteria.where(prefix + ASSIGNED_REVIEWER_FIELD).is(null),
+              Criteria.where(prefix + REVIEW_OUTCOME_FIELD).ne(null));
+    };
   }
 
   /**

@@ -341,7 +341,7 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
         Instant timestamp,
         Integer revision,
         ReviewStageStatus reviewStage,
-        ReviewOutcome reviewOutcome
+        ReviewOutcome reviewOutcome,
         @Nullable
         ResponsibleRole responsibleRole
     ) {

@@ -103,6 +103,8 @@ import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
+import uk.nhs.hee.tis.trainee.forms.model.ReviewOutcome;
+import uk.nhs.hee.tis.trainee.forms.model.ReviewOutcome.Outcome;
 import uk.nhs.hee.tis.trainee.forms.model.ReviewStageStatus;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
@@ -653,8 +655,38 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.page.totalElements", is(1)));
   }
 
-  // TODO: pre-approver - add integration tests that assigning a pre-approver results in a REVIEWER
-  //  responsible role and that recording a reviewOutcome returns it to ADMIN.
+  @Test
+  void shouldFilterByReviewerResponsibleRoleUntilReviewOutcomeRecorded() throws Exception {
+    Person reviewer = Person.builder().name("Re Viewer").role("REVIEWER").build();
+
+    LtftForm awaitingReview = createLtftForm(UNDER_REVIEW, DBC_1, null);
+    awaitingReview.setAssignedReviewer(reviewer, null);
+
+    LtftForm reviewed = createLtftForm(UNDER_REVIEW, DBC_1, null);
+    reviewed.setAssignedReviewer(reviewer, null);
+    reviewed.setReviewOutcome(ReviewOutcome.builder()
+        .outcome(Outcome.RECOMMEND_REJECTION)
+        .outcomeComments("Does not meet the approval criteria")
+        .build(), null);
+
+    LtftForm noReviewer = createLtftForm(UNDER_REVIEW, DBC_1, null);
+    template.insertAll(List.of(awaitingReview, reviewed, noReviewer));
+
+    mockMvc.perform(get("/api/admin/ltft")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .param("responsibleRole", ResponsibleRole.REVIEWER.name()))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_JSON))
+        .andExpect(jsonPath("$.content", hasSize(1)))
+        .andExpect(jsonPath("$.content[0].id", is(awaitingReview.getId().toString())))
+        .andExpect(jsonPath("$.content[0].responsibleRole", is(ResponsibleRole.REVIEWER.name())));
+
+    mockMvc.perform(get("/api/admin/ltft/count")
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .param("responsibleRole", ResponsibleRole.ADMIN.name()))
+        .andExpect(status().isOk())
+        .andExpect(content().string(String.valueOf(2)));
+  }
 
   @ParameterizedTest
   @NullAndEmptySource
@@ -2025,7 +2057,7 @@ class AdminLtftResourceIntegrationTest {
 
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, names = {"SUBMITTED", "UNDER_REVIEW"})
-  void shouldKeepAdminResponsibleRoleWhenAssigningReviewer(LifecycleState state)
+  void shouldSetReviewerResponsibleRoleWhenAssigningReviewer(LifecycleState state)
       throws Exception {
     LtftForm form = template.insert(createLtftForm(state, DBC_1, null));
 
@@ -2039,15 +2071,54 @@ class AdminLtftResourceIntegrationTest {
                   "role": "REVIEWER"
                 }
                 """))
-        .andExpect(status().isOk());
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status.current.responsibleRole",
+            is(ResponsibleRole.REVIEWER.name())));
 
-    // The assigned reviewer is distinct from the pre-approver, so does not affect the role.
     LtftForm updatedForm = template.findById(form.getId(), LtftForm.class);
     assertThat("Unexpected responsible role.",
-        updatedForm.getStatus().current().responsibleRole(), is(ResponsibleRole.ADMIN));
+        updatedForm.getStatus().current().responsibleRole(), is(ResponsibleRole.REVIEWER));
     assertThat("Unexpected history size.", updatedForm.getStatus().history(), hasSize(2));
+    assertThat("Unexpected previous history responsible role.",
+        updatedForm.getStatus().history().get(0).responsibleRole(), is(ResponsibleRole.ADMIN));
     assertThat("Unexpected latest history responsible role.",
-        updatedForm.getStatus().history().get(1).responsibleRole(), is(ResponsibleRole.ADMIN));
+        updatedForm.getStatus().history().get(1).responsibleRole(), is(ResponsibleRole.REVIEWER));
+  }
+
+  @Test
+  void shouldSetAdminResponsibleRoleWhenReviewOutcomeRecorded() throws Exception {
+    LtftForm form = template.insert(createLtftForm(UNDER_REVIEW, DBC_1, null));
+
+    mockMvc.perform(put("/api/admin/ltft/{id}/assign-reviewer", form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .contentType(APPLICATION_JSON)
+            .content("""
+                {
+                  "name": "Re Viewer",
+                  "email": "re.viewer@example.com",
+                  "role": "REVIEWER"
+                }
+                """))
+        .andExpect(status().isOk());
+
+    mockMvc.perform(post("/api/admin/ltft/{id}/review", form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .contentType(APPLICATION_JSON)
+            .content("""
+                {
+                  "outcome": "RECOMMEND_REJECTION",
+                  "outcomeComments": "Does not meet the approval criteria"
+                }
+                """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status.current.responsibleRole", is(ResponsibleRole.ADMIN.name())));
+
+    LtftForm updatedForm = template.findById(form.getId(), LtftForm.class);
+    List<ResponsibleRole> roles = updatedForm.getStatus().history().stream()
+        .map(StatusInfo::responsibleRole)
+        .toList();
+    assertThat("Unexpected history responsible roles.", roles,
+        is(List.of(ResponsibleRole.ADMIN, ResponsibleRole.REVIEWER, ResponsibleRole.ADMIN)));
   }
 
   @ParameterizedTest

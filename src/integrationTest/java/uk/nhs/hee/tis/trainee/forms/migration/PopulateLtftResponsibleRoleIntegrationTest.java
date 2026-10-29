@@ -59,6 +59,9 @@ import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
+import uk.nhs.hee.tis.trainee.forms.model.Person;
+import uk.nhs.hee.tis.trainee.forms.model.ReviewOutcome;
+import uk.nhs.hee.tis.trainee.forms.model.ReviewOutcome.Outcome;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -129,8 +132,51 @@ class PopulateLtftResponsibleRoleIntegrationTest {
   }
 
   @Test
+  void shouldPopulateReviewerRoleOnlyUntilReviewOutcomeRecorded() {
+    Person reviewer = Person.builder().name("Tee-Pee Dee").role("REVIEWER").build();
+    ReviewOutcome outcome = ReviewOutcome.builder()
+        .outcome(Outcome.RECOMMEND_REJECTION)
+        .outcomeComments("Some free text value")
+        .build();
+
+    List<StatusInfo> history = List.of(
+        statusInfo(SUBMITTED, null, null),
+        statusInfo(SUBMITTED, reviewer, null),
+        statusInfo(UNDER_REVIEW, reviewer, null),
+        statusInfo(UNDER_REVIEW, reviewer, outcome),
+        statusInfo(UNSUBMITTED, reviewer, outcome),
+        statusInfo(SUBMITTED, reviewer, outcome),
+        statusInfo(UNSUBMITTED, reviewer, null),
+        statusInfo(SUBMITTED, reviewer, null));
+    LtftForm form = insertLtft(history);
+
+    migration.migrate();
+
+    LtftForm migrated = mongoTemplate.findById(form.getId(), LtftForm.class);
+    assertThat("Unexpected current responsible role.",
+        migrated.getStatus().current().responsibleRole(), is(REVIEWER));
+    assertThat("Unexpected history responsible roles.", roles(migrated),
+        contains(ADMIN, REVIEWER, REVIEWER, ADMIN, TRAINEE, ADMIN, TRAINEE, REVIEWER));
+  }
+
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
+  void shouldNotPopulateReviewerRoleForFinalStates(LifecycleState finalState) {
+    Person reviewer = Person.builder().name("Tee-Pee Dee").role("REVIEWER").build();
+    LtftForm form = insertLtft(List.of(statusInfo(finalState, reviewer, null)));
+
+    migration.migrate();
+
+    LtftForm migrated = mongoTemplate.findById(form.getId(), LtftForm.class);
+    assertThat("Unexpected current responsible role.",
+        migrated.getStatus().current().responsibleRole(), nullValue());
+    assertThat("Unexpected history responsible roles.", roles(migrated), contains(nullValue()));
+  }
+
+  @Test
   void shouldNotOverwriteExistingResponsibleRoles() {
-    // Simulates entries recorded by the application, e.g. with a content-dependent role.
+    // Simulates entries recorded by the application, the recorded role differs from the one the
+    // migration would derive to prove that it is not overwritten.
     StatusInfo legacy = statusInfo(SUBMITTED, null);
     StatusInfo recorded = statusInfo(UNDER_REVIEW, REVIEWER);
 
@@ -216,14 +262,44 @@ class PopulateLtftResponsibleRoleIntegrationTest {
     List<StatusInfo> history = Arrays.stream(states)
         .map(s -> statusInfo(s, null))
         .toList();
+    return insertLtft(history);
+  }
+
+  /**
+   * Insert an LTFT form with the given status history.
+   *
+   * @param history The status history, the last entry will be current.
+   * @return The inserted form.
+   */
+  private LtftForm insertLtft(List<StatusInfo> history) {
+    StatusInfo current = history.get(history.size() - 1);
+    boolean draftOnly = history.stream().allMatch(s -> s.state() == DRAFT);
 
     LtftForm form = new LtftForm();
     form.setStatus(Status.builder()
-        .current(history.get(history.size() - 1))
-        .submitted(states.length == 1 && states[0] == DRAFT ? null : Instant.now())
+        .current(current)
+        .submitted(draftOnly ? null : Instant.now())
         .history(history)
         .build());
     return mongoTemplate.insert(form);
+  }
+
+  /**
+   * Build a status info entry without a responsible role.
+   *
+   * @param state         The lifecycle state.
+   * @param reviewer      The assigned reviewer, may be null.
+   * @param reviewOutcome The review outcome, may be null.
+   * @return The built status info.
+   */
+  private StatusInfo statusInfo(LifecycleState state, Person reviewer,
+      ReviewOutcome reviewOutcome) {
+    return StatusInfo.builder()
+        .state(state)
+        .assignedReviewer(reviewer)
+        .reviewOutcome(reviewOutcome)
+        .timestamp(Instant.now())
+        .build();
   }
 
   /**

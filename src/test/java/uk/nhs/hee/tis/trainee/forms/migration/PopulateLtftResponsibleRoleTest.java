@@ -41,7 +41,7 @@ import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
@@ -67,75 +67,48 @@ class PopulateLtftResponsibleRoleTest {
   }
 
   @Test
-  void shouldUseFixedStateToRoleRule() {
-    assertThat("Unexpected roles.", PopulateLtftResponsibleRole.ROLE_STATES.keySet(),
-        is(Set.of(ResponsibleRole.ADMIN, ResponsibleRole.TRAINEE)));
-    assertThat("Unexpected admin states.",
-        PopulateLtftResponsibleRole.ROLE_STATES.get(ResponsibleRole.ADMIN),
-        containsInAnyOrder("SUBMITTED", "UNDER_REVIEW"));
-    assertThat("Unexpected trainee states.",
-        PopulateLtftResponsibleRole.ROLE_STATES.get(ResponsibleRole.TRAINEE),
-        containsInAnyOrder("UNSUBMITTED"));
+  void shouldPopulateFixedRoles() {
+    assertThat("Unexpected roles.", PopulateLtftResponsibleRole.ROLES,
+        containsInAnyOrder(ResponsibleRole.values()));
   }
 
   @Test
   void shouldPerformCurrentAndHistoryUpdateForEachRole() {
     migration.migrate();
 
-    verify(template, times(4)).updateMulti(any(Query.class), any(Update.class),
+    verify(template, times(6)).updateMulti(any(Query.class), any(Update.class),
         eq(LtftForm.class));
   }
 
   @ParameterizedTest
-  @CsvSource(textBlock = """
-      ADMIN, 'SUBMITTED,UNDER_REVIEW'
-      TRAINEE, UNSUBMITTED
-      """)
-  void shouldUpdateCurrentStatusWithoutRole(ResponsibleRole role, String states) {
+  @EnumSource(ResponsibleRole.class)
+  void shouldUpdateCurrentStatusWithoutRole(ResponsibleRole role) {
     migration.migrate();
 
     Invocation invocation = findInvocation(CURRENT_ROLE, role);
 
-    Document queryObject = invocation.query().getQueryObject();
-    assertThat("Unexpected query keys.", queryObject.keySet(),
-        is(Set.of("status.current.state", CURRENT_ROLE)));
-    assertThat("Unexpected state filter.",
-        queryObject.get("status.current.state", Document.class).getList("$in", String.class),
-        containsInAnyOrder(states.split(",")));
-    assertThat("Unexpected role filter.",
-        queryObject.get(CURRENT_ROLE, Document.class).get("$exists"), is(false));
-
+    assertThat("Unexpected query.", invocation.query().getQueryObject(),
+        is(expectedEntryCriteria(role, "status.current.")));
     assertThat("Unexpected array filters.", invocation.update().getArrayFilters(), hasSize(0));
   }
 
   @ParameterizedTest
-  @CsvSource(textBlock = """
-      ADMIN, 'SUBMITTED,UNDER_REVIEW'
-      TRAINEE, UNSUBMITTED
-      """)
-  void shouldUpdateHistoryEntriesWithoutRole(ResponsibleRole role, String states) {
+  @EnumSource(ResponsibleRole.class)
+  void shouldUpdateHistoryEntriesWithoutRole(ResponsibleRole role) {
     migration.migrate();
 
     Invocation invocation = findInvocation(HISTORY_ROLE, role);
 
     Document queryObject = invocation.query().getQueryObject();
     assertThat("Unexpected query keys.", queryObject.keySet(), is(Set.of("status.history")));
-    Document elemMatch = queryObject.get("status.history", Document.class)
-        .get("$elemMatch", Document.class);
-    assertThat("Unexpected element state filter.",
-        elemMatch.get("state", Document.class).getList("$in", String.class),
-        containsInAnyOrder(states.split(",")));
-    assertThat("Unexpected element role filter.",
-        elemMatch.get("responsibleRole", Document.class).get("$exists"), is(false));
+    assertThat("Unexpected element match.",
+        queryObject.get("status.history", Document.class).get("$elemMatch", Document.class),
+        is(expectedEntryCriteria(role, "")));
 
     List<ArrayFilter> arrayFilters = invocation.update().getArrayFilters();
     assertThat("Unexpected array filter count.", arrayFilters, hasSize(1));
-    Document arrayFilter = arrayFilters.get(0).asDocument();
-    assertThat("Unexpected array filter state.",
-        arrayFilter.get("entry.state", Document.class).getList("$in", String.class),
-        containsInAnyOrder(states.split(",")));
-    assertThat("Unexpected array filter role.",
-        arrayFilter.get("entry.responsibleRole", Document.class).get("$exists"), is(false));
+    assertThat("Unexpected array filter.", arrayFilters.get(0).asDocument(),
+        is(expectedEntryCriteria(role, "entry.")));
   }
 
   @Test
@@ -143,6 +116,29 @@ class PopulateLtftResponsibleRoleTest {
     migration.rollback();
 
     verifyNoInteractions(template);
+  }
+
+  /**
+   * Build the expected criteria for a status entry to be populated with the given role.
+   *
+   * @param role   The responsible role.
+   * @param prefix The status entry field prefix.
+   * @return The expected criteria document.
+   */
+  private static Document expectedEntryCriteria(ResponsibleRole role, String prefix) {
+    Document criteria = new Document(prefix + "responsibleRole", new Document("$exists", false));
+    Document reviewableStates = new Document("$in", List.of("SUBMITTED", "UNDER_REVIEW"));
+
+    return switch (role) {
+      case TRAINEE -> criteria.append(prefix + "state", "UNSUBMITTED");
+      case REVIEWER -> criteria.append(prefix + "state", reviewableStates)
+          .append(prefix + "assignedReviewer", new Document("$ne", null))
+          .append(prefix + "reviewOutcome", null);
+      case ADMIN -> criteria.append(prefix + "state", reviewableStates)
+          .append("$or", List.of(
+              new Document(prefix + "assignedReviewer", null),
+              new Document(prefix + "reviewOutcome", new Document("$ne", null))));
+    };
   }
 
   /**
@@ -155,7 +151,7 @@ class PopulateLtftResponsibleRoleTest {
   private Invocation findInvocation(String field, ResponsibleRole role) {
     ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
     ArgumentCaptor<Update> updateCaptor = ArgumentCaptor.captor();
-    verify(template, times(4)).updateMulti(queryCaptor.capture(), updateCaptor.capture(),
+    verify(template, times(6)).updateMulti(queryCaptor.capture(), updateCaptor.capture(),
         eq(LtftForm.class));
 
     List<Query> queries = queryCaptor.getAllValues();

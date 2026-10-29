@@ -35,6 +35,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.ResponsibleRole;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
+import uk.nhs.hee.tis.trainee.forms.model.ReviewOutcome.Outcome;
 
 class LtftFormTest {
 
@@ -109,17 +110,35 @@ class LtftFormTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, names = {"SUBMITTED", "UNDER_REVIEW"})
-  void shouldNotResolveReviewerResponsibleRoleFromAssignedReviewer(LifecycleState state) {
+  @CsvSource(nullValues = "null", textBlock = """
+      APPROVED,     false, false, null
+      APPROVED,     true,  false, null
+      APPROVED,     true,  true,  null
+      DRAFT,        true,  false, null
+      REJECTED,     true,  false, null
+      SUBMITTED,    false, false, ADMIN
+      SUBMITTED,    true,  false, REVIEWER
+      SUBMITTED,    true,  true,  ADMIN
+      SUBMITTED,    false, true,  ADMIN
+      UNDER_REVIEW, false, false, ADMIN
+      UNDER_REVIEW, true,  false, REVIEWER
+      UNDER_REVIEW, true,  true,  ADMIN
+      UNDER_REVIEW, false, true,  ADMIN
+      UNSUBMITTED,  true,  false, TRAINEE
+      UNSUBMITTED,  true,  true,  TRAINEE
+      WITHDRAWN,    true,  false, null
+      """)
+  void shouldResolveResponsibleRoleFromReviewerAndReviewOutcome(LifecycleState state,
+      boolean hasReviewer, boolean hasOutcome, ResponsibleRole expected) {
     LtftForm form = new LtftForm();
     StatusInfo statusInfo = StatusInfo.builder()
         .state(state)
-        .assignedReviewer(Person.builder().name("Re Viewer").build())
+        .assignedReviewer(hasReviewer ? Person.builder().name("Tee-Pee Dee").build() : null)
+        .reviewOutcome(hasOutcome ? createReviewOutcome() : null)
         .build();
 
-    // The assigned reviewer is distinct from the pre-approver, so does not affect the role.
     assertThat("Unexpected responsible role.", form.resolveResponsibleRole(statusInfo),
-        is(ResponsibleRole.ADMIN));
+        is(expected));
   }
 
   @ParameterizedTest
@@ -168,16 +187,68 @@ class LtftFormTest {
         form.getStatus().current().responsibleRole(), is(ResponsibleRole.ADMIN));
   }
 
-  @Test
-  void shouldRecordResponsibleRoleWhenReviewerAssigned() {
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, names = {"SUBMITTED", "UNDER_REVIEW"})
+  void shouldRecordReviewerResponsibleRoleWhenReviewerAssigned(LifecycleState state) {
     LtftForm form = new LtftForm();
-    form.setLifecycleState(LifecycleState.SUBMITTED);
+    form.setLifecycleState(state);
 
-    form.setAssignedReviewer(Person.builder().name("Re Viewer").build(), null);
+    form.setAssignedReviewer(Person.builder().name("Tee-Pee Dee").build(), null);
 
-    // The assigned reviewer is distinct from the pre-approver, so does not affect the role.
+    List<StatusInfo> history = form.getStatus().history();
+    assertThat("Unexpected current responsible role.",
+        form.getStatus().current().responsibleRole(), is(ResponsibleRole.REVIEWER));
+    assertThat("Unexpected previous responsible role.", history.get(0).responsibleRole(),
+        is(ResponsibleRole.ADMIN));
+    assertThat("Unexpected latest responsible role.", history.get(1).responsibleRole(),
+        is(ResponsibleRole.REVIEWER));
+  }
+
+  @Test
+  void shouldRecordAdminResponsibleRoleWhenReviewOutcomeRecorded() {
+    LtftForm form = new LtftForm();
+    form.setLifecycleState(LifecycleState.UNDER_REVIEW);
+    form.setAssignedReviewer(Person.builder().name("Tee-Pee Dee").build(), null);
+
+    form.setReviewOutcome(createReviewOutcome(), null);
+
+    List<StatusInfo> history = form.getStatus().history();
     assertThat("Unexpected current responsible role.",
         form.getStatus().current().responsibleRole(), is(ResponsibleRole.ADMIN));
+    assertThat("Unexpected history responsible roles.",
+        history.stream().map(StatusInfo::responsibleRole).toList(),
+        is(List.of(ResponsibleRole.ADMIN, ResponsibleRole.REVIEWER, ResponsibleRole.ADMIN)));
+  }
+
+  @Test
+  void shouldKeepAdminResponsibleRoleWhenAssigneesChangeAfterReviewOutcome() {
+    LtftForm form = new LtftForm();
+    form.setLifecycleState(LifecycleState.UNDER_REVIEW);
+    form.setAssignedReviewer(Person.builder().name("Tee-Pee Dee").build(), null);
+    form.setReviewOutcome(createReviewOutcome(), null);
+
+    form.setAssignedAdmin(Person.builder().name("Ad Min").build(), null);
+    assertThat("Unexpected responsible role after admin assigned.",
+        form.getStatus().current().responsibleRole(), is(ResponsibleRole.ADMIN));
+
+    form.setReviewStage(new ReviewStageStatus(1, "Stage 2"));
+    assertThat("Unexpected responsible role after review stage set.",
+        form.getStatus().current().responsibleRole(), is(ResponsibleRole.ADMIN));
+  }
+
+  @Test
+  void shouldRecordResponsibleRoleWhenReviewerRemainsAssignedThroughUnsubmitAndResubmit() {
+    LtftForm form = new LtftForm();
+    form.setLifecycleState(LifecycleState.SUBMITTED);
+    form.setAssignedReviewer(Person.builder().name("Tee-Pee Dee").build(), null);
+
+    form.setLifecycleState(LifecycleState.UNSUBMITTED);
+    assertThat("Unexpected responsible role after unsubmit.",
+        form.getStatus().current().responsibleRole(), is(ResponsibleRole.TRAINEE));
+
+    form.setLifecycleState(LifecycleState.SUBMITTED);
+    assertThat("Unexpected responsible role after resubmit.",
+        form.getStatus().current().responsibleRole(), is(ResponsibleRole.REVIEWER));
   }
 
   @Test
@@ -191,7 +262,15 @@ class LtftFormTest {
         form.getStatus().current().responsibleRole(), is(ResponsibleRole.ADMIN));
   }
 
-  // TODO: pre-approver - add resolveResponsibleRole cases for SUBMITTED/UNDER_REVIEW with a
-  //  pre-approver and null reviewOutcome (REVIEWER), with a pre-approver and a reviewOutcome
-  //  (ADMIN), and UNSUBMITTED with a pre-approver (TRAINEE).
+  /**
+   * Create a review outcome.
+   *
+   * @return The created review outcome.
+   */
+  private static ReviewOutcome createReviewOutcome() {
+    return ReviewOutcome.builder()
+        .outcome(Outcome.RECOMMEND_REJECTION)
+        .outcomeComments("Some free text value")
+        .build();
+  }
 }

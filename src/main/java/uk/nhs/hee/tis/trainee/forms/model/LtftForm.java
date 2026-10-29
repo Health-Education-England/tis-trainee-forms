@@ -51,6 +51,13 @@ public class LtftForm extends AbstractAuditedForm<LtftContent> {
   /**
    * Resolve the role responsible for progressing the form for the given status entry.
    *
+   * <ul>
+   *   <li>UNSUBMITTED: the trainee.</li>
+   *   <li>SUBMITTED or UNDER_REVIEW: the reviewer (pre-approver) when one is assigned and has not
+   *   yet recorded a review outcome, otherwise the admin.</li>
+   *   <li>Any other state: no responsible role.</li>
+   * </ul>
+   *
    * @param statusInfo The status entry to resolve the responsible role for.
    * @return The responsible role, or null if no role is responsible (e.g. DRAFT or a final state).
    */
@@ -65,12 +72,21 @@ public class LtftForm extends AbstractAuditedForm<LtftContent> {
 
     return switch (lifecycleState) {
       case UNSUBMITTED -> ResponsibleRole.TRAINEE;
-      // TODO: pre-approver - return REVIEWER when a pre-approver is assigned and
-      //  statusInfo.reviewOutcome() is null (i.e. the pre-approval is not complete), otherwise
-      //  fall through to ADMIN. The pre-approver is distinct from statusInfo.assignedReviewer().
-      case SUBMITTED, UNDER_REVIEW -> ResponsibleRole.ADMIN;
+      case SUBMITTED, UNDER_REVIEW -> isAwaitingReview(statusInfo)
+          ? ResponsibleRole.REVIEWER
+          : ResponsibleRole.ADMIN;
       default -> null;
     };
+  }
+
+  /**
+   * Whether the status entry has an assigned reviewer who has not yet recorded a review outcome.
+   *
+   * @param statusInfo The status entry to check.
+   * @return true if awaiting the reviewer's outcome, otherwise false.
+   */
+  private static boolean isAwaitingReview(StatusInfo statusInfo) {
+    return statusInfo.assignedReviewer() != null && statusInfo.reviewOutcome() == null;
   }
 
   @Override

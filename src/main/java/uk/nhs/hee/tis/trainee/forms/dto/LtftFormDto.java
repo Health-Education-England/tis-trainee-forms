@@ -233,7 +233,7 @@ public record LtftFormDto(
         Integer revision,
         ReviewStageStatus reviewStage,
         @JsonView(Admin.Read.class)
-        LtftReviewOutcomeDto reviewOutcome
+        LtftReviewOutcomeDto reviewOutcome,
         @JsonView(Admin.Read.class)
         ResponsibleRole responsibleRole
     ) {
