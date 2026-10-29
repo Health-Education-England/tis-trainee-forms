@@ -179,7 +179,8 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
 
   /**
    * Set the current lifecycle state of the form, appending to the status history. This does not
-   * consider whether a state transition is valid or not, it simply sets the state.
+   * consider whether a state transition is valid or not, it simply sets the state. Submitting the
+   * form clears any review outcome from the new current status; earlier history is unchanged.
    *
    * @param lifecycleState The new lifecycle state.
    * @param detail         Any status detail.
@@ -197,7 +198,8 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
         .assignedReviewer(
             status == null || status.current == null ? null : status.current.assignedReviewer)
         .reviewOutcome(
-            status == null || status.current == null ? null : status.current.reviewOutcome)
+            status == null || status.current == null || lifecycleState == LifecycleState.SUBMITTED
+                ? null : status.current.reviewOutcome)
         .modifiedBy(modifiedBy)
         .timestamp(Instant.now())
         .revision(revision)

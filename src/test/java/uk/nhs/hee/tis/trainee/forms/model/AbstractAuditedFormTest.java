@@ -34,6 +34,7 @@ import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROVED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.model.ReviewOutcome.Outcome.RECOMMEND_APPROVAL;
 
 import java.time.Duration;
@@ -763,8 +764,9 @@ class AbstractAuditedFormTest {
         form.getStatus().history().get(1).reviewOutcome(), is(reviewOutcome));
   }
 
-  @Test
-  void shouldRetainReviewOutcomeWhenUpdatingStatus() {
+  @ParameterizedTest
+  @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = "SUBMITTED")
+  void shouldRetainReviewOutcomeWhenUpdatingStatusToNotSubmitted(LifecycleState targetState) {
     ReviewOutcome reviewOutcome = ReviewOutcome.builder()
         .outcome(RECOMMEND_APPROVAL)
         .outcomeComments("Reviewed")
@@ -778,7 +780,7 @@ class AbstractAuditedFormTest {
         .history(List.of(submittedStatus))
         .build());
 
-    form.setLifecycleState(APPROVED);
+    form.setLifecycleState(targetState);
     assertThat("Unexpected review outcome after lifecycle update.",
         form.getStatus().current().reviewOutcome(), is(reviewOutcome));
 
@@ -796,6 +798,33 @@ class AbstractAuditedFormTest {
     assertThat("Unexpected review outcome in status history.",
         form.getStatus().history().stream().map(StatusInfo::reviewOutcome).toList(),
         is(List.of(reviewOutcome, reviewOutcome, reviewOutcome, reviewOutcome, reviewOutcome)));
+  }
+
+  @Test
+  void shouldClearCurrentReviewOutcomeWhenUpdatingStatusToSubmitted() {
+    ReviewOutcome reviewOutcome = ReviewOutcome.builder()
+        .outcome(RECOMMEND_APPROVAL)
+        .outcomeComments("Reviewed")
+        .build();
+    StatusInfo unsubmittedStatus = StatusInfo.builder()
+        .state(UNSUBMITTED)
+        .reviewOutcome(reviewOutcome)
+        .build();
+    form.setStatus(Status.builder()
+        .current(unsubmittedStatus)
+        .history(List.of(unsubmittedStatus))
+        .build());
+
+    form.setLifecycleState(SUBMITTED);
+
+    ReviewOutcome currentReview = form.getStatus().current().reviewOutcome();
+    assertThat("Unexpected current review outcome.", currentReview, nullValue());
+
+    ReviewOutcome historyReview1 = form.getStatus().history().get(0).reviewOutcome();
+    assertThat("Unexpected review outcome in history.", historyReview1, is(reviewOutcome));
+
+    ReviewOutcome historyReview2 = form.getStatus().history().get(1).reviewOutcome();
+    assertThat("Unexpected review outcome in history.", historyReview2, nullValue());
   }
 
   @Test
