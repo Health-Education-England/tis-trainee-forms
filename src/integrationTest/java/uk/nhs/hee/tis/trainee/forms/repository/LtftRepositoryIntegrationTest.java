@@ -22,11 +22,16 @@
 package uk.nhs.hee.tis.trainee.forms.repository;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.data.domain.Sort.Direction.ASC;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -38,6 +43,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.bson.Document;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -56,6 +62,9 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.ResponsibleRole;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 
@@ -73,6 +82,9 @@ class LtftRepositoryIntegrationTest {
 
   @Autowired
   private MongoTemplate template;
+
+  @Autowired
+  private LtftFormRepository repository;
 
   @MockitoBean
   private JwtDecoder jwtDecoder;
@@ -95,6 +107,7 @@ class LtftRepositoryIntegrationTest {
       content.programmeMembership.dbc             | content.programmeMembership.designatedBodyCode
       content.programmeMembership.name            | content.programmeMembership.name
       content.programmeMembership.programmeNumber | content.programmeMembership.programmeNumber
+      status.current.responsibleRole              | status.current.responsibleRole
       status.current.state                        | status.current.state
       status.history.state                        | status.history.state
       """)
@@ -102,7 +115,7 @@ class LtftRepositoryIntegrationTest {
     IndexOperations indexOperations = template.indexOps(LtftForm.class);
     List<IndexInfo> indexes = indexOperations.getIndexInfo();
 
-    assertThat("Unexpected index count.", indexes, hasSize(13));
+    assertThat("Unexpected index count.", indexes, hasSize(14));
 
     IndexInfo index = indexes.stream()
         .filter(i -> i.getName().equals(indexName))
@@ -206,5 +219,75 @@ class LtftRepositoryIntegrationTest {
         updatedCreated.equals(savedCreated), is(true));
     assertThat("Unexpected updated record last modified timestamp.",
         updatedLastModified.isAfter(savedLastModified), is(true));
+  }
+
+  @Test
+  void shouldStoreResponsibleRoleInCurrentAndHistoryStatus() {
+    LtftForm ltft = createLtftForm(SUBMITTED);
+
+    template.insert(ltft);
+
+    Document stored = template.getCollection("LtftForm").find().first();
+    assertThat("Unexpected stored document.", stored, notNullValue());
+    Document status = stored.get("status", Document.class);
+    assertThat("Unexpected current responsible role.",
+        status.get("current", Document.class).getString("responsibleRole"),
+        is(ResponsibleRole.ADMIN.name()));
+    assertThat("Unexpected history responsible role.",
+        status.getList("history", Document.class).get(0).getString("responsibleRole"),
+        is(ResponsibleRole.ADMIN.name()));
+  }
+
+  @Test
+  void shouldNotStoreResponsibleRoleWhenNull() {
+    LtftForm ltft = createLtftForm(LifecycleState.DRAFT);
+
+    template.insert(ltft);
+
+    Document stored = template.getCollection("LtftForm").find().first();
+    assertThat("Unexpected stored document.", stored, notNullValue());
+    Document current = stored.get("status", Document.class).get("current", Document.class);
+    assertThat("Unexpected responsible role key.", current.containsKey("responsibleRole"),
+        is(false));
+  }
+
+  @Test
+  void shouldRecordResponsibleRoleHistoryWhenSavedViaRepository() {
+    LtftForm ltft = repository.save(createLtftForm(SUBMITTED));
+
+    ltft.setLifecycleState(UNSUBMITTED);
+    repository.save(ltft);
+
+    LtftForm updated = template.findById(ltft.getId(), LtftForm.class);
+    Assertions.assertNotNull(updated);
+    assertThat("Unexpected updated responsible role.",
+        updated.getStatus().current().responsibleRole(), is(ResponsibleRole.TRAINEE));
+
+    updated.setLifecycleState(WITHDRAWN);
+    repository.save(updated);
+
+    LtftForm withdrawn = template.findById(ltft.getId(), LtftForm.class);
+    Assertions.assertNotNull(withdrawn);
+    assertThat("Unexpected withdrawn responsible role.",
+        withdrawn.getStatus().current().responsibleRole(), nullValue());
+
+    List<ResponsibleRole> roleHistory = withdrawn.getStatus().history().stream()
+        .map(StatusInfo::responsibleRole)
+        .toList();
+    assertThat("Unexpected responsible role history.", roleHistory,
+        contains(ResponsibleRole.ADMIN, ResponsibleRole.TRAINEE, null));
+  }
+
+  /**
+   * Create an LTFT form with the given current state.
+   *
+   * @param state The current lifecycle state.
+   * @return The created form.
+   */
+  private LtftForm createLtftForm(LifecycleState state) {
+    LtftForm ltft = new LtftForm();
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setLifecycleState(state);
+    return ltft;
   }
 }

@@ -508,6 +508,7 @@ class LtftServiceTest {
       personalDetails.gmcNumber | content.personalDetails.gmcNumber
       personalDetails.surname | content.personalDetails.surname
       programmeName | content.programmeMembership.name
+      responsibleRole | status.current.responsibleRole
       reviewStage | status.current.reviewStage.label
       status | status.current.state
       traineeId | traineeTisId
@@ -536,6 +537,7 @@ class LtftServiceTest {
       personalDetails.gmcNumber | content.personalDetails.gmcNumber
       personalDetails.surname | content.personalDetails.surname
       programmeName | content.programmeMembership.name
+      responsibleRole | status.current.responsibleRole
       reviewStage | status.current.reviewStage.label
       status | status.current.state
       traineeId | traineeTisId
@@ -753,6 +755,7 @@ class LtftServiceTest {
       personalDetails.gmcNumber | content.personalDetails.gmcNumber
       personalDetails.surname | content.personalDetails.surname
       programmeName | content.programmeMembership.name
+      responsibleRole | status.current.responsibleRole
       reviewStage | status.current.reviewStage.label
       status | status.current.state
       traineeId | traineeTisId
@@ -784,6 +787,7 @@ class LtftServiceTest {
       personalDetails.gmcNumber | content.personalDetails.gmcNumber
       personalDetails.surname | content.personalDetails.surname
       programmeName | content.programmeMembership.name
+      responsibleRole | status.current.responsibleRole
       reviewStage | status.current.reviewStage.label
       status | status.current.state
       traineeId | traineeTisId
