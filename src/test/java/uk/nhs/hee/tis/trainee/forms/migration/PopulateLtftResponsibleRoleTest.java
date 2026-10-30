@@ -34,14 +34,18 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.mongodb.client.result.UpdateResult;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
@@ -49,6 +53,7 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.data.mongodb.core.query.UpdateDefinition.ArrayFilter;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.ResponsibleRole;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
+import uk.nhs.hee.tis.trainee.forms.model.LtftSubmissionHistory;
 
 class PopulateLtftResponsibleRoleTest {
 
@@ -61,9 +66,20 @@ class PopulateLtftResponsibleRoleTest {
   @BeforeEach
   void setUp() {
     template = mock(MongoTemplate.class);
-    when(template.updateMulti(any(Query.class), any(Update.class), eq(LtftForm.class)))
+    when(template.updateMulti(any(Query.class), any(Update.class), any(Class.class)))
         .thenReturn(UpdateResult.acknowledged(1, 1L, null));
     migration = new PopulateLtftResponsibleRole(template);
+  }
+
+  /**
+   * Provide every combination of entity type and responsible role.
+   *
+   * @return The entity type and role arguments.
+   */
+  static Stream<Arguments> entityTypesAndRoles() {
+    return Stream.of(LtftForm.class, LtftSubmissionHistory.class)
+        .flatMap(type -> Arrays.stream(ResponsibleRole.values())
+            .map(role -> Arguments.of(type, role)));
   }
 
   @Test
@@ -73,19 +89,26 @@ class PopulateLtftResponsibleRoleTest {
   }
 
   @Test
-  void shouldPerformCurrentAndHistoryUpdateForEachRole() {
-    migration.migrate();
-
-    verify(template, times(6)).updateMulti(any(Query.class), any(Update.class),
-        eq(LtftForm.class));
+  void shouldPopulateFormsAndSubmissionHistory() {
+    assertThat("Unexpected entity types.", PopulateLtftResponsibleRole.ENTITY_TYPES,
+        containsInAnyOrder(LtftForm.class, LtftSubmissionHistory.class));
   }
 
   @ParameterizedTest
-  @EnumSource(ResponsibleRole.class)
-  void shouldUpdateCurrentStatusWithoutRole(ResponsibleRole role) {
+  @ValueSource(classes = {LtftForm.class, LtftSubmissionHistory.class})
+  void shouldPerformCurrentAndHistoryUpdateForEachRole(Class<?> entityType) {
     migration.migrate();
 
-    Invocation invocation = findInvocation(CURRENT_ROLE, role);
+    verify(template, times(6)).updateMulti(any(Query.class), any(Update.class),
+        eq(entityType));
+  }
+
+  @ParameterizedTest
+  @MethodSource("entityTypesAndRoles")
+  void shouldUpdateCurrentStatusWithoutRole(Class<?> entityType, ResponsibleRole role) {
+    migration.migrate();
+
+    Invocation invocation = findInvocation(entityType, CURRENT_ROLE, role);
 
     assertThat("Unexpected query.", invocation.query().getQueryObject(),
         is(expectedEntryCriteria(role, "status.current.")));
@@ -93,11 +116,11 @@ class PopulateLtftResponsibleRoleTest {
   }
 
   @ParameterizedTest
-  @EnumSource(ResponsibleRole.class)
-  void shouldUpdateHistoryEntriesWithoutRole(ResponsibleRole role) {
+  @MethodSource("entityTypesAndRoles")
+  void shouldUpdateHistoryEntriesWithoutRole(Class<?> entityType, ResponsibleRole role) {
     migration.migrate();
 
-    Invocation invocation = findInvocation(HISTORY_ROLE, role);
+    Invocation invocation = findInvocation(entityType, HISTORY_ROLE, role);
 
     Document queryObject = invocation.query().getQueryObject();
     assertThat("Unexpected query keys.", queryObject.keySet(), is(Set.of("status.history")));
@@ -144,15 +167,16 @@ class PopulateLtftResponsibleRoleTest {
   /**
    * Find the captured update invocation which sets the given field to the given role.
    *
-   * @param field The field being set.
-   * @param role  The role being set.
+   * @param entityType The entity type the update was applied to.
+   * @param field      The field being set.
+   * @param role       The role being set.
    * @return The matching invocation.
    */
-  private Invocation findInvocation(String field, ResponsibleRole role) {
+  private Invocation findInvocation(Class<?> entityType, String field, ResponsibleRole role) {
     ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.captor();
     ArgumentCaptor<Update> updateCaptor = ArgumentCaptor.captor();
     verify(template, times(6)).updateMulti(queryCaptor.capture(), updateCaptor.capture(),
-        eq(LtftForm.class));
+        eq(entityType));
 
     List<Query> queries = queryCaptor.getAllValues();
     List<Update> updates = updateCaptor.getAllValues();
@@ -178,4 +202,3 @@ class PopulateLtftResponsibleRoleTest {
 
   }
 }
-

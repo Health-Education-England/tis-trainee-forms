@@ -23,12 +23,16 @@ package uk.nhs.hee.tis.trainee.forms.migration;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROVED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.REJECTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNDER_REVIEW;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
+import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.ResponsibleRole.ADMIN;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.ResponsibleRole.REVIEWER;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.ResponsibleRole.TRAINEE;
@@ -37,16 +41,26 @@ import io.awspring.cloud.sns.core.SnsTemplate;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.MongoDBContainer;
@@ -55,13 +69,15 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.ResponsibleRole;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
-import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
+import uk.nhs.hee.tis.trainee.forms.model.LtftSubmissionHistory;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
 import uk.nhs.hee.tis.trainee.forms.model.ReviewOutcome;
 import uk.nhs.hee.tis.trainee.forms.model.ReviewOutcome.Outcome;
+import uk.nhs.hee.tis.trainee.forms.service.LtftSubmissionHistoryService;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -76,6 +92,9 @@ class PopulateLtftResponsibleRoleIntegrationTest {
   @Autowired
   private MongoTemplate mongoTemplate;
 
+  @Autowired
+  private LtftSubmissionHistoryService submissionHistoryService;
+
   @MockitoBean
   private SnsTemplate snsTemplate;
 
@@ -89,50 +108,41 @@ class PopulateLtftResponsibleRoleIntegrationTest {
   @AfterEach
   void tearDown() {
     mongoTemplate.remove(new Query(), LtftForm.class);
-    mongoTemplate.remove(new Query(), FormRPartA.class);
+    mongoTemplate.remove(new Query(), LtftSubmissionHistory.class);
   }
 
-  @Test
-  void shouldPopulateEveryHistoryEntryFromItsOwnState() {
-    LtftForm form = insertLegacyLtft(DRAFT, SUBMITTED, UNDER_REVIEW, UNSUBMITTED, SUBMITTED);
-
-    migration.migrate();
-
-    LtftForm migrated = mongoTemplate.findById(form.getId(), LtftForm.class);
-    assertThat("Unexpected current responsible role.",
-        migrated.getStatus().current().responsibleRole(), is(ADMIN));
-    assertThat("Unexpected history responsible roles.", roles(migrated),
-        contains(null, ADMIN, ADMIN, TRAINEE, ADMIN));
+  /**
+   * Provide every combination of LTFT entity type and final lifecycle state.
+   *
+   * @return The entity type and final state arguments.
+   */
+  static Stream<Arguments> entityTypesAndFinalStates() {
+    return Stream.of(LtftForm.class, LtftSubmissionHistory.class)
+        .flatMap(type -> Stream.of(APPROVED, REJECTED, WITHDRAWN)
+            .map(state -> Arguments.of(type, state)));
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
-  void shouldLeaveFinalStatesWithoutResponsibleRole(LifecycleState finalState) {
-    LtftForm form = insertLegacyLtft(SUBMITTED, UNDER_REVIEW, finalState);
+  @MethodSource("entityTypesAndFinalStates")
+  void shouldLeaveFinalStatesWithoutResponsibleRole(
+      Class<? extends AbstractAuditedForm<?>> entityType, LifecycleState finalState) {
+    AbstractAuditedForm<?> form = insertLegacyLtft(entityType, SUBMITTED, UNDER_REVIEW,
+        finalState);
 
     migration.migrate();
 
-    LtftForm migrated = mongoTemplate.findById(form.getId(), LtftForm.class);
+    AbstractAuditedForm<?> migrated = mongoTemplate.findById(form.getId(), entityType);
+    Assertions.assertNotNull(migrated);
     assertThat("Unexpected current responsible role.",
         migrated.getStatus().current().responsibleRole(), nullValue());
     assertThat("Unexpected history responsible roles.", roles(migrated),
         contains(ADMIN, ADMIN, null));
   }
 
-  @Test
-  void shouldNotPopulateDraftOnlyForms() {
-    LtftForm form = insertLegacyLtft(DRAFT);
-
-    migration.migrate();
-
-    LtftForm migrated = mongoTemplate.findById(form.getId(), LtftForm.class);
-    assertThat("Unexpected current responsible role.",
-        migrated.getStatus().current().responsibleRole(), nullValue());
-    assertThat("Unexpected history responsible roles.", roles(migrated), contains(nullValue()));
-  }
-
-  @Test
-  void shouldPopulateReviewerRoleOnlyUntilReviewOutcomeRecorded() {
+  @ParameterizedTest
+  @ValueSource(classes = {LtftForm.class, LtftSubmissionHistory.class})
+  void shouldPopulateReviewerRoleOnlyUntilReviewOutcomeRecorded(
+      Class<? extends AbstractAuditedForm<?>> entityType) {
     Person reviewer = Person.builder().name("Tee-Pee Dee").role("REVIEWER").build();
     ReviewOutcome outcome = ReviewOutcome.builder()
         .outcome(Outcome.RECOMMEND_REJECTION)
@@ -148,11 +158,12 @@ class PopulateLtftResponsibleRoleIntegrationTest {
         statusInfo(SUBMITTED, reviewer, outcome),
         statusInfo(UNSUBMITTED, reviewer, null),
         statusInfo(SUBMITTED, reviewer, null));
-    LtftForm form = insertLtft(history);
+    AbstractAuditedForm<?> form = insertLtft(entityType, history);
 
     migration.migrate();
 
-    LtftForm migrated = mongoTemplate.findById(form.getId(), LtftForm.class);
+    AbstractAuditedForm<?> migrated = mongoTemplate.findById(form.getId(), entityType);
+    Assertions.assertNotNull(migrated);
     assertThat("Unexpected current responsible role.",
         migrated.getStatus().current().responsibleRole(), is(REVIEWER));
     assertThat("Unexpected history responsible roles.", roles(migrated),
@@ -160,128 +171,252 @@ class PopulateLtftResponsibleRoleIntegrationTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LifecycleState.class, names = {"APPROVED", "REJECTED", "WITHDRAWN"})
-  void shouldNotPopulateReviewerRoleForFinalStates(LifecycleState finalState) {
-    Person reviewer = Person.builder().name("Tee-Pee Dee").role("REVIEWER").build();
-    LtftForm form = insertLtft(List.of(statusInfo(finalState, reviewer, null)));
-
-    migration.migrate();
-
-    LtftForm migrated = mongoTemplate.findById(form.getId(), LtftForm.class);
-    assertThat("Unexpected current responsible role.",
-        migrated.getStatus().current().responsibleRole(), nullValue());
-    assertThat("Unexpected history responsible roles.", roles(migrated), contains(nullValue()));
-  }
-
-  @Test
-  void shouldNotOverwriteExistingResponsibleRoles() {
+  @ValueSource(classes = {LtftForm.class, LtftSubmissionHistory.class})
+  void shouldNotOverwriteExistingResponsibleRoles(
+      Class<? extends AbstractAuditedForm<?>> entityType) {
     // Simulates entries recorded by the application, the recorded role differs from the one the
     // migration would derive to prove that it is not overwritten.
     StatusInfo legacy = statusInfo(SUBMITTED, null);
     StatusInfo recorded = statusInfo(UNDER_REVIEW, REVIEWER);
-
-    LtftForm form = new LtftForm();
-    form.setStatus(Status.builder()
-        .current(recorded)
-        .submitted(Instant.now())
-        .history(List.of(legacy, recorded))
-        .build());
-    form = mongoTemplate.insert(form);
+    AbstractAuditedForm<?> form = insertLtft(entityType, List.of(legacy, recorded));
 
     migration.migrate();
 
-    LtftForm migrated = mongoTemplate.findById(form.getId(), LtftForm.class);
+    AbstractAuditedForm<?> migrated = mongoTemplate.findById(form.getId(), entityType);
+    Assertions.assertNotNull(migrated);
     assertThat("Unexpected current responsible role.",
         migrated.getStatus().current().responsibleRole(), is(REVIEWER));
     assertThat("Unexpected history responsible roles.", roles(migrated),
         contains(ADMIN, REVIEWER));
   }
 
-  @Test
-  void shouldNotFailForFormsWithoutStatus() {
-    LtftForm form = mongoTemplate.insert(new LtftForm());
+  @ParameterizedTest
+  @ValueSource(classes = {LtftForm.class, LtftSubmissionHistory.class})
+  void shouldNotFailForFormsWithoutStatus(Class<? extends AbstractAuditedForm<?>> entityType) {
+    AbstractAuditedForm<?> form = newInstance(entityType);
+    form.setFormRef(UUID.randomUUID().toString());
+    form = mongoTemplate.insert(form);
 
     migration.migrate();
 
-    LtftForm migrated = mongoTemplate.findById(form.getId(), LtftForm.class);
+    AbstractAuditedForm<?> migrated = mongoTemplate.findById(form.getId(), entityType);
+    Assertions.assertNotNull(migrated);
     assertThat("Unexpected status.", migrated.getStatus(), nullValue());
   }
 
-  @Test
-  void shouldProduceSameResultWhenRunTwice() {
-    LtftForm form = insertLegacyLtft(SUBMITTED, UNSUBMITTED);
-
-    migration.migrate();
-    migration.migrate();
-
-    LtftForm migrated = mongoTemplate.findById(form.getId(), LtftForm.class);
-    assertThat("Unexpected current responsible role.",
-        migrated.getStatus().current().responsibleRole(), is(TRAINEE));
-    assertThat("Unexpected history responsible roles.", roles(migrated),
-        contains(ADMIN, TRAINEE));
-  }
-
-  @Test
-  void shouldNotModifyLastModifiedWhenPopulatingResponsibleRole() {
-    LtftForm form = insertLegacyLtft(SUBMITTED, UNDER_REVIEW);
-    Instant lastModified = mongoTemplate.findById(form.getId(), LtftForm.class).getLastModified();
+  @ParameterizedTest
+  @ValueSource(classes = {LtftForm.class, LtftSubmissionHistory.class})
+  void shouldNotModifyLastModifiedWhenPopulatingResponsibleRole(
+      Class<? extends AbstractAuditedForm<?>> entityType) {
+    AbstractAuditedForm<?> form = insertLegacyLtft(entityType, SUBMITTED, UNDER_REVIEW);
+    Instant lastModified = Objects.requireNonNull(
+        mongoTemplate.findById(form.getId(), entityType)).getLastModified();
 
     migration.migrate();
 
-    LtftForm migrated = mongoTemplate.findById(form.getId(), LtftForm.class);
+    AbstractAuditedForm<?> migrated = mongoTemplate.findById(form.getId(), entityType);
+    Assertions.assertNotNull(migrated);
     assertThat("Unexpected last modified.", migrated.getLastModified(), is(lastModified));
   }
 
   @Test
-  void shouldNotModifyOtherFormTypes() {
-    FormRPartA formr = new FormRPartA();
-    formr.setTraineeTisId("40");
-    formr.setStatus(Status.builder()
-        .current(statusInfo(SUBMITTED, null))
-        .submitted(Instant.now())
-        .history(List.of(statusInfo(SUBMITTED, null)))
-        .build());
-    formr = mongoTemplate.insert(formr);
+  void shouldMatchApplicationRecordedRolesForFirstSubmission() {
+    Consumer<LtftForm> lifecycle = this::submit;
+
+    String nativeRef = runLifecycle(lifecycle);
+    String legacyRef = runLifecycle(lifecycle);
+    removeResponsibleRoles(legacyRef);
 
     migration.migrate();
 
-    FormRPartA migrated = mongoTemplate.findById(formr.getId(), FormRPartA.class);
-    assertThat("Unexpected current responsible role.",
-        migrated.getStatus().current().responsibleRole(), nullValue());
-    assertThat("Unexpected history responsible role.",
-        migrated.getStatus().history().get(0).responsibleRole(), nullValue());
+    assertThat("Unexpected native form roles.", roles(findForm(nativeRef)),
+        contains(null, ADMIN));
+    assertMigratedMatchesApplicationRecorded(legacyRef, nativeRef);
+  }
+
+  @Test
+  void shouldMatchApplicationRecordedRolesForResubmission() {
+    Person reviewer = Person.builder().name("Tee-Pee Dee").role("REVIEWER").build();
+    Consumer<LtftForm> lifecycle = form -> {
+      submit(form);
+      form.setLifecycleState(UNDER_REVIEW, null, null, form.getRevision());
+      form.setAssignedReviewer(reviewer, null);
+      unsubmit(form);
+      submit(form);
+    };
+
+    String nativeRef = runLifecycle(lifecycle);
+    String legacyRef = runLifecycle(lifecycle);
+    removeResponsibleRoles(legacyRef);
+
+    migration.migrate();
+
+    // The assigned reviewer is carried over to the resubmission, with no review outcome recorded.
+    assertThat("Unexpected native form roles.", roles(findForm(nativeRef)),
+        contains(null, ADMIN, ADMIN, REVIEWER, TRAINEE, REVIEWER));
+    assertMigratedMatchesApplicationRecorded(legacyRef, nativeRef);
   }
 
   /**
-   * Insert an LTFT form as it would exist prior to the responsible role being introduced.
+   * Run an LTFT lifecycle using the application's domain methods, taking a submission snapshot on
+   * each submission, so that responsible roles are recorded as the application would.
    *
-   * @param states The states to include in the status history, the last will be current.
-   * @return The inserted form.
+   * @param lifecycle The lifecycle steps to apply after the form is created as a draft.
+   * @return The form reference of the created form and its snapshots.
    */
-  private LtftForm insertLegacyLtft(LifecycleState... states) {
+  private String runLifecycle(Consumer<LtftForm> lifecycle) {
+    LtftForm form = new LtftForm();
+    form.setFormRef(UUID.randomUUID().toString());
+    form.setLifecycleState(DRAFT, null, null, 0);
+    lifecycle.accept(form);
+    mongoTemplate.save(form);
+    return form.getFormRef();
+  }
+
+  /**
+   * Submit the form and take a submission snapshot, mirroring the application's submission flow.
+   *
+   * @param form The form to submit.
+   */
+  private void submit(LtftForm form) {
+    form.setLifecycleState(SUBMITTED, null, null, form.getRevision());
+    LtftForm savedForm = mongoTemplate.save(form);
+    submissionHistoryService.takeSnapshot(savedForm);
+  }
+
+  /**
+   * Unsubmit the form, incrementing the revision as the application does.
+   *
+   * @param form The form to unsubmit.
+   */
+  private void unsubmit(LtftForm form) {
+    form.setRevision(form.getRevision() + 1);
+    form.setLifecycleState(UNSUBMITTED, null, null, form.getRevision());
+  }
+
+  /**
+   * Remove the responsible roles from a form and its snapshots, simulating data recorded before
+   * the responsible role was introduced.
+   *
+   * @param formRef The form reference of the form and snapshots.
+   */
+  private void removeResponsibleRoles(String formRef) {
+    Query query = Query.query(Criteria.where("formRef").is(formRef));
+    Update update = new Update()
+        .unset("status.current.responsibleRole")
+        .unset("status.history.$[].responsibleRole");
+    mongoTemplate.updateMulti(query, update, LtftForm.class);
+    mongoTemplate.updateMulti(query, update, LtftSubmissionHistory.class);
+
+    assertThat("Unexpected legacy form roles.", roles(findForm(formRef)),
+        everyItem(nullValue()));
+  }
+
+  /**
+   * Assert that the migrated form and snapshots have the same responsible roles, for both the
+   * current status and the status history, as those recorded by the application.
+   *
+   * @param migratedRef The form reference of the migrated form and snapshots.
+   * @param nativeRef   The form reference of the application recorded form and snapshots.
+   */
+  private void assertMigratedMatchesApplicationRecorded(String migratedRef, String nativeRef) {
+    LtftForm migratedForm = findForm(migratedRef);
+    LtftForm nativeForm = findForm(nativeRef);
+    assertThat("Unexpected form current role.",
+        migratedForm.getStatus().current().responsibleRole(),
+        is(nativeForm.getStatus().current().responsibleRole()));
+    assertThat("Unexpected form history roles.", roles(migratedForm), is(roles(nativeForm)));
+
+    List<LtftSubmissionHistory> migratedSnapshots = findSnapshots(migratedRef);
+    List<LtftSubmissionHistory> nativeSnapshots = findSnapshots(nativeRef);
+    assertThat("Unexpected snapshot count.", migratedSnapshots.size(),
+        is(nativeSnapshots.size()));
+
+    for (int i = 0; i < nativeSnapshots.size(); i++) {
+      LtftSubmissionHistory migratedSnapshot = migratedSnapshots.get(i);
+      LtftSubmissionHistory nativeSnapshot = nativeSnapshots.get(i);
+      assertThat("Unexpected snapshot current role.",
+          migratedSnapshot.getStatus().current().responsibleRole(),
+          is(nativeSnapshot.getStatus().current().responsibleRole()));
+      assertThat("Unexpected snapshot history roles.", roles(migratedSnapshot),
+          is(roles(nativeSnapshot)));
+    }
+  }
+
+  /**
+   * Find the form with the given form reference.
+   *
+   * @param formRef The form reference.
+   * @return The found form.
+   */
+  private LtftForm findForm(String formRef) {
+    return mongoTemplate.findOne(Query.query(Criteria.where("formRef").is(formRef)),
+        LtftForm.class);
+  }
+
+  /**
+   * Find the submission snapshots with the given form reference, ordered by revision.
+   *
+   * @param formRef The form reference.
+   * @return The found snapshots.
+   */
+  private List<LtftSubmissionHistory> findSnapshots(String formRef) {
+    Query query = Query.query(Criteria.where("formRef").is(formRef))
+        .with(Sort.by("revision"));
+    return mongoTemplate.find(query, LtftSubmissionHistory.class);
+  }
+
+  /**
+   * Insert an LTFT entity as it would exist prior to the responsible role being introduced.
+   *
+   * @param entityType The type of LTFT entity to insert.
+   * @param states     The states to include in the status history, the last will be current.
+   * @return The inserted entity.
+   */
+  private AbstractAuditedForm<?> insertLegacyLtft(
+      Class<? extends AbstractAuditedForm<?>> entityType, LifecycleState... states) {
     List<StatusInfo> history = Arrays.stream(states)
         .map(s -> statusInfo(s, null))
         .toList();
-    return insertLtft(history);
+    return insertLtft(entityType, history);
   }
 
   /**
-   * Insert an LTFT form with the given status history.
+   * Insert an LTFT entity with the given status history. A unique form reference is assigned, as
+   * submission history requires the combination of form reference and revision to be unique.
    *
-   * @param history The status history, the last entry will be current.
-   * @return The inserted form.
+   * @param entityType The type of LTFT entity to insert.
+   * @param history    The status history, the last entry will be current.
+   * @return The inserted entity.
    */
-  private LtftForm insertLtft(List<StatusInfo> history) {
+  private AbstractAuditedForm<?> insertLtft(Class<? extends AbstractAuditedForm<?>> entityType,
+      List<StatusInfo> history) {
     StatusInfo current = history.get(history.size() - 1);
     boolean draftOnly = history.stream().allMatch(s -> s.state() == DRAFT);
 
-    LtftForm form = new LtftForm();
+    AbstractAuditedForm<?> form = newInstance(entityType);
+    form.setFormRef(UUID.randomUUID().toString());
     form.setStatus(Status.builder()
         .current(current)
         .submitted(draftOnly ? null : Instant.now())
         .history(history)
         .build());
     return mongoTemplate.insert(form);
+  }
+
+  /**
+   * Create a new instance of the given entity type.
+   *
+   * @param entityType The type of entity to create.
+   * @return The new entity instance.
+   */
+  private static AbstractAuditedForm<?> newInstance(
+      Class<? extends AbstractAuditedForm<?>> entityType) {
+    try {
+      return entityType.getDeclaredConstructor().newInstance();
+    } catch (ReflectiveOperationException e) {
+      throw new IllegalStateException("Unable to create " + entityType.getSimpleName(), e);
+    }
   }
 
   /**
@@ -323,10 +458,9 @@ class PopulateLtftResponsibleRoleIntegrationTest {
    * @param form The form to get the roles from.
    * @return The ordered responsible roles.
    */
-  private List<ResponsibleRole> roles(LtftForm form) {
+  private List<ResponsibleRole> roles(AbstractAuditedForm<?> form) {
     return form.getStatus().history().stream()
         .map(StatusInfo::responsibleRole)
         .toList();
   }
 }
-

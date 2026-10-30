@@ -39,10 +39,11 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.ResponsibleRole;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
+import uk.nhs.hee.tis.trainee.forms.model.LtftSubmissionHistory;
 
 /**
  * Populate the responsible role for the current status and every status history entry of
- * existing LTFT forms.
+ * existing LTFT forms and their submission history snapshots.
  *
  * <p>The role is derived from each entry's own lifecycle state, assigned reviewer and review
  * outcome using a fixed copy of the rule as it stood when this migration was written, deliberately
@@ -56,9 +57,12 @@ import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
  * </ul>
  * The criteria for each role are mutually exclusive, so the order of the updates does not matter.
  *
+ * <p>Submission history snapshots are populated using the same rule, so that a status entry held
+ * by both a form and its snapshots is recorded consistently in each.
+ *
  * <p>Only entries without a responsible role are updated, so values recorded by the application
  * are never overwritten and the migration is safe to re-run. Bulk partial updates are used, which
- * do not modify the form's last modified timestamp. No events are published, to avoid triggering
+ * do not modify the last modified timestamp. No events are published, to avoid triggering
  * downstream processing for every existing form, so event consumers will only receive the
  * responsible role from a form's next update.
  */
@@ -70,6 +74,12 @@ public class PopulateLtftResponsibleRole {
    * The responsible roles populated by this migration.
    */
   static final List<ResponsibleRole> ROLES = List.of(TRAINEE, REVIEWER, ADMIN);
+
+  /**
+   * The entity types populated by this migration, each mapping to its own collection.
+   */
+  static final List<Class<?>> ENTITY_TYPES = List.of(LtftForm.class,
+      LtftSubmissionHistory.class);
 
   private static final List<String> REVIEWABLE_STATES = List.of(SUBMITTED.name(),
       UNDER_REVIEW.name());
@@ -89,45 +99,47 @@ public class PopulateLtftResponsibleRole {
   }
 
   /**
-   * Populate the responsible role for LTFT form statuses.
+   * Populate the responsible role for LTFT form and submission history statuses.
    */
   @Execution
   public void migrate() {
-    ROLES.forEach(role -> {
-      long currentCount = populateCurrent(role);
-      long historyCount = populateHistory(role);
+    ENTITY_TYPES.forEach(entityType -> ROLES.forEach(role -> {
+      long currentCount = populateCurrent(role, entityType);
+      long historyCount = populateHistory(role, entityType);
       log.info("Populated responsible role {} for {} current statuses and the status history of "
-          + "{} LTFT forms.", role, currentCount, historyCount);
-    });
+          + "{} {} documents.", role, currentCount, historyCount, entityType.getSimpleName());
+    }));
   }
 
   /**
    * Populate the responsible role of the current status, where not already set.
    *
-   * @param role The responsible role to set.
-   * @return The number of modified forms.
+   * @param role       The responsible role to set.
+   * @param entityType The entity type, identifying the collection to update.
+   * @return The number of modified documents.
    */
-  private long populateCurrent(ResponsibleRole role) {
+  private long populateCurrent(ResponsibleRole role, Class<?> entityType) {
     Query query = Query.query(entryCriteria(role, CURRENT_PREFIX));
     Update update = new Update().set(CURRENT_PREFIX + ROLE_FIELD, role.name());
-    return mongoTemplate.updateMulti(query, update, LtftForm.class).getModifiedCount();
+    return mongoTemplate.updateMulti(query, update, entityType).getModifiedCount();
   }
 
   /**
    * Populate the responsible role of every matching status history entry, where not already set.
    *
-   * @param role The responsible role to set.
-   * @return The number of modified forms.
+   * @param role       The responsible role to set.
+   * @param entityType The entity type, identifying the collection to update.
+   * @return The number of modified documents.
    */
-  private long populateHistory(ResponsibleRole role) {
-    // Restricting to forms with a matching entry is required, as array filters error if the
+  private long populateHistory(ResponsibleRole role, Class<?> entityType) {
+    // Restricting to documents with a matching entry is required, as array filters error if the
     // array path does not exist on a document.
     Query query = Query.query(Criteria.where(HISTORY_FIELD).elemMatch(entryCriteria(role, "")));
 
     Update update = new Update()
         .set(HISTORY_FIELD + ".$[" + ELEMENT_IDENTIFIER + "]." + ROLE_FIELD, role.name())
         .filterArray(entryCriteria(role, ELEMENT_IDENTIFIER + "."));
-    return mongoTemplate.updateMulti(query, update, LtftForm.class).getModifiedCount();
+    return mongoTemplate.updateMulti(query, update, entityType).getModifiedCount();
   }
 
   /**
