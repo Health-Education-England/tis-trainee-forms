@@ -26,6 +26,7 @@ import java.util.UUID;
 import lombok.Builder;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.ResponsibleRole;
 
 /**
  * A DTO for an admin-focused LTFT summary record.
@@ -45,6 +46,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
  * @param reviewStage       The current review stage label, or null if no review stage is active.
  * @param assignedAdmin     The admin assigned to process the LTFT application.
  * @param assignedReviewer  The reviewer assigned to review the LTFT application.
+ * @param responsibleRole   The role currently responsible for progressing the LTFT application.
  */
 @Builder
 public record LtftAdminSummaryDto(
@@ -63,7 +65,8 @@ public record LtftAdminSummaryDto(
     LifecycleState status,
     String reviewStage,
     PersonDto assignedAdmin,
-    PersonDto assignedReviewer) {
+    PersonDto assignedReviewer,
+    ResponsibleRole responsibleRole) {
 
   /**
    * Trainee personal details for the admin view.

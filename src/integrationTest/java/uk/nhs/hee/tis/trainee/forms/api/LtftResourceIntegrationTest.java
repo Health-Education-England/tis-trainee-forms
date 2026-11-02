@@ -433,6 +433,28 @@ class LtftResourceIntegrationTest {
   }
 
   @Test
+  void shouldExcludeResponsibleRoleWhenLtftFormFound() throws Exception {
+    LtftForm ltft = new LtftForm();
+    ltft.setId(ID);
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setContent(LtftContent.builder().name("name").build());
+    ltft.setLifecycleState(LifecycleState.SUBMITTED);
+    ltft.setLifecycleState(LifecycleState.UNSUBMITTED);
+    template.insert(ltft);
+
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
+    mockMvc.perform(get("/api/ltft/" + ID)
+            .with(jwt().jwt(token)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.status.current.state", is(LifecycleState.UNSUBMITTED.name())))
+        .andExpect(jsonPath("$.status.current.responsibleRole").doesNotExist())
+        .andExpect(jsonPath("$.status.history", hasSize(2)))
+        .andExpect(jsonPath("$.status.history[0].responsibleRole").doesNotExist())
+        .andExpect(jsonPath("$.status.history[1].responsibleRole").doesNotExist());
+  }
+
+  @Test
   void shouldBeBadRequestWhenCreatingLtftFormWithId() throws Exception {
     LtftFormDto formToSave = LtftFormDto.builder()
         .id(ID)
