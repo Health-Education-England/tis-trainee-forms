@@ -31,12 +31,14 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
+import lombok.With;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.domain.Persistable;
 import org.springframework.data.mongodb.core.index.Indexed;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.ResponsibleRole;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusDetail;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo.StatusInfoBuilder;
@@ -83,6 +85,19 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
       return null;
     }
     return status.current.state;
+  }
+
+  /**
+   * Resolve the role responsible for progressing the form for the given status entry. Applied to
+   * every new status entry as it is recorded, the default implementation returns null so that form
+   * types without the concept of a responsible role are unaffected.
+   *
+   * @param statusInfo The status entry to resolve the responsible role for.
+   * @return The responsible role, or null if not applicable.
+   */
+  @Nullable
+  public ResponsibleRole resolveResponsibleRole(StatusInfo statusInfo) {
+    return null;
   }
 
   /**
@@ -250,14 +265,17 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
   }
 
   /**
-   * Update the form's current and historical status to include in given {@link StatusInfo}.
+   * Update the form's current and historical status to include in given {@link StatusInfo}. The
+   * responsible role is resolved for the new status entry before it is recorded.
    *
-   * @param statusInfo           The status info to add to the form.
+   * @param newStatusInfo        The status info to add to the form.
    * @param affectsSubmittedDate Whether this status change affects the submitted date. In
    *                             particular, changing the assigned admin does not affect the
    *                             submitted date.
    */
-  private void updateStatusInfo(StatusInfo statusInfo, boolean affectsSubmittedDate) {
+  private void updateStatusInfo(StatusInfo newStatusInfo, boolean affectsSubmittedDate) {
+    StatusInfo statusInfo = newStatusInfo.withResponsibleRole(
+        resolveResponsibleRole(newStatusInfo));
     Instant submitted;
 
     if (statusInfo.state == LifecycleState.SUBMITTED && affectsSubmittedDate) {
@@ -307,8 +325,11 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
      * @param revision         The revision number associated with this status change.
      * @param reviewStage      The review stage associated with this status change, if any.
      * @param reviewOutcome    The review outcome recorded by the reviewer, if any.
+     * @param responsibleRole  The role responsible for progressing the form at this status, null
+     *                         when not applicable to the form type or no role is responsible.
      */
     @Builder
+    @With
     public record StatusInfo(
 
         @Indexed
@@ -320,7 +341,9 @@ public abstract class AbstractAuditedForm<T extends FormContent> extends Abstrac
         Instant timestamp,
         Integer revision,
         ReviewStageStatus reviewStage,
-        ReviewOutcome reviewOutcome
+        ReviewOutcome reviewOutcome,
+        @Nullable
+        ResponsibleRole responsibleRole
     ) {
 
     }
