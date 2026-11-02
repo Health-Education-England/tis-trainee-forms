@@ -1305,6 +1305,8 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
             case "formRef" -> e.getKey();
             case "assignedAdmin.name" -> "status.current.assignedAdmin.name";
             case "assignedAdmin.email" -> "status.current.assignedAdmin.email";
+            case "assignedReviewer.name" -> "status.current.assignedReviewer.name";
+            case "assignedReviewer.email" -> "status.current.assignedReviewer.email";
             case "personalDetails.forenames" -> "content.personalDetails.forenames";
             case "personalDetails.gdcNumber" -> "content.personalDetails.gdcNumber";
             case "personalDetails.gmcNumber" -> "content.personalDetails.gmcNumber";
