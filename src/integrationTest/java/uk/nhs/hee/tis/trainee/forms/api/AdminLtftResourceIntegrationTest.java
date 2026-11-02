@@ -64,6 +64,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -108,6 +109,7 @@ import uk.nhs.hee.tis.trainee.forms.model.ReviewOutcome.Outcome;
 import uk.nhs.hee.tis.trainee.forms.model.ReviewStageStatus;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Declarations;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Discussions;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.PersonalDetails;
@@ -1328,6 +1330,35 @@ class AdminLtftResourceIntegrationTest {
             is(ResponsibleRole.ADMIN.name())))
         .andExpect(jsonPath("$.status.history[1].responsibleRole",
             is(ResponsibleRole.TRAINEE.name())));
+  }
+
+  @Test
+  void shouldIncludeCctSnapshotInDetailJson() throws Exception {
+    UUID calculationId = UUID.randomUUID();
+    Instant snapshotTakenAt = Instant.parse("2026-11-02T10:15:30.123Z");
+    Map<String, Object> calculation = Map.of(
+        "id", calculationId.toString(),
+        "name", "My calculation");
+
+    LtftForm form = createLtftForm(SUBMITTED, DBC_1, null);
+    form.setContent(LtftContent.builder()
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(DBC_1)
+            .build())
+        .cctSnapshot(CctSnapshot.builder()
+            .calculationId(calculationId)
+            .snapshotTakenAt(snapshotTakenAt)
+            .calculation(calculation)
+            .build())
+        .build());
+    form = template.insert(form);
+
+    mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.cctSnapshot.calculationId", is(calculationId.toString())))
+        .andExpect(jsonPath("$.cctSnapshot.snapshotTakenAt", is(snapshotTakenAt.toString())))
+        .andExpect(jsonPath("$.cctSnapshot.calculation", is(calculation)));
   }
 
   @ParameterizedTest
