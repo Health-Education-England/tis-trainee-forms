@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Optional;
 import org.bson.Document;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -146,6 +147,25 @@ class FormRPartBRepositoryIntegrationTest {
 
     assertThat("Unexpected fields.", fieldNames,
         containsInAnyOrder("_id", "revision", "created", "lastModified", "_class"));
+  }
+
+  @ParameterizedTest
+  @EnumSource(LifecycleState.class)
+  void shouldNotStoreResponsibleRoleInStatus(LifecycleState state) {
+    FormRPartB form = new FormRPartB();
+    form.setLifecycleState(state);
+    template.insert(form);
+
+    Document stored = template.getCollection(template.getCollectionName(FormRPartB.class))
+        .find().first();
+    Assertions.assertNotNull(stored);
+    Document status = stored.get("status", Document.class);
+
+    assertThat("Unexpected current responsible role key.",
+        status.get("current", Document.class).containsKey("responsibleRole"), is(false));
+    assertThat("Unexpected history responsible role key.",
+        status.getList("history", Document.class).get(0).containsKey("responsibleRole"),
+        is(false));
   }
 
   @ParameterizedTest

@@ -39,8 +39,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.dto.enumeration.ResponsibleRole;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status;
 import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
@@ -323,6 +326,53 @@ class LtftMapperTest {
     LtftAdminSummaryDto dto = mapper.toAdminSummaryDto(entity);
 
     assertThat("Unexpected alternate start date.", dto.altStartDate(), nullValue());
+  }
+
+  @ParameterizedTest
+  @EnumSource(ResponsibleRole.class)
+  void shouldMapResponsibleRoleToAdminSummaryDto(ResponsibleRole role) {
+    LtftForm entity = new LtftForm();
+    entity.setStatus(Status.builder()
+        .current(StatusInfo.builder().responsibleRole(role).build())
+        .build());
+
+    LtftAdminSummaryDto dto = mapper.toAdminSummaryDto(entity);
+
+    assertThat("Unexpected responsible role.", dto.responsibleRole(), is(role));
+  }
+
+  @Test
+  void shouldNotMapResponsibleRoleFromStatusInfoDto() {
+    StatusInfoDto dto = StatusInfoDto.builder()
+        .state(LifecycleState.SUBMITTED)
+        .responsibleRole(ResponsibleRole.REVIEWER)
+        .build();
+
+    StatusInfo statusInfo = mapper.toStatusInfo(dto);
+
+    assertThat("Unexpected state.", statusInfo.state(), is(LifecycleState.SUBMITTED));
+    assertThat("Unexpected responsible role.", statusInfo.responsibleRole(), nullValue());
+  }
+
+  @ParameterizedTest
+  @EnumSource(ResponsibleRole.class)
+  void shouldMapResponsibleRoleToFormDto(ResponsibleRole role) {
+    StatusInfo current = StatusInfo.builder().responsibleRole(role).build();
+    StatusInfo previous = StatusInfo.builder().build();
+    LtftForm entity = new LtftForm();
+    entity.setStatus(Status.builder()
+        .current(current)
+        .history(List.of(previous, current))
+        .build());
+
+    LtftFormDto dto = mapper.toDto(entity);
+
+    assertThat("Unexpected current responsible role.", dto.status().current().responsibleRole(),
+        is(role));
+    assertThat("Unexpected previous responsible role.",
+        dto.status().history().get(0).responsibleRole(), nullValue());
+    assertThat("Unexpected latest responsible role.",
+        dto.status().history().get(1).responsibleRole(), is(role));
   }
 
   @Test
