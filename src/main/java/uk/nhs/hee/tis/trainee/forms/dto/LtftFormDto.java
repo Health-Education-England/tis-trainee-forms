@@ -28,6 +28,7 @@ import jakarta.validation.constraints.Null;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.Builder;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
@@ -53,6 +54,7 @@ import uk.nhs.hee.tis.trainee.forms.model.content.CctChangeType;
  * @param declarations        The LTFT declarations.
  * @param discussions         Discussions which took place as part of the LTFT process.
  * @param change              The calculated LTFT change.
+ * @param cctSnapshot         A snapshot of a CCT calculation, attached by the trainee.
  * @param reasons             The reasons for applying for LTFT.
  * @param status              The status of the LTFT application, both current and audit history.
  * @param created             When the LTFT application was first created.
@@ -78,6 +80,7 @@ public record LtftFormDto(
     DiscussionsDto discussions,
     @Valid
     CctChangeDto change,
+    CctSnapshotDto cctSnapshot,
     ReasonsDto reasons,
     ExceptionalReasonsDto exceptionalReasons,
     @JsonView(ReadOnly.class)
@@ -118,6 +121,21 @@ public record LtftFormDto(
       LocalDate startDate,
       LocalDate altStartDate,
       LocalDate endDate) {
+
+  }
+
+  /**
+   * A snapshot of a CCT calculation.
+   *
+   * @param calculationId   The ID of the CCT calculation.
+   * @param snapshotTakenAt When the snapshot was taken.
+   * @param calculation     The CCT calculation at the time of the snapshot.
+   */
+  @Builder
+  public record CctSnapshotDto(
+      UUID calculationId,
+      Instant snapshotTakenAt,
+      Map<String, Object> calculation) {
 
   }
 

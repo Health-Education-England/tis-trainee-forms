@@ -21,8 +21,10 @@
 
 package uk.nhs.hee.tis.trainee.forms.model.content;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.Builder;
 import lombok.With;
@@ -40,6 +42,7 @@ import uk.nhs.hee.tis.trainee.forms.model.Person;
  * @param declarations        The LTFT declarations.
  * @param discussions         Discussions which took place as part of the LTFT process.
  * @param change              The calculated LTFT change.
+ * @param cctSnapshot         A snapshot of a CCT calculation, attached by the trainee.
  * @param reasons             The reasons for applying for LTFT.
  * @param exceptionalReasons  Additional reasons for exceptional applications.
  * @param tpdEmailValidity    The validity of the email address for the TPD, if applicable.
@@ -53,6 +56,7 @@ public record LtftContent(
     Discussions discussions,
     @With
     CctChange change,
+    CctSnapshot cctSnapshot,
     Reasons reasons,
     ExceptionalReasons exceptionalReasons,
     @With
@@ -145,6 +149,21 @@ public record LtftContent(
       String tpdName,
       String tpdEmail,
       List<Person> other) {
+
+  }
+
+  /**
+   * A snapshot of a CCT calculation.
+   *
+   * @param calculationId   The ID of the CCT calculation.
+   * @param snapshotTakenAt When the snapshot was taken.
+   * @param calculation     The CCT calculation at the time of the snapshot.
+   */
+  @Builder
+  public record CctSnapshot(
+      UUID calculationId,
+      Instant snapshotTakenAt,
+      Map<String, Object> calculation) {
 
   }
 

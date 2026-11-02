@@ -60,7 +60,9 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.apache.pdfbox.Loader;
@@ -101,6 +103,7 @@ import uk.nhs.hee.tis.trainee.forms.DockerImageNames;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctChangeDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
@@ -116,6 +119,7 @@ import uk.nhs.hee.tis.trainee.forms.model.ReviewOutcome.Outcome;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChangeType;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Declarations;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Discussions;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ExceptionalReasons;
@@ -175,6 +179,31 @@ class LtftResourceIntegrationTest {
         Arguments.of(ExceptionalReasons.builder().exceptional(null).build()),
         Arguments.of(ExceptionalReasons.builder().exceptional(false).build())
     );
+  }
+
+  /**
+   * Create a CCT calculation, as the trainee UI attaches it to an LTFT application.
+   *
+   * @param calculationId The ID of the calculation.
+   * @return The calculation.
+   */
+  private static Map<String, Object> createCctCalculation(UUID calculationId) {
+    Map<String, Object> change = new HashMap<>();
+    change.put("type", "LTFT");
+    change.put("startDate", "2027-02-01");
+    change.put("endDate", null);
+    change.put("wte", 0.6);
+    change.put("countsTowardsCompletion", true);
+
+    return Map.of(
+        "id", calculationId.toString(),
+        "name", "My calculation",
+        "programmeDetails", Map.of("specialty", "Paediatrics", "lengthMonths", 96),
+        "changes", List.of(change),
+        "result", Map.of(
+            "cctDate", "2030-07-29",
+            "gradeProgression", List.of(Map.of("yearNumber", 1, "grade", "ST1"))),
+        "lastModified", "2026-10-28T12:34:56.789Z");
   }
 
   @AfterEach
@@ -582,6 +611,44 @@ class LtftResourceIntegrationTest {
   }
 
   @Test
+  void shouldPersistCctSnapshotWhenLtftFormCreated() throws Exception {
+    UUID calculationId = UUID.randomUUID();
+    Instant snapshotTakenAt = Instant.parse("2026-11-02T10:15:30.123Z");
+    Map<String, Object> calculation = createCctCalculation(calculationId);
+
+    LtftFormDto formToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .name("test")
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
+        .cctSnapshot(CctSnapshotDto.builder()
+            .calculationId(calculationId)
+            .snapshotTakenAt(snapshotTakenAt)
+            .calculation(calculation)
+            .build())
+        .build();
+    String formToSaveJson = mapper.writeValueAsString(formToSave);
+
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
+    mockMvc.perform(post("/api/ltft")
+            .with(jwt().jwt(token))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToSaveJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.cctSnapshot.calculationId", is(calculationId.toString())))
+        .andExpect(jsonPath("$.cctSnapshot.snapshotTakenAt", is(snapshotTakenAt.toString())))
+        .andExpect(jsonPath("$.cctSnapshot.calculation", is(calculation)));
+
+    List<LtftForm> savedRecords = template.find(new Query(), LtftForm.class);
+    CctSnapshot savedSnapshot = savedRecords.get(0).getContent().cctSnapshot();
+    assertThat("Unexpected calculation ID.", savedSnapshot.calculationId(), is(calculationId));
+    assertThat("Unexpected snapshot timestamp.", savedSnapshot.snapshotTakenAt(),
+        is(snapshotTakenAt));
+    assertThat("Unexpected calculation.", savedSnapshot.calculation(), is(calculation));
+  }
+
+  @Test
   void shouldIgnoreRevisionWhenCreatingLtftFormForTrainee() throws Exception {
     LtftFormDto formToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
@@ -900,6 +967,49 @@ class LtftResourceIntegrationTest {
   }
 
   @Test
+  void shouldPersistCctSnapshotWhenLtftFormUpdated() throws Exception {
+    LtftForm form = new LtftForm();
+    form.setTraineeTisId(TRAINEE_ID);
+    form.setLifecycleState(LifecycleState.DRAFT);
+    LtftForm formSaved = template.save(form);
+
+    UUID calculationId = UUID.randomUUID();
+    Instant snapshotTakenAt = Instant.parse("2026-11-02T10:15:30.123Z");
+    Map<String, Object> calculation = createCctCalculation(calculationId);
+
+    LtftFormDto formToUpdate = LtftFormDto.builder()
+        .id(formSaved.getId())
+        .traineeTisId(TRAINEE_ID)
+        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
+            .id(PM_UUID)
+            .build())
+        .cctSnapshot(CctSnapshotDto.builder()
+            .calculationId(calculationId)
+            .snapshotTakenAt(snapshotTakenAt)
+            .calculation(calculation)
+            .build())
+        .build();
+    String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
+
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
+    mockMvc.perform(put("/api/ltft/" + formSaved.getId())
+            .with(jwt().jwt(token))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToUpdateJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.cctSnapshot.calculationId", is(calculationId.toString())))
+        .andExpect(jsonPath("$.cctSnapshot.snapshotTakenAt", is(snapshotTakenAt.toString())))
+        .andExpect(jsonPath("$.cctSnapshot.calculation", is(calculation)));
+
+    List<LtftForm> savedRecords = template.find(new Query(), LtftForm.class);
+    CctSnapshot savedSnapshot = savedRecords.get(0).getContent().cctSnapshot();
+    assertThat("Unexpected calculation ID.", savedSnapshot.calculationId(), is(calculationId));
+    assertThat("Unexpected snapshot timestamp.", savedSnapshot.snapshotTakenAt(),
+        is(snapshotTakenAt));
+    assertThat("Unexpected calculation.", savedSnapshot.calculation(), is(calculation));
+  }
+
+  @Test
   void shouldNotUpdateLtftFormForTraineeIfNotLtftProgrammeMembership() throws Exception {
     LtftForm form = new LtftForm();
     form.setTraineeTisId(TRAINEE_ID);
@@ -1114,6 +1224,47 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.status.current.detail.reason").value("reason"))
         .andExpect(jsonPath("$.status.current.detail.message").value("message"))
         .andExpect(jsonPath("$.status.submitted", notNullValue()));
+  }
+
+  @Test
+  void shouldKeepCctSnapshotInSubmissionHistoryWhenLtftFormSubmitted() throws Exception {
+    UUID calculationId = UUID.randomUUID();
+    Instant snapshotTakenAt = Instant.parse("2026-11-02T10:15:30.123Z");
+    Map<String, Object> calculation = createCctCalculation(calculationId);
+
+    LtftForm ltft = new LtftForm();
+    ltft.setId(ID);
+    ltft.setTraineeTisId(TRAINEE_ID);
+    ltft.setLifecycleState(DRAFT);
+    ltft.setContent(LtftContent.builder()
+        .name("test")
+        .cctSnapshot(CctSnapshot.builder()
+            .calculationId(calculationId)
+            .snapshotTakenAt(snapshotTakenAt)
+            .calculation(calculation)
+            .build())
+        .build());
+    template.insert(ltft);
+
+    LftfStatusInfoDetailDto detail = new LftfStatusInfoDetailDto("reason", "message");
+    String detailJson = mapper.writeValueAsString(detail);
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID, "email", "given", "family");
+    mockMvc.perform(put("/api/ltft/{id}/submit", ID)
+            .with(jwt().jwt(token))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(detailJson))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.cctSnapshot.calculationId", is(calculationId.toString())))
+        .andExpect(jsonPath("$.cctSnapshot.snapshotTakenAt", is(snapshotTakenAt.toString())))
+        .andExpect(jsonPath("$.cctSnapshot.calculation", is(calculation)));
+
+    List<LtftSubmissionHistory> history = template.find(new Query(), LtftSubmissionHistory.class);
+    assertThat("Unexpected submission history count.", history, hasSize(1));
+    CctSnapshot savedSnapshot = history.get(0).getContent().cctSnapshot();
+    assertThat("Unexpected calculation ID.", savedSnapshot.calculationId(), is(calculationId));
+    assertThat("Unexpected snapshot timestamp.", savedSnapshot.snapshotTakenAt(),
+        is(snapshotTakenAt));
+    assertThat("Unexpected calculation.", savedSnapshot.calculation(), is(calculation));
   }
 
   @Test
