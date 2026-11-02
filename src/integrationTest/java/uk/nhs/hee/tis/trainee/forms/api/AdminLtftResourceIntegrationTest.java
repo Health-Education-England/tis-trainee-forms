@@ -2439,6 +2439,14 @@ class AdminLtftResourceIntegrationTest {
     return form;
   }
 
+  /**
+   * Create a SUBMITTED form with the given DBC and assigned reviewer
+   *
+   * @param dbc   The designated body code.
+   * @param name  The name of the assigned reviewer.
+   * @param email The email of the assigned reviewer.
+   * @return The created form.
+   */
   private LtftForm createFormWithAssignedReviewer(String dbc, String name, String email) {
     LtftForm form = new LtftForm();
     form.setContent(LtftContent.builder()
