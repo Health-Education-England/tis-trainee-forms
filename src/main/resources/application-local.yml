@@ -25,6 +25,12 @@ local:
   sqs-path: ${spring.cloud.aws.endpoint}/${local.account-id}
 
 spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # SPIKE (poc/real-jwt-verification): reusing the same "tis" dev pool the locally
+          issuer-uri: ${COGNITO_ISSUER_URI:https://cognito-idp.eu-west-2.amazonaws.com/eu-west-2_Hc4ETnUXM}
   cloud:
     aws:
       credentials:
