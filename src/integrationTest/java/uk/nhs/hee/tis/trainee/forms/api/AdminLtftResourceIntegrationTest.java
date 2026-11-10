@@ -28,6 +28,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.oneOf;
@@ -131,6 +132,15 @@ class AdminLtftResourceIntegrationTest {
   private static final String DBC_THREE_STAGES = "TEST-DBC-3-STAGES";
   private static final String DBC_ONE_STAGE = "TEST-DBC-1-STAGE";
   private static final String DBC_DISABLED = "TEST-DBC-DISABLED";
+
+  private static final List<Map<String, Object>> CCT_CHANGES = List.of(
+      Map.of("type", "LTFT", "startDate", "2024-02-01", "endDate", "2025-01-31", "wte", 0.6,
+          "countsTowardsCompletion", true, "calendarMonths", 12, "wteMonths", 7.2,
+          "notes", "Childcare"),
+      Map.of("type", "PARENTAL", "startDate", "2025-03-01", "endDate", "2025-08-31",
+          "countsTowardsCompletion", false, "calendarMonths", 6, "wteMonths", 0),
+      Map.of("type", "LTFT", "startDate", "2025-09-01", "wte", 0.6,
+          "countsTowardsCompletion", true));
 
   @Container
   @ServiceConnection
@@ -1861,6 +1871,106 @@ class AdminLtftResourceIntegrationTest {
             + System.lineSeparator() + "(Test Data)" + System.lineSeparator()));
   }
 
+  @Test
+  void shouldGetDetailPdfWithNoCctCalculationWhenNoSnapshotAttached() throws Exception {
+    LtftForm form = createCctSnapshotLtft(null);
+
+    String pdfText = getDetailPdfText(form);
+
+    assertThat("Unexpected CCT calculation.", pdfText,
+        containsString("CCT calculation No calculation attached"));
+  }
+
+  @Test
+  void shouldGetDetailPdfCctSnapshotSummaryWhenSnapshotAttached() throws Exception {
+    LtftForm form = createCctSnapshotLtft(createCctCalculation(CCT_CHANGES));
+
+    String pdfText = getDetailPdfText(form);
+
+    assertThat("Unexpected name.", pdfText,
+        containsString("Calculation name My calculation"));
+    assertThat("Unexpected CCT date.", pdfText,
+        containsString("Indicative completion date 11 March 2036"));
+    assertThat("Unexpected attached date.", pdfText,
+        containsString("Attached on 02 November 2026"));
+    assertThat("Unexpected snapshot note.", pdfText, containsString(
+        "The trainee chose this from their saved CCT calculations in TSS and attached a snapshot"
+            + " on 02 November 2026. Editing or deleting their saved calculation does not change"
+            + " this snapshot."));
+    assertThat("Unexpected ARCP note.", pdfText, containsString(
+        "The completion date is indicative; the official CCT date is agreed at the trainee's next"
+            + " ARCP."));
+    assertThat("Unexpected projected CCT date.", pdfText,
+        containsString("Projected Completion of Training Date 11 March 2036"));
+    assertThat("Unexpected WTE months completed.", pdfText,
+        containsString("Total WTE completed (months) 26.2"));
+    assertThat("Unexpected months remaining.", pdfText,
+        containsString("Training remaining (months) 75.8"));
+  }
+
+  @Test
+  void shouldGetDetailPdfCctSnapshotProgrammeDetailsWhenSnapshotAttached() throws Exception {
+    LtftForm form = createCctSnapshotLtft(createCctCalculation(CCT_CHANGES));
+
+    String pdfText = getDetailPdfText(form);
+
+    assertThat("Unexpected specialty.", pdfText, containsString("Specialty Paediatrics"));
+    assertThat("Unexpected length.", pdfText,
+        containsString("Programme length 96 months Length agreed with TPD"));
+    assertThat("Unexpected start date.", pdfText,
+        containsString("Programme start date 03 August 2022"));
+    assertThat("Unexpected original end date.", pdfText,
+        containsString("Original programme end date 02 August 2030"));
+    assertThat("Unexpected start grade.", pdfText,
+        containsString("Start grade ST1 Restarted at ST1"));
+    assertThat("Unexpected additional time.", pdfText,
+        containsString("Additional training time 6 months Extra time after ARCP"));
+    assertThat("Unexpected adjusted length.", pdfText,
+        containsString("Adjusted programme length 102 months"));
+    assertThat("Unexpected adjusted end date.", pdfText, containsString(
+        "Adjusted programme end date before changes 02 February 2031 Based on programme length"
+            + " and training-time adjustments only"));
+    assertThat("Unexpected accelerated time.", pdfText,
+        not(containsString("Accelerated training time")));
+    assertThat("Unexpected 18-month final year.", pdfText,
+        not(containsString("18-month final year")));
+    assertThat("Unexpected skipped grade.", pdfText, not(containsString("Skipped grade year")));
+  }
+
+  @Test
+  void shouldGetDetailPdfCctSnapshotChangesInStartDateOrderWhenSnapshotAttached()
+      throws Exception {
+    LtftForm form = createCctSnapshotLtft(createCctCalculation(CCT_CHANGES));
+
+    String pdfText = getDetailPdfText(form);
+
+    assertThat("Unexpected changes.", pdfText, containsString(
+        "Type Start End WTE Calendar months WTE months Notes"
+            + " Assumed full-time 03 Aug 2022 31 Jan 2024 100% 18.0 18.0"
+            + " Not added by the trainee"
+            + " LTFT 01 Feb 2024 31 Jan 2025 60% 12.0 7.2 Childcare"
+            + " Assumed full-time 01 Feb 2025 28 Feb 2025 100% 1.0 1.0"
+            + " Not added by the trainee"
+            + " Parental leave (not training) 01 Mar 2025 31 Aug 2025 — 6.0 0.0 —"
+            + " LTFT 01 Sep 2025 For remainder of training 60% - - —"
+            + " Total 37.0 26.2"
+            + " LTFT projection 01 Sep 2025 11 Mar 2036 60% 126.3 75.8"
+            + " Projects to completion"
+            + " Total to completion 163.3 102.0"));
+  }
+
+  @Test
+  void shouldGetDetailPdfCctSnapshotNoChangesMessageWhenNoChanges() throws Exception {
+    LtftForm form = createCctSnapshotLtft(createCctCalculation(List.of()));
+
+    String pdfText = getDetailPdfText(form);
+
+    assertThat("Unexpected changes.", pdfText, containsString(
+        "Changes No changes recorded, so the whole programme is treated as full time at 100%"
+            + " WTE."));
+    assertThat("Unexpected changes table.", pdfText, not(containsString("Total to completion")));
+  }
+
   @ParameterizedTest
   @EnumSource(value = LifecycleState.class, mode = EXCLUDE, names = "UNDER_REVIEW")
   void shouldNotApproveLtftWhenStateTransitionNotAllowed(LifecycleState currentState)
@@ -2680,6 +2790,80 @@ class AdminLtftResourceIntegrationTest {
     );
 
     return ltft;
+  }
+
+  /**
+   * Create a CCT calculation, as the trainee UI attaches it to an LTFT application.
+   *
+   * @param changes The calculation's changes.
+   * @return The calculation.
+   */
+  private static Map<String, Object> createCctCalculation(List<Map<String, Object>> changes) {
+    return Map.of(
+        "id", UUID.randomUUID().toString(),
+        "name", "My calculation",
+        "programmeDetails", Map.ofEntries(
+            Map.entry("specialty", "Paediatrics"),
+            Map.entry("startDate", "2022-08-03"),
+            Map.entry("lengthMonths", 96),
+            Map.entry("lengthOverrideNotes", "Length agreed with TPD"),
+            Map.entry("startGrade", "ST1"),
+            Map.entry("startGradeOverrideNotes", "Restarted at ST1"),
+            Map.entry("additionalMonths", 6),
+            Map.entry("additionalMonthsNotes", "Extra time after ARCP"),
+            Map.entry("acceleratedMonths", 0),
+            Map.entry("acceleratedMonthsNotes", "")),
+        "changes", changes,
+        "result", Map.of(
+            "cctDate", "2036-03-11",
+            "originalProgrammeEndDate", "2030-08-02",
+            "adjustedProgrammeEndDate", "2031-02-02",
+            "totalWteMonthsCompleted", 26.2,
+            "monthsRemaining", 75.8,
+            "assumedFullTimePeriods", List.of(
+                Map.of("startDate", "2022-08-03", "endDate", "2024-01-31", "months", 18),
+                Map.of("startDate", "2025-02-01", "endDate", "2025-02-28", "months", 1)),
+            "projection", Map.of("startDate", "2025-09-01", "wte", 0.6,
+                "calendarMonths", 126.3, "wteMonths", 75.8)));
+  }
+
+  /**
+   * Save a submitted LTFT form with an attached CCT snapshot.
+   *
+   * @param calculation The snapshot's calculation, null for no snapshot.
+   * @return The saved form.
+   */
+  private LtftForm createCctSnapshotLtft(Map<String, Object> calculation) {
+    LtftForm form = createLtftForm(SUBMITTED, DBC_1, null);
+    form.setContent(LtftContent.builder()
+        .programmeMembership(ProgrammeMembership.builder()
+            .designatedBodyCode(DBC_1)
+            .build())
+        .cctSnapshot(calculation == null ? null : CctSnapshot.builder()
+            .calculationId(UUID.randomUUID())
+            .snapshotTakenAt(Instant.parse("2026-11-02T10:15:30Z"))
+            .calculation(calculation)
+            .build())
+        .build());
+    return template.insert(form);
+  }
+
+  /**
+   * Get the text of an LTFT form's admin PDF, with all whitespace collapsed to single spaces.
+   *
+   * @param form The form.
+   * @return The PDF text.
+   */
+  private String getDetailPdfText(LtftForm form) throws Exception {
+    MvcResult result = mockMvc.perform(get("/api/admin/ltft/{id}", form.getId())
+            .header(HttpHeaders.ACCEPT, APPLICATION_PDF)
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES)))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(APPLICATION_PDF))
+        .andReturn();
+
+    PDDocument pdf = Loader.loadPDF(result.getResponse().getContentAsByteArray());
+    return new PDFTextStripper().getText(pdf).replaceAll("\\s+", " ");
   }
 
   /**

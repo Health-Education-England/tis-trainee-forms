@@ -33,12 +33,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.imageio.ImageIO;
@@ -68,6 +70,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctChangeDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.DeclarationsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.DiscussionsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.ExceptionalReasonsDto;
@@ -320,6 +323,59 @@ class PdfServiceIntegrationTest {
     byte[] generatedBytes = service.generatePdf(dto, "admin");
 
     int problems = compareGeneratedPdf("ltft-admin-alternate", generatedBytes);
+    assertThat("Unexpected PDF comparison problem count.", problems, is(0));
+  }
+
+  @Test
+  void shouldMatchCctSnapshotLtftAdminPdfWhenSnapshotAttached() throws IOException {
+    Map<String, Object> calculation = Map.of(
+        "name", "My calculation",
+        "programmeDetails", Map.ofEntries(
+            Map.entry("specialty", "Paediatrics"),
+            Map.entry("startDate", "2022-08-03"),
+            Map.entry("lengthMonths", 96),
+            Map.entry("lengthOverrideNotes", "Length agreed with TPD"),
+            Map.entry("startGrade", "ST1"),
+            Map.entry("startGradeOverrideNotes", "Restarted at ST1"),
+            Map.entry("additionalMonths", 6),
+            Map.entry("additionalMonthsNotes", "Extra time after ARCP"),
+            Map.entry("acceleratedMonths", 3),
+            Map.entry("acceleratedMonthsNotes", "Competences gained early"),
+            Map.entry("eighteenMonthFinalGrade", "ST8"),
+            Map.entry("eighteenMonthFinalGradeNotes", "Agreed with TPD"),
+            Map.entry("skippedGrade", "ST4"),
+            Map.entry("skippedGradeNotes", "Skipped after ARCP")),
+        "changes", List.of(
+            Map.of("type", "LTFT", "startDate", "2024-02-01", "endDate", "2025-01-31", "wte", 0.6,
+                "countsTowardsCompletion", true, "calendarMonths", 12, "wteMonths", 7.2,
+                "notes", "Childcare"),
+            Map.of("type", "PARENTAL", "startDate", "2025-03-01", "endDate", "2025-08-31",
+                "countsTowardsCompletion", false, "calendarMonths", 6, "wteMonths", 0),
+            Map.of("type", "LTFT", "startDate", "2025-09-01", "wte", 0.6,
+                "countsTowardsCompletion", true)),
+        "result", Map.of(
+            "cctDate", "2036-03-11",
+            "originalProgrammeEndDate", "2030-08-02",
+            "adjustedProgrammeEndDate", "2030-11-02",
+            "totalWteMonthsCompleted", 26.2,
+            "monthsRemaining", 72.8,
+            "assumedFullTimePeriods", List.of(
+                Map.of("startDate", "2022-08-03", "endDate", "2024-01-31", "months", 18),
+                Map.of("startDate", "2025-02-01", "endDate", "2025-02-28", "months", 1)),
+            "projection", Map.of("startDate", "2025-09-01", "wte", 0.6,
+                "calendarMonths", 121.3, "wteMonths", 72.8)));
+
+    LtftFormDto dto = LtftFormDto.builder()
+        .cctSnapshot(CctSnapshotDto.builder()
+            .calculationId(UUID.randomUUID())
+            .snapshotTakenAt(Instant.parse("2026-11-02T10:15:30Z"))
+            .calculation(calculation)
+            .build())
+        .build();
+
+    byte[] generatedBytes = service.generatePdf(dto, "admin");
+
+    int problems = compareGeneratedPdf("ltft-admin-cct-snapshot", generatedBytes);
     assertThat("Unexpected PDF comparison problem count.", problems, is(0));
   }
 
