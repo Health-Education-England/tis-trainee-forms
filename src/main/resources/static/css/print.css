@@ -24,3 +24,16 @@
 @page {
   size: a4 portrait;
 }
+
+.cct-snapshot {
+  page-break-before: always;
+}
+
+.cct-section {
+  page-break-inside: avoid;
+}
+
+.cct-section td,
+.cct-section th {
+  font-size: 14px;
+}
