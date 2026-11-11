@@ -24,19 +24,20 @@ package uk.nhs.hee.tis.trainee.forms.migration;
 import io.mongock.api.annotations.ChangeUnit;
 import io.mongock.api.annotations.Execution;
 import io.mongock.api.annotations.RollbackExecution;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
+import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
+import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
-import uk.nhs.hee.tis.trainee.forms.service.LtftService;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
+import uk.nhs.hee.tis.trainee.forms.model.Person;
+import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 
 /**
  * This form was submitted to validate that there was no problem with the user's account/data.
@@ -46,12 +47,13 @@ import java.util.stream.Collectors;
 public class WithdrawLegacyLtft {
 
   private final MongoTemplate mongoTemplate;
-  private final LtftService service;
+  private final LtftFormRepository ltftFormRepository;
+  private final LtftMapper mapper;
 
   private static final String REASON = "Withdrawn during pilot";
-  private static final String MESSAGE = "This application was submitted erroneously, or in " +
-      "duplication, during the LTFT onboarding and transition from existing regional processes. " +
-      "Please note there is no action to take.";
+  private static final String MESSAGE = "This application was submitted erroneously, or in "
+      + "duplication, during the LTFT onboarding and transition from existing regional processes. "
+      + "Please note there is no action to take.";
   private static final List<String> FORM_REFS = List.of(
       "ltft_281057_001", "ltft_248325_001", "ltft_190825_001", "ltft_67161_001", "ltft_735_001",
       "ltft_247226_001", "ltft_332977_001", "ltft_332977_002", "ltft_6409_002", "ltft_4404_001",
@@ -106,22 +108,25 @@ public class WithdrawLegacyLtft {
       "ltft_306660_001", "ltft_307475_001", "ltft_301167_001", "ltft_296619_001", "ltft_284935_001",
       "ltft_325508_001", "ltft_307571_001", "ltft_308088_001", "ltft_294906_001", "ltft_56757_001",
       "ltft_307353_001", "ltft_246924_001", "ltft_307564_002", "ltft_280839_001", "ltft_307601_001",
-      "ltft_313691_001", "ltft_275689_001", "ltft_47165_20250201_001", "ltft_47165_20250101_002", "ltft_47165_20250101_003"
+      "ltft_313691_001", "ltft_275689_001"
   );
 
   /**
    * Constructs the Mongock change unit.
    *
-   * @param mongoTemplate The interface for operations on the DB
-   * @param service       The LTFT service
+   * @param mongoTemplate      The interface for operations on the DB
+   * @param ltftFormRepository The LTFT repository service
+   * @param mapper             The mapper
    */
-  public WithdrawLegacyLtft(MongoTemplate mongoTemplate, LtftService service) {
+  public WithdrawLegacyLtft(MongoTemplate mongoTemplate, LtftFormRepository ltftFormRepository,
+                            LtftMapper mapper) {
     this.mongoTemplate = mongoTemplate;
-    this.service = service;
+    this.ltftFormRepository = ltftFormRepository;
+    this.mapper = mapper;
   }
 
   /**
-   * Run a find and delete for the document's ID.
+   * Withdraw legacy and duplicated LTFT application.
    */
   @Execution
   public void migrate() {
@@ -135,10 +140,15 @@ public class WithdrawLegacyLtft {
         .filter(ref -> !foundRefs.contains(ref))
         .forEach(ref -> log.warn("LTFT form [{}] not found.", ref));
 
-    LtftFormDto.StatusDto.LftfStatusInfoDetailDto detail =
-        LtftFormDto.StatusDto.LftfStatusInfoDetailDto.builder()
+    AbstractAuditedForm.Status.StatusDetail statusDetail =
+        mapper.toStatusDetail(LftfStatusInfoDetailDto.builder()
         .reason(REASON)
         .message(MESSAGE)
+        .build());
+
+    Person modifiedBy = Person.builder()
+        .name("System migration")
+        .role("ADMIN")
         .build();
 
     int withdrawnCount = 0;
@@ -146,24 +156,23 @@ public class WithdrawLegacyLtft {
     for (LtftForm form : forms) {
       LifecycleState state = form.getStatus().current().state();
 
+      // skip if current state cannot be withdrawn
       if (!LifecycleState.canTransitionTo(form, LifecycleState.WITHDRAWN)) {
-        log.info("Skipping LTFT form [{}] (id [{}]), original state [{}] cannot transition to "
-            + "WITHDRAWN.", form.getFormRef(), form.getId(), state);
+        log.info("Skipping LTFT form [{}] (id [{}]) with original state [{}].",
+            form.getFormRef(), form.getId(), state);
         continue;
       }
 
-      Optional<LtftFormDto> withdrawn = service.withdrawLtftForm(form.getId(), detail);
+      form.setLifecycleState(LifecycleState.WITHDRAWN, statusDetail, modifiedBy,
+          form.getRevision(), null);
+      ltftFormRepository.save(form);
 
-      if (withdrawn.isPresent()) {
-        withdrawnCount++;
-        log.info("Withdrawn LTFT form [{}] (id [{}]).", form.getFormRef(), form.getId());
-      } else {
-        log.warn("LTFT form [{}] (id [{}]) was not withdrawn, service returned empty. "
-            + "Original state is [{}].", form.getFormRef(), form.getId(), state);
-      }
+      withdrawnCount++;
+      log.info("Withdrawn LTFT form [{}] (id [{}]) with original state [{}].",
+          form.getFormRef(), form.getId(), state);
     }
 
-    log.info("Withdrew {} of {} listed LTFT forms.", withdrawnCount, FORM_REFS.size());
+    log.info("Withdrawn {} of {} listed LTFT forms.", withdrawnCount, FORM_REFS.size());
   }
 
   /**
