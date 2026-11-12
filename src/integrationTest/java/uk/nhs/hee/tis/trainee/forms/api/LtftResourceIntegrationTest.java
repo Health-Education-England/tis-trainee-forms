@@ -60,9 +60,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.apache.pdfbox.Loader;
@@ -104,6 +102,10 @@ import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctChangeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctCalculatedChangeDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctCalculationDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctProgrammeDetailsDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctResultDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
@@ -120,6 +122,8 @@ import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChangeType;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctCalculation;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctResult;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Declarations;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Discussions;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ExceptionalReasons;
@@ -187,23 +191,41 @@ class LtftResourceIntegrationTest {
    * @param calculationId The ID of the calculation.
    * @return The calculation.
    */
-  private static Map<String, Object> createCctCalculation(UUID calculationId) {
-    Map<String, Object> change = new HashMap<>();
-    change.put("type", "LTFT");
-    change.put("startDate", "2027-02-01");
-    change.put("endDate", null);
-    change.put("wte", 0.6);
-    change.put("countsTowardsCompletion", true);
+  private static CctCalculationDto createCctCalculation(UUID calculationId) {
+    return CctCalculationDto.builder()
+        .id(calculationId)
+        .name("My calculation")
+        .programmeDetails(CctProgrammeDetailsDto.builder()
+            .specialty("Paediatrics")
+            .lengthMonths(96)
+            .build())
+        .changes(List.of(CctCalculatedChangeDto.builder()
+            .type("LTFT")
+            .startDate(LocalDate.parse("2027-02-01"))
+            .wte(0.6)
+            .countsTowardsCompletion(true)
+            .build()))
+        .result(CctResultDto.builder()
+            .cctDate(LocalDate.parse("2030-07-29"))
+            .build())
+        .lastModified(Instant.parse("2026-10-28T12:34:56.789Z"))
+        .build();
+  }
 
-    return Map.of(
-        "id", calculationId.toString(),
-        "name", "My calculation",
-        "programmeDetails", Map.of("specialty", "Paediatrics", "lengthMonths", 96),
-        "changes", List.of(change),
-        "result", Map.of(
-            "cctDate", "2030-07-29",
-            "gradeProgression", List.of(Map.of("yearNumber", 1, "grade", "ST1"))),
-        "lastModified", "2026-10-28T12:34:56.789Z");
+  /**
+   * Provide CCT snapshots that are each missing a required field.
+   *
+   * @return The missing field's name and the incomplete snapshot.
+   */
+  private static Stream<Arguments> incompleteCctSnapshots() {
+    UUID calculationId = UUID.randomUUID();
+    Instant snapshotTakenAt = Instant.parse("2026-11-02T10:15:30.123Z");
+    CctCalculationDto calculation = createCctCalculation(calculationId);
+
+    return Stream.of(
+        Arguments.of("calculationId", new CctSnapshotDto(null, snapshotTakenAt, calculation)),
+        Arguments.of("snapshotTakenAt", new CctSnapshotDto(calculationId, null, calculation)),
+        Arguments.of("calculation", new CctSnapshotDto(calculationId, snapshotTakenAt, null)));
   }
 
   @AfterEach
@@ -614,7 +636,7 @@ class LtftResourceIntegrationTest {
   void shouldPersistCctSnapshotWhenLtftFormCreated() throws Exception {
     UUID calculationId = UUID.randomUUID();
     Instant snapshotTakenAt = Instant.parse("2026-11-02T10:15:30.123Z");
-    Map<String, Object> calculation = createCctCalculation(calculationId);
+    CctCalculationDto calculation = createCctCalculation(calculationId);
 
     LtftFormDto formToSave = LtftFormDto.builder()
         .traineeTisId(TRAINEE_ID)
@@ -638,14 +660,75 @@ class LtftResourceIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.cctSnapshot.calculationId", is(calculationId.toString())))
         .andExpect(jsonPath("$.cctSnapshot.snapshotTakenAt", is(snapshotTakenAt.toString())))
-        .andExpect(jsonPath("$.cctSnapshot.calculation", is(calculation)));
+        .andExpect(jsonPath("$.cctSnapshot.calculation.id", is(calculationId.toString())))
+        .andExpect(jsonPath("$.cctSnapshot.calculation.name", is("My calculation")))
+        .andExpect(jsonPath("$.cctSnapshot.calculation.changes[0].startDate", is("2027-02-01")))
+        .andExpect(jsonPath("$.cctSnapshot.calculation.result.cctDate", is("2030-07-29")))
+        .andExpect(jsonPath("$.cctSnapshot.calculation.lastModified",
+            is("2026-10-28T12:34:56.789Z")));
 
     List<LtftForm> savedRecords = template.find(new Query(), LtftForm.class);
     CctSnapshot savedSnapshot = savedRecords.get(0).getContent().cctSnapshot();
     assertThat("Unexpected calculation ID.", savedSnapshot.calculationId(), is(calculationId));
     assertThat("Unexpected snapshot timestamp.", savedSnapshot.snapshotTakenAt(),
         is(snapshotTakenAt));
-    assertThat("Unexpected calculation.", savedSnapshot.calculation(), is(calculation));
+    assertThat("Unexpected CCT date.", savedSnapshot.calculation().result().cctDate(),
+        is(LocalDate.parse("2030-07-29")));
+    assertThat("Unexpected last modified.", savedSnapshot.calculation().lastModified(),
+        is(calculation.lastModified()));
+  }
+
+  @ParameterizedTest
+  @MethodSource("incompleteCctSnapshots")
+  void shouldBeBadRequestWhenCreatingLtftFormWithIncompleteCctSnapshot(String field,
+      CctSnapshotDto cctSnapshot) throws Exception {
+    LtftFormDto formToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .cctSnapshot(cctSnapshot)
+        .build();
+    String formToSaveJson = mapper.writeValueAsString(formToSave);
+
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
+    mockMvc.perform(post("/api/ltft")
+            .with(jwt().jwt(token))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToSaveJson))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.title", is("Validation failure")))
+        .andExpect(jsonPath("$.properties.errors", hasSize(1)))
+        .andExpect(jsonPath("$.properties.errors[0].pointer", is("#/cctSnapshot/" + field)))
+        .andExpect(jsonPath("$.properties.errors[0].detail", is("must not be null")));
+
+    assertThat("Unexpected saved form count.", template.count(new Query(), LtftForm.class),
+        is(0L));
+  }
+
+  @Test
+  void shouldBeBadRequestWhenCreatingLtftFormWithInvalidCctSnapshotDate() throws Exception {
+    String formToSaveJson = """
+        {
+          "traineeTisId": "%s",
+          "cctSnapshot": {
+            "calculationId": "%s",
+            "snapshotTakenAt": "2026-11-02T10:15:30.123Z",
+            "calculation": {
+              "result": {
+                "cctDate": "not-a-date"
+              }
+            }
+          }
+        }
+        """.formatted(TRAINEE_ID, UUID.randomUUID());
+
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
+    mockMvc.perform(post("/api/ltft")
+            .with(jwt().jwt(token))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToSaveJson))
+        .andExpect(status().isBadRequest());
+
+    assertThat("Unexpected saved form count.", template.count(new Query(), LtftForm.class),
+        is(0L));
   }
 
   @Test
@@ -975,7 +1058,7 @@ class LtftResourceIntegrationTest {
 
     UUID calculationId = UUID.randomUUID();
     Instant snapshotTakenAt = Instant.parse("2026-11-02T10:15:30.123Z");
-    Map<String, Object> calculation = createCctCalculation(calculationId);
+    CctCalculationDto calculation = createCctCalculation(calculationId);
 
     LtftFormDto formToUpdate = LtftFormDto.builder()
         .id(formSaved.getId())
@@ -999,14 +1082,45 @@ class LtftResourceIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.cctSnapshot.calculationId", is(calculationId.toString())))
         .andExpect(jsonPath("$.cctSnapshot.snapshotTakenAt", is(snapshotTakenAt.toString())))
-        .andExpect(jsonPath("$.cctSnapshot.calculation", is(calculation)));
+        .andExpect(jsonPath("$.cctSnapshot.calculation.id", is(calculationId.toString())))
+        .andExpect(jsonPath("$.cctSnapshot.calculation.name", is("My calculation")))
+        .andExpect(jsonPath("$.cctSnapshot.calculation.changes[0].startDate", is("2027-02-01")))
+        .andExpect(jsonPath("$.cctSnapshot.calculation.result.cctDate", is("2030-07-29")))
+        .andExpect(jsonPath("$.cctSnapshot.calculation.lastModified",
+            is("2026-10-28T12:34:56.789Z")));
 
     List<LtftForm> savedRecords = template.find(new Query(), LtftForm.class);
     CctSnapshot savedSnapshot = savedRecords.get(0).getContent().cctSnapshot();
     assertThat("Unexpected calculation ID.", savedSnapshot.calculationId(), is(calculationId));
     assertThat("Unexpected snapshot timestamp.", savedSnapshot.snapshotTakenAt(),
         is(snapshotTakenAt));
-    assertThat("Unexpected calculation.", savedSnapshot.calculation(), is(calculation));
+    assertThat("Unexpected CCT date.", savedSnapshot.calculation().result().cctDate(),
+        is(LocalDate.parse("2030-07-29")));
+    assertThat("Unexpected last modified.", savedSnapshot.calculation().lastModified(),
+        is(calculation.lastModified()));
+  }
+
+  @ParameterizedTest
+  @MethodSource("incompleteCctSnapshots")
+  void shouldBeBadRequestWhenUpdatingLtftFormWithIncompleteCctSnapshot(String field,
+      CctSnapshotDto cctSnapshot) throws Exception {
+    LtftFormDto formToUpdate = LtftFormDto.builder()
+        .id(ID)
+        .traineeTisId(TRAINEE_ID)
+        .cctSnapshot(cctSnapshot)
+        .build();
+    String formToUpdateJson = mapper.writeValueAsString(formToUpdate);
+
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
+    mockMvc.perform(put("/api/ltft/{id}", ID)
+            .with(jwt().jwt(token))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToUpdateJson))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.title", is("Validation failure")))
+        .andExpect(jsonPath("$.properties.errors", hasSize(1)))
+        .andExpect(jsonPath("$.properties.errors[0].pointer", is("#/cctSnapshot/" + field)))
+        .andExpect(jsonPath("$.properties.errors[0].detail", is("must not be null")));
   }
 
   @Test
@@ -1230,7 +1344,14 @@ class LtftResourceIntegrationTest {
   void shouldKeepCctSnapshotInSubmissionHistoryWhenLtftFormSubmitted() throws Exception {
     UUID calculationId = UUID.randomUUID();
     Instant snapshotTakenAt = Instant.parse("2026-11-02T10:15:30.123Z");
-    Map<String, Object> calculation = createCctCalculation(calculationId);
+    CctCalculation calculation = CctCalculation.builder()
+        .id(calculationId)
+        .name("My calculation")
+        .result(CctResult.builder()
+            .cctDate(LocalDate.parse("2030-07-29"))
+            .build())
+        .lastModified(Instant.parse("2026-10-28T12:34:56.789Z"))
+        .build();
 
     LtftForm ltft = new LtftForm();
     ltft.setId(ID);
@@ -1256,7 +1377,11 @@ class LtftResourceIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.cctSnapshot.calculationId", is(calculationId.toString())))
         .andExpect(jsonPath("$.cctSnapshot.snapshotTakenAt", is(snapshotTakenAt.toString())))
-        .andExpect(jsonPath("$.cctSnapshot.calculation", is(calculation)));
+        .andExpect(jsonPath("$.cctSnapshot.calculation.id", is(calculationId.toString())))
+        .andExpect(jsonPath("$.cctSnapshot.calculation.name", is("My calculation")))
+        .andExpect(jsonPath("$.cctSnapshot.calculation.result.cctDate", is("2030-07-29")))
+        .andExpect(jsonPath("$.cctSnapshot.calculation.lastModified",
+            is("2026-10-28T12:34:56.789Z")));
 
     List<LtftSubmissionHistory> history = template.find(new Query(), LtftSubmissionHistory.class);
     assertThat("Unexpected submission history count.", history, hasSize(1));
