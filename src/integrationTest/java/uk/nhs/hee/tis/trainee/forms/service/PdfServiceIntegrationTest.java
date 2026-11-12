@@ -400,12 +400,12 @@ class PdfServiceIntegrationTest {
                 .wteMonths(72.8)
                 .build())
             .build())
+        .lastModified(Instant.parse("2026-10-28T12:00:00Z"))
         .build();
 
     LtftFormDto dto = LtftFormDto.builder()
         .cctSnapshot(CctSnapshotDto.builder()
             .calculationId(UUID.randomUUID())
-            .snapshotTakenAt(Instant.parse("2026-11-02T10:15:30Z"))
             .calculation(calculation)
             .build())
         .build();

@@ -219,13 +219,17 @@ class LtftResourceIntegrationTest {
    */
   private static Stream<Arguments> incompleteCctSnapshots() {
     UUID calculationId = UUID.randomUUID();
-    Instant snapshotTakenAt = Instant.parse("2026-11-02T10:15:30.123Z");
     CctCalculationDto calculation = createCctCalculation(calculationId);
+    CctCalculationDto calculationWithoutLastModified = CctCalculationDto.builder()
+        .id(calculationId)
+        .name("My calculation")
+        .build();
 
     return Stream.of(
-        Arguments.of("calculationId", new CctSnapshotDto(null, snapshotTakenAt, calculation)),
-        Arguments.of("snapshotTakenAt", new CctSnapshotDto(calculationId, null, calculation)),
-        Arguments.of("calculation", new CctSnapshotDto(calculationId, snapshotTakenAt, null)));
+        Arguments.of("calculationId", new CctSnapshotDto(null, calculation)),
+        Arguments.of("calculation", new CctSnapshotDto(calculationId, null)),
+        Arguments.of("calculation/lastModified",
+            new CctSnapshotDto(calculationId, calculationWithoutLastModified)));
   }
 
   @AfterEach
@@ -635,7 +639,6 @@ class LtftResourceIntegrationTest {
   @Test
   void shouldPersistCctSnapshotWhenLtftFormCreated() throws Exception {
     UUID calculationId = UUID.randomUUID();
-    Instant snapshotTakenAt = Instant.parse("2026-11-02T10:15:30.123Z");
     CctCalculationDto calculation = createCctCalculation(calculationId);
 
     LtftFormDto formToSave = LtftFormDto.builder()
@@ -646,7 +649,6 @@ class LtftResourceIntegrationTest {
             .build())
         .cctSnapshot(CctSnapshotDto.builder()
             .calculationId(calculationId)
-            .snapshotTakenAt(snapshotTakenAt)
             .calculation(calculation)
             .build())
         .build();
@@ -659,7 +661,6 @@ class LtftResourceIntegrationTest {
             .content(formToSaveJson))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.cctSnapshot.calculationId", is(calculationId.toString())))
-        .andExpect(jsonPath("$.cctSnapshot.snapshotTakenAt", is(snapshotTakenAt.toString())))
         .andExpect(jsonPath("$.cctSnapshot.calculation.id", is(calculationId.toString())))
         .andExpect(jsonPath("$.cctSnapshot.calculation.name", is("My calculation")))
         .andExpect(jsonPath("$.cctSnapshot.calculation.changes[0].startDate", is("2027-02-01")))
@@ -670,8 +671,6 @@ class LtftResourceIntegrationTest {
     List<LtftForm> savedRecords = template.find(new Query(), LtftForm.class);
     CctSnapshot savedSnapshot = savedRecords.get(0).getContent().cctSnapshot();
     assertThat("Unexpected calculation ID.", savedSnapshot.calculationId(), is(calculationId));
-    assertThat("Unexpected snapshot timestamp.", savedSnapshot.snapshotTakenAt(),
-        is(snapshotTakenAt));
     assertThat("Unexpected CCT date.", savedSnapshot.calculation().result().cctDate(),
         is(LocalDate.parse("2030-07-29")));
     assertThat("Unexpected last modified.", savedSnapshot.calculation().lastModified(),
@@ -710,11 +709,11 @@ class LtftResourceIntegrationTest {
           "traineeTisId": "%s",
           "cctSnapshot": {
             "calculationId": "%s",
-            "snapshotTakenAt": "2026-11-02T10:15:30.123Z",
             "calculation": {
               "result": {
                 "cctDate": "not-a-date"
-              }
+              },
+              "lastModified": "2026-10-28T12:34:56.789Z"
             }
           }
         }
@@ -1057,7 +1056,6 @@ class LtftResourceIntegrationTest {
     LtftForm formSaved = template.save(form);
 
     UUID calculationId = UUID.randomUUID();
-    Instant snapshotTakenAt = Instant.parse("2026-11-02T10:15:30.123Z");
     CctCalculationDto calculation = createCctCalculation(calculationId);
 
     LtftFormDto formToUpdate = LtftFormDto.builder()
@@ -1068,7 +1066,6 @@ class LtftResourceIntegrationTest {
             .build())
         .cctSnapshot(CctSnapshotDto.builder()
             .calculationId(calculationId)
-            .snapshotTakenAt(snapshotTakenAt)
             .calculation(calculation)
             .build())
         .build();
@@ -1081,7 +1078,6 @@ class LtftResourceIntegrationTest {
             .content(formToUpdateJson))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.cctSnapshot.calculationId", is(calculationId.toString())))
-        .andExpect(jsonPath("$.cctSnapshot.snapshotTakenAt", is(snapshotTakenAt.toString())))
         .andExpect(jsonPath("$.cctSnapshot.calculation.id", is(calculationId.toString())))
         .andExpect(jsonPath("$.cctSnapshot.calculation.name", is("My calculation")))
         .andExpect(jsonPath("$.cctSnapshot.calculation.changes[0].startDate", is("2027-02-01")))
@@ -1092,8 +1088,6 @@ class LtftResourceIntegrationTest {
     List<LtftForm> savedRecords = template.find(new Query(), LtftForm.class);
     CctSnapshot savedSnapshot = savedRecords.get(0).getContent().cctSnapshot();
     assertThat("Unexpected calculation ID.", savedSnapshot.calculationId(), is(calculationId));
-    assertThat("Unexpected snapshot timestamp.", savedSnapshot.snapshotTakenAt(),
-        is(snapshotTakenAt));
     assertThat("Unexpected CCT date.", savedSnapshot.calculation().result().cctDate(),
         is(LocalDate.parse("2030-07-29")));
     assertThat("Unexpected last modified.", savedSnapshot.calculation().lastModified(),
@@ -1343,7 +1337,6 @@ class LtftResourceIntegrationTest {
   @Test
   void shouldKeepCctSnapshotInSubmissionHistoryWhenLtftFormSubmitted() throws Exception {
     UUID calculationId = UUID.randomUUID();
-    Instant snapshotTakenAt = Instant.parse("2026-11-02T10:15:30.123Z");
     CctCalculation calculation = CctCalculation.builder()
         .id(calculationId)
         .name("My calculation")
@@ -1361,7 +1354,6 @@ class LtftResourceIntegrationTest {
         .name("test")
         .cctSnapshot(CctSnapshot.builder()
             .calculationId(calculationId)
-            .snapshotTakenAt(snapshotTakenAt)
             .calculation(calculation)
             .build())
         .build());
@@ -1376,7 +1368,6 @@ class LtftResourceIntegrationTest {
             .content(detailJson))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.cctSnapshot.calculationId", is(calculationId.toString())))
-        .andExpect(jsonPath("$.cctSnapshot.snapshotTakenAt", is(snapshotTakenAt.toString())))
         .andExpect(jsonPath("$.cctSnapshot.calculation.id", is(calculationId.toString())))
         .andExpect(jsonPath("$.cctSnapshot.calculation.name", is("My calculation")))
         .andExpect(jsonPath("$.cctSnapshot.calculation.result.cctDate", is("2030-07-29")))
@@ -1387,8 +1378,6 @@ class LtftResourceIntegrationTest {
     assertThat("Unexpected submission history count.", history, hasSize(1));
     CctSnapshot savedSnapshot = history.get(0).getContent().cctSnapshot();
     assertThat("Unexpected calculation ID.", savedSnapshot.calculationId(), is(calculationId));
-    assertThat("Unexpected snapshot timestamp.", savedSnapshot.snapshotTakenAt(),
-        is(snapshotTakenAt));
     assertThat("Unexpected calculation.", savedSnapshot.calculation(), is(calculation));
   }
 

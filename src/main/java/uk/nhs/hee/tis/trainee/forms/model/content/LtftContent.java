@@ -154,14 +154,12 @@ public record LtftContent(
   /**
    * A snapshot of a CCT calculation.
    *
-   * @param calculationId   The ID of the CCT calculation.
-   * @param snapshotTakenAt When the snapshot was taken.
-   * @param calculation     The CCT calculation at the time of the snapshot.
+   * @param calculationId The ID of the CCT calculation.
+   * @param calculation   The CCT calculation at the time of the snapshot.
    */
   @Builder
   public record CctSnapshot(
       UUID calculationId,
-      Instant snapshotTakenAt,
       CctCalculation calculation) {
 
     /**
