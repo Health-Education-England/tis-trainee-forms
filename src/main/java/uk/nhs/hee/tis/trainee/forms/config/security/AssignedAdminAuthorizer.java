@@ -30,7 +30,6 @@ import org.springframework.web.server.ResponseStatusException;
 import uk.nhs.hee.tis.trainee.forms.dto.identity.AdminIdentity;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.Person;
-import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
 import uk.nhs.hee.tis.trainee.forms.service.LtftService;
 
 /**
@@ -43,6 +42,12 @@ public class AssignedAdminAuthorizer {
   private final AdminIdentity adminIdentity;
   private final LtftService ltftService;
 
+  /**
+   * Creates an instance of the authorizer.
+   *
+   * @param adminIdentity The identity of the requesting admin.
+   * @param ltftService   The service for accessing LTFT forms.
+   */
   public AssignedAdminAuthorizer(AdminIdentity adminIdentity, LtftService ltftService) {
     this.adminIdentity = adminIdentity;
     this.ltftService = ltftService;
