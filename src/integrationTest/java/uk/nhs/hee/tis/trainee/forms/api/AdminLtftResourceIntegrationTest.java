@@ -65,7 +65,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -111,6 +110,12 @@ import uk.nhs.hee.tis.trainee.forms.model.ReviewStageStatus;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctAssumedFullTimePeriod;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctCalculatedChange;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctCalculation;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctProgrammeDetails;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctProjection;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctResult;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Declarations;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Discussions;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.PersonalDetails;
@@ -133,14 +138,31 @@ class AdminLtftResourceIntegrationTest {
   private static final String DBC_ONE_STAGE = "TEST-DBC-1-STAGE";
   private static final String DBC_DISABLED = "TEST-DBC-DISABLED";
 
-  private static final List<Map<String, Object>> CCT_CHANGES = List.of(
-      Map.of("type", "LTFT", "startDate", "2024-02-01", "endDate", "2025-01-31", "wte", 0.6,
-          "countsTowardsCompletion", true, "calendarMonths", 12, "wteMonths", 7.2,
-          "notes", "Childcare"),
-      Map.of("type", "PARENTAL", "startDate", "2025-03-01", "endDate", "2025-08-31",
-          "countsTowardsCompletion", false, "calendarMonths", 6, "wteMonths", 0),
-      Map.of("type", "LTFT", "startDate", "2025-09-01", "wte", 0.6,
-          "countsTowardsCompletion", true));
+  private static final List<CctCalculatedChange> CCT_CHANGES = List.of(
+      CctCalculatedChange.builder()
+          .type("LTFT")
+          .startDate(LocalDate.parse("2024-02-01"))
+          .endDate(LocalDate.parse("2025-01-31"))
+          .wte(0.6)
+          .countsTowardsCompletion(true)
+          .calendarMonths(12.0)
+          .wteMonths(7.2)
+          .notes("Childcare")
+          .build(),
+      CctCalculatedChange.builder()
+          .type("PARENTAL")
+          .startDate(LocalDate.parse("2025-03-01"))
+          .endDate(LocalDate.parse("2025-08-31"))
+          .countsTowardsCompletion(false)
+          .calendarMonths(6.0)
+          .wteMonths(0.0)
+          .build(),
+      CctCalculatedChange.builder()
+          .type("LTFT")
+          .startDate(LocalDate.parse("2025-09-01"))
+          .wte(0.6)
+          .countsTowardsCompletion(true)
+          .build());
 
   @Container
   @ServiceConnection
@@ -1346,9 +1368,10 @@ class AdminLtftResourceIntegrationTest {
   void shouldIncludeCctSnapshotInDetailJson() throws Exception {
     UUID calculationId = UUID.randomUUID();
     Instant snapshotTakenAt = Instant.parse("2026-11-02T10:15:30.123Z");
-    Map<String, Object> calculation = Map.of(
-        "id", calculationId.toString(),
-        "name", "My calculation");
+    CctCalculation calculation = CctCalculation.builder()
+        .id(calculationId)
+        .name("My calculation")
+        .build();
 
     LtftForm form = createLtftForm(SUBMITTED, DBC_1, null);
     form.setContent(LtftContent.builder()
@@ -1368,7 +1391,8 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.cctSnapshot.calculationId", is(calculationId.toString())))
         .andExpect(jsonPath("$.cctSnapshot.snapshotTakenAt", is(snapshotTakenAt.toString())))
-        .andExpect(jsonPath("$.cctSnapshot.calculation", is(calculation)));
+        .andExpect(jsonPath("$.cctSnapshot.calculation.id", is(calculationId.toString())))
+        .andExpect(jsonPath("$.cctSnapshot.calculation.name", is("My calculation")));
   }
 
   @ParameterizedTest
@@ -2798,33 +2822,48 @@ class AdminLtftResourceIntegrationTest {
    * @param changes The calculation's changes.
    * @return The calculation.
    */
-  private static Map<String, Object> createCctCalculation(List<Map<String, Object>> changes) {
-    return Map.of(
-        "id", UUID.randomUUID().toString(),
-        "name", "My calculation",
-        "programmeDetails", Map.ofEntries(
-            Map.entry("specialty", "Paediatrics"),
-            Map.entry("startDate", "2022-08-03"),
-            Map.entry("lengthMonths", 96),
-            Map.entry("lengthOverrideNotes", "Length agreed with TPD"),
-            Map.entry("startGrade", "ST1"),
-            Map.entry("startGradeOverrideNotes", "Restarted at ST1"),
-            Map.entry("additionalMonths", 6),
-            Map.entry("additionalMonthsNotes", "Extra time after ARCP"),
-            Map.entry("acceleratedMonths", 0),
-            Map.entry("acceleratedMonthsNotes", "")),
-        "changes", changes,
-        "result", Map.of(
-            "cctDate", "2036-03-11",
-            "originalProgrammeEndDate", "2030-08-02",
-            "adjustedProgrammeEndDate", "2031-02-02",
-            "totalWteMonthsCompleted", 26.2,
-            "monthsRemaining", 75.8,
-            "assumedFullTimePeriods", List.of(
-                Map.of("startDate", "2022-08-03", "endDate", "2024-01-31", "months", 18),
-                Map.of("startDate", "2025-02-01", "endDate", "2025-02-28", "months", 1)),
-            "projection", Map.of("startDate", "2025-09-01", "wte", 0.6,
-                "calendarMonths", 126.3, "wteMonths", 75.8)));
+  private static CctCalculation createCctCalculation(List<CctCalculatedChange> changes) {
+    return CctCalculation.builder()
+        .id(UUID.randomUUID())
+        .name("My calculation")
+        .programmeDetails(CctProgrammeDetails.builder()
+            .specialty("Paediatrics")
+            .startDate(LocalDate.parse("2022-08-03"))
+            .lengthMonths(96)
+            .lengthOverrideNotes("Length agreed with TPD")
+            .startGrade("ST1")
+            .startGradeOverrideNotes("Restarted at ST1")
+            .additionalMonths(6)
+            .additionalMonthsNotes("Extra time after ARCP")
+            .acceleratedMonths(0)
+            .acceleratedMonthsNotes("")
+            .build())
+        .changes(changes)
+        .result(CctResult.builder()
+            .cctDate(LocalDate.parse("2036-03-11"))
+            .originalProgrammeEndDate(LocalDate.parse("2030-08-02"))
+            .adjustedProgrammeEndDate(LocalDate.parse("2031-02-02"))
+            .totalWteMonthsCompleted(26.2)
+            .monthsRemaining(75.8)
+            .assumedFullTimePeriods(List.of(
+                CctAssumedFullTimePeriod.builder()
+                    .startDate(LocalDate.parse("2022-08-03"))
+                    .endDate(LocalDate.parse("2024-01-31"))
+                    .months(18.0)
+                    .build(),
+                CctAssumedFullTimePeriod.builder()
+                    .startDate(LocalDate.parse("2025-02-01"))
+                    .endDate(LocalDate.parse("2025-02-28"))
+                    .months(1.0)
+                    .build()))
+            .projection(CctProjection.builder()
+                .startDate(LocalDate.parse("2025-09-01"))
+                .wte(0.6)
+                .calendarMonths(126.3)
+                .wteMonths(75.8)
+                .build())
+            .build())
+        .build();
   }
 
   /**
@@ -2833,7 +2872,7 @@ class AdminLtftResourceIntegrationTest {
    * @param calculation The snapshot's calculation, null for no snapshot.
    * @return The saved form.
    */
-  private LtftForm createCctSnapshotLtft(Map<String, Object> calculation) {
+  private LtftForm createCctSnapshotLtft(CctCalculation calculation) {
     LtftForm form = createLtftForm(SUBMITTED, DBC_1, null);
     form.setContent(LtftContent.builder()
         .programmeMembership(ProgrammeMembership.builder()

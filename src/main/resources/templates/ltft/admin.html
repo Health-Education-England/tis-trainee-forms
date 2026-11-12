@@ -190,11 +190,11 @@
         <div class="nhsuk-card__content">
           <h2 class="nhsuk-card__heading">CCT calculation</h2>
           <p th:if="${var.cctSnapshot?.calculation == null}">No calculation attached</p>
-          <th:block th:if="${var.cctSnapshot?.calculation != null}" th:with="calculation=${var.cctSnapshot.calculation}, details=${calculation['programmeDetails']}, result=${calculation['result']}, projection=${result?.['projection']}, attachedOn=${#temporals.format(var.cctSnapshot.snapshotTakenAt, 'dd MMMM yyyy', timezone)}, cctDate=${result?.['cctDate'] != null ? #temporals.format(#temporals.createDate(result['cctDate']), 'dd MMMM yyyy') : null}">
+          <th:block th:if="${var.cctSnapshot?.calculation != null}" th:with="calculation=${var.cctSnapshot.calculation}, details=${calculation.programmeDetails}, result=${calculation.result}, projection=${result?.projection}, attachedOn=${#temporals.format(var.cctSnapshot.snapshotTakenAt, 'dd MMMM yyyy', timezone)}, cctDate=${#temporals.format(result?.cctDate, 'dd MMMM yyyy')}">
             <dl class="nhsuk-summary-list">
               <div class="nhsuk-summary-list__row">
                 <dt class="nhsuk-summary-list__key">Calculation name</dt>
-                <dd class="nhsuk-summary-list__value" th:text="${calculation['name']} ?: _">Not Given</dd>
+                <dd class="nhsuk-summary-list__value" th:text="${calculation.name} ?: _">Not Given</dd>
               </div>
               <div class="nhsuk-summary-list__row">
                 <dt class="nhsuk-summary-list__key">Indicative completion date</dt>
@@ -216,11 +216,11 @@
               </div>
               <div class="nhsuk-summary-list__row">
                 <dt class="nhsuk-summary-list__key">Total WTE completed (months)</dt>
-                <dd class="nhsuk-summary-list__value" th:text="${#numbers.formatDecimal(result?.['totalWteMonthsCompleted'], 1, 1)} ?: _">Not Given</dd>
+                <dd class="nhsuk-summary-list__value" th:text="${#numbers.formatDecimal(result?.totalWteMonthsCompleted, 1, 1)} ?: _">Not Given</dd>
               </div>
               <div class="nhsuk-summary-list__row">
                 <dt class="nhsuk-summary-list__key">Training remaining (months)</dt>
-                <dd class="nhsuk-summary-list__value" th:text="${#numbers.formatDecimal(result?.['monthsRemaining'], 1, 1)} ?: _">Not Given</dd>
+                <dd class="nhsuk-summary-list__value" th:text="${#numbers.formatDecimal(result?.monthsRemaining, 1, 1)} ?: _">Not Given</dd>
               </div>
             </dl>
             <div class="cct-section">
@@ -228,77 +228,77 @@
               <dl class="nhsuk-summary-list">
                 <div class="nhsuk-summary-list__row">
                   <dt class="nhsuk-summary-list__key">Specialty</dt>
-                  <dd class="nhsuk-summary-list__value" th:text="${details?.['specialty']} ?: _">Not Given</dd>
+                  <dd class="nhsuk-summary-list__value" th:text="${details?.specialty} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
                   <dt class="nhsuk-summary-list__key">Programme length</dt>
                   <dd class="nhsuk-summary-list__value">
-                    <th:block th:text="${details?.['lengthMonths'] != null ? details['lengthMonths'] + ' months' : 'Not Given'}"/>
-                    <div class="nhsuk-hint nhsuk-u-margin-top-1" th:unless="${#strings.isEmpty(details?.['lengthOverrideNotes'])}" th:text="${details['lengthOverrideNotes']}"></div>
+                    <th:block th:text="${details?.lengthMonths != null ? details.lengthMonths + ' months' : 'Not Given'}"/>
+                    <div class="nhsuk-hint nhsuk-u-margin-top-1" th:unless="${#strings.isEmpty(details?.lengthOverrideNotes)}" th:text="${details.lengthOverrideNotes}"></div>
                   </dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
                   <dt class="nhsuk-summary-list__key">Programme start date</dt>
-                  <dd class="nhsuk-summary-list__value" th:text="${details?.['startDate'] != null ? #temporals.format(#temporals.createDate(details['startDate']), 'dd MMMM yyyy') : null} ?: _">Not Given</dd>
+                  <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(details?.startDate, 'dd MMMM yyyy')} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
                   <dt class="nhsuk-summary-list__key">Original programme end date</dt>
-                  <dd class="nhsuk-summary-list__value" th:text="${result?.['originalProgrammeEndDate'] != null ? #temporals.format(#temporals.createDate(result['originalProgrammeEndDate']), 'dd MMMM yyyy') : null} ?: _">Not Given</dd>
+                  <dd class="nhsuk-summary-list__value" th:text="${#temporals.format(result?.originalProgrammeEndDate, 'dd MMMM yyyy')} ?: _">Not Given</dd>
                 </div>
                 <div class="nhsuk-summary-list__row">
                   <dt class="nhsuk-summary-list__key">Start grade</dt>
                   <dd class="nhsuk-summary-list__value">
-                    <th:block th:text="${details?.['startGrade']} ?: 'Not Given'"/>
-                    <div class="nhsuk-hint nhsuk-u-margin-top-1" th:unless="${#strings.isEmpty(details?.['startGradeOverrideNotes'])}" th:text="${details['startGradeOverrideNotes']}"></div>
+                    <th:block th:text="${details?.startGrade} ?: 'Not Given'"/>
+                    <div class="nhsuk-hint nhsuk-u-margin-top-1" th:unless="${#strings.isEmpty(details?.startGradeOverrideNotes)}" th:text="${details.startGradeOverrideNotes}"></div>
                   </dd>
                 </div>
-                <div class="nhsuk-summary-list__row" th:if="${details?.['additionalMonths'] > 0}">
+                <div class="nhsuk-summary-list__row" th:if="${details?.additionalMonths > 0}">
                   <dt class="nhsuk-summary-list__key">Additional training time</dt>
                   <dd class="nhsuk-summary-list__value">
-                    <th:block th:text="${details['additionalMonths'] + ' months'}"/>
-                    <div class="nhsuk-hint nhsuk-u-margin-top-1" th:unless="${#strings.isEmpty(details['additionalMonthsNotes'])}" th:text="${details['additionalMonthsNotes']}"></div>
+                    <th:block th:text="${details.additionalMonths + ' months'}"/>
+                    <div class="nhsuk-hint nhsuk-u-margin-top-1" th:unless="${#strings.isEmpty(details.additionalMonthsNotes)}" th:text="${details.additionalMonthsNotes}"></div>
                   </dd>
                 </div>
-                <div class="nhsuk-summary-list__row" th:if="${details?.['acceleratedMonths'] > 0}">
+                <div class="nhsuk-summary-list__row" th:if="${details?.acceleratedMonths > 0}">
                   <dt class="nhsuk-summary-list__key">Accelerated training time</dt>
                   <dd class="nhsuk-summary-list__value">
-                    <th:block th:text="${details['acceleratedMonths'] + ' months'}"/>
-                    <div class="nhsuk-hint nhsuk-u-margin-top-1" th:unless="${#strings.isEmpty(details['acceleratedMonthsNotes'])}" th:text="${details['acceleratedMonthsNotes']}"></div>
+                    <th:block th:text="${details.acceleratedMonths + ' months'}"/>
+                    <div class="nhsuk-hint nhsuk-u-margin-top-1" th:unless="${#strings.isEmpty(details.acceleratedMonthsNotes)}" th:text="${details.acceleratedMonthsNotes}"></div>
                   </dd>
                 </div>
-                <th:block th:if="${details?.['additionalMonths'] > 0 or details?.['acceleratedMonths'] > 0}">
+                <th:block th:if="${details?.additionalMonths > 0 or details?.acceleratedMonths > 0}">
                   <div class="nhsuk-summary-list__row">
                     <dt class="nhsuk-summary-list__key">Adjusted programme length</dt>
-                    <dd class="nhsuk-summary-list__value" th:text="${(details['lengthMonths'] ?: 0) + (details['additionalMonths'] ?: 0) - (details['acceleratedMonths'] ?: 0) + ' months'}"></dd>
+                    <dd class="nhsuk-summary-list__value" th:text="${(details.lengthMonths ?: 0) + (details.additionalMonths ?: 0) - (details.acceleratedMonths ?: 0) + ' months'}"></dd>
                   </div>
                   <div class="nhsuk-summary-list__row">
                     <dt class="nhsuk-summary-list__key">Adjusted programme end date before changes</dt>
                     <dd class="nhsuk-summary-list__value">
-                      <th:block th:text="${result?.['adjustedProgrammeEndDate'] != null ? #temporals.format(#temporals.createDate(result['adjustedProgrammeEndDate']), 'dd MMMM yyyy') : null}"/>
+                      <th:block th:text="${#temporals.format(result?.adjustedProgrammeEndDate, 'dd MMMM yyyy')}"/>
                       <div class="nhsuk-hint nhsuk-u-margin-top-1">Based on programme length and training-time adjustments only</div>
                     </dd>
                   </div>
                 </th:block>
-                <div class="nhsuk-summary-list__row" th:unless="${#strings.isEmpty(details?.['eighteenMonthFinalGrade'])}">
+                <div class="nhsuk-summary-list__row" th:unless="${#strings.isEmpty(details?.eighteenMonthFinalGrade)}">
                   <dt class="nhsuk-summary-list__key">18-month final year</dt>
                   <dd class="nhsuk-summary-list__value">
-                    <th:block th:text="${details['eighteenMonthFinalGrade']}"/>
-                    <div class="nhsuk-hint nhsuk-u-margin-top-1" th:unless="${#strings.isEmpty(details['eighteenMonthFinalGradeNotes'])}" th:text="${details['eighteenMonthFinalGradeNotes']}"></div>
+                    <th:block th:text="${details.eighteenMonthFinalGrade}"/>
+                    <div class="nhsuk-hint nhsuk-u-margin-top-1" th:unless="${#strings.isEmpty(details.eighteenMonthFinalGradeNotes)}" th:text="${details.eighteenMonthFinalGradeNotes}"></div>
                   </dd>
                 </div>
-                <div class="nhsuk-summary-list__row" th:unless="${#strings.isEmpty(details?.['skippedGrade'])}">
+                <div class="nhsuk-summary-list__row" th:unless="${#strings.isEmpty(details?.skippedGrade)}">
                   <dt class="nhsuk-summary-list__key">Skipped grade year</dt>
                   <dd class="nhsuk-summary-list__value">
-                    <th:block th:text="${details['skippedGrade']}"/>
-                    <div class="nhsuk-hint nhsuk-u-margin-top-1" th:unless="${#strings.isEmpty(details['skippedGradeNotes'])}" th:text="${details['skippedGradeNotes']}"></div>
+                    <th:block th:text="${details.skippedGrade}"/>
+                    <div class="nhsuk-hint nhsuk-u-margin-top-1" th:unless="${#strings.isEmpty(details.skippedGradeNotes)}" th:text="${details.skippedGradeNotes}"></div>
                   </dd>
                 </div>
               </dl>
             </div>
             <div class="cct-section">
               <h3 class="nhsuk-heading-s">Changes</h3>
-              <p th:if="${#lists.isEmpty(calculation['changes'])}"><em>No changes recorded, so the whole programme is treated as full time at 100% WTE.</em></p>
-              <table class="nhsuk-table" th:unless="${#lists.isEmpty(calculation['changes'])}" th:with="table=${T(uk.nhs.hee.tis.trainee.forms.service.CctSnapshotTable).of(calculation)}">
+              <p th:if="${#lists.isEmpty(calculation.changes)}"><em>No changes recorded, so the whole programme is treated as full time at 100% WTE.</em></p>
+              <table class="nhsuk-table" th:unless="${#lists.isEmpty(calculation.changes)}" th:with="table=${T(uk.nhs.hee.tis.trainee.forms.service.CctSnapshotTable).of(calculation)}">
                 <thead class="nhsuk-table__head">
                   <tr class="nhsuk-table__row">
                     <th scope="col" class="nhsuk-table__header">Type</th>
@@ -334,11 +334,11 @@
                   </tr>
                   <tr class="nhsuk-table__row">
                     <td class="nhsuk-table__cell"><strong th:text="${table.openLtftChange} ? 'LTFT projection' : 'Full-time projection'"></strong></td>
-                    <td class="nhsuk-table__cell" style="white-space: nowrap" th:text="${projection?.['startDate'] != null ? #temporals.format(#temporals.createDate(projection['startDate']), 'dd MMM yyyy') : null}"></td>
-                    <td class="nhsuk-table__cell"><strong th:text="${result?.['cctDate'] != null ? #temporals.format(#temporals.createDate(result['cctDate']), 'dd MMM yyyy') : null}"></strong></td>
-                    <td class="nhsuk-table__cell" th:text="${#numbers.formatPercent(projection?.['wte'], 1, 0)}"></td>
-                    <td class="nhsuk-table__cell" th:text="${#numbers.formatDecimal(projection?.['calendarMonths'], 1, 1)}"></td>
-                    <td class="nhsuk-table__cell" th:text="${#numbers.formatDecimal(projection?.['wteMonths'], 1, 1)}"></td>
+                    <td class="nhsuk-table__cell" style="white-space: nowrap" th:text="${#temporals.format(projection?.startDate, 'dd MMM yyyy')}"></td>
+                    <td class="nhsuk-table__cell"><strong th:text="${#temporals.format(result?.cctDate, 'dd MMM yyyy')}"></strong></td>
+                    <td class="nhsuk-table__cell" th:text="${#numbers.formatPercent(projection?.wte, 1, 0)}"></td>
+                    <td class="nhsuk-table__cell" th:text="${#numbers.formatDecimal(projection?.calendarMonths, 1, 1)}"></td>
+                    <td class="nhsuk-table__cell" th:text="${#numbers.formatDecimal(projection?.wteMonths, 1, 1)}"></td>
                     <td class="nhsuk-table__cell">Projects to completion</td>
                   </tr>
                   <tr class="nhsuk-table__row">

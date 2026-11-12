@@ -40,7 +40,6 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.imageio.ImageIO;
@@ -71,6 +70,12 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctChangeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctAssumedFullTimePeriodDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctCalculatedChangeDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctCalculationDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctProgrammeDetailsDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctProjectionDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctResultDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.DeclarationsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.DiscussionsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.ExceptionalReasonsDto;
@@ -328,42 +333,74 @@ class PdfServiceIntegrationTest {
 
   @Test
   void shouldMatchCctSnapshotLtftAdminPdfWhenSnapshotAttached() throws IOException {
-    Map<String, Object> calculation = Map.of(
-        "name", "My calculation",
-        "programmeDetails", Map.ofEntries(
-            Map.entry("specialty", "Paediatrics"),
-            Map.entry("startDate", "2022-08-03"),
-            Map.entry("lengthMonths", 96),
-            Map.entry("lengthOverrideNotes", "Length agreed with TPD"),
-            Map.entry("startGrade", "ST1"),
-            Map.entry("startGradeOverrideNotes", "Restarted at ST1"),
-            Map.entry("additionalMonths", 6),
-            Map.entry("additionalMonthsNotes", "Extra time after ARCP"),
-            Map.entry("acceleratedMonths", 3),
-            Map.entry("acceleratedMonthsNotes", "Competences gained early"),
-            Map.entry("eighteenMonthFinalGrade", "ST8"),
-            Map.entry("eighteenMonthFinalGradeNotes", "Agreed with TPD"),
-            Map.entry("skippedGrade", "ST4"),
-            Map.entry("skippedGradeNotes", "Skipped after ARCP")),
-        "changes", List.of(
-            Map.of("type", "LTFT", "startDate", "2024-02-01", "endDate", "2025-01-31", "wte", 0.6,
-                "countsTowardsCompletion", true, "calendarMonths", 12, "wteMonths", 7.2,
-                "notes", "Childcare"),
-            Map.of("type", "PARENTAL", "startDate", "2025-03-01", "endDate", "2025-08-31",
-                "countsTowardsCompletion", false, "calendarMonths", 6, "wteMonths", 0),
-            Map.of("type", "LTFT", "startDate", "2025-09-01", "wte", 0.6,
-                "countsTowardsCompletion", true)),
-        "result", Map.of(
-            "cctDate", "2036-03-11",
-            "originalProgrammeEndDate", "2030-08-02",
-            "adjustedProgrammeEndDate", "2030-11-02",
-            "totalWteMonthsCompleted", 26.2,
-            "monthsRemaining", 72.8,
-            "assumedFullTimePeriods", List.of(
-                Map.of("startDate", "2022-08-03", "endDate", "2024-01-31", "months", 18),
-                Map.of("startDate", "2025-02-01", "endDate", "2025-02-28", "months", 1)),
-            "projection", Map.of("startDate", "2025-09-01", "wte", 0.6,
-                "calendarMonths", 121.3, "wteMonths", 72.8)));
+    CctCalculationDto calculation = CctCalculationDto.builder()
+        .name("My calculation")
+        .programmeDetails(CctProgrammeDetailsDto.builder()
+            .specialty("Paediatrics")
+            .startDate(LocalDate.parse("2022-08-03"))
+            .lengthMonths(96)
+            .lengthOverrideNotes("Length agreed with TPD")
+            .startGrade("ST1")
+            .startGradeOverrideNotes("Restarted at ST1")
+            .additionalMonths(6)
+            .additionalMonthsNotes("Extra time after ARCP")
+            .acceleratedMonths(3)
+            .acceleratedMonthsNotes("Competences gained early")
+            .eighteenMonthFinalGrade("ST8")
+            .eighteenMonthFinalGradeNotes("Agreed with TPD")
+            .skippedGrade("ST4")
+            .skippedGradeNotes("Skipped after ARCP")
+            .build())
+        .changes(List.of(
+            CctCalculatedChangeDto.builder()
+                .type("LTFT")
+                .startDate(LocalDate.parse("2024-02-01"))
+                .endDate(LocalDate.parse("2025-01-31"))
+                .wte(0.6)
+                .countsTowardsCompletion(true)
+                .calendarMonths(12.0)
+                .wteMonths(7.2)
+                .notes("Childcare")
+                .build(),
+            CctCalculatedChangeDto.builder()
+                .type("PARENTAL")
+                .startDate(LocalDate.parse("2025-03-01"))
+                .endDate(LocalDate.parse("2025-08-31"))
+                .countsTowardsCompletion(false)
+                .calendarMonths(6.0)
+                .wteMonths(0.0)
+                .build(),
+            CctCalculatedChangeDto.builder()
+                .type("LTFT")
+                .startDate(LocalDate.parse("2025-09-01"))
+                .wte(0.6)
+                .countsTowardsCompletion(true)
+                .build()))
+        .result(CctResultDto.builder()
+            .cctDate(LocalDate.parse("2036-03-11"))
+            .originalProgrammeEndDate(LocalDate.parse("2030-08-02"))
+            .adjustedProgrammeEndDate(LocalDate.parse("2030-11-02"))
+            .totalWteMonthsCompleted(26.2)
+            .monthsRemaining(72.8)
+            .assumedFullTimePeriods(List.of(
+                CctAssumedFullTimePeriodDto.builder()
+                    .startDate(LocalDate.parse("2022-08-03"))
+                    .endDate(LocalDate.parse("2024-01-31"))
+                    .months(18.0)
+                    .build(),
+                CctAssumedFullTimePeriodDto.builder()
+                    .startDate(LocalDate.parse("2025-02-01"))
+                    .endDate(LocalDate.parse("2025-02-28"))
+                    .months(1.0)
+                    .build()))
+            .projection(CctProjectionDto.builder()
+                .startDate(LocalDate.parse("2025-09-01"))
+                .wte(0.6)
+                .calendarMonths(121.3)
+                .wteMonths(72.8)
+                .build())
+            .build())
+        .build();
 
     LtftFormDto dto = LtftFormDto.builder()
         .cctSnapshot(CctSnapshotDto.builder()

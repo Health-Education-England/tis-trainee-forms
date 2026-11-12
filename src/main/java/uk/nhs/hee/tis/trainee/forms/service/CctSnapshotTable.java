@@ -27,7 +27,13 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Stream;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctAssumedFullTimePeriodDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctCalculatedChangeDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctCalculationDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctProjectionDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctResultDto;
 
 /**
  * The changes table of an attached CCT calculation, as shown in the LTFT PDF.
@@ -56,13 +62,14 @@ public record CctSnapshotTable(
    * @param calculation The CCT calculation.
    * @return The changes table.
    */
-  public static CctSnapshotTable of(Map<String, Object> calculation) {
-    Map<?, ?> result = asMap(calculation.get("result"));
+  public static CctSnapshotTable of(CctCalculationDto calculation) {
+    Optional<CctResultDto> result = Optional.ofNullable(calculation.result());
 
     List<Row> rows = new ArrayList<>();
-    asList(calculation.get("changes")).forEach(change -> rows.add(changeRow(asMap(change))));
-    asList(result.get("assumedFullTimePeriods"))
-        .forEach(period -> rows.add(assumedPeriodRow(asMap(period))));
+    Optional.ofNullable(calculation.changes()).orElse(List.of())
+        .forEach(change -> rows.add(changeRow(change)));
+    result.map(CctResultDto::assumedFullTimePeriods).orElse(List.of())
+        .forEach(period -> rows.add(assumedPeriodRow(period)));
     rows.sort(Comparator.comparing(Row::startDate,
         Comparator.nullsLast(Comparator.naturalOrder())));
 
@@ -70,71 +77,50 @@ public record CctSnapshotTable(
         sum(rows.stream().map(Row::calendarMonths)),
         sum(rows.stream().map(Row::wteMonths)));
 
-    Map<?, ?> projection = asMap(result.get("projection"));
+    Optional<CctProjectionDto> projection = result.map(CctResultDto::projection);
     Totals completionTotals = new Totals(
-        sum(Stream.of(totals.calendarMonths(), asDouble(projection.get("calendarMonths")))),
-        sum(Stream.of(totals.wteMonths(), asDouble(projection.get("wteMonths")))));
+        sum(Stream.of(totals.calendarMonths(),
+            projection.map(CctProjectionDto::calendarMonths).orElse(null))),
+        sum(Stream.of(totals.wteMonths(),
+            projection.map(CctProjectionDto::wteMonths).orElse(null))));
 
     boolean openLtftChange = rows.stream().anyMatch(Row::open);
 
     return new CctSnapshotTable(rows, totals, completionTotals, openLtftChange);
   }
 
-  private static Row changeRow(Map<?, ?> change) {
-    String type = asString(change.get("type"));
-    LocalDate endDate = asDate(change.get("endDate"));
+  private static Row changeRow(CctCalculatedChangeDto change) {
+    String type = change.type();
 
     return new Row(
         false,
         type == null ? null : TYPE_LABELS.getOrDefault(type, type),
-        Boolean.TRUE.equals(change.get("countsTowardsCompletion")),
-        "LTFT".equals(type) && endDate == null,
-        asDate(change.get("startDate")),
-        endDate,
-        asDouble(change.get("wte")),
-        asDouble(change.get("calendarMonths")),
-        asDouble(change.get("wteMonths")),
-        asString(change.get("notes")));
+        change.countsTowardsCompletion(),
+        "LTFT".equals(type) && change.endDate() == null,
+        change.startDate(),
+        change.endDate(),
+        change.wte(),
+        change.calendarMonths(),
+        change.wteMonths(),
+        change.notes());
   }
 
-  private static Row assumedPeriodRow(Map<?, ?> period) {
-    Double months = asDouble(period.get("months"));
-
+  private static Row assumedPeriodRow(CctAssumedFullTimePeriodDto period) {
     return new Row(
         true,
         null,
         true,
         false,
-        asDate(period.get("startDate")),
-        asDate(period.get("endDate")),
+        period.startDate(),
+        period.endDate(),
         1.0,
-        months,
-        months,
+        period.months(),
+        period.months(),
         null);
   }
 
   private static double sum(Stream<Double> months) {
     return months.filter(Objects::nonNull).mapToDouble(Double::doubleValue).sum();
-  }
-
-  private static Map<?, ?> asMap(Object value) {
-    return value instanceof Map<?, ?> map ? map : Map.of();
-  }
-
-  private static List<?> asList(Object value) {
-    return value instanceof List<?> list ? list : List.of();
-  }
-
-  private static LocalDate asDate(Object value) {
-    return value instanceof String date ? LocalDate.parse(date) : null;
-  }
-
-  private static Double asDouble(Object value) {
-    return value instanceof Number number ? number.doubleValue() : null;
-  }
-
-  private static String asString(Object value) {
-    return value instanceof String string ? string : null;
   }
 
   /**
