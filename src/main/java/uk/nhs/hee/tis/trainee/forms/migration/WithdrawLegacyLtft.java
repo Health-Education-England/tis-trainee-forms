@@ -55,6 +55,7 @@ public class WithdrawLegacyLtft {
       + "duplication, during the LTFT onboarding and transition from existing regional processes. "
       + "Please note there is no action to take.";
   private static final List<String> FORM_REFS = List.of(
+      // London
       "ltft_281057_001", "ltft_248325_001", "ltft_190825_001", "ltft_67161_001", "ltft_735_001",
       "ltft_247226_001", "ltft_332977_001", "ltft_332977_002", "ltft_6409_002", "ltft_4404_001",
       "ltft_249144_001", "ltft_115353_001", "ltft_259803_001", "ltft_115309_001", "ltft_18682_001",
@@ -108,7 +109,14 @@ public class WithdrawLegacyLtft {
       "ltft_306660_001", "ltft_307475_001", "ltft_301167_001", "ltft_296619_001", "ltft_284935_001",
       "ltft_325508_001", "ltft_307571_001", "ltft_308088_001", "ltft_294906_001", "ltft_56757_001",
       "ltft_307353_001", "ltft_246924_001", "ltft_307564_002", "ltft_280839_001", "ltft_307601_001",
-      "ltft_313691_001", "ltft_275689_001"
+      // Midlands
+      "ltft_313691_001", "ltft_275689_001",
+      // South West
+      "ltft_315455_003", "ltft_115024_001", "ltft_272901_001", "ltft_114042_001", "ltft_249943_001",
+      "ltft_275577_001", "ltft_253824_001", "ltft_115438_001", "ltft_115258_001", "ltft_40221_001",
+      "ltft_94764_002", "ltft_12322_001", "ltft_6727_001", "ltft_246311_001", "ltft_272957_002",
+      "ltft_8230_001", "ltft_269906_001", "ltft_162564_001", "ltft_115800_001", "ltft_116469_001",
+      "ltft_329044_001", "ltft_328869_001", "ltft_329336_001", "ltft_173_002"
   );
 
   /**
