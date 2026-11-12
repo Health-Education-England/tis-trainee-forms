@@ -33,6 +33,7 @@ import java.time.LocalDate;
 import java.time.Month;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -40,6 +41,13 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctAssumedFullTimePeriodDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctCalculatedChangeDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctCalculationDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctProgrammeDetailsDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctProjectionDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctResultDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -373,6 +381,68 @@ class LtftMapperTest {
         dto.status().history().get(0).responsibleRole(), nullValue());
     assertThat("Unexpected latest responsible role.",
         dto.status().history().get(1).responsibleRole(), is(role));
+  }
+
+  @Test
+  void shouldMapCctSnapshotToEntityAndBackToDto() {
+    CctSnapshotDto snapshot = CctSnapshotDto.builder()
+        .calculationId(UUID.randomUUID())
+        .calculation(CctCalculationDto.builder()
+            .id(UUID.randomUUID())
+            .name("My calculation")
+            .programmeDetails(CctProgrammeDetailsDto.builder()
+                .specialty("General Practice")
+                .startDate(LocalDate.of(2024, Month.AUGUST, 7))
+                .lengthMonths(36)
+                .startGrade("ST1")
+                .build())
+            .changes(List.of(CctCalculatedChangeDto.builder()
+                .type("LTFT")
+                .startDate(LocalDate.of(2025, Month.FEBRUARY, 5))
+                .endDate(LocalDate.of(2025, Month.AUGUST, 4))
+                .wte(0.8)
+                .countsTowardsCompletion(true)
+                .calendarMonths(6.0)
+                .wteMonths(4.8)
+                .build()))
+            .result(CctResultDto.builder()
+                .cctDate(LocalDate.of(2027, Month.OCTOBER, 1))
+                .totalCalendarMonthsCompleted(12.0)
+                .totalWteMonthsCompleted(10.8)
+                .monthsRemaining(25.2)
+                .assumedFullTimePeriods(List.of(CctAssumedFullTimePeriodDto.builder()
+                    .startDate(LocalDate.of(2024, Month.AUGUST, 7))
+                    .endDate(LocalDate.of(2025, Month.FEBRUARY, 4))
+                    .months(6.0)
+                    .build()))
+                .projection(CctProjectionDto.builder()
+                    .startDate(LocalDate.of(2025, Month.AUGUST, 5))
+                    .wte(1.0)
+                    .calendarMonths(25.2)
+                    .wteMonths(25.2)
+                    .build())
+                .build())
+            .created(Instant.parse("2025-01-01T00:00:00Z"))
+            .lastModified(Instant.parse("2025-01-02T00:00:00Z"))
+            .build())
+        .build();
+    LtftFormDto dto = LtftFormDto.builder().cctSnapshot(snapshot).build();
+
+    LtftForm entity = mapper.toEntity(dto);
+
+    LtftContent.CctSnapshot entitySnapshot = entity.getContent().cctSnapshot();
+    assertThat("Unexpected calculation ID.", entitySnapshot.calculationId(),
+        is(snapshot.calculationId()));
+    assertThat("Unexpected specialty.",
+        entitySnapshot.calculation().programmeDetails().specialty(), is("General Practice"));
+    assertThat("Unexpected change count.", entitySnapshot.calculation().changes().size(), is(1));
+    assertThat("Unexpected assumed full time period count.",
+        entitySnapshot.calculation().result().assumedFullTimePeriods().size(), is(1));
+    assertThat("Unexpected projection WTE.",
+        entitySnapshot.calculation().result().projection().wte(), is(1.0));
+
+    LtftFormDto mappedDto = mapper.toDto(entity);
+    assertThat("Unexpected CCT snapshot.", mappedDto.cctSnapshot(), is(snapshot));
   }
 
   @Test
