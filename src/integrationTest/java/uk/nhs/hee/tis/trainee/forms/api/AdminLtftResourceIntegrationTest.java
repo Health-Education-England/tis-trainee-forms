@@ -1984,6 +1984,69 @@ class AdminLtftResourceIntegrationTest {
             + " Total to completion 163.3 102.0"));
   }
 
+  @ParameterizedTest
+  @CsvSource({
+      "LTFT,LTFT",
+      "OOPC,OOPC",
+      "OOPE,OOPE",
+      "OOPP,OOPP",
+      "OOPR,OOPR",
+      "OOPT,OOPT",
+      "PARENTAL,Parental leave",
+      "PHASED,Phased return",
+      "SHIELDING,Shielding",
+      "SICKNESS,Sickness",
+      "ACCRUED_LEAVE,Accrued leave"
+  })
+  void shouldGetDetailPdfCctSnapshotChangeLabelledByTypeWhenSnapshotAttached(String type,
+      String label) throws Exception {
+    LtftForm form = createCctSnapshotLtft(createCctCalculation(List.of(
+        CctCalculatedChange.builder()
+            .type(type)
+            .startDate(LocalDate.parse("2024-02-01"))
+            .endDate(LocalDate.parse("2025-01-31"))
+            .countsTowardsCompletion(true)
+            .build())));
+
+    String pdfText = getDetailPdfText(form);
+
+    assertThat("Unexpected change label.", pdfText, containsString(
+        "Not added by the trainee " + label + " 01 Feb 2024 31 Jan 2025"));
+  }
+
+  @Test
+  void shouldGetDetailPdfCctSnapshotFullTimeProjectionWhenNoOpenLtftChange() throws Exception {
+    LtftForm form = createCctSnapshotLtft(createCctCalculation(CCT_CHANGES.subList(0, 2)));
+
+    String pdfText = getDetailPdfText(form);
+
+    assertThat("Unexpected projection.", pdfText,
+        containsString("Full-time projection 01 Sep 2025 11 Mar 2036"));
+  }
+
+  @Test
+  void shouldGetDetailPdfCctSnapshotTotalsAsDashWhenTotalsMissing() throws Exception {
+    CctCalculation calculation = CctCalculation.builder()
+        .changes(CCT_CHANGES)
+        .result(CctResult.builder()
+            .cctDate(LocalDate.parse("2036-03-11"))
+            .projection(CctProjection.builder()
+                .startDate(LocalDate.parse("2025-09-01"))
+                .calendarMonths(126.3)
+                .wteMonths(75.8)
+                .build())
+            .build())
+        .lastModified(Instant.parse("2026-10-28T12:00:00Z"))
+        .build();
+    LtftForm form = createCctSnapshotLtft(calculation);
+
+    String pdfText = getDetailPdfText(form);
+
+    assertThat("Unexpected totals.", pdfText, containsString(" Total — —"));
+    assertThat("Unexpected totals to completion.", pdfText,
+        containsString(" Total to completion — —"));
+  }
+
   @Test
   void shouldGetDetailPdfCctSnapshotNoChangesMessageWhenNoChanges() throws Exception {
     LtftForm form = createCctSnapshotLtft(createCctCalculation(List.of()));
@@ -2844,6 +2907,7 @@ class AdminLtftResourceIntegrationTest {
             .cctDate(LocalDate.parse("2036-03-11"))
             .originalProgrammeEndDate(LocalDate.parse("2030-08-02"))
             .adjustedProgrammeEndDate(LocalDate.parse("2031-02-02"))
+            .totalCalendarMonthsCompleted(37.0)
             .totalWteMonthsCompleted(26.2)
             .monthsRemaining(75.8)
             .assumedFullTimePeriods(List.of(

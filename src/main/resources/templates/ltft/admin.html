@@ -298,7 +298,7 @@
             <div class="cct-section">
               <h3 class="nhsuk-heading-s">Changes</h3>
               <p th:if="${#lists.isEmpty(calculation.changes)}"><em>No changes recorded, so the whole programme is treated as full time at 100% WTE.</em></p>
-              <table class="nhsuk-table" th:unless="${#lists.isEmpty(calculation.changes)}" th:with="table=${T(uk.nhs.hee.tis.trainee.forms.service.CctSnapshotTable).of(calculation)}">
+              <table class="nhsuk-table" th:unless="${#lists.isEmpty(calculation.changes)}" th:with="rows=${T(uk.nhs.hee.tis.trainee.forms.service.CctSnapshotRow).of(calculation)}">
                 <thead class="nhsuk-table__head">
                   <tr class="nhsuk-table__row">
                     <th scope="col" class="nhsuk-table__header">Type</th>
@@ -311,16 +311,23 @@
                   </tr>
                 </thead>
                 <tbody class="nhsuk-table__body">
-                  <tr class="nhsuk-table__row" th:each="row : ${table.rows}">
+                  <tr class="nhsuk-table__row" th:each="row : ${rows}" th:with="open=${row.type == 'LTFT' and row.endDate == null}">
                     <td class="nhsuk-table__cell">
-                      <th:block th:text="${row.assumed} ? 'Assumed full-time' : ${row.label}"/>
+                      <th:block th:switch="${row.type}">
+                        <th:block th:case="'PARENTAL'">Parental leave</th:block>
+                        <th:block th:case="'PHASED'">Phased return</th:block>
+                        <th:block th:case="'SHIELDING'">Shielding</th:block>
+                        <th:block th:case="'SICKNESS'">Sickness</th:block>
+                        <th:block th:case="'ACCRUED_LEAVE'">Accrued leave</th:block>
+                        <th:block th:case="*" th:text="${row.assumed} ? 'Assumed full-time' : ${row.type}"/>
+                      </th:block>
                       <th:block th:unless="${row.countsTowardsCompletion}"><br/>(not training)</th:block>
                     </td>
                     <td class="nhsuk-table__cell" style="white-space: nowrap" th:text="${#temporals.format(row.startDate, 'dd MMM yyyy')}"></td>
-                    <td class="nhsuk-table__cell" th:text="${row.open} ? 'For remainder of training' : ${#temporals.format(row.endDate, 'dd MMM yyyy')}"></td>
+                    <td class="nhsuk-table__cell" th:text="${open} ? 'For remainder of training' : ${#temporals.format(row.endDate, 'dd MMM yyyy')}"></td>
                     <td class="nhsuk-table__cell" th:text="${#numbers.formatPercent(row.wte, 1, 0)} ?: '—'"></td>
-                    <td class="nhsuk-table__cell" th:text="${row.open} ? '-' : (${#numbers.formatDecimal(row.calendarMonths, 1, 1)} ?: '—')"></td>
-                    <td class="nhsuk-table__cell" th:text="${row.open} ? '-' : (${#numbers.formatDecimal(row.wteMonths, 1, 1)} ?: '—')"></td>
+                    <td class="nhsuk-table__cell" th:text="${open} ? '-' : (${#numbers.formatDecimal(row.calendarMonths, 1, 1)} ?: '—')"></td>
+                    <td class="nhsuk-table__cell" th:text="${open} ? '-' : (${#numbers.formatDecimal(row.wteMonths, 1, 1)} ?: '—')"></td>
                     <td class="nhsuk-table__cell" th:text="${row.assumed} ? 'Not added by the trainee' : (${#strings.isEmpty(row.notes)} ? '—' : ${row.notes})"></td>
                   </tr>
                   <tr class="nhsuk-table__row">
@@ -328,12 +335,12 @@
                     <td class="nhsuk-table__cell"></td>
                     <td class="nhsuk-table__cell"></td>
                     <td class="nhsuk-table__cell"></td>
-                    <td class="nhsuk-table__cell"><strong th:text="${#numbers.formatDecimal(table.totals.calendarMonths, 1, 1)}"></strong></td>
-                    <td class="nhsuk-table__cell"><strong th:text="${#numbers.formatDecimal(table.totals.wteMonths, 1, 1)}"></strong></td>
+                    <td class="nhsuk-table__cell"><strong th:text="${#numbers.formatDecimal(result?.totalCalendarMonthsCompleted, 1, 1)} ?: '—'"></strong></td>
+                    <td class="nhsuk-table__cell"><strong th:text="${#numbers.formatDecimal(result?.totalWteMonthsCompleted, 1, 1)} ?: '—'"></strong></td>
                     <td class="nhsuk-table__cell"></td>
                   </tr>
                   <tr class="nhsuk-table__row">
-                    <td class="nhsuk-table__cell"><strong th:text="${table.openLtftChange} ? 'LTFT projection' : 'Full-time projection'"></strong></td>
+                    <td class="nhsuk-table__cell"><strong th:text="${#lists.isEmpty(calculation.changes.?[type == 'LTFT' and endDate == null])} ? 'Full-time projection' : 'LTFT projection'"></strong></td>
                     <td class="nhsuk-table__cell" style="white-space: nowrap" th:text="${#temporals.format(projection?.startDate, 'dd MMM yyyy')}"></td>
                     <td class="nhsuk-table__cell"><strong th:text="${#temporals.format(result?.cctDate, 'dd MMM yyyy')}"></strong></td>
                     <td class="nhsuk-table__cell" th:text="${#numbers.formatPercent(projection?.wte, 1, 0)}"></td>
@@ -346,8 +353,8 @@
                     <td class="nhsuk-table__cell"></td>
                     <td class="nhsuk-table__cell"></td>
                     <td class="nhsuk-table__cell"></td>
-                    <td class="nhsuk-table__cell"><strong th:text="${#numbers.formatDecimal(table.completionTotals.calendarMonths, 1, 1)}"></strong></td>
-                    <td class="nhsuk-table__cell"><strong th:text="${#numbers.formatDecimal(table.completionTotals.wteMonths, 1, 1)}"></strong></td>
+                    <td class="nhsuk-table__cell"><strong th:text="${result?.totalCalendarMonthsCompleted == null} ? '—' : ${#numbers.formatDecimal(result.totalCalendarMonthsCompleted + (projection?.calendarMonths ?: 0), 1, 1)}"></strong></td>
+                    <td class="nhsuk-table__cell"><strong th:text="${result?.totalWteMonthsCompleted == null} ? '—' : ${#numbers.formatDecimal(result.totalWteMonthsCompleted + (projection?.wteMonths ?: 0), 1, 1)}"></strong></td>
                     <td class="nhsuk-table__cell"></td>
                   </tr>
                 </tbody>

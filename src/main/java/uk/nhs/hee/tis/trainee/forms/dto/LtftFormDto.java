@@ -155,7 +155,8 @@ public record LtftFormDto(
         UUID id,
         String name,
         CctProgrammeDetailsDto programmeDetails,
-        List<CctCalculatedChangeDto> changes,
+        List<@NotNull CctCalculatedChangeDto> changes,
+        @Valid
         CctResultDto result,
         Instant created,
         @NotNull
@@ -234,6 +235,7 @@ public record LtftFormDto(
      *                                 accelerated training time.
      * @param adjustedProgrammeEndDate The end date of the programme, after additional and
      *                                 accelerated training time.
+     * @param totalCalendarMonthsCompleted The calendar months completed before the projection.
      * @param totalWteMonthsCompleted  The whole time equivalent months completed before the
      *                                 projection.
      * @param monthsRemaining          The months of training remaining.
@@ -245,9 +247,10 @@ public record LtftFormDto(
         LocalDate cctDate,
         LocalDate originalProgrammeEndDate,
         LocalDate adjustedProgrammeEndDate,
+        Double totalCalendarMonthsCompleted,
         Double totalWteMonthsCompleted,
         Double monthsRemaining,
-        List<CctAssumedFullTimePeriodDto> assumedFullTimePeriods,
+        List<@NotNull CctAssumedFullTimePeriodDto> assumedFullTimePeriods,
         CctProjectionDto projection) {
 
     }
