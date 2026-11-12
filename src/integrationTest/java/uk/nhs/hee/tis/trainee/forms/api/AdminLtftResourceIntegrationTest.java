@@ -1367,10 +1367,11 @@ class AdminLtftResourceIntegrationTest {
   @Test
   void shouldIncludeCctSnapshotInDetailJson() throws Exception {
     UUID calculationId = UUID.randomUUID();
-    Instant snapshotTakenAt = Instant.parse("2026-11-02T10:15:30.123Z");
+    Instant lastModified = Instant.parse("2026-10-28T12:00:00.123Z");
     CctCalculation calculation = CctCalculation.builder()
         .id(calculationId)
         .name("My calculation")
+        .lastModified(lastModified)
         .build();
 
     LtftForm form = createLtftForm(SUBMITTED, DBC_1, null);
@@ -1380,7 +1381,6 @@ class AdminLtftResourceIntegrationTest {
             .build())
         .cctSnapshot(CctSnapshot.builder()
             .calculationId(calculationId)
-            .snapshotTakenAt(snapshotTakenAt)
             .calculation(calculation)
             .build())
         .build());
@@ -1390,9 +1390,10 @@ class AdminLtftResourceIntegrationTest {
             .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.cctSnapshot.calculationId", is(calculationId.toString())))
-        .andExpect(jsonPath("$.cctSnapshot.snapshotTakenAt", is(snapshotTakenAt.toString())))
         .andExpect(jsonPath("$.cctSnapshot.calculation.id", is(calculationId.toString())))
-        .andExpect(jsonPath("$.cctSnapshot.calculation.name", is("My calculation")));
+        .andExpect(jsonPath("$.cctSnapshot.calculation.name", is("My calculation")))
+        .andExpect(jsonPath("$.cctSnapshot.calculation.lastModified",
+            is(lastModified.toString())));
   }
 
   @ParameterizedTest
@@ -1915,12 +1916,12 @@ class AdminLtftResourceIntegrationTest {
         containsString("Calculation name My calculation"));
     assertThat("Unexpected CCT date.", pdfText,
         containsString("Indicative completion date 11 March 2036"));
-    assertThat("Unexpected attached date.", pdfText,
-        containsString("Attached on 02 November 2026"));
+    assertThat("Unexpected last saved date.", pdfText,
+        containsString("Last saved on 28 October 2026"));
     assertThat("Unexpected snapshot note.", pdfText, containsString(
-        "The trainee chose this from their saved CCT calculations in TSS and attached a snapshot"
-            + " on 02 November 2026. Editing or deleting their saved calculation does not change"
-            + " this snapshot."));
+        "The trainee chose this from their saved CCT calculations in TSS. This snapshot is the"
+            + " calculation as they last saved it on 28 October 2026. Editing or deleting their"
+            + " saved calculation does not change this snapshot."));
     assertThat("Unexpected ARCP note.", pdfText, containsString(
         "The completion date is indicative; the official CCT date is agreed at the trainee's next"
             + " ARCP."));
@@ -2863,6 +2864,7 @@ class AdminLtftResourceIntegrationTest {
                 .wteMonths(75.8)
                 .build())
             .build())
+        .lastModified(Instant.parse("2026-10-28T12:00:00Z"))
         .build();
   }
 
@@ -2880,7 +2882,6 @@ class AdminLtftResourceIntegrationTest {
             .build())
         .cctSnapshot(calculation == null ? null : CctSnapshot.builder()
             .calculationId(UUID.randomUUID())
-            .snapshotTakenAt(Instant.parse("2026-11-02T10:15:30Z"))
             .calculation(calculation)
             .build())
         .build());

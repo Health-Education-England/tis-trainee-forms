@@ -190,7 +190,7 @@
         <div class="nhsuk-card__content">
           <h2 class="nhsuk-card__heading">CCT calculation</h2>
           <p th:if="${var.cctSnapshot?.calculation == null}">No calculation attached</p>
-          <th:block th:if="${var.cctSnapshot?.calculation != null}" th:with="calculation=${var.cctSnapshot.calculation}, details=${calculation.programmeDetails}, result=${calculation.result}, projection=${result?.projection}, attachedOn=${#temporals.format(var.cctSnapshot.snapshotTakenAt, 'dd MMMM yyyy', timezone)}, cctDate=${#temporals.format(result?.cctDate, 'dd MMMM yyyy')}">
+          <th:block th:if="${var.cctSnapshot?.calculation != null}" th:with="calculation=${var.cctSnapshot.calculation}, details=${calculation.programmeDetails}, result=${calculation.result}, projection=${result?.projection}, lastSavedOn=${#temporals.format(calculation.lastModified, 'dd MMMM yyyy', timezone)}, cctDate=${#temporals.format(result?.cctDate, 'dd MMMM yyyy')}">
             <dl class="nhsuk-summary-list">
               <div class="nhsuk-summary-list__row">
                 <dt class="nhsuk-summary-list__key">Calculation name</dt>
@@ -201,12 +201,12 @@
                 <dd class="nhsuk-summary-list__value" th:text="${cctDate} ?: _">Not Given</dd>
               </div>
               <div class="nhsuk-summary-list__row">
-                <dt class="nhsuk-summary-list__key">Attached on</dt>
-                <dd class="nhsuk-summary-list__value" th:text="${attachedOn} ?: _">Not Given</dd>
+                <dt class="nhsuk-summary-list__key">Last saved on</dt>
+                <dd class="nhsuk-summary-list__value" th:text="${lastSavedOn} ?: _">Not Given</dd>
               </div>
             </dl>
             <div class="nhsuk-inset-text">
-              <p th:text="|The trainee chose this from their saved CCT calculations in TSS and attached a snapshot on ${attachedOn}. Editing or deleting their saved calculation does not change this snapshot.|"></p>
+              <p th:text="|The trainee chose this from their saved CCT calculations in TSS. This snapshot is the calculation as they last saved it on ${lastSavedOn}. Editing or deleting their saved calculation does not change this snapshot.|"></p>
               <p>The completion date is indicative; the official CCT date is agreed at the trainee's next ARCP.</p>
             </div>
             <dl class="nhsuk-summary-list">

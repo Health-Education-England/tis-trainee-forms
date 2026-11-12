@@ -128,17 +128,15 @@ public record LtftFormDto(
   /**
    * A snapshot of a CCT calculation.
    *
-   * @param calculationId   The ID of the CCT calculation.
-   * @param snapshotTakenAt When the snapshot was taken.
-   * @param calculation     The CCT calculation at the time of the snapshot.
+   * @param calculationId The ID of the CCT calculation.
+   * @param calculation   The CCT calculation at the time of the snapshot.
    */
   @Builder
   public record CctSnapshotDto(
       @NotNull
       UUID calculationId,
       @NotNull
-      Instant snapshotTakenAt,
-      @NotNull
+      @Valid
       CctCalculationDto calculation) {
 
     /**
@@ -160,6 +158,7 @@ public record LtftFormDto(
         List<CctCalculatedChangeDto> changes,
         CctResultDto result,
         Instant created,
+        @NotNull
         Instant lastModified) {
 
     }
