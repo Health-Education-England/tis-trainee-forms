@@ -1462,7 +1462,7 @@ public class LtftService extends AbstractAuditedFormService<LtftForm> {
    *
    * @return the form with the form ID, empty if not exist or is not accessible to the admin.
    */
-  private Optional<LtftForm> findFormForAdmin(UUID formId) {
+  public Optional<LtftForm> findFormForAdmin(UUID formId) {
     if (hasAssignedProgrammes()) {
       Set<String> programmes = adminIdentity.getProgrammes();
       log.info("Finding LTFT form {} for admin {} by programmes {}", formId,
