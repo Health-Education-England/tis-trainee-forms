@@ -50,24 +50,17 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.Optional;
-import net.javacrumbs.shedlock.core.LockProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.web.client.RestTemplateBuilder;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.io.Resource;
-import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.util.FileCopyUtils;
@@ -75,9 +68,8 @@ import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
+import uk.nhs.hee.tis.trainee.forms.WithWebSecurity;
 import uk.nhs.hee.tis.trainee.forms.api.validation.FormRPartBValidator;
-import uk.nhs.hee.tis.trainee.forms.config.FilterConfiguration;
-import uk.nhs.hee.tis.trainee.forms.config.MongoConfiguration;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartSimpleDto;
@@ -87,7 +79,7 @@ import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
 @WebMvcTest(FormRPartBResource.class)
-@ComponentScan(basePackageClasses = FilterConfiguration.class)
+@WithWebSecurity
 class FormRPartBResourceTest {
 
   private static final String DEFAULT_ID = "2552fad7-72ad-4331-aaae-872414db5d27";
@@ -97,21 +89,6 @@ class FormRPartBResourceTest {
   private static final LifecycleState DEFAULT_LIFECYCLESTATE = LifecycleState.DRAFT;
 
   private static final Jwt AUTH_TOKEN = TestJwtUtil.createTokenForTisId(DEFAULT_TRAINEE_TIS_ID);
-
-  @TestConfiguration
-  static class TestConfig {
-
-    @Bean
-    public MongoMappingContext mongoMappingContext() {
-      return mock(MongoMappingContext.class);
-    }
-  }
-
-  @MockitoBean
-  private MongoConfiguration mongoConfiguration;
-
-  @MockitoBean
-  private LockProvider lockProvider;
 
   @Autowired
   private MockMvc mockMvc;
@@ -124,12 +101,6 @@ class FormRPartBResourceTest {
 
   @MockitoBean
   PdfService pdfService;
-
-  @MockitoBean
-  private RestTemplateBuilder restTemplateBuilder;
-
-  @MockitoBean
-  private JwtDecoder jwtDecoder;
 
   private FormRPartBDto dto;
   private FormRPartSimpleDto simpleDto;

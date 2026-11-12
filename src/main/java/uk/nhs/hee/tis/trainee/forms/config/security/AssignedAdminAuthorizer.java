@@ -76,7 +76,7 @@ public class AssignedAdminAuthorizer {
   private boolean isAssignedTo(LtftForm form) {
     String requesterEmail = adminIdentity.getEmail();
 
-    if (requesterEmail == null || form.getStatus() == null
+    if (requesterEmail == null || requesterEmail.isBlank() || form.getStatus() == null
         || form.getStatus().current() == null) {
       return false;
     }
