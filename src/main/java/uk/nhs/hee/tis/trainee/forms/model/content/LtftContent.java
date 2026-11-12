@@ -257,6 +257,7 @@ public record LtftContent(
      *                                 accelerated training time.
      * @param adjustedProgrammeEndDate The end date of the programme, after additional and
      *                                 accelerated training time.
+     * @param totalCalendarMonthsCompleted The calendar months completed before the projection.
      * @param totalWteMonthsCompleted  The whole time equivalent months completed before the
      *                                 projection.
      * @param monthsRemaining          The months of training remaining.
@@ -268,6 +269,7 @@ public record LtftContent(
         LocalDate cctDate,
         LocalDate originalProgrammeEndDate,
         LocalDate adjustedProgrammeEndDate,
+        Double totalCalendarMonthsCompleted,
         Double totalWteMonthsCompleted,
         Double monthsRemaining,
         List<CctAssumedFullTimePeriod> assumedFullTimePeriods,

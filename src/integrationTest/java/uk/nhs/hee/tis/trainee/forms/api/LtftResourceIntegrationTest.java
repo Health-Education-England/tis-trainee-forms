@@ -60,6 +60,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -207,6 +208,7 @@ class LtftResourceIntegrationTest {
             .build()))
         .result(CctResultDto.builder()
             .cctDate(LocalDate.parse("2030-07-29"))
+            .totalCalendarMonthsCompleted(53.5)
             .build())
         .lastModified(Instant.parse("2026-10-28T12:34:56.789Z"))
         .build();
@@ -224,12 +226,28 @@ class LtftResourceIntegrationTest {
         .id(calculationId)
         .name("My calculation")
         .build();
+    CctCalculationDto calculationWithNullChange = CctCalculationDto.builder()
+        .id(calculationId)
+        .changes(Collections.singletonList(null))
+        .lastModified(Instant.parse("2026-10-28T12:34:56.789Z"))
+        .build();
+    CctCalculationDto calculationWithNullAssumedPeriod = CctCalculationDto.builder()
+        .id(calculationId)
+        .result(CctResultDto.builder()
+            .assumedFullTimePeriods(Collections.singletonList(null))
+            .build())
+        .lastModified(Instant.parse("2026-10-28T12:34:56.789Z"))
+        .build();
 
     return Stream.of(
         Arguments.of("calculationId", new CctSnapshotDto(null, calculation)),
         Arguments.of("calculation", new CctSnapshotDto(calculationId, null)),
         Arguments.of("calculation/lastModified",
-            new CctSnapshotDto(calculationId, calculationWithoutLastModified)));
+            new CctSnapshotDto(calculationId, calculationWithoutLastModified)),
+        Arguments.of("calculation/changes[0]",
+            new CctSnapshotDto(calculationId, calculationWithNullChange)),
+        Arguments.of("calculation/result/assumedFullTimePeriods[0]",
+            new CctSnapshotDto(calculationId, calculationWithNullAssumedPeriod)));
   }
 
   @AfterEach
@@ -665,6 +683,8 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.cctSnapshot.calculation.name", is("My calculation")))
         .andExpect(jsonPath("$.cctSnapshot.calculation.changes[0].startDate", is("2027-02-01")))
         .andExpect(jsonPath("$.cctSnapshot.calculation.result.cctDate", is("2030-07-29")))
+        .andExpect(jsonPath("$.cctSnapshot.calculation.result.totalCalendarMonthsCompleted",
+            is(53.5)))
         .andExpect(jsonPath("$.cctSnapshot.calculation.lastModified",
             is("2026-10-28T12:34:56.789Z")));
 
@@ -673,6 +693,8 @@ class LtftResourceIntegrationTest {
     assertThat("Unexpected calculation ID.", savedSnapshot.calculationId(), is(calculationId));
     assertThat("Unexpected CCT date.", savedSnapshot.calculation().result().cctDate(),
         is(LocalDate.parse("2030-07-29")));
+    assertThat("Unexpected total calendar months.",
+        savedSnapshot.calculation().result().totalCalendarMonthsCompleted(), is(53.5));
     assertThat("Unexpected last modified.", savedSnapshot.calculation().lastModified(),
         is(calculation.lastModified()));
   }
@@ -1082,6 +1104,8 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.cctSnapshot.calculation.name", is("My calculation")))
         .andExpect(jsonPath("$.cctSnapshot.calculation.changes[0].startDate", is("2027-02-01")))
         .andExpect(jsonPath("$.cctSnapshot.calculation.result.cctDate", is("2030-07-29")))
+        .andExpect(jsonPath("$.cctSnapshot.calculation.result.totalCalendarMonthsCompleted",
+            is(53.5)))
         .andExpect(jsonPath("$.cctSnapshot.calculation.lastModified",
             is("2026-10-28T12:34:56.789Z")));
 
@@ -1090,6 +1114,8 @@ class LtftResourceIntegrationTest {
     assertThat("Unexpected calculation ID.", savedSnapshot.calculationId(), is(calculationId));
     assertThat("Unexpected CCT date.", savedSnapshot.calculation().result().cctDate(),
         is(LocalDate.parse("2030-07-29")));
+    assertThat("Unexpected total calendar months.",
+        savedSnapshot.calculation().result().totalCalendarMonthsCompleted(), is(53.5));
     assertThat("Unexpected last modified.", savedSnapshot.calculation().lastModified(),
         is(calculation.lastModified()));
   }

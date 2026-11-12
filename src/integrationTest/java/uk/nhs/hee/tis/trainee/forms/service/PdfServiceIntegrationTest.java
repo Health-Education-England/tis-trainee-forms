@@ -380,6 +380,7 @@ class PdfServiceIntegrationTest {
             .cctDate(LocalDate.parse("2036-03-11"))
             .originalProgrammeEndDate(LocalDate.parse("2030-08-02"))
             .adjustedProgrammeEndDate(LocalDate.parse("2030-11-02"))
+            .totalCalendarMonthsCompleted(37.0)
             .totalWteMonthsCompleted(26.2)
             .monthsRemaining(72.8)
             .assumedFullTimePeriods(List.of(
