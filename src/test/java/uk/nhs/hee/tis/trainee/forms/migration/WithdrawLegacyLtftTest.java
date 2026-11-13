@@ -111,18 +111,21 @@ class WithdrawLegacyLtftTest {
   }
 
   @Test
-  void shouldWithdrawSubmittedAndUnsubmittedForms() {
+  void shouldWithdrawWithdrawableForms() {
     LtftForm submitted = formWithState("ltft_281057_001", LifecycleState.SUBMITTED, 1);
     LtftForm unsubmitted = formWithState("ltft_248325_001", LifecycleState.UNSUBMITTED, 2);
+    LtftForm underReview = formWithState("ltft_280839_001", LifecycleState.UNDER_REVIEW, 3);
     when(template.find(any(Query.class), eq(LtftForm.class)))
-        .thenReturn(List.of(submitted, unsubmitted));
+        .thenReturn(List.of(submitted, unsubmitted, underReview));
 
     migration.migrate();
 
     assertWithdrawn(submitted, 1);
     assertWithdrawn(unsubmitted, 2);
+    assertWithdrawn(underReview, 3);
     verify(repository).save(submitted);
     verify(repository).save(unsubmitted);
+    verify(repository).save(underReview);
   }
 
   @ParameterizedTest
