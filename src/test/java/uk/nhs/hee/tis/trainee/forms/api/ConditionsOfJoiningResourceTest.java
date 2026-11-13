@@ -40,7 +40,6 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
-import net.javacrumbs.shedlock.core.LockProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -48,56 +47,28 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.web.client.RestTemplateBuilder;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.core.io.Resource;
-import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import uk.nhs.hee.tis.trainee.forms.SignatureTestUtil;
 import uk.nhs.hee.tis.trainee.forms.TestJwtUtil;
-import uk.nhs.hee.tis.trainee.forms.config.FilterConfiguration;
-import uk.nhs.hee.tis.trainee.forms.config.MongoConfiguration;
+import uk.nhs.hee.tis.trainee.forms.WithWebSecurity;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoining;
 import uk.nhs.hee.tis.trainee.forms.dto.ConditionsOfJoiningPdfRequestDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.GoldGuideVersion;
 import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 
 @WebMvcTest(ConditionsOfJoiningResource.class)
-@ComponentScan(basePackageClasses = FilterConfiguration.class)
+@WithWebSecurity
 class ConditionsOfJoiningResourceTest {
-
-  @TestConfiguration
-  static class TestConfig {
-
-    @Bean
-    public MongoMappingContext mongoMappingContext() {
-      return mock(MongoMappingContext.class);
-    }
-  }
-
-  @MockitoBean
-  private MongoConfiguration mongoConfiguration;
-
-  @MockitoBean
-  private LockProvider lockProvider;
 
   @Autowired
   private MockMvc mockMvc;
 
   @MockitoBean
   private PdfService service;
-
-  @MockitoBean
-  private RestTemplateBuilder restTemplateBuilder;
-
-  @MockitoBean
-  private JwtDecoder jwtDecoder;
 
   @Value("${application.signature.secret-key}")
   private String secretKey;

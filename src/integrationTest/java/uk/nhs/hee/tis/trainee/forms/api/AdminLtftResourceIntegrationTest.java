@@ -224,6 +224,31 @@ class AdminLtftResourceIntegrationTest {
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', textBlock = """
+      PUT | /api/admin/ltft/{id}/approve
+      PUT | /api/admin/ltft/{id}/reject
+      PUT | /api/admin/ltft/{id}/unsubmit
+      """)
+  void shouldReturnForbiddenWhenUpdatingStatusAndRequesterNotAssignedAdmin(HttpMethod method,
+      String uriTemplate) throws Exception {
+    Person notAssignedAdmin = Person.builder()
+        .email("not.assigned.admin@example.com")
+        .role("ADMIN")
+        .build();
+
+    LtftForm form = createLtftForm(UNDER_REVIEW, DBC_1, null);
+    form.setAssignedAdmin(notAssignedAdmin, notAssignedAdmin);
+    form = template.save(form);
+
+    mockMvc.perform(request(method, uriTemplate, form.getId())
+            .with(TestJwtUtil.createAdminToken(List.of(DBC_1), REQUIRED_ROLES))
+            .contentType(APPLICATION_JSON)
+            .content("{}")) // required by some endpoints
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$").doesNotExist());
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', textBlock = """
       GET   | /api/admin/ltft/123
       PATCH | /api/admin/ltft/123
       PUT   | /api/admin/ltft/123/approve
@@ -2637,13 +2662,14 @@ class AdminLtftResourceIntegrationTest {
 
     StatusInfo statusInfo = StatusInfo.builder()
         .state(state)
+        .assignedAdmin(Person.builder().email("ad.min@example.com").role("ADMIN").build())
         .timestamp(Instant.now())
         .revision(0)
         .build();
     statusInfo = statusInfo.withResponsibleRole(ltft.resolveResponsibleRole(statusInfo));
     ltft.setStatus(Status.builder()
         .current(statusInfo)
-        .submitted(state != DRAFT ? Instant.now() : null)
+        .submitted(state == DRAFT ? null : Instant.now())
         .history(List.of(statusInfo))
         .build()
     );

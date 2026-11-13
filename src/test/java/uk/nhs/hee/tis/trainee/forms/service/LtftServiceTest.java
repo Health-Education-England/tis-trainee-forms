@@ -1221,6 +1221,62 @@ class LtftServiceTest {
     assertThat("Unexpected PM wte.", programmeMembership.wte(), is(0.75));
   }
 
+  @ParameterizedTest
+  @NullAndEmptySource
+  void shouldNotFindFormForAdminWhenNotAccessibleByDbcs(Set<String> programmes) {
+    adminIdentity.setProgrammes(programmes);
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(ID,
+        Set.of(ADMIN_GROUP))).thenReturn(Optional.empty());
+
+    Optional<LtftForm> found = service.findFormForAdmin(ID);
+
+    assertThat("Unexpected form presence.", found.isPresent(), is(false));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  void shouldFindFormForAdminByDbcsWhenNoProgrammesAssigned(Set<String> programmes) {
+    adminIdentity.setProgrammes(programmes);
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    when(repository.findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(ID,
+        Set.of(ADMIN_GROUP))).thenReturn(Optional.of(form));
+
+    Optional<LtftForm> found = service.findFormForAdmin(ID);
+
+    assertThat("Unexpected form presence.", found.isPresent(), is(true));
+    assertThat("Unexpected form.", found.get(), is(form));
+    verify(repository, never())
+        .findByIdAndContent_ProgrammeMembership_ProgrammeNumberIn(any(), any());
+  }
+
+  @Test
+  void shouldNotFindFormForAdminWhenNotAccessibleByProgrammes() {
+    adminIdentity.setProgrammes(Set.of(ADMIN_PROGRAMME));
+    when(repository.findByIdAndContent_ProgrammeMembership_ProgrammeNumberIn(ID,
+        Set.of(ADMIN_PROGRAMME))).thenReturn(Optional.empty());
+
+    Optional<LtftForm> found = service.findFormForAdmin(ID);
+
+    assertThat("Unexpected form presence.", found.isPresent(), is(false));
+  }
+
+  @Test
+  void shouldFindFormForAdminByProgrammesWhenProgrammesAssigned() {
+    adminIdentity.setProgrammes(Set.of(ADMIN_PROGRAMME));
+    LtftForm form = new LtftForm();
+    form.setId(ID);
+    when(repository.findByIdAndContent_ProgrammeMembership_ProgrammeNumberIn(ID,
+        Set.of(ADMIN_PROGRAMME))).thenReturn(Optional.of(form));
+
+    Optional<LtftForm> found = service.findFormForAdmin(ID);
+
+    assertThat("Unexpected form presence.", found.isPresent(), is(true));
+    assertThat("Unexpected form.", found.get(), is(form));
+    verify(repository, never())
+        .findByIdAndContent_ProgrammeMembership_DesignatedBodyCodeIn(any(), any());
+  }
+
   @Test
   void shouldGetAdminLtftProgrammeMembershipDetailWithDefaultValuesWhenFormFoundWithNullValues() {
     LtftForm entity = new LtftForm();

@@ -60,6 +60,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import uk.nhs.hee.tis.trainee.forms.annotations.IsAssignedAdmin;
 import uk.nhs.hee.tis.trainee.forms.dto.FormPatchDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftAdminSummaryDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
@@ -293,6 +294,7 @@ public class AdminLtftResource {
    * @throws MethodArgumentNotValidException When the state transition was not valid.
    */
   @PutMapping("/{id}/approve")
+  @IsAssignedAdmin
   ResponseEntity<LtftFormDto> approveLtft(@PathVariable UUID id)
       throws MethodArgumentNotValidException {
     Optional<LtftFormDto> form = service.updateStatusAsAdmin(id, APPROVED, null);
@@ -307,6 +309,7 @@ public class AdminLtftResource {
    * @throws MethodArgumentNotValidException When the state transition was not valid.
    */
   @PutMapping("/{id}/reject")
+  @IsAssignedAdmin
   ResponseEntity<LtftFormDto> rejectLtft(@PathVariable UUID id,
       @RequestBody LftfStatusInfoDetailDto detail)
       throws MethodArgumentNotValidException {
@@ -322,6 +325,7 @@ public class AdminLtftResource {
    * @throws MethodArgumentNotValidException When the state transition was not valid.
    */
   @PutMapping("/{id}/unsubmit")
+  @IsAssignedAdmin
   ResponseEntity<LtftFormDto> unsubmitLtft(@PathVariable UUID id,
       @RequestBody LftfStatusInfoDetailDto detail)
       throws MethodArgumentNotValidException {
