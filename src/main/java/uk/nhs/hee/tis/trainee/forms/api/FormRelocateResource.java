@@ -21,7 +21,6 @@
 
 package uk.nhs.hee.tis.trainee.forms.api;
 
-import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -37,7 +36,6 @@ import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 @Slf4j
 @RestController
 @RequestMapping("/api")
-@XRayEnabled
 public class FormRelocateResource {
 
   private final FormRelocateService service;
