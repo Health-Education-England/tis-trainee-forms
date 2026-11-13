@@ -29,7 +29,6 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNDER_
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
 
-import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -53,7 +52,6 @@ import uk.nhs.hee.tis.trainee.forms.service.LtftService;
  */
 @Slf4j
 @Component
-@XRayEnabled
 public class PublishLtftRefresh extends AbstractPublishRefresh<LtftForm> {
 
   private final LtftFormRepository repository;

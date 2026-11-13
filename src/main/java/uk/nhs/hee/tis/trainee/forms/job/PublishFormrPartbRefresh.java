@@ -27,7 +27,6 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DELETE
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
-import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.Set;
@@ -50,7 +49,6 @@ import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
  */
 @Slf4j
 @Component
-@XRayEnabled
 public class PublishFormrPartbRefresh extends AbstractPublishRefresh<FormRPartB> {
 
   private final FormRPartBRepository repository;

@@ -21,7 +21,6 @@
 
 package uk.nhs.hee.tis.trainee.forms.service;
 
-import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -41,7 +40,6 @@ import uk.nhs.hee.tis.trainee.forms.service.exception.ApplicationException;
 @Slf4j
 @Service
 @Transactional
-@XRayEnabled
 public class FormRelocateService {
 
   private final FormRPartARepository formRPartARepository;

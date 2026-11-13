@@ -21,7 +21,6 @@
 
 package uk.nhs.hee.tis.trainee.forms.api;
 
-import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -46,7 +45,6 @@ import uk.nhs.hee.tis.trainee.forms.service.FormRPartBService;
 @Slf4j
 @RestController
 @RequestMapping("/api/admin/formr-partb")
-@XRayEnabled
 public class AdminFormRPartBResource {
 
   private final FormRPartBService service;
