@@ -26,6 +26,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Null;
+import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -155,6 +156,8 @@ public record LtftFormDto(
         UUID id,
         String name,
         CctProgrammeDetailsDto programmeDetails,
+        @Size(max = 200)
+        @Valid
         List<@NotNull CctCalculatedChangeDto> changes,
         @Valid
         CctResultDto result,
@@ -221,6 +224,7 @@ public record LtftFormDto(
         LocalDate endDate,
         Double wte,
         boolean countsTowardsCompletion,
+        @Size(max = 1000)
         String notes,
         Double calendarMonths,
         Double wteMonths) {

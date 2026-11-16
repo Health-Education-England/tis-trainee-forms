@@ -250,6 +250,37 @@ class LtftResourceIntegrationTest {
             new CctSnapshotDto(calculationId, calculationWithNullAssumedPeriod)));
   }
 
+  /**
+   * Provide CCT snapshots that each have a field over its size limit.
+   *
+   * @return The oversized field's name, the size limit and the oversized snapshot.
+   */
+  private static Stream<Arguments> oversizedCctSnapshots() {
+    UUID calculationId = UUID.randomUUID();
+    CctCalculatedChangeDto change = CctCalculatedChangeDto.builder()
+        .type("LTFT")
+        .build();
+    CctCalculationDto calculationWithTooManyChanges = CctCalculationDto.builder()
+        .id(calculationId)
+        .changes(Collections.nCopies(201, change))
+        .lastModified(Instant.parse("2026-10-28T12:34:56.789Z"))
+        .build();
+    CctCalculationDto calculationWithLongNotes = CctCalculationDto.builder()
+        .id(calculationId)
+        .changes(List.of(CctCalculatedChangeDto.builder()
+            .type("LTFT")
+            .notes("a".repeat(1001))
+            .build()))
+        .lastModified(Instant.parse("2026-10-28T12:34:56.789Z"))
+        .build();
+
+    return Stream.of(
+        Arguments.of("calculation/changes", 200,
+            new CctSnapshotDto(calculationId, calculationWithTooManyChanges)),
+        Arguments.of("calculation/changes[0]/notes", 1000,
+            new CctSnapshotDto(calculationId, calculationWithLongNotes)));
+  }
+
   @AfterEach
   void tearDown() {
     template.findAllAndRemove(new Query(), LtftForm.class);
@@ -719,6 +750,32 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.properties.errors", hasSize(1)))
         .andExpect(jsonPath("$.properties.errors[0].pointer", is("#/cctSnapshot/" + field)))
         .andExpect(jsonPath("$.properties.errors[0].detail", is("must not be null")));
+
+    assertThat("Unexpected saved form count.", template.count(new Query(), LtftForm.class),
+        is(0L));
+  }
+
+  @ParameterizedTest
+  @MethodSource("oversizedCctSnapshots")
+  void shouldBeBadRequestWhenCreatingLtftFormWithOversizedCctSnapshot(String field, int max,
+      CctSnapshotDto cctSnapshot) throws Exception {
+    LtftFormDto formToSave = LtftFormDto.builder()
+        .traineeTisId(TRAINEE_ID)
+        .cctSnapshot(cctSnapshot)
+        .build();
+    String formToSaveJson = mapper.writeValueAsString(formToSave);
+
+    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
+    mockMvc.perform(post("/api/ltft")
+            .with(jwt().jwt(token))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(formToSaveJson))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.title", is("Validation failure")))
+        .andExpect(jsonPath("$.properties.errors", hasSize(1)))
+        .andExpect(jsonPath("$.properties.errors[0].pointer", is("#/cctSnapshot/" + field)))
+        .andExpect(jsonPath("$.properties.errors[0].detail",
+            is("size must be between 0 and " + max)));
 
     assertThat("Unexpected saved form count.", template.count(new Query(), LtftForm.class),
         is(0L));
