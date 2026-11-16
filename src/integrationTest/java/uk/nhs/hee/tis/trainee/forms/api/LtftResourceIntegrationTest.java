@@ -273,12 +273,54 @@ class LtftResourceIntegrationTest {
             .build()))
         .lastModified(Instant.parse("2026-10-28T12:34:56.789Z"))
         .build();
+    String longText = "a".repeat(4097);
+    CctCalculationDto calculationWithLongName = CctCalculationDto.builder()
+        .id(calculationId)
+        .name(longText)
+        .lastModified(Instant.parse("2026-10-28T12:34:56.789Z"))
+        .build();
 
     return Stream.of(
         Arguments.of("calculation/changes", 200,
             new CctSnapshotDto(calculationId, calculationWithTooManyChanges)),
         Arguments.of("calculation/changes[0]/notes", 1000,
-            new CctSnapshotDto(calculationId, calculationWithLongNotes)));
+            new CctSnapshotDto(calculationId, calculationWithLongNotes)),
+        Arguments.of("calculation/name", 4096,
+            new CctSnapshotDto(calculationId, calculationWithLongName)),
+        Arguments.of("calculation/programmeDetails/lengthOverrideNotes", 4096,
+            createCctSnapshot(calculationId, CctProgrammeDetailsDto.builder()
+                .lengthOverrideNotes(longText).build())),
+        Arguments.of("calculation/programmeDetails/startGradeOverrideNotes", 4096,
+            createCctSnapshot(calculationId, CctProgrammeDetailsDto.builder()
+                .startGradeOverrideNotes(longText).build())),
+        Arguments.of("calculation/programmeDetails/additionalMonthsNotes", 4096,
+            createCctSnapshot(calculationId, CctProgrammeDetailsDto.builder()
+                .additionalMonthsNotes(longText).build())),
+        Arguments.of("calculation/programmeDetails/acceleratedMonthsNotes", 4096,
+            createCctSnapshot(calculationId, CctProgrammeDetailsDto.builder()
+                .acceleratedMonthsNotes(longText).build())),
+        Arguments.of("calculation/programmeDetails/eighteenMonthFinalGradeNotes", 4096,
+            createCctSnapshot(calculationId, CctProgrammeDetailsDto.builder()
+                .eighteenMonthFinalGradeNotes(longText).build())),
+        Arguments.of("calculation/programmeDetails/skippedGradeNotes", 4096,
+            createCctSnapshot(calculationId, CctProgrammeDetailsDto.builder()
+                .skippedGradeNotes(longText).build())));
+  }
+
+  /**
+   * Create a CCT snapshot with the given programme details.
+   *
+   * @param calculationId    The ID of the calculation.
+   * @param programmeDetails The programme details of the calculation.
+   * @return The CCT snapshot.
+   */
+  private static CctSnapshotDto createCctSnapshot(UUID calculationId,
+      CctProgrammeDetailsDto programmeDetails) {
+    return new CctSnapshotDto(calculationId, CctCalculationDto.builder()
+        .id(calculationId)
+        .programmeDetails(programmeDetails)
+        .lastModified(Instant.parse("2026-10-28T12:34:56.789Z"))
+        .build());
   }
 
   @AfterEach

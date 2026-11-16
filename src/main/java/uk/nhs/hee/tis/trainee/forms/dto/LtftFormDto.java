@@ -154,7 +154,9 @@ public record LtftFormDto(
     @Builder
     public record CctCalculationDto(
         UUID id,
+        @Size(max = 4096)
         String name,
+        @Valid
         CctProgrammeDetailsDto programmeDetails,
         @Size(max = 200)
         @Valid
@@ -190,16 +192,22 @@ public record LtftFormDto(
         String specialty,
         LocalDate startDate,
         Integer lengthMonths,
+        @Size(max = 4096)
         String lengthOverrideNotes,
         String startGrade,
+        @Size(max = 4096)
         String startGradeOverrideNotes,
         Integer additionalMonths,
+        @Size(max = 4096)
         String additionalMonthsNotes,
         Integer acceleratedMonths,
+        @Size(max = 4096)
         String acceleratedMonthsNotes,
         String eighteenMonthFinalGrade,
+        @Size(max = 4096)
         String eighteenMonthFinalGradeNotes,
         String skippedGrade,
+        @Size(max = 4096)
         String skippedGradeNotes) {
 
     }
