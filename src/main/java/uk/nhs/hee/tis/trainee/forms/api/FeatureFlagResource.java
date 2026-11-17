@@ -21,7 +21,6 @@
 
 package uk.nhs.hee.tis.trainee.forms.api;
 
-import com.amazonaws.xray.spring.aop.XRayEnabled;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,7 +31,6 @@ import uk.nhs.hee.tis.trainee.forms.config.FeatureConfigurationProperties;
 @Slf4j
 @RestController
 @RequestMapping("/api/feature-flags")
-@XRayEnabled
 public class FeatureFlagResource {
 
   private final FeatureConfigurationProperties featureConfig;

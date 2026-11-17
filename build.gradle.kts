@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "uk.nhs.hee.tis.trainee"
-version = "0.80.0"
+version = "0.81.0"
 
 configurations {
   compileOnly {
@@ -54,7 +54,6 @@ dependencies {
   implementation("io.awspring.cloud:spring-cloud-aws-starter-s3")
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sqs")
   implementation("io.awspring.cloud:spring-cloud-aws-starter-sns")
-  implementation(libs.bundles.aws.xray)
 
   implementation("commons-beanutils:commons-beanutils:1.11.0")
   implementation("com.github.java-json-tools:json-patch:1.13")

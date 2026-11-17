@@ -26,7 +26,6 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.DRAFT;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
-import com.amazonaws.xray.spring.aop.XRayEnabled;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
@@ -56,7 +55,6 @@ import uk.nhs.hee.tis.trainee.forms.service.EventBroadcastService.FormrFileEvent
 @Slf4j
 @Service
 @Transactional
-@XRayEnabled
 public class FormRPartAService extends AbstractAuditedFormService<FormRPartA> {
 
   public static final String FORM_TYPE = "formr-a";

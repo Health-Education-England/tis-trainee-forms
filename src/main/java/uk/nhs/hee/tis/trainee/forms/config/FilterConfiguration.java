@@ -21,7 +21,6 @@
 
 package uk.nhs.hee.tis.trainee.forms.config;
 
-import com.amazonaws.xray.jakarta.servlet.AWSXRayServletFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -35,23 +34,6 @@ import uk.nhs.hee.tis.trainee.forms.config.filter.SignedDataFilter;
  */
 @Configuration
 public class FilterConfiguration {
-
-  /**
-   * Configure the AWS Xray filter with the segment name set to service and environment.
-   *
-   * @param environment The environment to use.
-   * @return The {@link AWSXRayServletFilter} for the registration.
-   */
-  @Bean
-  @Order(0)
-  @ConditionalOnExpression("!T(org.springframework.util.StringUtils)"
-      + ".isEmpty('${com.amazonaws.xray.emitters.daemon-address}')")
-  public FilterRegistrationBean<AWSXRayServletFilter> registerTracingFilter(
-      @Value("${application.environment}") String environment) {
-    FilterRegistrationBean<AWSXRayServletFilter> registrationBean = new FilterRegistrationBean<>();
-    registrationBean.setFilter(new AWSXRayServletFilter("tis-trainee-forms-" + environment));
-    return registrationBean;
-  }
 
   /**
    * Register a {@link SignedDataFilter}.

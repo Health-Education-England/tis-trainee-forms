@@ -30,7 +30,6 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNDER_
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.WITHDRAWN;
 
-import com.amazonaws.xray.spring.aop.XRayEnabled;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -99,7 +98,6 @@ import uk.nhs.hee.tis.trainee.forms.repository.LtftFormRepository;
  */
 @Slf4j
 @Service
-@XRayEnabled
 public class LtftService extends AbstractAuditedFormService<LtftForm> {
 
   protected static final String FORM_ATTRIBUTE_FORM_STATUS = "status.current.state";

@@ -21,7 +21,6 @@
 
 package uk.nhs.hee.tis.trainee.forms.api;
 
-import com.amazonaws.xray.spring.aop.XRayEnabled;
 import com.fasterxml.jackson.annotation.JsonView;
 import java.io.IOException;
 import java.util.List;
@@ -55,7 +54,6 @@ import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 @Slf4j
 @RestController
 @RequestMapping("/api/ltft")
-@XRayEnabled
 public class LtftResource {
 
   private final LtftService service;
