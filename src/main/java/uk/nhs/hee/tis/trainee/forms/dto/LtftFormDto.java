@@ -158,7 +158,7 @@ public record LtftFormDto(
         String name,
         @Valid
         CctProgrammeDetailsDto programmeDetails,
-        @Size(max = 200)
+        @Size(max = 50)
         @Valid
         List<@NotNull CctCalculatedChangeDto> changes,
         @Valid

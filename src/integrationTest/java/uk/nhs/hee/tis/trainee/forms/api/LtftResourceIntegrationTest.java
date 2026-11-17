@@ -262,7 +262,7 @@ class LtftResourceIntegrationTest {
         .build();
     CctCalculationDto calculationWithTooManyChanges = CctCalculationDto.builder()
         .id(calculationId)
-        .changes(Collections.nCopies(201, change))
+        .changes(Collections.nCopies(51, change))
         .lastModified(Instant.parse("2026-10-28T12:34:56.789Z"))
         .build();
     CctCalculationDto calculationWithLongNotes = CctCalculationDto.builder()
@@ -281,7 +281,7 @@ class LtftResourceIntegrationTest {
         .build();
 
     return Stream.of(
-        Arguments.of("calculation/changes", 200,
+        Arguments.of("calculation/changes", 50,
             new CctSnapshotDto(calculationId, calculationWithTooManyChanges)),
         Arguments.of("calculation/changes[0]/notes", 1000,
             new CctSnapshotDto(calculationId, calculationWithLongNotes)),
