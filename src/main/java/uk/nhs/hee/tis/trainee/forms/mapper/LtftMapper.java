@@ -164,6 +164,7 @@ public abstract class LtftMapper implements FormMapper<LtftForm, LtftFormDto>,
   @Mapping(target = "declarations", source = "content.declarations")
   @Mapping(target = "discussions", source = "content.discussions")
   @Mapping(target = "change", source = "content.change")
+  @Mapping(target = "cctSnapshot", source = "content.cctSnapshot")
   @Mapping(target = "reasons", source = "content.reasons")
   @Mapping(target = "tpdEmailStatus", source = "content.tpdEmailValidity")
   @Mapping(target = "shortNotice", source = "entity", qualifiedByName = "isShortNotice")

@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -68,6 +69,13 @@ import uk.nhs.hee.tis.trainee.forms.dto.FormRPartADto;
 import uk.nhs.hee.tis.trainee.forms.dto.FormRPartBDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctChangeDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctAssumedFullTimePeriodDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctCalculatedChangeDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctCalculationDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctProgrammeDetailsDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctProjectionDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctResultDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.DeclarationsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.DiscussionsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.ExceptionalReasonsDto;
@@ -320,6 +328,92 @@ class PdfServiceIntegrationTest {
     byte[] generatedBytes = service.generatePdf(dto, "admin");
 
     int problems = compareGeneratedPdf("ltft-admin-alternate", generatedBytes);
+    assertThat("Unexpected PDF comparison problem count.", problems, is(0));
+  }
+
+  @Test
+  void shouldMatchCctSnapshotLtftAdminPdfWhenSnapshotAttached() throws IOException {
+    CctCalculationDto calculation = CctCalculationDto.builder()
+        .name("My calculation")
+        .programmeDetails(CctProgrammeDetailsDto.builder()
+            .specialty("Paediatrics")
+            .startDate(LocalDate.parse("2022-08-03"))
+            .lengthMonths(96)
+            .lengthOverrideNotes("Length agreed with TPD")
+            .startGrade("ST1")
+            .startGradeOverrideNotes("Restarted at ST1")
+            .additionalMonths(6)
+            .additionalMonthsNotes("Extra time after ARCP")
+            .acceleratedMonths(3)
+            .acceleratedMonthsNotes("Competences gained early")
+            .eighteenMonthFinalGrade("ST8")
+            .eighteenMonthFinalGradeNotes("Agreed with TPD")
+            .skippedGrade("ST4")
+            .skippedGradeNotes("Skipped after ARCP")
+            .build())
+        .changes(List.of(
+            CctCalculatedChangeDto.builder()
+                .type("LTFT")
+                .startDate(LocalDate.parse("2024-02-01"))
+                .endDate(LocalDate.parse("2025-01-31"))
+                .wte(0.6)
+                .countsTowardsCompletion(true)
+                .calendarMonths(12.0)
+                .wteMonths(7.2)
+                .notes("Childcare")
+                .build(),
+            CctCalculatedChangeDto.builder()
+                .type("PARENTAL")
+                .startDate(LocalDate.parse("2025-03-01"))
+                .endDate(LocalDate.parse("2025-08-31"))
+                .countsTowardsCompletion(false)
+                .calendarMonths(6.0)
+                .wteMonths(0.0)
+                .build(),
+            CctCalculatedChangeDto.builder()
+                .type("LTFT")
+                .startDate(LocalDate.parse("2025-09-01"))
+                .wte(0.6)
+                .countsTowardsCompletion(true)
+                .build()))
+        .result(CctResultDto.builder()
+            .cctDate(LocalDate.parse("2036-03-11"))
+            .originalProgrammeEndDate(LocalDate.parse("2030-08-02"))
+            .adjustedProgrammeEndDate(LocalDate.parse("2030-11-02"))
+            .totalCalendarMonthsCompleted(37.0)
+            .totalWteMonthsCompleted(26.2)
+            .monthsRemaining(72.8)
+            .assumedFullTimePeriods(List.of(
+                CctAssumedFullTimePeriodDto.builder()
+                    .startDate(LocalDate.parse("2022-08-03"))
+                    .endDate(LocalDate.parse("2024-01-31"))
+                    .months(18.0)
+                    .build(),
+                CctAssumedFullTimePeriodDto.builder()
+                    .startDate(LocalDate.parse("2025-02-01"))
+                    .endDate(LocalDate.parse("2025-02-28"))
+                    .months(1.0)
+                    .build()))
+            .projection(CctProjectionDto.builder()
+                .startDate(LocalDate.parse("2025-09-01"))
+                .wte(0.6)
+                .calendarMonths(121.3)
+                .wteMonths(72.8)
+                .build())
+            .build())
+        .lastModified(Instant.parse("2026-10-28T12:00:00Z"))
+        .build();
+
+    LtftFormDto dto = LtftFormDto.builder()
+        .cctSnapshot(CctSnapshotDto.builder()
+            .calculationId(UUID.randomUUID())
+            .calculation(calculation)
+            .build())
+        .build();
+
+    byte[] generatedBytes = service.generatePdf(dto, "admin");
+
+    int problems = compareGeneratedPdf("ltft-admin-cct-snapshot", generatedBytes);
     assertThat("Unexpected PDF comparison problem count.", problems, is(0));
   }
 
