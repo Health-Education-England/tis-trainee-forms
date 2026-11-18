@@ -1974,15 +1974,42 @@ class AdminLtftResourceIntegrationTest {
         containsString("Original programme end date 02 August 2030"));
     assertThat("Unexpected start grade.", pdfText,
         containsString("Start grade ST1 Restarted at ST1"));
-    assertThat("Unexpected additional time.", pdfText, containsString(
-        "Additional training time ST3: 4 months Extra time after ARCP"
-            + " Additional training time ST5: 2 months Exam resit"
-            + " Adjusted programme length 102 months"));
-    assertThat("Unexpected adjusted end date.", pdfText, containsString(
-        "Adjusted programme end date before changes 02 February 2031 Based on programme length"
-            + " and training-time adjustments only"));
+  }
+
+  @Test
+  void shouldGetDetailPdfCctSnapshotTrainingTimeAdjustmentsWhenSnapshotAttached()
+      throws Exception {
+    LtftForm form = createCctSnapshotLtft(createCctCalculation(CCT_CHANGES));
+
+    String pdfText = getDetailPdfText(form);
+
+    assertThat("Unexpected training time adjustments.", pdfText, containsString(
+        "Training time adjustments"
+            + " Additional training time Grade Additional time Reason"
+            + " ST3 4 months Extra time after ARCP"
+            + " ST5 2 months Exam resit"
+            + " Total 6 months"
+            + " Accelerated training time No accelerated training time recorded."
+            + " Adjusted programme length"
+            + " Initial programme length 96 months"
+            + " Additional training time +6 months"
+            + " Adjusted programme length 102 months"
+            + " Adjusted programme end date before changes 02 February 2031 Based on programme"
+            + " length and training-time adjustments only"));
     assertThat("Unexpected accelerated time.", pdfText,
-        not(containsString("Accelerated training time")));
+        not(containsString("Accelerated training time -")));
+  }
+
+  @Test
+  void shouldGetDetailPdfCctSnapshotNoGradeProgressionMessageWhenNoneRecorded()
+      throws Exception {
+    LtftForm form = createCctSnapshotLtft(createCctCalculation(CCT_CHANGES));
+
+    String pdfText = getDetailPdfText(form);
+
+    assertThat("Unexpected grade progression adjustments.", pdfText, containsString(
+        "Grade progression adjustments These change how the trainee's grades progress, not their"
+            + " total training time. No grade progression adjustments recorded."));
     assertThat("Unexpected 18-month final year.", pdfText,
         not(containsString("18-month final year")));
     assertThat("Unexpected skipped grade.", pdfText, not(containsString("Skipped grade year")));
