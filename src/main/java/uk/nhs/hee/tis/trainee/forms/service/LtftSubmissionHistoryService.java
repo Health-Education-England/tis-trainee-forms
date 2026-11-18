@@ -21,7 +21,6 @@
 
 package uk.nhs.hee.tis.trainee.forms.service;
 
-import com.amazonaws.xray.spring.aop.XRayEnabled;
 import org.springframework.stereotype.Service;
 import uk.nhs.hee.tis.trainee.forms.mapper.LtftMapper;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
@@ -32,7 +31,6 @@ import uk.nhs.hee.tis.trainee.forms.repository.LtftSubmissionHistoryRepository;
  * A service for managing LTFT submission history.
  */
 @Service
-@XRayEnabled
 public class LtftSubmissionHistoryService extends
     AbstractSubmissionHistoryService<LtftForm, LtftSubmissionHistory> {
 

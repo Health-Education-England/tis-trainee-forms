@@ -21,7 +21,6 @@
 
 package uk.nhs.hee.tis.trainee.forms.api;
 
-import com.amazonaws.xray.spring.aop.XRayEnabled;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +42,6 @@ import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 @Slf4j
 @RestController
 @RequestMapping("/api/coj")
-@XRayEnabled
 public class ConditionsOfJoiningResource {
 
   private final PdfService pdfService;

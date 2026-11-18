@@ -25,7 +25,6 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROV
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.REJECTED;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.UNSUBMITTED;
 
-import com.amazonaws.xray.spring.aop.XRayEnabled;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -78,7 +77,6 @@ import uk.nhs.hee.tis.trainee.forms.service.PdfService;
 @RestController
 @PreAuthorize("hasRole('NHSE_LTFT_Admin')")
 @RequestMapping("/api/admin/ltft")
-@XRayEnabled
 public class AdminLtftResource {
 
   private final LtftService service;

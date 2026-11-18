@@ -22,7 +22,6 @@
 
 package uk.nhs.hee.tis.trainee.forms.api;
 
-import com.amazonaws.xray.spring.aop.XRayEnabled;
 import java.time.LocalDate;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
@@ -41,7 +40,6 @@ import uk.nhs.hee.tis.trainee.forms.job.PublishLtftRefresh;
 @Slf4j
 @RestController
 @RequestMapping("/api/job")
-@XRayEnabled
 public class JobResource {
 
   private final PublishFormrPartaRefresh publishFormrPartaRefreshJob;

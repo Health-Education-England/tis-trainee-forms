@@ -21,7 +21,6 @@
 
 package uk.nhs.hee.tis.trainee.forms.service;
 
-import com.amazonaws.xray.spring.aop.XRayEnabled;
 import org.springframework.stereotype.Service;
 import uk.nhs.hee.tis.trainee.forms.mapper.FormRPartAMapper;
 import uk.nhs.hee.tis.trainee.forms.model.FormRPartA;
@@ -32,7 +31,6 @@ import uk.nhs.hee.tis.trainee.forms.repository.FormrPartaSubmissionHistoryReposi
  * A service for managing FormR Part A submission history.
  */
 @Service
-@XRayEnabled
 public class FormrPartaSubmissionHistoryService extends
     AbstractSubmissionHistoryService<FormRPartA, FormrPartaSubmissionHistory> {
 

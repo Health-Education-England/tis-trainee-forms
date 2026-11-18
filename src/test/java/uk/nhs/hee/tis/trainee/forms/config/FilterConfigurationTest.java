@@ -29,7 +29,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
-import com.amazonaws.xray.jakarta.servlet.AWSXRayServletFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Collection;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,8 +39,6 @@ import uk.nhs.hee.tis.trainee.forms.config.filter.SignedDataFilter;
 
 class FilterConfigurationTest {
 
-  private static final String DAEMON_PROPERTY = "com.amazonaws.xray.emitters.daemon-address";
-
   private static final String SIGNATURE_SECRET_KEY = "test-secret-key";
 
   FilterConfiguration configuration;
@@ -49,41 +46,6 @@ class FilterConfigurationTest {
   @BeforeEach
   void setUp() {
     configuration = new FilterConfiguration();
-  }
-
-  @Test
-  void shouldNotRegisterTracingFilterWhenDaemonAddressNotSet() {
-    ApplicationContextRunner runner = new ApplicationContextRunner()
-        .withUserConfiguration(FilterConfiguration.class)
-        .withBean(SignedDataFilter.class, () -> new SignedDataFilter(null, null));
-
-    runner
-        .withPropertyValues(DAEMON_PROPERTY + "=")
-        .run(context -> assertThat("Unexpected bean presence.",
-            context.containsBean("registerTracingFilter"), is(false)));
-  }
-
-  @Test
-  void shouldRegisterTracingFilterWhenDaemonAddressSet() {
-    ApplicationContextRunner runner = new ApplicationContextRunner()
-        .withUserConfiguration(FilterConfiguration.class)
-        .withBean(SignedDataFilter.class, () -> new SignedDataFilter(null, null));
-
-    runner
-        .withPropertyValues(DAEMON_PROPERTY + "=https://localhost:1234")
-        .run(context -> assertAll(
-            () -> assertThat("Unexpected bean presence.",
-                context.containsBean("registerTracingFilter"), is(true)),
-            () -> assertThat("Unexpected bean type.", context.getBean("registerTracingFilter"),
-                instanceOf(FilterRegistrationBean.class))
-        ));
-  }
-
-  @Test
-  void shouldRegisterTracingFilter() {
-    var registrationBean = configuration.registerTracingFilter("test");
-    AWSXRayServletFilter registeredFilter = registrationBean.getFilter();
-    assertThat("Unexpected registered filter.", registeredFilter, notNullValue());
   }
 
   @Test
