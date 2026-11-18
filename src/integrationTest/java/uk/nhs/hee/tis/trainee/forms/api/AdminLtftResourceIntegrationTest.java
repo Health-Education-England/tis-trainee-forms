@@ -116,6 +116,7 @@ import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctCal
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctProgrammeDetails;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctProjection;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctResult;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctTrainingTime;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Declarations;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Discussions;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.PersonalDetails;
@@ -1973,10 +1974,10 @@ class AdminLtftResourceIntegrationTest {
         containsString("Original programme end date 02 August 2030"));
     assertThat("Unexpected start grade.", pdfText,
         containsString("Start grade ST1 Restarted at ST1"));
-    assertThat("Unexpected additional time.", pdfText,
-        containsString("Additional training time 6 months Extra time after ARCP"));
-    assertThat("Unexpected adjusted length.", pdfText,
-        containsString("Adjusted programme length 102 months"));
+    assertThat("Unexpected additional time.", pdfText, containsString(
+        "Additional training time ST3: 4 months Extra time after ARCP"
+            + " Additional training time ST5: 2 months Exam resit"
+            + " Adjusted programme length 102 months"));
     assertThat("Unexpected adjusted end date.", pdfText, containsString(
         "Adjusted programme end date before changes 02 February 2031 Based on programme length"
             + " and training-time adjustments only"));
@@ -2923,10 +2924,18 @@ class AdminLtftResourceIntegrationTest {
             .lengthOverrideNotes("Length agreed with TPD")
             .startGrade("ST1")
             .startGradeOverrideNotes("Restarted at ST1")
-            .additionalMonths(6)
-            .additionalMonthsNotes("Extra time after ARCP")
-            .acceleratedMonths(0)
-            .acceleratedMonthsNotes("")
+            .additionalTrainingTime(List.of(
+                CctTrainingTime.builder()
+                    .grade("ST3")
+                    .months(4)
+                    .notes("Extra time after ARCP")
+                    .build(),
+                CctTrainingTime.builder()
+                    .grade("ST5")
+                    .months(2)
+                    .notes("Exam resit")
+                    .build()))
+            .acceleratedTrainingTime(List.of())
             .build())
         .changes(changes)
         .result(CctResult.builder()

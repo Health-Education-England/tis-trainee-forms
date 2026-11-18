@@ -48,6 +48,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctCalculatio
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctProgrammeDetailsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctProjectionDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctResultDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctTrainingTimeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -57,6 +58,7 @@ import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctTrainingTime;
 
 class LtftMapperTest {
 
@@ -395,6 +397,16 @@ class LtftMapperTest {
                 .startDate(LocalDate.of(2024, Month.AUGUST, 7))
                 .lengthMonths(36)
                 .startGrade("ST1")
+                .additionalTrainingTime(List.of(CctTrainingTimeDto.builder()
+                    .grade("ST2")
+                    .months(6)
+                    .notes("Extra time after ARCP")
+                    .build()))
+                .acceleratedTrainingTime(List.of(CctTrainingTimeDto.builder()
+                    .grade("ST3")
+                    .months(3)
+                    .notes("Competences gained early")
+                    .build()))
                 .build())
             .changes(List.of(CctCalculatedChangeDto.builder()
                 .type("LTFT")
@@ -435,6 +447,12 @@ class LtftMapperTest {
         is(snapshot.calculationId()));
     assertThat("Unexpected specialty.",
         entitySnapshot.calculation().programmeDetails().specialty(), is("General Practice"));
+    assertThat("Unexpected additional training time.",
+        entitySnapshot.calculation().programmeDetails().additionalTrainingTime(),
+        is(List.of(new CctTrainingTime("ST2", 6, "Extra time after ARCP"))));
+    assertThat("Unexpected accelerated training time.",
+        entitySnapshot.calculation().programmeDetails().acceleratedTrainingTime(),
+        is(List.of(new CctTrainingTime("ST3", 3, "Competences gained early"))));
     assertThat("Unexpected change count.", entitySnapshot.calculation().changes().size(), is(1));
     assertThat("Unexpected assumed full time period count.",
         entitySnapshot.calculation().result().assumedFullTimePeriods().size(), is(1));

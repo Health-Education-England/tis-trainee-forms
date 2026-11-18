@@ -107,6 +107,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctCalculated
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctCalculationDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctProgrammeDetailsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctResultDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctTrainingTimeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.LftfStatusInfoDetailDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
@@ -125,6 +126,7 @@ import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctCalculation;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctResult;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctTrainingTime;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Declarations;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Discussions;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.ExceptionalReasons;
@@ -199,6 +201,11 @@ class LtftResourceIntegrationTest {
         .programmeDetails(CctProgrammeDetailsDto.builder()
             .specialty("Paediatrics")
             .lengthMonths(96)
+            .additionalTrainingTime(List.of(CctTrainingTimeDto.builder()
+                .grade("ST3")
+                .months(6)
+                .notes("Extra time after ARCP")
+                .build()))
             .build())
         .changes(List.of(CctCalculatedChangeDto.builder()
             .type("LTFT")
@@ -247,7 +254,21 @@ class LtftResourceIntegrationTest {
         Arguments.of("calculation/changes[0]",
             new CctSnapshotDto(calculationId, calculationWithNullChange)),
         Arguments.of("calculation/result/assumedFullTimePeriods[0]",
-            new CctSnapshotDto(calculationId, calculationWithNullAssumedPeriod)));
+            new CctSnapshotDto(calculationId, calculationWithNullAssumedPeriod)),
+        Arguments.of("calculation/programmeDetails/additionalTrainingTime[0]",
+            createCctSnapshot(calculationId, CctProgrammeDetailsDto.builder()
+                .additionalTrainingTime(Collections.singletonList(null)).build())),
+        Arguments.of("calculation/programmeDetails/acceleratedTrainingTime[0]",
+            createCctSnapshot(calculationId, CctProgrammeDetailsDto.builder()
+                .acceleratedTrainingTime(Collections.singletonList(null)).build())),
+        Arguments.of("calculation/programmeDetails/additionalTrainingTime[0]/months",
+            createCctSnapshot(calculationId, CctProgrammeDetailsDto.builder()
+                .additionalTrainingTime(List.of(CctTrainingTimeDto.builder()
+                    .grade("ST3").notes("Extra time after ARCP").build())).build())),
+        Arguments.of("calculation/programmeDetails/acceleratedTrainingTime[0]/months",
+            createCctSnapshot(calculationId, CctProgrammeDetailsDto.builder()
+                .acceleratedTrainingTime(List.of(CctTrainingTimeDto.builder()
+                    .grade("ST3").notes("Competences gained early").build())).build())));
   }
 
   /**
@@ -273,6 +294,15 @@ class LtftResourceIntegrationTest {
             .build()))
         .lastModified(Instant.parse("2026-10-28T12:34:56.789Z"))
         .build();
+    CctTrainingTimeDto trainingTime = CctTrainingTimeDto.builder()
+        .grade("ST3")
+        .months(1)
+        .build();
+    CctTrainingTimeDto trainingTimeWithLongNotes = CctTrainingTimeDto.builder()
+        .grade("ST3")
+        .months(1)
+        .notes("a".repeat(1001))
+        .build();
     String longText = "a".repeat(4097);
     CctCalculationDto calculationWithLongName = CctCalculationDto.builder()
         .id(calculationId)
@@ -293,12 +323,18 @@ class LtftResourceIntegrationTest {
         Arguments.of("calculation/programmeDetails/startGradeOverrideNotes", 4096,
             createCctSnapshot(calculationId, CctProgrammeDetailsDto.builder()
                 .startGradeOverrideNotes(longText).build())),
-        Arguments.of("calculation/programmeDetails/additionalMonthsNotes", 4096,
+        Arguments.of("calculation/programmeDetails/additionalTrainingTime", 20,
             createCctSnapshot(calculationId, CctProgrammeDetailsDto.builder()
-                .additionalMonthsNotes(longText).build())),
-        Arguments.of("calculation/programmeDetails/acceleratedMonthsNotes", 4096,
+                .additionalTrainingTime(Collections.nCopies(21, trainingTime)).build())),
+        Arguments.of("calculation/programmeDetails/acceleratedTrainingTime", 20,
             createCctSnapshot(calculationId, CctProgrammeDetailsDto.builder()
-                .acceleratedMonthsNotes(longText).build())),
+                .acceleratedTrainingTime(Collections.nCopies(21, trainingTime)).build())),
+        Arguments.of("calculation/programmeDetails/additionalTrainingTime[0]/notes", 1000,
+            createCctSnapshot(calculationId, CctProgrammeDetailsDto.builder()
+                .additionalTrainingTime(List.of(trainingTimeWithLongNotes)).build())),
+        Arguments.of("calculation/programmeDetails/acceleratedTrainingTime[0]/notes", 1000,
+            createCctSnapshot(calculationId, CctProgrammeDetailsDto.builder()
+                .acceleratedTrainingTime(List.of(trainingTimeWithLongNotes)).build())),
         Arguments.of("calculation/programmeDetails/eighteenMonthFinalGradeNotes", 4096,
             createCctSnapshot(calculationId, CctProgrammeDetailsDto.builder()
                 .eighteenMonthFinalGradeNotes(longText).build())),
@@ -754,6 +790,11 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.cctSnapshot.calculationId", is(calculationId.toString())))
         .andExpect(jsonPath("$.cctSnapshot.calculation.id", is(calculationId.toString())))
         .andExpect(jsonPath("$.cctSnapshot.calculation.name", is("My calculation")))
+        .andExpect(jsonPath(
+            "$.cctSnapshot.calculation.programmeDetails.additionalTrainingTime[0].grade",
+            is("ST3")))
+        .andExpect(jsonPath(
+            "$.cctSnapshot.calculation.programmeDetails.additionalTrainingTime[0].months", is(6)))
         .andExpect(jsonPath("$.cctSnapshot.calculation.changes[0].startDate", is("2027-02-01")))
         .andExpect(jsonPath("$.cctSnapshot.calculation.result.cctDate", is("2030-07-29")))
         .andExpect(jsonPath("$.cctSnapshot.calculation.result.totalCalendarMonthsCompleted",
@@ -764,6 +805,9 @@ class LtftResourceIntegrationTest {
     List<LtftForm> savedRecords = template.find(new Query(), LtftForm.class);
     CctSnapshot savedSnapshot = savedRecords.get(0).getContent().cctSnapshot();
     assertThat("Unexpected calculation ID.", savedSnapshot.calculationId(), is(calculationId));
+    assertThat("Unexpected additional training time.",
+        savedSnapshot.calculation().programmeDetails().additionalTrainingTime(),
+        is(List.of(new CctTrainingTime("ST3", 6, "Extra time after ARCP"))));
     assertThat("Unexpected CCT date.", savedSnapshot.calculation().result().cctDate(),
         is(LocalDate.parse("2030-07-29")));
     assertThat("Unexpected total calendar months.",
@@ -1201,6 +1245,11 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.cctSnapshot.calculationId", is(calculationId.toString())))
         .andExpect(jsonPath("$.cctSnapshot.calculation.id", is(calculationId.toString())))
         .andExpect(jsonPath("$.cctSnapshot.calculation.name", is("My calculation")))
+        .andExpect(jsonPath(
+            "$.cctSnapshot.calculation.programmeDetails.additionalTrainingTime[0].grade",
+            is("ST3")))
+        .andExpect(jsonPath(
+            "$.cctSnapshot.calculation.programmeDetails.additionalTrainingTime[0].months", is(6)))
         .andExpect(jsonPath("$.cctSnapshot.calculation.changes[0].startDate", is("2027-02-01")))
         .andExpect(jsonPath("$.cctSnapshot.calculation.result.cctDate", is("2030-07-29")))
         .andExpect(jsonPath("$.cctSnapshot.calculation.result.totalCalendarMonthsCompleted",
@@ -1211,6 +1260,9 @@ class LtftResourceIntegrationTest {
     List<LtftForm> savedRecords = template.find(new Query(), LtftForm.class);
     CctSnapshot savedSnapshot = savedRecords.get(0).getContent().cctSnapshot();
     assertThat("Unexpected calculation ID.", savedSnapshot.calculationId(), is(calculationId));
+    assertThat("Unexpected additional training time.",
+        savedSnapshot.calculation().programmeDetails().additionalTrainingTime(),
+        is(List.of(new CctTrainingTime("ST3", 6, "Extra time after ARCP"))));
     assertThat("Unexpected CCT date.", savedSnapshot.calculation().result().cctDate(),
         is(LocalDate.parse("2030-07-29")));
     assertThat("Unexpected total calendar months.",

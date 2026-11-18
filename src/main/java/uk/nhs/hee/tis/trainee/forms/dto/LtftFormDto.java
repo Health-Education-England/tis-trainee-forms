@@ -178,10 +178,8 @@ public record LtftFormDto(
      * @param lengthOverrideNotes          The reason the length differs from the specialty's.
      * @param startGrade                   The grade the programme starts at.
      * @param startGradeOverrideNotes      The reason the start grade differs from the specialty's.
-     * @param additionalMonths             The additional training time, in months.
-     * @param additionalMonthsNotes        The reason for the additional training time.
-     * @param acceleratedMonths            The accelerated training time, in months.
-     * @param acceleratedMonthsNotes       The reason for the accelerated training time.
+     * @param additionalTrainingTime       The additional training time, by grade.
+     * @param acceleratedTrainingTime      The accelerated training time, by grade.
      * @param eighteenMonthFinalGrade      The grade with an 18-month final year, if any.
      * @param eighteenMonthFinalGradeNotes The reason for the 18-month final year.
      * @param skippedGrade                 The grade year that is skipped, if any.
@@ -197,18 +195,35 @@ public record LtftFormDto(
         String startGrade,
         @Size(max = 4096)
         String startGradeOverrideNotes,
-        Integer additionalMonths,
-        @Size(max = 4096)
-        String additionalMonthsNotes,
-        Integer acceleratedMonths,
-        @Size(max = 4096)
-        String acceleratedMonthsNotes,
+        @Size(max = 20)
+        @Valid
+        List<@NotNull CctTrainingTimeDto> additionalTrainingTime,
+        @Size(max = 20)
+        @Valid
+        List<@NotNull CctTrainingTimeDto> acceleratedTrainingTime,
         String eighteenMonthFinalGrade,
         @Size(max = 4096)
         String eighteenMonthFinalGradeNotes,
         String skippedGrade,
         @Size(max = 4096)
         String skippedGradeNotes) {
+
+    }
+
+    /**
+     * Additional or accelerated training time at a grade.
+     *
+     * @param grade  The grade the training time applies to.
+     * @param months The training time, in months.
+     * @param notes  The reason for the training time.
+     */
+    @Builder
+    public record CctTrainingTimeDto(
+        String grade,
+        @NotNull
+        Integer months,
+        @Size(max = 1000)
+        String notes) {
 
     }
 

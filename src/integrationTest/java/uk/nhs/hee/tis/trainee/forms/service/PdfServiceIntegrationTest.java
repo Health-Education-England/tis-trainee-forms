@@ -76,6 +76,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctCalculatio
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctProgrammeDetailsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctProjectionDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctResultDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctTrainingTimeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.DeclarationsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.DiscussionsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.ExceptionalReasonsDto;
@@ -342,10 +343,22 @@ class PdfServiceIntegrationTest {
             .lengthOverrideNotes("Length agreed with TPD")
             .startGrade("ST1")
             .startGradeOverrideNotes("Restarted at ST1")
-            .additionalMonths(6)
-            .additionalMonthsNotes("Extra time after ARCP")
-            .acceleratedMonths(3)
-            .acceleratedMonthsNotes("Competences gained early")
+            .additionalTrainingTime(List.of(
+                CctTrainingTimeDto.builder()
+                    .grade("ST3")
+                    .months(4)
+                    .notes("Extra time after ARCP")
+                    .build(),
+                CctTrainingTimeDto.builder()
+                    .grade("ST5")
+                    .months(2)
+                    .notes("Exam resit")
+                    .build()))
+            .acceleratedTrainingTime(List.of(CctTrainingTimeDto.builder()
+                .grade("ST6")
+                .months(3)
+                .notes("Competences gained early")
+                .build()))
             .eighteenMonthFinalGrade("ST8")
             .eighteenMonthFinalGradeNotes("Agreed with TPD")
             .skippedGrade("ST4")

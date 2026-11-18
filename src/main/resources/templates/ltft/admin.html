@@ -252,24 +252,26 @@
                     <div class="nhsuk-hint nhsuk-u-margin-top-1" th:unless="${#strings.isEmpty(details?.startGradeOverrideNotes)}" th:text="${details.startGradeOverrideNotes}"></div>
                   </dd>
                 </div>
-                <div class="nhsuk-summary-list__row" th:if="${details?.additionalMonths > 0}">
+                <div class="nhsuk-summary-list__row" th:each="entry : ${details?.additionalTrainingTime}">
                   <dt class="nhsuk-summary-list__key">Additional training time</dt>
                   <dd class="nhsuk-summary-list__value">
-                    <th:block th:text="${details.additionalMonths + ' months'}"/>
-                    <div class="nhsuk-hint nhsuk-u-margin-top-1" th:unless="${#strings.isEmpty(details.additionalMonthsNotes)}" th:text="${details.additionalMonthsNotes}"></div>
+                    <th:block th:text="${entry.grade + ': ' + entry.months + ' months'}"/>
+                    <div class="nhsuk-hint nhsuk-u-margin-top-1" th:unless="${#strings.isEmpty(entry.notes)}" th:text="${entry.notes}"></div>
                   </dd>
                 </div>
-                <div class="nhsuk-summary-list__row" th:if="${details?.acceleratedMonths > 0}">
+                <div class="nhsuk-summary-list__row" th:each="entry : ${details?.acceleratedTrainingTime}">
                   <dt class="nhsuk-summary-list__key">Accelerated training time</dt>
                   <dd class="nhsuk-summary-list__value">
-                    <th:block th:text="${details.acceleratedMonths + ' months'}"/>
-                    <div class="nhsuk-hint nhsuk-u-margin-top-1" th:unless="${#strings.isEmpty(details.acceleratedMonthsNotes)}" th:text="${details.acceleratedMonthsNotes}"></div>
+                    <th:block th:text="${entry.grade + ': ' + entry.months + ' months'}"/>
+                    <div class="nhsuk-hint nhsuk-u-margin-top-1" th:unless="${#strings.isEmpty(entry.notes)}" th:text="${entry.notes}"></div>
                   </dd>
                 </div>
-                <th:block th:if="${details?.additionalMonths > 0 or details?.acceleratedMonths > 0}">
+                <th:block th:with="additionalMonths=${#lists.isEmpty(details?.additionalTrainingTime) ? 0 : #aggregates.sum(details.additionalTrainingTime.![months])},
+                                   acceleratedMonths=${#lists.isEmpty(details?.acceleratedTrainingTime) ? 0 : #aggregates.sum(details.acceleratedTrainingTime.![months])}">
+                <th:block th:if="${additionalMonths > 0 or acceleratedMonths > 0}">
                   <div class="nhsuk-summary-list__row">
                     <dt class="nhsuk-summary-list__key">Adjusted programme length</dt>
-                    <dd class="nhsuk-summary-list__value" th:text="${(details.lengthMonths ?: 0) + (details.additionalMonths ?: 0) - (details.acceleratedMonths ?: 0) + ' months'}"></dd>
+                    <dd class="nhsuk-summary-list__value" th:text="${(details.lengthMonths ?: 0) + additionalMonths - acceleratedMonths + ' months'}"></dd>
                   </div>
                   <div class="nhsuk-summary-list__row">
                     <dt class="nhsuk-summary-list__key">Adjusted programme end date before changes</dt>
@@ -278,6 +280,7 @@
                       <div class="nhsuk-hint nhsuk-u-margin-top-1">Based on programme length and training-time adjustments only</div>
                     </dd>
                   </div>
+                </th:block>
                 </th:block>
                 <div class="nhsuk-summary-list__row" th:unless="${#strings.isEmpty(details?.eighteenMonthFinalGrade)}">
                   <dt class="nhsuk-summary-list__key">18-month final year</dt>
