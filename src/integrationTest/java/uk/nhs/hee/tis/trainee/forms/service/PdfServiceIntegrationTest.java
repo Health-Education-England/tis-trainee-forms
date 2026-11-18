@@ -73,6 +73,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctAssumedFullTimePeriodDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctCalculatedChangeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctCalculationDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctGradeYearDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctProgrammeDetailsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctProjectionDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctResultDto;
@@ -413,6 +414,27 @@ class PdfServiceIntegrationTest {
                 .calendarMonths(121.3)
                 .wteMonths(72.8)
                 .build())
+            .gradeProgression(List.of(
+                CctGradeYearDto.builder()
+                    .yearNumber(1).grade("ST1").endDate(LocalDate.parse("2023-08-02")).build(),
+                CctGradeYearDto.builder()
+                    .yearNumber(2).grade("ST2").endDate(LocalDate.parse("2024-12-02")).build(),
+                CctGradeYearDto.builder()
+                    .yearNumber(3).grade("ST3").endDate(LocalDate.parse("2027-02-28"))
+                    .additionalMonths(4).build(),
+                CctGradeYearDto.builder()
+                    .yearNumber(4).grade("ST5").endDate(LocalDate.parse("2028-10-31"))
+                    .skippedGradeBeforeThisRow("ST4").additionalMonths(2).build(),
+                CctGradeYearDto.builder()
+                    .yearNumber(5).grade("ST6").endDate(LocalDate.parse("2030-04-30"))
+                    .acceleratedMonths(3).build(),
+                CctGradeYearDto.builder()
+                    .yearNumber(6).grade("ST7").endDate(LocalDate.parse("2031-12-31")).build(),
+                CctGradeYearDto.builder()
+                    .yearNumber(7).grade("ST8").endDate(LocalDate.parse("2034-06-30"))
+                    .extendedToEighteenMonths(true).build(),
+                CctGradeYearDto.builder()
+                    .yearNumber(8).grade("ST9").endDate(LocalDate.parse("2036-03-11")).build()))
             .build())
         .lastModified(Instant.parse("2026-10-28T12:00:00Z"))
         .build();

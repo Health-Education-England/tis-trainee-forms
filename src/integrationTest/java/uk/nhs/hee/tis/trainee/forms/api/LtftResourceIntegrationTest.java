@@ -105,6 +105,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctChangeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctCalculatedChangeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctCalculationDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctGradeYearDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctProgrammeDetailsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctResultDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctTrainingTimeDto;
@@ -125,6 +126,7 @@ import uk.nhs.hee.tis.trainee.forms.model.content.CctChangeType;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctCalculation;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctGradeYear;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctResult;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctTrainingTime;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Declarations;
@@ -216,6 +218,12 @@ class LtftResourceIntegrationTest {
         .result(CctResultDto.builder()
             .cctDate(LocalDate.parse("2030-07-29"))
             .totalCalendarMonthsCompleted(53.5)
+            .gradeProgression(List.of(CctGradeYearDto.builder()
+                .yearNumber(1)
+                .grade("ST3")
+                .endDate(LocalDate.parse("2027-08-31"))
+                .additionalMonths(6)
+                .build()))
             .build())
         .lastModified(Instant.parse("2026-10-28T12:34:56.789Z"))
         .build();
@@ -245,6 +253,13 @@ class LtftResourceIntegrationTest {
             .build())
         .lastModified(Instant.parse("2026-10-28T12:34:56.789Z"))
         .build();
+    CctCalculationDto calculationWithNullGradeYear = CctCalculationDto.builder()
+        .id(calculationId)
+        .result(CctResultDto.builder()
+            .gradeProgression(Collections.singletonList(null))
+            .build())
+        .lastModified(Instant.parse("2026-10-28T12:34:56.789Z"))
+        .build();
 
     return Stream.of(
         Arguments.of("calculationId", new CctSnapshotDto(null, calculation)),
@@ -255,6 +270,8 @@ class LtftResourceIntegrationTest {
             new CctSnapshotDto(calculationId, calculationWithNullChange)),
         Arguments.of("calculation/result/assumedFullTimePeriods[0]",
             new CctSnapshotDto(calculationId, calculationWithNullAssumedPeriod)),
+        Arguments.of("calculation/result/gradeProgression[0]",
+            new CctSnapshotDto(calculationId, calculationWithNullGradeYear)),
         Arguments.of("calculation/programmeDetails/additionalTrainingTime[0]",
             createCctSnapshot(calculationId, CctProgrammeDetailsDto.builder()
                 .additionalTrainingTime(Collections.singletonList(null)).build())),
@@ -799,6 +816,8 @@ class LtftResourceIntegrationTest {
         .andExpect(jsonPath("$.cctSnapshot.calculation.result.cctDate", is("2030-07-29")))
         .andExpect(jsonPath("$.cctSnapshot.calculation.result.totalCalendarMonthsCompleted",
             is(53.5)))
+        .andExpect(jsonPath("$.cctSnapshot.calculation.result.gradeProgression[0].grade",
+            is("ST3")))
         .andExpect(jsonPath("$.cctSnapshot.calculation.lastModified",
             is("2026-10-28T12:34:56.789Z")));
 
@@ -812,6 +831,10 @@ class LtftResourceIntegrationTest {
         is(LocalDate.parse("2030-07-29")));
     assertThat("Unexpected total calendar months.",
         savedSnapshot.calculation().result().totalCalendarMonthsCompleted(), is(53.5));
+    assertThat("Unexpected grade progression.",
+        savedSnapshot.calculation().result().gradeProgression(),
+        is(List.of(new CctGradeYear(1, "ST3", LocalDate.parse("2027-08-31"), null, false, false,
+            6, 0))));
     assertThat("Unexpected last modified.", savedSnapshot.calculation().lastModified(),
         is(calculation.lastModified()));
   }

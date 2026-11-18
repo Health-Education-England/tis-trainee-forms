@@ -399,6 +399,34 @@
                 </tbody>
               </table>
             </div>
+            <div class="cct-section" th:unless="${#lists.isEmpty(result?.gradeProgression)}" th:with="years=${result.gradeProgression}">
+              <h3 class="nhsuk-heading-s">Grade progression</h3>
+              <table class="nhsuk-table">
+                <thead class="nhsuk-table__head">
+                  <tr class="nhsuk-table__row">
+                    <th scope="col" class="nhsuk-table__header">Training year</th>
+                    <th scope="col" class="nhsuk-table__header">Grade</th>
+                    <th scope="col" class="nhsuk-table__header">Grade end date</th>
+                  </tr>
+                </thead>
+                <tbody class="nhsuk-table__body">
+                  <tr class="nhsuk-table__row" th:each="year : ${years}">
+                    <td class="nhsuk-table__cell" th:text="|Year ${year.yearNumber}|"></td>
+                    <td class="nhsuk-table__cell">
+                      <th:block th:text="${year.grade} ?: '—'"/>
+                      <th:block th:if="${year.skippedGradeBeforeThisRow != null}" th:text="| (${year.skippedGradeBeforeThisRow} skipped)|"/>
+                      <th:block th:if="${year.extendedToEighteenMonths}"> (18-month final year)</th:block>
+                      <th:block th:if="${year.exceedsKnownTrainingGrade}"> (grade label not automatically assigned)</th:block>
+                    </td>
+                    <td class="nhsuk-table__cell" th:text="${#temporals.format(year.endDate, 'dd MMM yyyy')} ?: '—'"></td>
+                  </tr>
+                </tbody>
+              </table>
+              <p class="nhsuk-hint">Grade end dates are calculated from the trainee's entries and may not match their official training record.</p>
+              <p class="nhsuk-hint" th:unless="${#lists.isEmpty(years.?[extendedToEighteenMonths])}" th:text="|${details?.eighteenMonthFinalGrade} is an 18-month final year. It uses six months already in the programme length, so it does not move the completion date.|"></p>
+              <p class="nhsuk-hint" th:unless="${#lists.isEmpty(years.?[skippedGradeBeforeThisRow != null])}" th:text="|${details?.skippedGrade} is skipped, so later years move up a grade. This does not shorten training; any reduction is recorded as accelerated training time.|"></p>
+              <p class="nhsuk-hint" th:unless="${#lists.isEmpty(years.?[exceedsKnownTrainingGrade])}">Some years go past the highest grade the calculator assigns, so they have no grade. Check the trainee's official training record.</p>
+            </div>
           </th:block>
         </div>
       </div>

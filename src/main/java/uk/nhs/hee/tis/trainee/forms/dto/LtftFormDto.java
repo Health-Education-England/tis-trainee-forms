@@ -268,6 +268,7 @@ public record LtftFormDto(
      * @param monthsRemaining          The months of training remaining.
      * @param assumedFullTimePeriods   The periods before the projection that no change covers.
      * @param projection               The projection of the remaining training to the CCT date.
+     * @param gradeProgression         The grade for each year of the programme, and when it ends.
      */
     @Builder
     public record CctResultDto(
@@ -278,7 +279,34 @@ public record LtftFormDto(
         Double totalWteMonthsCompleted,
         Double monthsRemaining,
         List<@NotNull CctAssumedFullTimePeriodDto> assumedFullTimePeriods,
-        CctProjectionDto projection) {
+        CctProjectionDto projection,
+        List<@NotNull CctGradeYearDto> gradeProgression) {
+
+    }
+
+    /**
+     * A year of the grade progression in a calculation result.
+     *
+     * @param yearNumber                The year of the programme, from 1.
+     * @param grade                     The grade for the year, or null when it would be past the
+     *                                  highest known grade.
+     * @param endDate                   The date the grade ends.
+     * @param skippedGradeBeforeThisRow The grade skipped just before this year, if any.
+     * @param extendedToEighteenMonths  Whether the grade is an 18-month final year.
+     * @param exceedsKnownTrainingGrade Whether the year is past the highest known grade.
+     * @param additionalMonths          The additional training time in the grade, in months.
+     * @param acceleratedMonths         The accelerated training time in the grade, in months.
+     */
+    @Builder
+    public record CctGradeYearDto(
+        int yearNumber,
+        String grade,
+        LocalDate endDate,
+        String skippedGradeBeforeThisRow,
+        boolean extendedToEighteenMonths,
+        boolean exceedsKnownTrainingGrade,
+        int additionalMonths,
+        int acceleratedMonths) {
 
     }
 
