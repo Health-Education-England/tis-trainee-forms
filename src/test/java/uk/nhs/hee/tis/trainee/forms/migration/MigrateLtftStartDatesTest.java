@@ -42,6 +42,7 @@ import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.SUBMIT
 import com.mongodb.client.result.UpdateResult;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Month;
 import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
@@ -74,11 +75,11 @@ class MigrateLtftStartDatesTest {
   private static final String EXCEPTIONAL_START_DATE = "content.exceptionalReasons.startDate";
   private static final String EXCEPTIONAL = "content.exceptionalReasons.exceptional";
 
-  private static final LocalDate SUBMITTED_DATE = LocalDate.of(2026, 1, 1);
-  private static final LocalDate CUT_OFF = LocalDate.of(2026, 4, 23);
-  private static final LocalDate LATE = LocalDate.of(2026, 3, 1);
-  private static final LocalDate COMPLIANT = LocalDate.of(2026, 7, 1);
-  private static final LocalDate EXISTING_EXCEPTIONAL = LocalDate.of(2026, 2, 1);
+  private static final LocalDate SUBMITTED_DATE = LocalDate.of(2026, Month.JANUARY, 1);
+  private static final LocalDate CUT_OFF = LocalDate.of(2026, Month.APRIL, 23);
+  private static final LocalDate LATE = LocalDate.of(2026, Month.MARCH, 1);
+  private static final LocalDate COMPLIANT = LocalDate.of(2026, Month.JULY, 1);
+  private static final LocalDate EXISTING_EXCEPTIONAL = LocalDate.of(2026, Month.FEBRUARY, 1);
 
   private MigrateLtftStartDates migration;
   private MongoTemplate template;
@@ -140,7 +141,7 @@ class MigrateLtftStartDatesTest {
 
     LocalDate submittedDate = MigrateLtftStartDates.toSubmittedDate(submitted);
 
-    assertThat("Unexpected submitted date.", submittedDate, is(LocalDate.of(2026, 7, 1)));
+    assertThat("Unexpected submitted date.", submittedDate, is(LocalDate.of(2026, Month.JULY, 1)));
   }
 
   @ParameterizedTest
