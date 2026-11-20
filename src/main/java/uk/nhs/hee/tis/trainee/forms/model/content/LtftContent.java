@@ -195,10 +195,8 @@ public record LtftContent(
      * @param lengthOverrideNotes          The reason the length differs from the specialty's.
      * @param startGrade                   The grade the programme starts at.
      * @param startGradeOverrideNotes      The reason the start grade differs from the specialty's.
-     * @param additionalMonths             The additional training time, in months.
-     * @param additionalMonthsNotes        The reason for the additional training time.
-     * @param acceleratedMonths            The accelerated training time, in months.
-     * @param acceleratedMonthsNotes       The reason for the accelerated training time.
+     * @param additionalTrainingTime       The additional training time, by grade.
+     * @param acceleratedTrainingTime      The accelerated training time, by grade.
      * @param eighteenMonthFinalGrade      The grade with an 18-month final year, if any.
      * @param eighteenMonthFinalGradeNotes The reason for the 18-month final year.
      * @param skippedGrade                 The grade year that is skipped, if any.
@@ -212,14 +210,27 @@ public record LtftContent(
         String lengthOverrideNotes,
         String startGrade,
         String startGradeOverrideNotes,
-        Integer additionalMonths,
-        String additionalMonthsNotes,
-        Integer acceleratedMonths,
-        String acceleratedMonthsNotes,
+        List<CctTrainingTime> additionalTrainingTime,
+        List<CctTrainingTime> acceleratedTrainingTime,
         String eighteenMonthFinalGrade,
         String eighteenMonthFinalGradeNotes,
         String skippedGrade,
         String skippedGradeNotes) {
+
+    }
+
+    /**
+     * Additional or accelerated training time at a grade.
+     *
+     * @param grade  The grade the training time applies to.
+     * @param months The training time, in months.
+     * @param notes  The reason for the training time.
+     */
+    @Builder
+    public record CctTrainingTime(
+        String grade,
+        Integer months,
+        String notes) {
 
     }
 
@@ -263,6 +274,7 @@ public record LtftContent(
      * @param monthsRemaining          The months of training remaining.
      * @param assumedFullTimePeriods   The periods before the projection that no change covers.
      * @param projection               The projection of the remaining training to the CCT date.
+     * @param gradeProgression         The grade for each year of the programme, and when it ends.
      */
     @Builder
     public record CctResult(
@@ -273,7 +285,34 @@ public record LtftContent(
         Double totalWteMonthsCompleted,
         Double monthsRemaining,
         List<CctAssumedFullTimePeriod> assumedFullTimePeriods,
-        CctProjection projection) {
+        CctProjection projection,
+        List<CctGradeYear> gradeProgression) {
+
+    }
+
+    /**
+     * A year of the grade progression in a calculation result.
+     *
+     * @param yearNumber                The year of the programme, from 1.
+     * @param grade                     The grade for the year, or null when it would be past the
+     *                                  highest known grade.
+     * @param endDate                   The date the grade ends.
+     * @param skippedGradeBeforeThisRow The grade skipped just before this year, if any.
+     * @param extendedToEighteenMonths  Whether the grade is an 18-month final year.
+     * @param exceedsKnownTrainingGrade Whether the year is past the highest known grade.
+     * @param additionalMonths          The additional training time in the grade, in months.
+     * @param acceleratedMonths         The accelerated training time in the grade, in months.
+     */
+    @Builder
+    public record CctGradeYear(
+        int yearNumber,
+        String grade,
+        LocalDate endDate,
+        String skippedGradeBeforeThisRow,
+        boolean extendedToEighteenMonths,
+        boolean exceedsKnownTrainingGrade,
+        int additionalMonths,
+        int acceleratedMonths) {
 
     }
 
