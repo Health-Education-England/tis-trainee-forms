@@ -23,16 +23,14 @@ package uk.nhs.hee.tis.trainee.forms.migration;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState.APPROVED;
@@ -45,7 +43,6 @@ import java.time.LocalDate;
 import java.time.Month;
 import java.time.ZoneId;
 import java.util.Date;
-import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.bson.Document;
@@ -89,7 +86,8 @@ class MigrateLtftStartDatesTest {
     template = mock(MongoTemplate.class);
     when(template.getCollectionName(LtftForm.class)).thenReturn(FORM_COLLECTION);
     when(template.getCollectionName(LtftSubmissionHistory.class)).thenReturn(HISTORY_COLLECTION);
-    when(template.find(any(Query.class), eq(Document.class), anyString())).thenReturn(List.of());
+    when(template.stream(any(Query.class), eq(Document.class), anyString()))
+        .thenAnswer(invocation -> Stream.empty());
     when(template.updateFirst(any(Query.class), any(UpdateDefinition.class), anyString()))
         .thenReturn(UpdateResult.acknowledged(1, 1L, null));
     migration = new MigrateLtftStartDates(template);
@@ -97,7 +95,7 @@ class MigrateLtftStartDatesTest {
 
   /**
    * Provide the rule scenarios from the ticket, as state, start date, alternative start date,
-   * existing exceptional start date, submitted date, expected compliant date and expected
+   * existing exceptional start date, notice date, expected compliant date and expected
    * exceptional date.
    *
    * @return The rule scenario arguments.
@@ -113,19 +111,23 @@ class MigrateLtftStartDatesTest {
             CUT_OFF.minusDays(1)),
         Arguments.of(SUBMITTED, LATE, COMPLIANT, EXISTING_EXCEPTIONAL, SUBMITTED_DATE, COMPLIANT,
             EXISTING_EXCEPTIONAL),
-        Arguments.of(DRAFT, null, null, null, null, null, null),
-        Arguments.of(DRAFT, LATE, null, null, null, null, LATE),
-        Arguments.of(DRAFT, LATE, COMPLIANT, null, null, COMPLIANT, LATE)
+        Arguments.of(DRAFT, null, null, null, SUBMITTED_DATE, null, null),
+        Arguments.of(DRAFT, CUT_OFF, null, null, SUBMITTED_DATE, CUT_OFF, null),
+        Arguments.of(DRAFT, CUT_OFF.minusDays(1), null, null, SUBMITTED_DATE, null, null),
+        Arguments.of(DRAFT, LATE, COMPLIANT, null, SUBMITTED_DATE, COMPLIANT, null),
+        Arguments.of(DRAFT, LATE, LATE.plusDays(1), null, SUBMITTED_DATE, null, null),
+        Arguments.of(DRAFT, LATE, null, EXISTING_EXCEPTIONAL, SUBMITTED_DATE, null,
+            EXISTING_EXCEPTIONAL)
     );
   }
 
   @ParameterizedTest
   @MethodSource("ruleScenarios")
   void shouldResolveStartDatesUsingFirstMatchingRule(LifecycleState state, LocalDate startDate,
-      LocalDate altStartDate, LocalDate exceptionalStartDate, LocalDate submittedDate,
+      LocalDate altStartDate, LocalDate exceptionalStartDate, LocalDate noticeDate,
       LocalDate expectedCompliant, LocalDate expectedExceptional) {
     StartDates startDates = MigrateLtftStartDates.resolve(state, startDate, altStartDate,
-        exceptionalStartDate, submittedDate);
+        exceptionalStartDate, noticeDate);
 
     assertThat("Unexpected compliant start date.", startDates.compliantStartDate(),
         is(expectedCompliant));
@@ -148,8 +150,8 @@ class MigrateLtftStartDatesTest {
   @ValueSource(strings = {FORM_COLLECTION, HISTORY_COLLECTION})
   void shouldSetResolvedDatesAndUnsetAltStartDate(String collectionName) {
     Document document = buildDocument(SUBMITTED, LATE, COMPLIANT, SUBMITTED_DATE);
-    when(template.find(any(Query.class), eq(Document.class), eq(collectionName)))
-        .thenReturn(List.of(document));
+    when(template.stream(any(Query.class), eq(Document.class), eq(collectionName)))
+        .thenReturn(Stream.of(document));
 
     migration.migrate();
 
@@ -166,8 +168,8 @@ class MigrateLtftStartDatesTest {
   @Test
   void shouldUnsetDatesAndNotSetExceptionalForDraftWithoutDates() {
     Document document = buildDocument(DRAFT, null, null, null);
-    when(template.find(any(Query.class), eq(Document.class), eq(FORM_COLLECTION)))
-        .thenReturn(List.of(document));
+    when(template.stream(any(Query.class), eq(Document.class), eq(FORM_COLLECTION)))
+        .thenReturn(Stream.of(document));
 
     migration.migrate();
 
@@ -180,18 +182,46 @@ class MigrateLtftStartDatesTest {
   }
 
   @Test
-  void shouldThrowWithDocumentIdWhenNoCompliantStartDateCanBeResolved() {
-    Document document = buildDocument(SUBMITTED, LATE, null, null);
-    when(template.find(any(Query.class), eq(Document.class), eq(FORM_COLLECTION)))
-        .thenReturn(List.of(document));
+  void shouldUseCurrentDateForDraft() {
+    LocalDate startDate = LocalDate.now(MigrateLtftStartDates.TIMEZONE).plusWeeks(20);
+    Document document = buildDocument(DRAFT, startDate, null, null);
+    when(template.stream(any(Query.class), eq(Document.class), eq(FORM_COLLECTION)))
+        .thenReturn(Stream.of(document));
 
-    IllegalStateException exception = assertThrows(IllegalStateException.class,
-        () -> migration.migrate());
+    migration.migrate();
 
-    assertThat("Unexpected message.", exception.getMessage(),
-        containsString(document.get("_id").toString()));
-    verify(template, never()).updateFirst(any(Query.class), any(UpdateDefinition.class),
-        anyString());
+    Document set = captureUpdate(FORM_COLLECTION).getUpdateObject().get("$set", Document.class);
+    assertThat("Unexpected set fields.", set, is(new Document(CHANGE_START_DATE, startDate)));
+  }
+
+  @Test
+  void shouldSkipFailedDocumentAndMigrateRemainingDocuments() {
+    Document failing = buildDocument(SUBMITTED, LATE, null, null);
+    Document valid = buildDocument(SUBMITTED, LATE, COMPLIANT, SUBMITTED_DATE);
+    when(template.stream(any(Query.class), eq(Document.class), eq(FORM_COLLECTION)))
+        .thenReturn(Stream.of(failing, valid));
+
+    assertDoesNotThrow(() -> migration.migrate());
+
+    ArgumentCaptor<Query> captor = ArgumentCaptor.forClass(Query.class);
+    verify(template).updateFirst(captor.capture(), any(UpdateDefinition.class),
+        eq(FORM_COLLECTION));
+    assertThat("Unexpected migrated document.", captor.getValue().getQueryObject().get("_id"),
+        is(valid.get("_id")));
+  }
+
+  @Test
+  void shouldSortByIdAndOnlyFetchRequiredFields() {
+    migration.migrate();
+
+    ArgumentCaptor<Query> captor = ArgumentCaptor.forClass(Query.class);
+    verify(template).stream(captor.capture(), eq(Document.class), eq(FORM_COLLECTION));
+
+    Query query = captor.getValue();
+    assertThat("Unexpected sort.", query.getSortObject(), is(new Document("_id", 1)));
+    assertThat("Unexpected fields.", query.getFieldsObject().keySet(),
+        containsInAnyOrder(CHANGE_START_DATE, ALT_START_DATE, EXCEPTIONAL_START_DATE,
+            "status.current.state", "status.submitted"));
   }
 
   /**

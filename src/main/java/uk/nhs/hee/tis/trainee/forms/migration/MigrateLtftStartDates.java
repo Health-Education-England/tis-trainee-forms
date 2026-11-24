@@ -31,8 +31,10 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -114,17 +116,31 @@ public class MigrateLtftStartDates {
     ENTITY_TYPES.forEach(entityType -> {
       String collectionName = mongoTemplate.getCollectionName(entityType);
 
-      List<Document> documents = mongoTemplate.find(new Query(), Document.class, collectionName);
-      log.info("Found {} documents of type {} to migrate start dates.", documents.size(),
-          collectionName);
+      Query query = new Query().with(Sort.by(FIELD_ID));
+      query.fields().include(
+          String.join(".", PATH_CHANGE_START_DATE),
+          String.join(".", PATH_ALT_START_DATE),
+          String.join(".", PATH_EXCEPTIONAL_START_DATE),
+          String.join(".", PATH_STATE),
+          String.join(".", PATH_SUBMITTED));
 
       long modifiedCount = 0;
-      for (Document document : documents) {
-        modifiedCount += migrateDocument(document, collectionName);
+      long failedCount = 0;
+
+      try (Stream<Document> documents = mongoTemplate.stream(query, Document.class,
+          collectionName)) {
+        for (Document document : (Iterable<Document>) documents::iterator) {
+          try {
+            modifiedCount += migrateDocument(document, collectionName);
+          } catch (IllegalStateException e) {
+            failedCount++;
+            log.error("Skipped document: {}", e.getMessage(), e);
+          }
+        }
       }
 
-      log.info("Migrated start dates for {} of {} documents of type {}.", modifiedCount,
-          documents.size(), collectionName);
+      log.info("Migrated start dates for {} documents of type {}, {} failed.", modifiedCount,
+          collectionName, failedCount);
     });
   }
 
@@ -134,7 +150,7 @@ public class MigrateLtftStartDates {
    * @param document       The document to migrate.
    * @param collectionName The collection the document belongs to.
    * @return The number of modified documents.
-   * @throws IllegalStateException If no compliant start date can be resolved for the document.
+   * @throws IllegalStateException If the start dates cannot be resolved for the document.
    */
   private long migrateDocument(Document document, String collectionName) {
     Object id = document.get(FIELD_ID);
@@ -142,13 +158,17 @@ public class MigrateLtftStartDates {
 
     StartDates startDates;
     try {
+      LifecycleState lifecycleState = state == null ? null : LifecycleState.valueOf(state);
+      LocalDate noticeDate = lifecycleState == DRAFT ? LocalDate.now(TIMEZONE)
+          : toSubmittedDate(document.getEmbedded(PATH_SUBMITTED, Date.class));
+
       startDates = resolve(
-          state == null ? null : LifecycleState.valueOf(state),
+          lifecycleState,
           toLocalDate(document.getEmbedded(PATH_CHANGE_START_DATE, Date.class)),
           toLocalDate(document.getEmbedded(PATH_ALT_START_DATE, Date.class)),
           toLocalDate(document.getEmbedded(PATH_EXCEPTIONAL_START_DATE, Date.class)),
-          toSubmittedDate(document.getEmbedded(PATH_SUBMITTED, Date.class)));
-    } catch (IllegalStateException e) {
+          noticeDate);
+    } catch (RuntimeException e) {
       throw new IllegalStateException(
           "Unable to migrate start dates for %s document %s".formatted(collectionName, id), e);
     }
@@ -230,21 +250,21 @@ public class MigrateLtftStartDates {
    * @param startDate            The existing change start date, may be null.
    * @param altStartDate         The existing alternative start date, may be null.
    * @param exceptionalStartDate The existing exceptional start date, may be null.
-   * @param submittedDate        The date the record was submitted (Europe/London), null if never
-   *                             submitted.
+   * @param noticeDate           The date to count the notice period from (Europe/London), the
+   *                             current date for drafts and the submitted date otherwise.
    * @return The resolved start dates.
    * @throws IllegalStateException If no compliant start date can be resolved.
    */
   static StartDates resolve(LifecycleState state, LocalDate startDate, LocalDate altStartDate,
-      LocalDate exceptionalStartDate, LocalDate submittedDate) {
-    LocalDate cutOff = submittedDate == null ? null : submittedDate.plusDays(MINIMUM_NOTICE_DAYS);
+      LocalDate exceptionalStartDate, LocalDate noticeDate) {
+    LocalDate cutOff = noticeDate == null ? null : noticeDate.plusDays(MINIMUM_NOTICE_DAYS);
     boolean isStartCompliant = startDate != null && cutOff != null && !startDate.isBefore(cutOff);
     boolean hasBothDates = startDate != null && altStartDate != null;
 
     LocalDate compliant = resolveCompliant(state, startDate, altStartDate, isStartCompliant,
         hasBothDates, cutOff);
-    LocalDate exceptional = resolveExceptional(startDate, altStartDate, exceptionalStartDate,
-        isStartCompliant, hasBothDates);
+    LocalDate exceptional = resolveExceptional(state, startDate, altStartDate,
+        exceptionalStartDate, isStartCompliant, hasBothDates);
 
     return new StartDates(compliant, exceptional);
   }
@@ -259,19 +279,20 @@ public class MigrateLtftStartDates {
     }
 
     if (hasBothDates) {
-      return startDate.isAfter(altStartDate) ? startDate : altStartDate;
+      LocalDate later = startDate.isAfter(altStartDate) ? startDate : altStartDate;
+      return state == DRAFT && later.isBefore(cutOff) ? null : later;
     }
 
     if (isStartCompliant) {
       return startDate;
     }
 
-    if (cutOff != null) {
-      return cutOff;
-    }
-
     if (state == DRAFT) {
       return null;
+    }
+
+    if (cutOff != null) {
+      return cutOff;
     }
 
     throw new IllegalStateException(
@@ -281,10 +302,15 @@ public class MigrateLtftStartDates {
   /**
    * Resolve the exceptional start date, using the first matching rule.
    */
-  private static LocalDate resolveExceptional(LocalDate startDate, LocalDate altStartDate,
-      LocalDate exceptionalStartDate, boolean isStartCompliant, boolean hasBothDates) {
+  private static LocalDate resolveExceptional(LifecycleState state, LocalDate startDate,
+      LocalDate altStartDate, LocalDate exceptionalStartDate, boolean isStartCompliant,
+      boolean hasBothDates) {
     if (exceptionalStartDate != null) {
       return exceptionalStartDate;
+    }
+
+    if (state == DRAFT) {
+      return null;
     }
 
     if (hasBothDates) {
