@@ -35,7 +35,6 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.ResponsibleRole;
  * @param personalDetails   The personal details of the applicant.
  * @param programmeName     The programme name associated with the LTFT application.
  * @param proposedStartDate The proposed start date of the LTFT change.
- * @param altStartDate      The alternate start date if the proposed start date is short-dated.
  * @param submissionDate    The date the LTFT application was submitted.
  * @param reason            The reason given for applying for LTFT.
  * @param daysToStart       How many days until the start of the LTFT change.
@@ -55,7 +54,6 @@ public record LtftAdminSummaryDto(
     LtftAdminPersonalDetailsDto personalDetails,
     String programmeName,
     LocalDate proposedStartDate,
-    LocalDate altStartDate,
     LocalDate submissionDate,
     String reason,
     Integer daysToStart,

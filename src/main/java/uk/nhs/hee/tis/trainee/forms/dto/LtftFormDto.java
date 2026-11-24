@@ -110,7 +110,6 @@ public record LtftFormDto(
    * @param type          The type of change.
    * @param wte           The whole time equivalent after the change.
    * @param startDate     The start date of the change.
-   * @param altStartDate  Alternate start date if the start date is short-dated.
    * @param endDate       The end date of the change.
    */
   @Builder
@@ -121,7 +120,6 @@ public record LtftFormDto(
       @DecimalMax("1.0")
       Double wte,
       LocalDate startDate,
-      LocalDate altStartDate,
       LocalDate endDate) {
 
   }

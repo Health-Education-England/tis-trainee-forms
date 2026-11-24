@@ -35,7 +35,6 @@ import org.springframework.data.mongodb.core.mapping.Field;
  * @param type               The type of change.
  * @param wte                The whole time equivalent after the change.
  * @param startDate          The start date of the change.
- * @param altStartDate Alternate start date if the main start date is short-dated.
  * @param endDate            The end date of the change.
  */
 @Builder
@@ -47,7 +46,6 @@ public record CctChange(
     Double wte,
     @With
     LocalDate startDate,
-    LocalDate altStartDate,
     LocalDate endDate) {
 
 }
