@@ -73,9 +73,11 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctAssumedFullTimePeriodDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctCalculatedChangeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctCalculationDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctGradeYearDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctProgrammeDetailsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctProjectionDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctResultDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctTrainingTimeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.DeclarationsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.DiscussionsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.ExceptionalReasonsDto;
@@ -342,10 +344,22 @@ class PdfServiceIntegrationTest {
             .lengthOverrideNotes("Length agreed with TPD")
             .startGrade("ST1")
             .startGradeOverrideNotes("Restarted at ST1")
-            .additionalMonths(6)
-            .additionalMonthsNotes("Extra time after ARCP")
-            .acceleratedMonths(3)
-            .acceleratedMonthsNotes("Competences gained early")
+            .additionalTrainingTime(List.of(
+                CctTrainingTimeDto.builder()
+                    .grade("ST3")
+                    .months(4)
+                    .notes("Extra time after ARCP")
+                    .build(),
+                CctTrainingTimeDto.builder()
+                    .grade("ST5")
+                    .months(2)
+                    .notes("Exam resit")
+                    .build()))
+            .acceleratedTrainingTime(List.of(CctTrainingTimeDto.builder()
+                .grade("ST6")
+                .months(3)
+                .notes("Competences gained early")
+                .build()))
             .eighteenMonthFinalGrade("ST8")
             .eighteenMonthFinalGradeNotes("Agreed with TPD")
             .skippedGrade("ST4")
@@ -400,6 +414,27 @@ class PdfServiceIntegrationTest {
                 .calendarMonths(121.3)
                 .wteMonths(72.8)
                 .build())
+            .gradeProgression(List.of(
+                CctGradeYearDto.builder()
+                    .yearNumber(1).grade("ST1").endDate(LocalDate.parse("2023-08-02")).build(),
+                CctGradeYearDto.builder()
+                    .yearNumber(2).grade("ST2").endDate(LocalDate.parse("2024-12-02")).build(),
+                CctGradeYearDto.builder()
+                    .yearNumber(3).grade("ST3").endDate(LocalDate.parse("2027-02-28"))
+                    .additionalMonths(4).build(),
+                CctGradeYearDto.builder()
+                    .yearNumber(4).grade("ST5").endDate(LocalDate.parse("2028-10-31"))
+                    .skippedGradeBeforeThisRow("ST4").additionalMonths(2).build(),
+                CctGradeYearDto.builder()
+                    .yearNumber(5).grade("ST6").endDate(LocalDate.parse("2030-04-30"))
+                    .acceleratedMonths(3).build(),
+                CctGradeYearDto.builder()
+                    .yearNumber(6).grade("ST7").endDate(LocalDate.parse("2031-12-31")).build(),
+                CctGradeYearDto.builder()
+                    .yearNumber(7).grade("ST8").endDate(LocalDate.parse("2034-06-30"))
+                    .extendedToEighteenMonths(true).build(),
+                CctGradeYearDto.builder()
+                    .yearNumber(8).grade("ST9").endDate(LocalDate.parse("2036-03-11")).build()))
             .build())
         .lastModified(Instant.parse("2026-10-28T12:00:00Z"))
         .build();

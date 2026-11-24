@@ -45,9 +45,11 @@ import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctAssumedFullTimePeriodDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctCalculatedChangeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctCalculationDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctGradeYearDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctProgrammeDetailsDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctProjectionDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctResultDto;
+import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.CctSnapshotDto.CctTrainingTimeDto;
 import uk.nhs.hee.tis.trainee.forms.dto.LtftFormDto.StatusDto.StatusInfoDto;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.EmailValidityType;
 import uk.nhs.hee.tis.trainee.forms.dto.enumeration.LifecycleState;
@@ -57,6 +59,8 @@ import uk.nhs.hee.tis.trainee.forms.model.AbstractAuditedForm.Status.StatusInfo;
 import uk.nhs.hee.tis.trainee.forms.model.LtftForm;
 import uk.nhs.hee.tis.trainee.forms.model.content.CctChange;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctGradeYear;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctTrainingTime;
 
 class LtftMapperTest {
 
@@ -395,6 +399,16 @@ class LtftMapperTest {
                 .startDate(LocalDate.of(2024, Month.AUGUST, 7))
                 .lengthMonths(36)
                 .startGrade("ST1")
+                .additionalTrainingTime(List.of(CctTrainingTimeDto.builder()
+                    .grade("ST2")
+                    .months(6)
+                    .notes("Extra time after ARCP")
+                    .build()))
+                .acceleratedTrainingTime(List.of(CctTrainingTimeDto.builder()
+                    .grade("ST3")
+                    .months(3)
+                    .notes("Competences gained early")
+                    .build()))
                 .build())
             .changes(List.of(CctCalculatedChangeDto.builder()
                 .type("LTFT")
@@ -421,6 +435,16 @@ class LtftMapperTest {
                     .calendarMonths(25.2)
                     .wteMonths(25.2)
                     .build())
+                .gradeProgression(List.of(CctGradeYearDto.builder()
+                    .yearNumber(1)
+                    .grade("ST1")
+                    .endDate(LocalDate.of(2025, Month.AUGUST, 6))
+                    .skippedGradeBeforeThisRow("ST2")
+                    .extendedToEighteenMonths(true)
+                    .exceedsKnownTrainingGrade(true)
+                    .additionalMonths(6)
+                    .acceleratedMonths(3)
+                    .build()))
                 .build())
             .created(Instant.parse("2025-01-01T00:00:00Z"))
             .lastModified(Instant.parse("2025-01-02T00:00:00Z"))
@@ -435,11 +459,21 @@ class LtftMapperTest {
         is(snapshot.calculationId()));
     assertThat("Unexpected specialty.",
         entitySnapshot.calculation().programmeDetails().specialty(), is("General Practice"));
+    assertThat("Unexpected additional training time.",
+        entitySnapshot.calculation().programmeDetails().additionalTrainingTime(),
+        is(List.of(new CctTrainingTime("ST2", 6, "Extra time after ARCP"))));
+    assertThat("Unexpected accelerated training time.",
+        entitySnapshot.calculation().programmeDetails().acceleratedTrainingTime(),
+        is(List.of(new CctTrainingTime("ST3", 3, "Competences gained early"))));
     assertThat("Unexpected change count.", entitySnapshot.calculation().changes().size(), is(1));
     assertThat("Unexpected assumed full time period count.",
         entitySnapshot.calculation().result().assumedFullTimePeriods().size(), is(1));
     assertThat("Unexpected projection WTE.",
         entitySnapshot.calculation().result().projection().wte(), is(1.0));
+    assertThat("Unexpected grade progression.",
+        entitySnapshot.calculation().result().gradeProgression(),
+        is(List.of(new CctGradeYear(1, "ST1", LocalDate.of(2025, Month.AUGUST, 6), "ST2", true,
+            true, 6, 3))));
 
     LtftFormDto mappedDto = mapper.toDto(entity);
     assertThat("Unexpected CCT snapshot.", mappedDto.cctSnapshot(), is(snapshot));

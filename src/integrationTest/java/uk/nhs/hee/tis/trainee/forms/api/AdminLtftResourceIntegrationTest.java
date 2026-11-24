@@ -113,9 +113,11 @@ import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctAssumedFullTimePeriod;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctCalculatedChange;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctCalculation;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctGradeYear;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctProgrammeDetails;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctProjection;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctResult;
+import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.CctSnapshot.CctTrainingTime;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Declarations;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.Discussions;
 import uk.nhs.hee.tis.trainee.forms.model.content.LtftContent.PersonalDetails;
@@ -1973,15 +1975,42 @@ class AdminLtftResourceIntegrationTest {
         containsString("Original programme end date 02 August 2030"));
     assertThat("Unexpected start grade.", pdfText,
         containsString("Start grade ST1 Restarted at ST1"));
-    assertThat("Unexpected additional time.", pdfText,
-        containsString("Additional training time 6 months Extra time after ARCP"));
-    assertThat("Unexpected adjusted length.", pdfText,
-        containsString("Adjusted programme length 102 months"));
-    assertThat("Unexpected adjusted end date.", pdfText, containsString(
-        "Adjusted programme end date before changes 02 February 2031 Based on programme length"
-            + " and training-time adjustments only"));
+  }
+
+  @Test
+  void shouldGetDetailPdfCctSnapshotTrainingTimeAdjustmentsWhenSnapshotAttached()
+      throws Exception {
+    LtftForm form = createCctSnapshotLtft(createCctCalculation(CCT_CHANGES));
+
+    String pdfText = getDetailPdfText(form);
+
+    assertThat("Unexpected training time adjustments.", pdfText, containsString(
+        "Training time adjustments"
+            + " Additional training time Grade Additional time Reason"
+            + " ST3 4 months Extra time after ARCP"
+            + " ST5 2 months Exam resit"
+            + " Total 6 months"
+            + " Accelerated training time No accelerated training time recorded."
+            + " Adjusted programme length"
+            + " Initial programme length 96 months"
+            + " Additional training time +6 months"
+            + " Adjusted programme length 102 months"
+            + " Adjusted programme end date before changes 02 February 2031 Based on programme"
+            + " length and training-time adjustments only"));
     assertThat("Unexpected accelerated time.", pdfText,
-        not(containsString("Accelerated training time")));
+        not(containsString("Accelerated training time -")));
+  }
+
+  @Test
+  void shouldGetDetailPdfCctSnapshotNoGradeProgressionMessageWhenNoneRecorded()
+      throws Exception {
+    LtftForm form = createCctSnapshotLtft(createCctCalculation(CCT_CHANGES));
+
+    String pdfText = getDetailPdfText(form);
+
+    assertThat("Unexpected grade progression adjustments.", pdfText, containsString(
+        "Grade progression adjustments These change how the trainee's grades progress, not their"
+            + " total training time. No grade progression adjustments recorded."));
     assertThat("Unexpected 18-month final year.", pdfText,
         not(containsString("18-month final year")));
     assertThat("Unexpected skipped grade.", pdfText, not(containsString("Skipped grade year")));
@@ -2082,6 +2111,101 @@ class AdminLtftResourceIntegrationTest {
         "Changes No changes recorded, so the whole programme is treated as full time at 100%"
             + " WTE."));
     assertThat("Unexpected changes table.", pdfText, not(containsString("Total to completion")));
+  }
+
+  @Test
+  void shouldGetDetailPdfCctSnapshotGradeProgressionWhenSnapshotAttached() throws Exception {
+    LtftForm form = createCctSnapshotLtft(createCctCalculation(CCT_CHANGES));
+
+    String pdfText = getDetailPdfText(form);
+
+    assertThat("Unexpected grade progression.", pdfText, containsString(
+        "Grade progression Training year Grade Grade end date"
+            + " Year 1 ST1 02 Aug 2023"
+            + " Year 2 ST2 02 Dec 2024"
+            + " Year 3 ST3 28 Feb 2027"
+            + " Year 4 ST4 31 Oct 2028"
+            + " Year 5 ST5 31 Aug 2030"
+            + " Year 6 ST6 30 Jun 2032"
+            + " Year 7 ST7 30 Apr 2034"
+            + " Year 8 ST8 11 Mar 2036"
+            + " Grade end dates are calculated from the trainee's entries and may not match their"
+            + " official training record."));
+    assertThat("Unexpected 18-month note.", pdfText,
+        not(containsString("is an 18-month final year")));
+    assertThat("Unexpected skipped grade note.", pdfText, not(containsString("is skipped")));
+    assertThat("Unexpected past highest grade note.", pdfText,
+        not(containsString("past the highest grade")));
+  }
+
+  @Test
+  void shouldGetDetailPdfCctSnapshotGradeProgressionNotesWhenGradesAdjusted() throws Exception {
+    CctCalculation calculation = CctCalculation.builder()
+        .programmeDetails(CctProgrammeDetails.builder()
+            .lengthMonths(48)
+            .startGrade("ST6")
+            .skippedGrade("ST7")
+            .eighteenMonthFinalGrade("ST9")
+            .build())
+        .changes(List.of())
+        .result(CctResult.builder()
+            .cctDate(LocalDate.parse("2027-07-31"))
+            .gradeProgression(List.of(
+                createGradeYear(1, "ST6", "2024-07-31"),
+                CctGradeYear.builder()
+                    .yearNumber(2)
+                    .grade("ST8")
+                    .endDate(LocalDate.parse("2025-07-31"))
+                    .skippedGradeBeforeThisRow("ST7")
+                    .build(),
+                CctGradeYear.builder()
+                    .yearNumber(3)
+                    .grade("ST9")
+                    .endDate(LocalDate.parse("2027-01-31"))
+                    .extendedToEighteenMonths(true)
+                    .build(),
+                CctGradeYear.builder()
+                    .yearNumber(4)
+                    .endDate(LocalDate.parse("2027-07-31"))
+                    .exceedsKnownTrainingGrade(true)
+                    .build()))
+            .build())
+        .lastModified(Instant.parse("2026-10-28T12:00:00Z"))
+        .build();
+    LtftForm form = createCctSnapshotLtft(calculation);
+
+    String pdfText = getDetailPdfText(form);
+
+    assertThat("Unexpected grade progression.", pdfText, containsString(
+        "Grade progression Training year Grade Grade end date"
+            + " Year 1 ST6 31 Jul 2024"
+            + " Year 2 ST8 (ST7 skipped) 31 Jul 2025"
+            + " Year 3 ST9 (18-month final year) 31 Jan 2027"
+            + " Year 4 — (grade label not automatically assigned) 31 Jul 2027"
+            + " Grade end dates are calculated from the trainee's entries and may not match their"
+            + " official training record."
+            + " ST9 is an 18-month final year. It uses six months already in the programme length,"
+            + " so it does not move the completion date."
+            + " ST7 is skipped, so later years move up a grade. This does not shorten training; any"
+            + " reduction is recorded as accelerated training time."
+            + " Some years go past the highest grade the calculator assigns, so they have no grade."
+            + " Check the trainee's official training record."));
+  }
+
+  @Test
+  void shouldGetDetailPdfWithoutCctSnapshotGradeProgressionWhenNoGradeYears() throws Exception {
+    CctCalculation calculation = CctCalculation.builder()
+        .changes(List.of())
+        .result(CctResult.builder()
+            .cctDate(LocalDate.parse("2036-03-11"))
+            .build())
+        .lastModified(Instant.parse("2026-10-28T12:00:00Z"))
+        .build();
+    LtftForm form = createCctSnapshotLtft(calculation);
+
+    String pdfText = getDetailPdfText(form);
+
+    assertThat("Unexpected grade progression.", pdfText, not(containsString("Training year")));
   }
 
   @ParameterizedTest
@@ -2923,10 +3047,18 @@ class AdminLtftResourceIntegrationTest {
             .lengthOverrideNotes("Length agreed with TPD")
             .startGrade("ST1")
             .startGradeOverrideNotes("Restarted at ST1")
-            .additionalMonths(6)
-            .additionalMonthsNotes("Extra time after ARCP")
-            .acceleratedMonths(0)
-            .acceleratedMonthsNotes("")
+            .additionalTrainingTime(List.of(
+                CctTrainingTime.builder()
+                    .grade("ST3")
+                    .months(4)
+                    .notes("Extra time after ARCP")
+                    .build(),
+                CctTrainingTime.builder()
+                    .grade("ST5")
+                    .months(2)
+                    .notes("Exam resit")
+                    .build()))
+            .acceleratedTrainingTime(List.of())
             .build())
         .changes(changes)
         .result(CctResult.builder()
@@ -2953,8 +3085,33 @@ class AdminLtftResourceIntegrationTest {
                 .calendarMonths(126.3)
                 .wteMonths(75.8)
                 .build())
+            .gradeProgression(List.of(
+                createGradeYear(1, "ST1", "2023-08-02"),
+                createGradeYear(2, "ST2", "2024-12-02"),
+                createGradeYear(3, "ST3", "2027-02-28"),
+                createGradeYear(4, "ST4", "2028-10-31"),
+                createGradeYear(5, "ST5", "2030-08-31"),
+                createGradeYear(6, "ST6", "2032-06-30"),
+                createGradeYear(7, "ST7", "2034-04-30"),
+                createGradeYear(8, "ST8", "2036-03-11")))
             .build())
         .lastModified(Instant.parse("2026-10-28T12:00:00Z"))
+        .build();
+  }
+
+  /**
+   * Create a year of a grade progression, with no grade progression adjustments.
+   *
+   * @param yearNumber The year of the programme.
+   * @param grade      The grade for the year.
+   * @param endDate    The date the grade ends.
+   * @return The grade year.
+   */
+  private static CctGradeYear createGradeYear(int yearNumber, String grade, String endDate) {
+    return CctGradeYear.builder()
+        .yearNumber(yearNumber)
+        .grade(grade)
+        .endDate(LocalDate.parse(endDate))
         .build();
   }
 
