@@ -85,7 +85,9 @@ public abstract class LtftMapper implements FormMapper<LtftForm, LtftFormDto>,
    * @return The equivalent admin summary DTO.
    */
   @Mapping(target = "personalDetails", source = "entity")
-  @Mapping(target = "programmeName", source = "content.programmeMembership.name")
+  @Mapping(target = "programmeDetails.name", source = "content.programmeMembership.name")
+  @Mapping(target = "programmeDetails.localOfficeName", source = "content.programmeMembership.managingDeanery")
+  @Mapping(target = "programmeDetails.designatedBodyCode", source = "content.programmeMembership.designatedBodyCode")
   @Mapping(target = "proposedStartDate", source = "content.change.startDate")
   @Mapping(target = "altStartDate", source = "content.change.altStartDate")
   @Mapping(target = "submissionDate", source = "status.submitted")

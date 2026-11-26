@@ -21,6 +21,8 @@
 
 package uk.nhs.hee.tis.trainee.forms.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import java.time.LocalDate;
 import java.util.UUID;
 import lombok.Builder;
@@ -33,7 +35,7 @@ import uk.nhs.hee.tis.trainee.forms.dto.enumeration.ResponsibleRole;
  *
  * @param id                The identifier of the LTFT application.
  * @param personalDetails   The personal details of the applicant.
- * @param programmeName     The programme name associated with the LTFT application.
+ * @param programmeDetails  The programme details associated with the LTFT application.
  * @param proposedStartDate The proposed start date of the LTFT change.
  * @param altStartDate      The alternate start date if the proposed start date is short-dated.
  * @param submissionDate    The date the LTFT application was submitted.
@@ -53,7 +55,9 @@ public record LtftAdminSummaryDto(
     UUID id,
     String formRef,
     LtftAdminPersonalDetailsDto personalDetails,
-    String programmeName,
+
+    @JsonUnwrapped
+    LtftAdminProgrammeDetailsDto programmeDetails,
     LocalDate proposedStartDate,
     LocalDate altStartDate,
     LocalDate submissionDate,
@@ -78,6 +82,22 @@ public record LtftAdminSummaryDto(
       String surname,
       String gmcNumber,
       String gdcNumber) {
+
+  }
+
+  /**
+   * The details of the programme associated with the LTFT application.
+   *
+   * @param name               The name of the programme.
+   * @param localOfficeName    The name of the local office.
+   * @param designatedBodyCode The code of the designated body.
+   */
+  @Builder
+  public record LtftAdminProgrammeDetailsDto(
+      @JsonProperty("programmeName")
+      String name,
+      String localOfficeName,
+      String designatedBodyCode) {
 
   }
 
