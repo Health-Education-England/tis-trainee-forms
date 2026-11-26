@@ -303,43 +303,6 @@ class LtftMapperTest {
     assertThat("Unexpected status detail DTO.", dto.message(), nullValue());
   }
 
-  @Test
-  void shouldMapAltStartDateToAdminSummaryDto() {
-    LocalDate altStartDate = LocalDate.of(2026, Month.JUNE, 1);
-
-    LtftForm entity = new LtftForm();
-    entity.setStatus(Status.builder()
-        .current(StatusInfo.builder().build())
-        .build());
-    entity.setContent(LtftContent.builder()
-        .change(CctChange.builder()
-            .altStartDate(altStartDate)
-            .build())
-        .build());
-
-    LtftAdminSummaryDto dto = mapper.toAdminSummaryDto(entity);
-
-    assertThat("Unexpected alternate start date.",
-        dto.altStartDate(), is(altStartDate));
-  }
-
-  @Test
-  void shouldMapNullAltStartDateToAdminSummaryDto() {
-    LtftForm entity = new LtftForm();
-    entity.setStatus(Status.builder()
-        .current(StatusInfo.builder().build())
-        .build());
-    entity.setContent(LtftContent.builder()
-        .change(CctChange.builder()
-            .altStartDate(null)
-            .build())
-        .build());
-
-    LtftAdminSummaryDto dto = mapper.toAdminSummaryDto(entity);
-
-    assertThat("Unexpected alternate start date.", dto.altStartDate(), nullValue());
-  }
-
   @ParameterizedTest
   @EnumSource(ResponsibleRole.class)
   void shouldMapResponsibleRoleToAdminSummaryDto(ResponsibleRole role) {

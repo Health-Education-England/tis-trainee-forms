@@ -807,7 +807,6 @@ class AdminLtftResourceIntegrationTest {
   @Test
   void shouldReturnSummaryContentWhenLtftWithMatchingDbc() throws Exception {
     LocalDate startDate = LocalDate.now().plusWeeks(20);
-    LocalDate altStartDate = LocalDate.now().plusWeeks(24);
 
     LtftForm form = new LtftForm();
     form.setTraineeTisId("47165");
@@ -823,7 +822,6 @@ class AdminLtftResourceIntegrationTest {
             .build())
         .change(CctChange.builder()
             .startDate(startDate)
-            .altStartDate(altStartDate)
             .build())
         .reasons(Reasons.builder()
             .selected(List.of("Other", "Caring responsibilities"))
@@ -875,7 +873,6 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.content[0].localOfficeName", is("Managing Deanery 1")))
         .andExpect(jsonPath("$.content[0].designatedBodyCode", is(DBC_1)))
         .andExpect(jsonPath("$.content[0].proposedStartDate", is(startDate.toString())))
-        .andExpect(jsonPath("$.content[0].altStartDate", is(altStartDate.toString())))
         .andExpect(jsonPath("$.content[0].submissionDate", is(latestSubmittedDate.toString())))
         .andExpect(jsonPath("$.content[0].reason", is("Caring responsibilities, Other")))
         .andExpect(jsonPath("$.content[0].daysToStart", is(140)))
@@ -1304,7 +1301,6 @@ class AdminLtftResourceIntegrationTest {
   @Test
   void shouldGetDetailJsonWhenLtftWithMatchingDbcIsNotDraft() throws Exception {
     LocalDate startDate = LocalDate.now().plusWeeks(20);
-    LocalDate altStartDate = LocalDate.now().plusWeeks(24);
 
     LtftForm form = new LtftForm();
     form.setTraineeTisId("47165");
@@ -1318,7 +1314,6 @@ class AdminLtftResourceIntegrationTest {
             .build())
         .change(CctChange.builder()
             .startDate(startDate)
-            .altStartDate(altStartDate)
             .build())
         .reasons(Reasons.builder()
             .selected(List.of("Other", "Caring responsibilities"))
@@ -1363,7 +1358,6 @@ class AdminLtftResourceIntegrationTest {
         .andExpect(jsonPath("$.personalDetails.gdcNumber", is("D123456")))
         .andExpect(jsonPath("$.programmeMembership.name", is("General Practice")))
         .andExpect(jsonPath("$.change.startDate", is(startDate.toString())))
-        .andExpect(jsonPath("$.change.altStartDate", is(altStartDate.toString())))
         .andExpect(jsonPath("$.reasons.selected", hasSize(2)))
         .andExpect(jsonPath("$.reasons.selected", hasItems("Caring responsibilities", "Other")))
         .andExpect(jsonPath("$.discussions.tpdEmail", is("tpd@example.com")))
@@ -1670,7 +1664,6 @@ class AdminLtftResourceIntegrationTest {
 
     LocalDate startDate = LocalDate.now();
     LocalDate endDate = startDate.plusYears(1);
-    LocalDate altStartDate = startDate.plusMonths(6);
 
     LtftContent content = LtftContent.builder()
         .personalDetails(PersonalDetails.builder().build())
@@ -1679,7 +1672,6 @@ class AdminLtftResourceIntegrationTest {
             .build())
         .change(CctChange.builder()
             .startDate(startDate)
-            .altStartDate(altStartDate)
             .endDate(endDate)
             .wte(0.75)
             .build())
@@ -1725,9 +1717,6 @@ class AdminLtftResourceIntegrationTest {
     String startDateString = startDate.format(datePattern);
     assertThat("Unexpected start date.", pdfText,
         containsString("Start Date " + startDateString + System.lineSeparator()));
-    String altStartDateString = altStartDate.format(datePattern);
-    assertThat("Unexpected alternate start date.", pdfText,
-        containsString("Alternate Start Date " + altStartDateString + System.lineSeparator()));
   }
 
   @Test

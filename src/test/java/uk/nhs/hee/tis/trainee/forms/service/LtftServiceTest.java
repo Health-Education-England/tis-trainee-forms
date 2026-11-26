@@ -1443,7 +1443,6 @@ class LtftServiceTest {
             .type(CctChangeType.LTFT)
             .wte(0.5)
             .startDate(LocalDate.MIN)
-            .altStartDate(LocalDate.MAX)
             .endDate(LocalDate.EPOCH)
             .build())
         .build();
@@ -1464,7 +1463,6 @@ class LtftServiceTest {
     assertThat("Unexpected type.", change.type(), is(CctChangeType.LTFT));
     assertThat("Unexpected WTE.", change.wte(), is(0.5));
     assertThat("Unexpected start date.", change.startDate(), is(LocalDate.MIN));
-    assertThat("Unexpected alternate start date.", change.altStartDate(), is(LocalDate.MAX));
     assertThat("Unexpected end date.", change.endDate(), is(LocalDate.EPOCH));
   }
 
@@ -1493,7 +1491,6 @@ class LtftServiceTest {
     assertThat("Unexpected type.", change.type(), nullValue());
     assertThat("Unexpected WTE.", change.wte(), nullValue());
     assertThat("Unexpected start date.", change.startDate(), nullValue());
-    assertThat("Unexpected alternate start date.", change.altStartDate(), nullValue());
     assertThat("Unexpected end date.", change.endDate(), nullValue());
   }
 

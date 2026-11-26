@@ -732,55 +732,6 @@ class LtftResourceIntegrationTest {
   }
 
   @Test
-  void shouldReturnAltStartDateWhenLtftFormFound() throws Exception {
-    LocalDate altStartDate = LocalDate.now().plusWeeks(24);
-
-    LtftForm ltft = new LtftForm();
-    ltft.setId(ID);
-    ltft.setTraineeTisId(TRAINEE_ID);
-    ltft.setContent(LtftContent.builder()
-        .change(CctChange.builder()
-            .startDate(LocalDate.now().plusWeeks(20))
-            .altStartDate(altStartDate)
-            .build())
-        .build());
-    template.insert(ltft);
-
-    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
-    mockMvc.perform(get("/api/ltft/" + ID)
-            .with(jwt().jwt(token)))
-        .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("$.change.altStartDate", is(altStartDate.toString())));
-  }
-
-  @Test
-  void shouldPersistAltStartDateWhenLtftFormCreated() throws Exception {
-    LocalDate altStartDate = LocalDate.now().plusWeeks(24);
-
-    LtftFormDto formToSave = LtftFormDto.builder()
-        .traineeTisId(TRAINEE_ID)
-        .name("test")
-        .programmeMembership(LtftFormDto.ProgrammeMembershipDto.builder()
-            .id(PM_UUID)
-            .build())
-        .change(CctChangeDto.builder()
-            .startDate(LocalDate.now().plusWeeks(20))
-            .altStartDate(altStartDate)
-            .build())
-        .build();
-    String formToSaveJson = mapper.writeValueAsString(formToSave);
-
-    Jwt token = TestJwtUtil.createTokenForTrainee(TRAINEE_ID);
-    mockMvc.perform(post("/api/ltft")
-            .with(jwt().jwt(token))
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(formToSaveJson))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.change.altStartDate", is(altStartDate.toString())));
-  }
-
-  @Test
   void shouldPersistCctSnapshotWhenLtftFormCreated() throws Exception {
     UUID calculationId = UUID.randomUUID();
     CctCalculationDto calculation = createCctCalculation(calculationId);
@@ -2021,7 +1972,6 @@ class LtftResourceIntegrationTest {
     LocalDate startDate = LocalDate.now();
     LocalDate endDate = startDate.plusYears(1);
     LocalDate changeStartDate = startDate.plusMonths(1);
-    LocalDate altStartDate = startDate.plusMonths(7);
 
     LtftContent content = LtftContent.builder()
         .personalDetails(PersonalDetails.builder().build())
@@ -2035,7 +1985,6 @@ class LtftResourceIntegrationTest {
         .change(CctChange.builder()
             .type(CctChangeType.LTFT)
             .startDate(changeStartDate)
-            .altStartDate(altStartDate)
             .endDate(endDate)
             .wte(0.75)
             .build())
@@ -2107,14 +2056,6 @@ class LtftResourceIntegrationTest {
           containsString("When should this change to your working hours begin?"));
       assertThat("Unexpected change start date." + System.lineSeparator(), pdfText,
           containsString(changeStartDate.format(DATE_FORMATTER)));
-
-      // Alternate start date
-      assertThat("Unexpected alternate start date section header.", pdfText,
-          containsString("Alternate start date" + System.lineSeparator()));
-      assertThat("Unexpected alternate start date question.", removeLineBreak(pdfText),
-          containsString("Alternative start for change to your working hours?"));
-      assertThat("Unexpected alternate start date value.", pdfText,
-          containsString(altStartDate.format(DATE_FORMATTER)));
     }
   }
 
@@ -2484,7 +2425,6 @@ class LtftResourceIntegrationTest {
     LocalDate startDate = LocalDate.now();
     LocalDate endDate = startDate.plusYears(1);
     LocalDate changeStartDate = startDate.plusMonths(1);
-    LocalDate altStartDate = startDate.plusMonths(7);
 
     LtftContent content = LtftContent.builder()
         .personalDetails(PersonalDetails.builder().build())
@@ -2498,7 +2438,6 @@ class LtftResourceIntegrationTest {
         .change(CctChange.builder()
             .type(CctChangeType.LTFT)
             .startDate(changeStartDate)
-            .altStartDate(altStartDate)
             .endDate(endDate)
             .wte(0.75)
             .build())
@@ -2556,12 +2495,6 @@ class LtftResourceIntegrationTest {
       String startDateString = changeStartDate.format(DATE_FORMATTER);
       assertThat("Unexpected start date.", removeLineBreak(pdfText),
           containsString("LTFT Start date " + startDateString));
-      String altStartDateString = altStartDate.format(DATE_FORMATTER);
-      assertThat("Unexpected alternate start date.", pdfText,
-          containsString("Alternate start date" + System.lineSeparator()));
-      assertThat("Unexpected alternate start date value.", removeLineBreak(pdfText),
-          containsString("Alternative start for change to your working hours? "
-              + altStartDateString));
       assertThat("Unexpected note.", removeLineBreak(pdfText),
           containsString(
               "Reducing your working hours from 85% to 75% will extend programme completion date. Your formal completion date will be agreed at ARCP."));
